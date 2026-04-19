@@ -1,0 +1,718 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model approval_tokens {
+  id                      String                    @id @db.Char(36)
+  job_id                  String?                   @db.Char(36)
+  token_hash              String?                   @unique(map: "token_hash") @db.VarChar(64)
+  channel                 approval_tokens_channel?  @default(email)
+  sent_to                 String?                   @db.VarChar(255)
+  issued_at               DateTime?                 @default(now()) @db.DateTime(0)
+  expires_at              DateTime?                 @db.DateTime(0)
+  first_opened_at         DateTime?                 @db.DateTime(0)
+  used_at                 DateTime?                 @db.DateTime(0)
+  ip_address              String?                   @db.VarChar(45)
+  user_agent              String?                   @db.VarChar(500)
+  is_revoked              Boolean?                  @default(false)
+  revoked_at              DateTime?                 @db.DateTime(0)
+  revoked_by              String?                   @db.Char(36)
+  jobs                    jobs?                     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_at_job")
+  users                   users?                    @relation(fields: [revoked_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_at_revoked_by")
+  authorisation_decisions authorisation_decisions[]
+
+  @@index([revoked_by], map: "fk_at_revoked_by")
+  @@index([expires_at], map: "idx_at_expires")
+  @@index([job_id], map: "idx_at_job")
+}
+
+model audit_logs {
+  id          String    @id @db.Char(36)
+  user_id     String?   @db.Char(36)
+  entity_type String?   @db.VarChar(60)
+  entity_id   String?   @db.Char(36)
+  action      String?   @db.VarChar(30)
+  old_values  String?   @db.LongText
+  new_values  String?   @db.LongText
+  ip_address  String?   @db.VarChar(45)
+  user_agent  String?   @db.VarChar(500)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_al_user")
+
+  @@index([created_at(sort: Desc)], map: "idx_al_created")
+  @@index([entity_type, entity_id], map: "idx_al_entity")
+  @@index([user_id], map: "idx_al_user")
+}
+
+model authorisation_decisions {
+  id               String                           @id @db.Char(36)
+  token_id         String?                          @db.Char(36)
+  estimate_line_id String?                          @db.Char(36)
+  decision         authorisation_decisions_decision
+  customer_comment String?                          @db.Text
+  ip_address       String?                          @db.VarChar(45)
+  decided_at       DateTime?                        @default(now()) @db.DateTime(0)
+  estimate_lines   estimate_lines?                  @relation(fields: [estimate_line_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ad_line")
+  approval_tokens  approval_tokens?                 @relation(fields: [token_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ad_token")
+
+  @@unique([token_id, estimate_line_id], map: "idx_ad_token_line")
+  @@index([estimate_line_id], map: "fk_ad_line")
+  @@index([decision], map: "idx_ad_decision")
+}
+
+model customers {
+  id                String                       @id @db.Char(36)
+  name              String?                      @db.VarChar(120)
+  email             String?                      @db.VarChar(255)
+  phone             String?                      @db.VarChar(30)
+  preferred_contact customers_preferred_contact? @default(phone)
+  language          String?                      @db.VarChar(10)
+  dms_customer_id   String?                      @db.VarChar(60)
+  notes             String?                      @db.Text
+  is_active         Boolean?                     @default(true)
+  created_at        DateTime?                    @default(now()) @db.DateTime(0)
+  updated_at        DateTime?                    @default(now()) @db.DateTime(0)
+  deferred_work     deferred_work[]
+  jobs              jobs[]
+  notifications     notifications[]
+  vehicles          vehicles[]
+
+  @@index([dms_customer_id], map: "idx_customers_dms")
+  @@index([email], map: "idx_customers_email")
+  @@index([phone], map: "idx_customers_phone")
+}
+
+model deferred_work {
+  id                                       String                    @id @db.Char(36)
+  customer_id                              String?                   @db.Char(36)
+  vehicle_id                               String?                   @db.Char(36)
+  original_job_id                          String?                   @db.Char(36)
+  estimate_line_id                         String?                   @db.Char(36)
+  status                                   deferred_work_status?     @default(pending)
+  urgency                                  deferred_work_urgency?    @default(none)
+  estimated_value                          Decimal?                  @db.Decimal(10, 2)
+  remind_after                             DateTime?                 @db.Date
+  remind_count                             Int?                      @default(0) @db.TinyInt
+  last_reminded_at                         DateTime?                 @db.DateTime(0)
+  booked_job_id                            String?                   @db.Char(36)
+  closed_reason                            String?                   @db.VarChar(255)
+  created_at                               DateTime?                 @default(now()) @db.DateTime(0)
+  jobs_deferred_work_booked_job_idTojobs   jobs?                     @relation("deferred_work_booked_job_idTojobs", fields: [booked_job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_dw_booked_job")
+  customers                                customers?                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_dw_customer")
+  estimate_lines                           estimate_lines?           @relation(fields: [estimate_line_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_dw_estimate_line")
+  jobs_deferred_work_original_job_idTojobs jobs?                     @relation("deferred_work_original_job_idTojobs", fields: [original_job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_dw_original_job")
+  vehicles                                 vehicles?                 @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_dw_vehicle")
+  deferred_work_reminders                  deferred_work_reminders[]
+
+  @@index([booked_job_id], map: "fk_dw_booked_job")
+  @@index([estimate_line_id], map: "fk_dw_estimate_line")
+  @@index([original_job_id], map: "fk_dw_original_job")
+  @@index([vehicle_id], map: "fk_dw_vehicle")
+  @@index([customer_id], map: "idx_dw_customer")
+  @@index([status, remind_after], map: "idx_dw_status_remind")
+}
+
+model deferred_work_reminders {
+  id               String                                   @id @db.Char(36)
+  deferred_work_id String?                                  @db.Char(36)
+  channel          deferred_work_reminders_channel?         @default(email)
+  sent_to          String?                                  @db.VarChar(255)
+  delivery_status  deferred_work_reminders_delivery_status? @default(pending)
+  sent_at          DateTime?                                @default(now()) @db.DateTime(0)
+  delivered_at     DateTime?                                @db.DateTime(0)
+  deferred_work    deferred_work?                           @relation(fields: [deferred_work_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_dwr_deferred_work")
+
+  @@index([deferred_work_id], map: "idx_dwr_deferred_work")
+  @@index([sent_at], map: "idx_dwr_sent_at")
+}
+
+model estimate_line_history {
+  id             String          @id @db.Char(36)
+  line_id        String?         @db.Char(36)
+  snapshot       String?         @db.LongText
+  changed_by     String?         @db.Char(36)
+  changed_at     DateTime?       @default(now()) @db.DateTime(0)
+  users          users?          @relation(fields: [changed_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_elh_changed_by")
+  estimate_lines estimate_lines? @relation(fields: [line_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_elh_line")
+
+  @@index([changed_by], map: "fk_elh_changed_by")
+  @@index([changed_at], map: "idx_elh_changed_at")
+  @@index([line_id], map: "idx_elh_line")
+}
+
+model estimate_lines {
+  id                      String                    @id @db.Char(36)
+  job_id                  String?                   @db.Char(36)
+  inspection_response_id  String?                   @db.Char(36)
+  type                    estimate_lines_type
+  description             String?                   @db.Text
+  part_number             String?                   @db.VarChar(60)
+  quantity                Decimal?                  @default(1.00) @db.Decimal(8, 2)
+  unit_price              Decimal?                  @db.Decimal(10, 2)
+  discount_pct            Decimal?                  @default(0.00) @db.Decimal(5, 2)
+  tax_rate_pct            Decimal?                  @default(0.00) @db.Decimal(5, 2)
+  line_total              Decimal?                  @db.Decimal(10, 2)
+  tax_amount              Decimal?                  @db.Decimal(10, 2)
+  is_recommended          Boolean?                  @default(false)
+  sort_order              Int?                      @db.SmallInt
+  added_by                String?                   @db.Char(36)
+  created_at              DateTime?                 @default(now()) @db.DateTime(0)
+  updated_at              DateTime?                 @default(now()) @db.DateTime(0)
+  authorisation_decisions authorisation_decisions[]
+  deferred_work           deferred_work[]
+  estimate_line_history   estimate_line_history[]
+  users                   users?                    @relation(fields: [added_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_added_by")
+  jobs                    jobs?                     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_job")
+  inspection_responses    inspection_responses?     @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_response")
+
+  @@index([added_by], map: "fk_el_added_by")
+  @@index([inspection_response_id], map: "fk_el_response")
+  @@index([job_id], map: "idx_el_job")
+  @@index([is_recommended], map: "idx_el_recommended")
+  @@index([type], map: "idx_el_type")
+}
+
+model inspection_items {
+  id                   String                       @id @db.Char(36)
+  section_id           String?                      @db.Char(36)
+  label                String?                      @db.VarChar(180)
+  input_type           inspection_items_input_type? @default(pass_fail)
+  options              String?                      @db.LongText
+  unit                 String?                      @db.VarChar(20)
+  requires_photo       Boolean?                     @default(false)
+  requires_note_on     String?                      @db.VarChar(20)
+  help_text            String?                      @db.Text
+  sort_order           Int?                         @db.SmallInt
+  is_active            Boolean?                     @default(true)
+  inspection_sections  inspection_sections?         @relation(fields: [section_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ii_section")
+  inspection_responses inspection_responses[]
+
+  @@index([section_id], map: "idx_ii_section")
+  @@index([section_id, sort_order], map: "idx_ii_sort")
+}
+
+model inspection_responses {
+  id               String                        @id @db.Char(36)
+  inspection_id    String?                       @db.Char(36)
+  item_id          String?                       @db.Char(36)
+  value            String?                       @db.VarChar(100)
+  urgency          inspection_responses_urgency? @default(none)
+  tech_notes       String?                       @db.Text
+  media_count      Int?                          @default(0) @db.TinyInt
+  recorded_at      DateTime?                     @default(now()) @db.DateTime(0)
+  estimate_lines   estimate_lines[]
+  inspections      inspections?                  @relation(fields: [inspection_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_inspection")
+  inspection_items inspection_items?             @relation(fields: [item_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_item")
+  media_files      media_files[]
+
+  @@unique([inspection_id, item_id], map: "idx_ir_inspection_item")
+  @@index([item_id], map: "fk_ir_item")
+  @@index([urgency], map: "idx_ir_urgency")
+}
+
+model inspection_sections {
+  id                   String                @id @db.Char(36)
+  template_id          String?               @db.Char(36)
+  name                 String?               @db.VarChar(80)
+  icon                 String?               @db.VarChar(10)
+  sort_order           Int?                  @db.SmallInt
+  is_active            Boolean?              @default(true)
+  inspection_items     inspection_items[]
+  inspection_templates inspection_templates? @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_is_template")
+
+  @@index([template_id, sort_order], map: "idx_is_sort")
+  @@index([template_id], map: "idx_is_template")
+}
+
+model inspection_templates {
+  id                  String                @id @db.Char(36)
+  name                String?               @db.VarChar(120)
+  vehicle_type        String?               @db.VarChar(20)
+  description         String?               @db.Text
+  is_default          Boolean?              @default(false)
+  is_active           Boolean?              @default(true)
+  created_by          String?               @db.Char(36)
+  created_at          DateTime?             @default(now()) @db.DateTime(0)
+  updated_at          DateTime?             @default(now()) @db.DateTime(0)
+  inspection_sections inspection_sections[]
+  users               users?                @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_it_created_by")
+  inspections         inspections[]
+
+  @@index([created_by], map: "fk_it_created_by")
+  @@index([is_default], map: "idx_it_is_default")
+  @@index([vehicle_type], map: "idx_it_vehicle_type")
+}
+
+model inspections {
+  id                   String                 @id @db.Char(36)
+  job_id               String?                @unique(map: "job_id") @db.Char(36)
+  template_id          String?                @db.Char(36)
+  technician_id        String?                @db.Char(36)
+  status               inspections_status?    @default(draft)
+  offline_draft        String?                @db.LongText
+  started_at           DateTime?              @db.DateTime(0)
+  submitted_at         DateTime?              @db.DateTime(0)
+  created_at           DateTime?              @default(now()) @db.DateTime(0)
+  inspection_responses inspection_responses[]
+  jobs                 jobs?                  @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ins_job")
+  users                users?                 @relation(fields: [technician_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ins_technician")
+  inspection_templates inspection_templates?  @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ins_template")
+
+  @@index([technician_id], map: "fk_ins_technician")
+  @@index([template_id], map: "fk_ins_template")
+  @@index([job_id], map: "idx_ins_job")
+  @@index([status], map: "idx_ins_status")
+}
+
+model integration_events {
+  id             String                       @id @db.Char(36)
+  integration_id String?                      @db.Char(36)
+  event_type     String?                      @db.VarChar(60)
+  direction      integration_events_direction
+  payload        String?                      @db.LongText
+  response       String?                      @db.LongText
+  status         integration_events_status?   @default(pending)
+  http_status    Int?                         @db.SmallInt
+  attempt_count  Int?                         @default(1) @db.TinyInt
+  error_message  String?                      @db.Text
+  created_at     DateTime?                    @default(now()) @db.DateTime(0)
+  integrations   integrations?                @relation(fields: [integration_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ie_integration")
+
+  @@index([created_at(sort: Desc)], map: "idx_ie_created")
+  @@index([integration_id], map: "idx_ie_integration")
+  @@index([status], map: "idx_ie_status")
+}
+
+model integrations {
+  id                 String                         @id @db.Char(36)
+  name               String?                        @unique(map: "name") @db.VarChar(60)
+  type               integrations_type
+  config             String?                        @db.LongText
+  is_enabled         Boolean?                       @default(false)
+  last_tested_at     DateTime?                      @db.DateTime(0)
+  last_test_status   integrations_last_test_status? @default(unknown)
+  created_at         DateTime?                      @default(now()) @db.DateTime(0)
+  updated_at         DateTime?                      @default(now()) @db.DateTime(0)
+  integration_events integration_events[]
+}
+
+model job_status_history {
+  id          String    @id @db.Char(36)
+  job_id      String?   @db.Char(36)
+  from_status String?   @db.VarChar(20)
+  to_status   String?   @db.VarChar(20)
+  changed_by  String?   @db.Char(36)
+  reason      String?   @db.Text
+  changed_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [changed_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_changed_by")
+  jobs        jobs?     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_job")
+
+  @@index([changed_by], map: "fk_jsh_changed_by")
+  @@index([changed_at], map: "idx_jsh_changed_at")
+  @@index([job_id], map: "idx_jsh_job")
+}
+
+model jobs {
+  id                                                String                    @id @db.Char(36)
+  job_number                                        String?                   @unique(map: "job_number") @db.VarChar(20)
+  customer_id                                       String?                   @db.Char(36)
+  vehicle_id                                        String?                   @db.Char(36)
+  advisor_id                                        String?                   @db.Char(36)
+  technician_id                                     String?                   @db.Char(36)
+  status                                            jobs_status               @default(open)
+  customer_concern                                  String?                   @db.Text
+  internal_notes                                    String?                   @db.Text
+  odometer_in                                       Int?                      @db.UnsignedInt
+  promised_at                                       DateTime?                 @db.DateTime(0)
+  dms_ro_number                                     String?                   @db.VarChar(60)
+  dms_synced_at                                     DateTime?                 @db.DateTime(0)
+  completed_at                                      DateTime?                 @db.DateTime(0)
+  created_at                                        DateTime?                 @default(now()) @db.DateTime(0)
+  updated_at                                        DateTime?                 @default(now()) @db.DateTime(0)
+  approval_tokens                                   approval_tokens[]
+  deferred_work_deferred_work_booked_job_idTojobs   deferred_work[]           @relation("deferred_work_booked_job_idTojobs")
+  deferred_work_deferred_work_original_job_idTojobs deferred_work[]           @relation("deferred_work_original_job_idTojobs")
+  estimate_lines                                    estimate_lines[]
+  inspections                                       inspections?
+  job_status_history                                job_status_history[]
+  users_jobs_advisor_idTousers                      users?                    @relation("jobs_advisor_idTousers", fields: [advisor_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_advisor")
+  customers                                         customers?                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_customer")
+  users_jobs_technician_idTousers                   users?                    @relation("jobs_technician_idTousers", fields: [technician_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_technician")
+  vehicles                                          vehicles?                 @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_vehicle")
+  media_files                                       media_files[]
+  notifications                                     notifications[]
+  vehicle_service_history                           vehicle_service_history[]
+
+  @@index([advisor_id], map: "idx_jobs_advisor")
+  @@index([created_at(sort: Desc)], map: "idx_jobs_created")
+  @@index([customer_id], map: "idx_jobs_customer")
+  @@index([status], map: "idx_jobs_status")
+  @@index([technician_id], map: "idx_jobs_technician")
+  @@index([vehicle_id], map: "idx_jobs_vehicle")
+}
+
+model labour_rates {
+  id            String    @id @db.Char(36)
+  name          String?   @db.VarChar(80)
+  rate_per_hour Decimal?  @db.Decimal(8, 2)
+  currency      String?   @default("AED") @db.Char(3)
+  is_active     Boolean?  @default(true)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+}
+
+model media_files {
+  id                     String                   @id @db.Char(36)
+  job_id                 String?                  @db.Char(36)
+  inspection_response_id String?                  @db.Char(36)
+  uploaded_by            String?                  @db.Char(36)
+  s3_bucket              String?                  @db.VarChar(100)
+  s3_key                 String?                  @db.VarChar(500)
+  file_type              media_files_file_type?   @default(photo)
+  mime_type              String?                  @db.VarChar(60)
+  original_filename      String?                  @db.VarChar(255)
+  size_bytes             BigInt?                  @db.UnsignedBigInt
+  width_px               Int?                     @db.UnsignedSmallInt
+  height_px              Int?                     @db.UnsignedSmallInt
+  duration_sec           Int?                     @db.UnsignedSmallInt
+  thumbnail_key          String?                  @db.VarChar(500)
+  scan_status            media_files_scan_status? @default(pending)
+  is_deleted             Boolean?                 @default(false)
+  uploaded_at            DateTime?                @default(now()) @db.DateTime(0)
+  jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_job")
+  inspection_responses   inspection_responses?    @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_response")
+  users                  users?                   @relation(fields: [uploaded_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_uploaded_by")
+
+  @@index([uploaded_by], map: "fk_mf_uploaded_by")
+  @@index([job_id], map: "idx_media_job")
+  @@index([inspection_response_id], map: "idx_media_response")
+  @@index([scan_status], map: "idx_media_scan")
+}
+
+model notification_templates {
+  id            String                          @id @db.Char(36)
+  name          String?                         @unique(map: "name") @db.VarChar(80)
+  event_type    String?                         @db.VarChar(60)
+  channel       notification_templates_channel? @default(email)
+  subject       String?                         @db.VarChar(255)
+  body          String?                         @db.Text
+  language      String?                         @default("en") @db.VarChar(10)
+  is_active     Boolean?                        @default(true)
+  created_at    DateTime?                       @default(now()) @db.DateTime(0)
+  updated_at    DateTime?                       @default(now()) @db.DateTime(0)
+  notifications notifications[]
+}
+
+model notifications {
+  id                     String                  @id @db.Char(36)
+  template_id            String?                 @db.Char(36)
+  job_id                 String?                 @db.Char(36)
+  customer_id            String?                 @db.Char(36)
+  channel                notifications_channel?  @default(email)
+  recipient              String?                 @db.VarChar(255)
+  subject                String?                 @db.VarChar(255)
+  body_rendered          String?                 @db.Text
+  status                 notifications_status?   @default(queued)
+  provider               String?                 @db.VarChar(30)
+  provider_message_id    String?                 @db.VarChar(120)
+  error_message          String?                 @db.Text
+  queued_at              DateTime?               @default(now()) @db.DateTime(0)
+  sent_at                DateTime?               @db.DateTime(0)
+  delivered_at           DateTime?               @db.DateTime(0)
+  customers              customers?              @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_n_customer")
+  jobs                   jobs?                   @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_n_job")
+  notification_templates notification_templates? @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_nt_template")
+
+  @@index([template_id], map: "fk_nt_template")
+  @@index([customer_id], map: "idx_n_customer")
+  @@index([job_id], map: "idx_n_job")
+  @@index([queued_at(sort: Desc)], map: "idx_n_queued")
+  @@index([status], map: "idx_n_status")
+}
+
+model refresh_tokens {
+  id          String    @id @db.Char(36)
+  user_id     String?   @db.Char(36)
+  token_hash  String?   @unique(map: "token_hash") @db.VarChar(255)
+  device_info String?   @db.VarChar(255)
+  ip_address  String?   @db.VarChar(45)
+  expires_at  DateTime? @db.DateTime(0)
+  revoked_at  DateTime? @db.DateTime(0)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_rt_user")
+
+  @@index([expires_at], map: "idx_rt_expires")
+  @@index([user_id], map: "idx_rt_user_id")
+}
+
+model roles {
+  id          String    @id @db.Char(36)
+  name        String?   @unique(map: "name") @db.VarChar(60)
+  permissions String?   @db.LongText
+  description String?   @db.VarChar(255)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users[]
+}
+
+model settings {
+  id          String               @id @db.Char(36)
+  key         String?              @unique(map: "key") @db.VarChar(100)
+  value       String?              @db.Text
+  value_type  settings_value_type? @default(string)
+  description String?              @db.VarChar(255)
+  updated_by  String?              @db.Char(36)
+  updated_at  DateTime?            @default(now()) @db.DateTime(0)
+  users       users?               @relation(fields: [updated_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_settings_updated_by")
+
+  @@index([updated_by], map: "fk_settings_updated_by")
+}
+
+model users {
+  id                             String                  @id @db.Char(36)
+  role_id                        String?                 @db.Char(36)
+  name                           String?                 @db.VarChar(120)
+  email                          String?                 @unique(map: "email") @db.VarChar(255)
+  password_hash                  String?                 @db.VarChar(255)
+  is_active                      Boolean?                @default(true)
+  avatar_url                     String?                 @db.VarChar(500)
+  last_login_at                  DateTime?               @db.DateTime(0)
+  created_at                     DateTime?               @default(now()) @db.DateTime(0)
+  updated_at                     DateTime?               @default(now()) @db.DateTime(0)
+  approval_tokens                approval_tokens[]
+  audit_logs                     audit_logs[]
+  estimate_line_history          estimate_line_history[]
+  estimate_lines                 estimate_lines[]
+  inspection_templates           inspection_templates[]
+  inspections                    inspections[]
+  job_status_history             job_status_history[]
+  jobs_jobs_advisor_idTousers    jobs[]                  @relation("jobs_advisor_idTousers")
+  jobs_jobs_technician_idTousers jobs[]                  @relation("jobs_technician_idTousers")
+  media_files                    media_files[]
+  refresh_tokens                 refresh_tokens[]
+  settings                       settings[]
+  roles                          roles?                  @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_users_role")
+
+  @@index([email], map: "idx_users_email")
+  @@index([role_id], map: "idx_users_role_id")
+}
+
+model vehicle_service_history {
+  id          String    @id @db.Char(36)
+  vehicle_id  String?   @db.Char(36)
+  job_id      String?   @db.Char(36)
+  odometer_km Int?      @db.UnsignedInt
+  summary     String?   @db.Text
+  serviced_at DateTime? @db.DateTime(0)
+  jobs        jobs?     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_job")
+  vehicles    vehicles? @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_vehicle")
+
+  @@index([job_id], map: "idx_vsh_job")
+  @@index([serviced_at], map: "idx_vsh_serviced_at")
+  @@index([vehicle_id], map: "idx_vsh_vehicle")
+}
+
+model vehicles {
+  id                      String                    @id @db.Char(36)
+  customer_id             String?                   @db.Char(36)
+  vin                     String?                   @unique(map: "vin") @db.VarChar(17)
+  make                    String?                   @db.VarChar(60)
+  model                   String?                   @db.VarChar(60)
+  year                    Int?                      @db.SmallInt
+  plate                   String?                   @db.VarChar(20)
+  color                   String?                   @db.VarChar(40)
+  odometer_km             Int?                      @db.UnsignedInt
+  vehicle_type            vehicles_vehicle_type?
+  engine                  String?                   @db.VarChar(60)
+  dms_vehicle_id          String?                   @db.VarChar(60)
+  created_at              DateTime?                 @default(now()) @db.DateTime(0)
+  updated_at              DateTime?                 @default(now()) @db.DateTime(0)
+  deferred_work           deferred_work[]
+  jobs                    jobs[]
+  vehicle_service_history vehicle_service_history[]
+  customers               customers?                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vehicles_customer")
+
+  @@index([customer_id], map: "idx_vehicles_customer")
+  @@index([plate], map: "idx_vehicles_plate")
+  @@index([vin], map: "idx_vehicles_vin")
+}
+
+enum deferred_work_reminders_channel {
+  email
+  sms
+  whatsapp
+  call
+}
+
+enum integrations_type {
+  dms
+  accounting
+  sms
+  email
+  payment
+  storage
+  other
+}
+
+enum approval_tokens_channel {
+  email
+  sms
+  whatsapp
+  link
+}
+
+enum authorisation_decisions_decision {
+  approved
+  declined
+  deferred
+}
+
+enum estimate_lines_type {
+  labour
+  part
+  sublet
+}
+
+enum inspection_items_input_type {
+  pass_fail
+  yes_no
+  ok_warn_fail
+  number
+  text
+  toggle
+  photo
+}
+
+enum integration_events_direction {
+  inbound
+  outbound
+}
+
+enum notification_templates_channel {
+  email
+  sms
+  whatsapp
+  push
+}
+
+enum settings_value_type {
+  string
+  number
+  boolean
+  json
+}
+
+enum customers_preferred_contact {
+  phone
+  email
+  whatsapp
+  sms
+}
+
+enum deferred_work_reminders_delivery_status {
+  pending
+  sent
+  delivered
+  failed
+  bounced
+}
+
+enum inspection_responses_urgency {
+  none
+  low
+  medium
+  high
+  critical
+}
+
+enum inspections_status {
+  draft
+  in_progress
+  submitted
+  reviewed
+  approved
+}
+
+enum notifications_channel {
+  email
+  sms
+  whatsapp
+  push
+}
+
+enum deferred_work_status {
+  pending
+  reminded
+  booked
+  closed
+  expired
+}
+
+enum deferred_work_urgency {
+  none
+  low
+  medium
+  high
+  critical
+}
+
+enum integration_events_status {
+  pending
+  success
+  failed
+  retrying
+}
+
+enum integrations_last_test_status {
+  success
+  failed
+  unknown
+}
+
+enum jobs_status {
+  open
+  in_progress
+  waiting_parts
+  completed
+  closed
+  invoiced
+}
+
+enum media_files_file_type {
+  photo
+  video
+  document
+}
+
+enum notifications_status {
+  queued
+  sent
+  delivered
+  failed
+  bounced
+}
+
+enum vehicles_vehicle_type {
+  sedan
+  suv
+  coupe
+  hatchback
+  convertible
+  pickup
+  van
+  truck
+  motorcycle
+  other
+}
+
+enum media_files_scan_status {
+  pending
+  clean
+  infected
+  failed
+}

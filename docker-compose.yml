@@ -1,0 +1,24 @@
+services:
+  superflow-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: superflow-api:latest
+    container_name: superflow-api
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      DATABASE_URL: "mysql://myapp_user:asdqwe@123@mariadb:3306/superflow_app"
+      JWT_SECRET: "superflow-jwt-prod-secret-change-me"
+      JWT_EXPIRES_IN: "15m"
+      JWT_REFRESH_SECRET: "superflow-refresh-prod-secret-change-me"
+      JWT_REFRESH_EXPIRES_IN: "30d"
+      PORT: "3000"
+      NODE_ENV: "production"
+    networks:
+      - mariadb-bzki_default
+
+networks:
+  mariadb-bzki_default:
+    external: true
