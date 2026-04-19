@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment — NEVER commit this
+.env
+.env.local
+.env.production
+
+# Prisma generated
+prisma/generated/
+
+# Build output
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Test coverage
+coverage/

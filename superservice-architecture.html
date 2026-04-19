@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkshopOS — Full System Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --surface: #111318;
+    --surface2: #191c24;
+    --border: #252830;
+    --accent: #e8ff4d;
+    --accent2: #4daaff;
+    --accent3: #ff6b4d;
+    --accent4: #4dffc8;
+    --text: #e8eaf0;
+    --muted: #6b7080;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 48px 64px 32px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(232,255,77,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tag::before { content: '▶'; font-size: 8px; }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(32px, 5vw, 58px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    margin-top: 12px;
+    max-width: 600px;
+  }
+  .version-row {
+    display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .badge-yellow { color: var(--accent); border-color: rgba(232,255,77,0.3); background: rgba(232,255,77,0.06); }
+  .badge-blue   { color: var(--accent2); border-color: rgba(77,170,255,0.3); background: rgba(77,170,255,0.06); }
+  .badge-red    { color: var(--accent3); border-color: rgba(255,107,77,0.3); background: rgba(255,107,77,0.06); }
+  .badge-green  { color: var(--accent4); border-color: rgba(77,255,200,0.3); background: rgba(77,255,200,0.06); }
+
+  /* ── NAV ── */
+  nav {
+    padding: 0 64px;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 0; overflow-x: auto;
+  }
+  nav button {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted);
+    padding: 14px 20px;
+    border-bottom: 2px solid transparent;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+  }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  nav button:hover { color: var(--text); }
+
+  /* ── MAIN ── */
+  main { padding: 48px 64px; max-width: 1400px; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 28px; font-weight: 800;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  h2 .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  .section-desc { color: var(--muted); margin-bottom: 36px; max-width: 680px; }
+
+  h3 {
+    font-family: var(--display);
+    font-size: 16px; font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .card-accent-yellow { border-left: 3px solid var(--accent); }
+  .card-accent-blue   { border-left: 3px solid var(--accent2); }
+  .card-accent-red    { border-left: 3px solid var(--accent3); }
+  .card-accent-green  { border-left: 3px solid var(--accent4); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── ARCH DIAGRAM ── */
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-diagram::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(255,255,255,0.015) 39px,
+      rgba(255,255,255,0.015) 40px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(255,255,255,0.015) 39px,
+      rgba(255,255,255,0.015) 40px
+    );
+    pointer-events: none;
+  }
+
+  .layer {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    position: relative;
+    background: var(--surface2);
+  }
+  .layer-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .layer-label::after {
+    content: ''; flex: 1;
+    height: 1px; background: var(--border);
+  }
+  .layer-items {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .layer-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: var(--mono);
+    display: flex; align-items: center; gap: 6px;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: default;
+  }
+  .layer-box:hover { border-color: var(--accent); background: rgba(232,255,77,0.05); }
+  .layer-box .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+
+  .arrow-down {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+    margin: 4px 0;
+    letter-spacing: 4px;
+  }
+
+  /* ── STATE MACHINE ── */
+  .states-grid {
+    display: flex; flex-wrap: wrap; gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .state-box {
+    flex: 1 1 160px;
+    padding: 20px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    background: var(--surface);
+  }
+  .state-box:hover { background: var(--surface2); }
+  .state-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .state-name {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .state-desc { font-size: 11px; color: var(--muted); }
+  .state-arrow {
+    position: absolute; right: -9px; top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; z-index: 2;
+  }
+
+  /* ── DB TABLE ── */
+  .db-table {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .db-table-header {
+    background: var(--surface2);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .db-table-header .icon { font-size: 14px; }
+  .db-row {
+    padding: 7px 16px;
+    display: flex; gap: 12px; align-items: center;
+    border-bottom: 1px solid rgba(37,40,48,0.5);
+  }
+  .db-row:last-child { border-bottom: none; }
+  .db-col-name { color: var(--accent2); min-width: 160px; }
+  .db-col-type { color: var(--accent3); min-width: 100px; }
+  .db-col-note { color: var(--muted); font-size: 11px; }
+  .pk { color: var(--accent); font-size: 9px; margin-left: 4px; }
+  .fk { color: var(--accent4); font-size: 9px; margin-left: 4px; }
+
+  /* ── MODULE CARD ── */
+  .module-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+  .module-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .module-icon { font-size: 24px; margin-bottom: 10px; }
+  .module-name {
+    font-family: var(--display);
+    font-size: 14px; font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .module-desc { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .module-endpoints { display: flex; flex-direction: column; gap: 4px; }
+  .endpoint {
+    font-family: var(--mono);
+    font-size: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .method {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    min-width: 38px;
+    text-align: center;
+  }
+  .GET    { background: rgba(77,255,200,0.15); color: var(--accent4); }
+  .POST   { background: rgba(232,255,77,0.15); color: var(--accent); }
+  .PUT    { background: rgba(77,170,255,0.15); color: var(--accent2); }
+  .DELETE { background: rgba(255,107,77,0.15); color: var(--accent3); }
+  .PATCH  { background: rgba(200,77,255,0.15); color: #c84dff; }
+
+  /* ── WORKFLOW ── */
+  .workflow {
+    display: flex; align-items: stretch; gap: 0;
+    margin-bottom: 32px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .wf-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    min-width: 160px;
+    flex: 1;
+    position: relative;
+  }
+  .wf-step + .wf-step { margin-left: 28px; }
+  .wf-step::after {
+    content: '→';
+    position: absolute;
+    right: -22px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 2;
+  }
+  .wf-step:last-child::after { display: none; }
+  .wf-step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .wf-step-title {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .wf-step-items { font-size: 11px; color: var(--muted); }
+  .wf-step-items li { list-style: none; padding: 1px 0; }
+  .wf-step-items li::before { content: '· '; color: var(--accent); }
+
+  /* ── STACK TABLE ── */
+  .stack-table { width: 100%; border-collapse: collapse; }
+  .stack-table th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .stack-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(37,40,48,0.6);
+    font-size: 13px;
+    vertical-align: top;
+  }
+  .stack-table tr:last-child td { border-bottom: none; }
+  .stack-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .tech-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent2);
+  }
+  .why { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── SECURITY ── */
+  .rule-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .rule-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .rule-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── TIMELINE ── */
+  .timeline { position: relative; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 32px; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+  .tl-item {
+    display: flex; gap: 24px;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .tl-marker {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 16px;
+    z-index: 1;
+  }
+  .tl-content {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 8px;
+  }
+  .tl-phase {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .tl-title {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .tl-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .tl-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+  }
+
+  /* ── ROLE TABLE ── */
+  .role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  .role-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .role-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .role-avatar {
+    width: 40px; height: 40px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .role-name {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .role-app {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .perm-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .perm-list li {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .perm-allow { background: rgba(77,255,200,0.06); color: var(--text); }
+  .perm-deny  { background: rgba(255,107,77,0.06); color: var(--muted); text-decoration: line-through; }
+  .perm-icon { font-size: 10px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    header, nav, main { padding-left: 24px; padding-right: 24px; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .role-grid { grid-template-columns: 1fr; }
+    .workflow { flex-direction: column; }
+    .wf-step + .wf-step { margin-left: 0; margin-top: 24px; }
+    .wf-step::after { display: none; }
+  }
+
+  /* ── MISC ── */
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+  .mono-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .section.active { animation: fadeIn 0.3s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">System Architecture Document</div>
+  <h1>Workshop<span>OS</span></h1>
+  <p class="subtitle">Full system design for a vehicle service triage platform — inspection, pricing, customer authorisation, and deferred work lifecycle.</p>
+  <div class="version-row">
+    <span class="badge badge-yellow">v1.0 — Architecture</span>
+    <span class="badge badge-blue">Modular Monolith</span>
+    <span class="badge badge-red">NestJS + PostgreSQL</span>
+    <span class="badge badge-green">Flutter + React</span>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="show('overview')">Overview</button>
+  <button onclick="show('layers')">System Layers</button>
+  <button onclick="show('modules')">API Modules</button>
+  <button onclick="show('database')">Database</button>
+  <button onclick="show('workflow')">Workflows</button>
+  <button onclick="show('roles')">Roles & Permissions</button>
+  <button onclick="show('stack')">Tech Stack</button>
+  <button onclick="show('security')">Security</button>
+  <button onclick="show('roadmap')">Roadmap</button>
+</nav>
+
+<main>
+
+<!-- ═══════════════════════════════ OVERVIEW ═══════════════════════════════ -->
+<section id="overview" class="section active">
+  <h2><span class="num">01</span>System Overview</h2>
+  <p class="section-desc">WorkshopOS is built around a single concept — the <strong>service job lifecycle</strong>. Every feature, module, and screen exists to move a job through its states as efficiently as possible.</p>
+
+  <div class="arch-diagram">
+    <div class="layer" style="border-color: rgba(232,255,77,0.3);">
+      <div class="layer-label" style="color: var(--accent);">🌐 Client Layer — What users see</div>
+      <div class="layer-items">
+        <div class="layer-box"><span class="dot" style="background:#e8ff4d"></span>Flutter Mobile — Technician</div>
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>React Web — Advisor / Admin</div>
+        <div class="layer-box"><span class="dot" style="background:#4dffc8"></span>React Portal — Customer</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↕ ↕ ↕</div>
+
+    <div class="layer" style="border-color: rgba(77,170,255,0.3);">
+      <div class="layer-label" style="color: var(--accent2);">⚙️ API Gateway Layer</div>
+      <div class="layer-items">
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>NestJS REST API</div>
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>WebSocket Gateway (realtime)</div>
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>JWT Auth Middleware</div>
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>RBAC Guard</div>
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>Rate Limiter</div>
+        <div class="layer-box"><span class="dot" style="background:#4daaff"></span>Request Validator</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↕ ↕ ↕</div>
+
+    <div class="layer" style="border-color: rgba(255,107,77,0.3);">
+      <div class="layer-label" style="color: var(--accent3);">📦 Domain Modules — Business logic</div>
+      <div class="layer-items">
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Auth & Roles</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Jobs / ROs</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Inspections</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Media</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Estimates</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Authorisations</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Deferred Work</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Notifications</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Integrations</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Admin Settings</div>
+        <div class="layer-box"><span class="dot" style="background:#ff6b4d"></span>Audit Logs</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↕ ↕ ↕</div>
+
+    <div class="layer" style="border-color: rgba(77,255,200,0.3);">
+      <div class="layer-label" style="color: var(--accent4);">🗄️ Infrastructure Layer</div>
+      <div class="layer-items">
+        <div class="layer-box"><span class="dot" style="background:#4dffc8"></span>PostgreSQL (primary)</div>
+        <div class="layer-box"><span class="dot" style="background:#4dffc8"></span>Redis (cache + queues)</div>
+        <div class="layer-box"><span class="dot" style="background:#4dffc8"></span>S3-compatible storage</div>
+        <div class="layer-box"><span class="dot" style="background:#4dffc8"></span>BullMQ workers</div>
+        <div class="layer-box"><span class="dot" style="background:#4dffc8"></span>Docker + VPS</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↕ ↕ ↕</div>
+
+    <div class="layer" style="border-color: rgba(200,77,255,0.3);">
+      <div class="layer-label" style="color: #c84dff;">🔌 Integration Layer (async)</div>
+      <div class="layer-items">
+        <div class="layer-box"><span class="dot" style="background:#c84dff"></span>DMS Connector</div>
+        <div class="layer-box"><span class="dot" style="background:#c84dff"></span>Parts Pricing Connector</div>
+        <div class="layer-box"><span class="dot" style="background:#c84dff"></span>SMS / WhatsApp / Email</div>
+        <div class="layer-box"><span class="dot" style="background:#c84dff"></span>VIN Lookup</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3>Job Lifecycle — State Machine</h3>
+  <p class="section-desc" style="margin-bottom:20px;">Every job must pass through defined states. Never skip states in code — always transition explicitly.</p>
+
+  <div class="states-grid">
+    <div class="state-box">
+      <div class="state-num">STATE 01</div>
+      <div class="state-name" style="color:#6b7080">NEW</div>
+      <div class="state-desc">Job created, vehicle + customer attached</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 02</div>
+      <div class="state-name" style="color:#4daaff">INSPECTION</div>
+      <div class="state-desc">Tech filling checklist + photos</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 03</div>
+      <div class="state-name" style="color:#c84dff">PRICED</div>
+      <div class="state-desc">Advisor added labour/parts estimates</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 04</div>
+      <div class="state-name" style="color:#e8ff4d">SENT</div>
+      <div class="state-desc">Customer approval link dispatched</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 05a</div>
+      <div class="state-name" style="color:#4dffc8">APPROVED</div>
+      <div class="state-desc">All items authorised by customer</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 05b</div>
+      <div class="state-name" style="color:#ff9f4d">PARTIAL</div>
+      <div class="state-desc">Some items approved, some deferred</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 05c</div>
+      <div class="state-name" style="color:#ff6b4d">DECLINED</div>
+      <div class="state-desc">Customer declined — deferred work created</div>
+      <div class="state-arrow">→</div>
+    </div>
+    <div class="state-box">
+      <div class="state-num">STATE 06</div>
+      <div class="state-name" style="color:#4dffc8">COMPLETED</div>
+      <div class="state-desc">Authorised work done, finalised in DMS</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ LAYERS ═══════════════════════════════ -->
+<section id="layers" class="section">
+  <h2><span class="num">02</span>System Layers Detail</h2>
+  <p class="section-desc">Each layer has a strict responsibility. No layer should reach past its neighbour.</p>
+
+  <div class="grid-2">
+    <div class="card card-accent-yellow">
+      <h3>📱 Flutter Mobile App</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Technician-only. Works offline. Syncs on reconnect.</p>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🔍</span>VIN scan / manual lookup</li>
+        <li><span class="rule-icon">📋</span>Pull inspection template from API</li>
+        <li><span class="rule-icon">✏️</span>Fill checklist items with urgency levels</li>
+        <li><span class="rule-icon">📷</span>Capture photos/videos per item</li>
+        <li><span class="rule-icon">💾</span>Store draft locally (Hive/SQLite)</li>
+        <li><span class="rule-icon">☁️</span>Background sync when online</li>
+        <li><span class="rule-icon">🔔</span>Push notifications for job assignments</li>
+      </ul>
+    </div>
+
+    <div class="card card-accent-blue">
+      <h3>🌐 React Web App (Advisor/Admin)</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Always online. Full job management dashboard.</p>
+      <ul class="rule-list">
+        <li><span class="rule-icon">➕</span>Create jobs / import from DMS</li>
+        <li><span class="rule-icon">📊</span>Review inspection findings live</li>
+        <li><span class="rule-icon">💰</span>Add labour + parts pricing</li>
+        <li><span class="rule-icon">📤</span>Send estimate to customer</li>
+        <li><span class="rule-icon">✅</span>Track approval status in realtime</li>
+        <li><span class="rule-icon">📁</span>Manage deferred work queue</li>
+        <li><span class="rule-icon">⚙️</span>Admin: templates, rates, users, integrations</li>
+      </ul>
+    </div>
+
+    <div class="card card-accent-green">
+      <h3>🔗 Customer Portal (React)</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Separate app. Accessed via secure link — no login required.</p>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🔐</span>Token-based access (no password)</li>
+        <li><span class="rule-icon">📋</span>View recommended work items</li>
+        <li><span class="rule-icon">🖼️</span>Watch photos/videos evidence</li>
+        <li><span class="rule-icon">✅</span>Approve or decline per line item</li>
+        <li><span class="rule-icon">💬</span>Optional comment/message</li>
+        <li><span class="rule-icon">📧</span>Receive confirmation after decision</li>
+      </ul>
+    </div>
+
+    <div class="card card-accent-red">
+      <h3>⚙️ NestJS API Backend</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Modular monolith. All business logic lives here.</p>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🏗️</span>Domain modules with clear boundaries</li>
+        <li><span class="rule-icon">🔄</span>State machine transitions enforced server-side</li>
+        <li><span class="rule-icon">📡</span>WebSocket gateway for advisor realtime updates</li>
+        <li><span class="rule-icon">🔁</span>BullMQ workers for async tasks</li>
+        <li><span class="rule-icon">🗂️</span>Event emitter for cross-module communication</li>
+        <li><span class="rule-icon">🔌</span>Integration adapters isolated in own module</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ MODULES ═══════════════════════════════ -->
+<section id="modules" class="section">
+  <h2><span class="num">03</span>API Modules</h2>
+  <p class="section-desc">Each module owns its routes, services, and repository. Modules communicate via events, not direct service injection across domains.</p>
+
+  <div class="grid-3">
+
+    <div class="module-card">
+      <div class="module-icon">🔐</div>
+      <div class="module-name">Auth & Roles</div>
+      <div class="module-desc">JWT auth, refresh tokens, RBAC guards, role management</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method POST">POST</span>/auth/login</div>
+        <div class="endpoint"><span class="method POST">POST</span>/auth/refresh</div>
+        <div class="endpoint"><span class="method POST">POST</span>/auth/logout</div>
+        <div class="endpoint"><span class="method GET">GET</span>/roles</div>
+        <div class="endpoint"><span class="method POST">POST</span>/roles</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">🚗</div>
+      <div class="module-name">Customers & Vehicles</div>
+      <div class="module-desc">Customer profiles, vehicle history, VIN lookup, service history</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/customers</div>
+        <div class="endpoint"><span class="method POST">POST</span>/customers</div>
+        <div class="endpoint"><span class="method GET">GET</span>/vehicles/:vin</div>
+        <div class="endpoint"><span class="method POST">POST</span>/vehicles</div>
+        <div class="endpoint"><span class="method GET">GET</span>/customers/:id/history</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">📋</div>
+      <div class="module-name">Jobs / Repair Orders</div>
+      <div class="module-desc">Core job entity, status transitions, assignment, DMS import</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/jobs</div>
+        <div class="endpoint"><span class="method POST">POST</span>/jobs</div>
+        <div class="endpoint"><span class="method GET">GET</span>/jobs/:id</div>
+        <div class="endpoint"><span class="method PATCH">PATCH</span>/jobs/:id/status</div>
+        <div class="endpoint"><span class="method POST">POST</span>/jobs/import-dms</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">🔍</div>
+      <div class="module-name">Inspection Engine</div>
+      <div class="module-desc">Templates, sections, items, responses, urgency levels, sync</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/inspection-templates</div>
+        <div class="endpoint"><span class="method POST">POST</span>/inspections</div>
+        <div class="endpoint"><span class="method PUT">PUT</span>/inspections/:id/responses</div>
+        <div class="endpoint"><span class="method POST">POST</span>/inspections/:id/submit</div>
+        <div class="endpoint"><span class="method GET">GET</span>/inspections/:id</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">📸</div>
+      <div class="module-name">Media Uploads</div>
+      <div class="module-desc">Photo/video upload, S3 presigned URLs, linked to inspection items</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method POST">POST</span>/media/presign</div>
+        <div class="endpoint"><span class="method POST">POST</span>/media/confirm</div>
+        <div class="endpoint"><span class="method GET">GET</span>/media/:id/url</div>
+        <div class="endpoint"><span class="method DELETE">DELETE</span>/media/:id</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">💰</div>
+      <div class="module-name">Pricing & Estimates</div>
+      <div class="module-desc">Labour lines, parts lines, tax calculation, quote grouping</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/jobs/:id/estimate</div>
+        <div class="endpoint"><span class="method POST">POST</span>/estimate-lines</div>
+        <div class="endpoint"><span class="method PUT">PUT</span>/estimate-lines/:id</div>
+        <div class="endpoint"><span class="method DELETE">DELETE</span>/estimate-lines/:id</div>
+        <div class="endpoint"><span class="method POST">POST</span>/jobs/:id/send-estimate</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">✅</div>
+      <div class="module-name">Authorisation Workflow</div>
+      <div class="module-desc">Token generation, secure links, customer decisions, partial approval</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method POST">POST</span>/jobs/:id/auth-request</div>
+        <div class="endpoint"><span class="method GET">GET</span>/auth-portal/:token</div>
+        <div class="endpoint"><span class="method POST">POST</span>/auth-portal/:token/decide</div>
+        <div class="endpoint"><span class="method GET">GET</span>/jobs/:id/auth-status</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">📅</div>
+      <div class="module-name">Deferred Work</div>
+      <div class="module-desc">Declined items queue, follow-up scheduling, reminder automation</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/customers/:id/deferred</div>
+        <div class="endpoint"><span class="method GET">GET</span>/deferred-work</div>
+        <div class="endpoint"><span class="method POST">POST</span>/deferred-work/:id/remind</div>
+        <div class="endpoint"><span class="method POST">POST</span>/deferred-work/:id/book</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">🔔</div>
+      <div class="module-name">Notifications</div>
+      <div class="module-desc">SMS, email, push, templates, delivery tracking, queued async</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/notification-templates</div>
+        <div class="endpoint"><span class="method POST">POST</span>/notifications/send</div>
+        <div class="endpoint"><span class="method GET">GET</span>/notifications/history</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">🔌</div>
+      <div class="module-name">Integrations</div>
+      <div class="module-desc">DMS sync, parts pricing, VIN data — all async via adapters</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/integrations</div>
+        <div class="endpoint"><span class="method POST">POST</span>/integrations/:name/test</div>
+        <div class="endpoint"><span class="method GET">GET</span>/integration-events</div>
+        <div class="endpoint"><span class="method POST">POST</span>/integrations/:name/sync</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">⚙️</div>
+      <div class="module-name">Admin Settings</div>
+      <div class="module-desc">Labour rates, tax rules, checklist builder, message templates, users</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/settings/labour-rates</div>
+        <div class="endpoint"><span class="method PUT">PUT</span>/settings/labour-rates</div>
+        <div class="endpoint"><span class="method GET">GET</span>/settings/tax-rules</div>
+        <div class="endpoint"><span class="method GET">GET</span>/users</div>
+        <div class="endpoint"><span class="method POST">POST</span>/users/invite</div>
+      </div>
+    </div>
+
+    <div class="module-card">
+      <div class="module-icon">📊</div>
+      <div class="module-name">Audit Logs & Reports</div>
+      <div class="module-desc">Full action history, who changed what and when, dashboards</div>
+      <div class="module-endpoints">
+        <div class="endpoint"><span class="method GET">GET</span>/audit-logs</div>
+        <div class="endpoint"><span class="method GET">GET</span>/reports/jobs-summary</div>
+        <div class="endpoint"><span class="method GET">GET</span>/reports/approval-rates</div>
+        <div class="endpoint"><span class="method GET">GET</span>/reports/deferred-value</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ DATABASE ═══════════════════════════════ -->
+<section id="database" class="section">
+  <h2><span class="num">04</span>Database Schema</h2>
+  <p class="section-desc">PostgreSQL. Save full history, never overwrite. Every change is traceable. Primary keys are UUIDs.</p>
+
+  <div class="grid-2">
+
+    <div>
+      <span class="mono-label">Identity & Access</span>
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">👤</span>users</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span><span class="db-col-note">primary key</span></div>
+        <div class="db-row"><span class="db-col-name">email</span><span class="db-col-type">varchar</span><span class="db-col-note">unique</span></div>
+        <div class="db-row"><span class="db-col-name">password_hash</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">role_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span><span class="db-col-note">→ roles</span></div>
+        <div class="db-row"><span class="db-col-name">name</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">is_active</span><span class="db-col-type">boolean</span></div>
+        <div class="db-row"><span class="db-col-name">last_login_at</span><span class="db-col-type">timestamptz</span></div>
+        <div class="db-row"><span class="db-col-name">created_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">🔑</span>roles</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">name</span><span class="db-col-type">varchar</span><span class="db-col-note">technician|advisor|admin|parts</span></div>
+        <div class="db-row"><span class="db-col-name">permissions</span><span class="db-col-type">jsonb</span><span class="db-col-note">array of permission strings</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">🎟️</span>refresh_tokens</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">user_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">token_hash</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">expires_at</span><span class="db-col-type">timestamptz</span></div>
+        <div class="db-row"><span class="db-col-name">revoked_at</span><span class="db-col-type">timestamptz</span><span class="db-col-note">nullable</span></div>
+      </div>
+    </div>
+
+    <div>
+      <span class="mono-label">Customers & Vehicles</span>
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">👥</span>customers</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">name</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">email</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">phone</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">preferred_contact</span><span class="db-col-type">varchar</span><span class="db-col-note">email|sms|whatsapp</span></div>
+        <div class="db-row"><span class="db-col-name">dms_id</span><span class="db-col-type">varchar</span><span class="db-col-note">external DMS reference</span></div>
+        <div class="db-row"><span class="db-col-name">created_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">🚗</span>vehicles</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">customer_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">vin</span><span class="db-col-type">varchar</span><span class="db-col-note">unique</span></div>
+        <div class="db-row"><span class="db-col-name">make</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">model</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">year</span><span class="db-col-type">int</span></div>
+        <div class="db-row"><span class="db-col-name">plate</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">odometer</span><span class="db-col-type">int</span></div>
+        <div class="db-row"><span class="db-col-name">dms_id</span><span class="db-col-type">varchar</span></div>
+      </div>
+    </div>
+
+    <div>
+      <span class="mono-label">Jobs</span>
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">📋</span>jobs</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">job_number</span><span class="db-col-type">varchar</span><span class="db-col-note">human-readable WS-00001</span></div>
+        <div class="db-row"><span class="db-col-name">customer_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">vehicle_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">advisor_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span><span class="db-col-note">→ users</span></div>
+        <div class="db-row"><span class="db-col-name">technician_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">status</span><span class="db-col-type">varchar</span><span class="db-col-note">enum: new|inspection|priced|sent|approved|partial|declined|completed</span></div>
+        <div class="db-row"><span class="db-col-name">notes</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">dms_ro_number</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">created_at</span><span class="db-col-type">timestamptz</span></div>
+        <div class="db-row"><span class="db-col-name">completed_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">🔄</span>job_status_history</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">job_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">from_status</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">to_status</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">changed_by<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">reason</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">changed_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+    </div>
+
+    <div>
+      <span class="mono-label">Inspections</span>
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">🔍</span>inspection_templates</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">name</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">vehicle_type</span><span class="db-col-type">varchar</span><span class="db-col-note">sedan|suv|truck|all</span></div>
+        <div class="db-row"><span class="db-col-name">is_default</span><span class="db-col-type">boolean</span></div>
+        <div class="db-row"><span class="db-col-name">is_active</span><span class="db-col-type">boolean</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">📝</span>inspection_items</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">template_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">section</span><span class="db-col-type">varchar</span><span class="db-col-note">brakes|tyres|fluids|etc</span></div>
+        <div class="db-row"><span class="db-col-name">label</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">input_type</span><span class="db-col-type">varchar</span><span class="db-col-note">ok|warning|danger|numeric|text</span></div>
+        <div class="db-row"><span class="db-col-name">sort_order</span><span class="db-col-type">int</span></div>
+        <div class="db-row"><span class="db-col-name">requires_photo</span><span class="db-col-type">boolean</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">✍️</span>inspection_responses</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">job_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">item_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">value</span><span class="db-col-type">varchar</span><span class="db-col-note">ok|warning|danger or text</span></div>
+        <div class="db-row"><span class="db-col-name">urgency</span><span class="db-col-type">varchar</span><span class="db-col-note">immediate|advisory|monitor</span></div>
+        <div class="db-row"><span class="db-col-name">tech_notes</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">recorded_by<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">recorded_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+    </div>
+
+    <div>
+      <span class="mono-label">Estimates & Authorisation</span>
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">💰</span>estimate_lines</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">job_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">inspection_response_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span><span class="db-col-note">nullable</span></div>
+        <div class="db-row"><span class="db-col-name">type</span><span class="db-col-type">varchar</span><span class="db-col-note">labour|part|sublet</span></div>
+        <div class="db-row"><span class="db-col-name">description</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">quantity</span><span class="db-col-type">decimal</span></div>
+        <div class="db-row"><span class="db-col-name">unit_price</span><span class="db-col-type">decimal</span></div>
+        <div class="db-row"><span class="db-col-name">tax_rate</span><span class="db-col-type">decimal</span></div>
+        <div class="db-row"><span class="db-col-name">total</span><span class="db-col-type">decimal</span></div>
+        <div class="db-row"><span class="db-col-name">added_by<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">🔐</span>approval_tokens</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">job_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">token_hash</span><span class="db-col-type">text</span><span class="db-col-note">SHA-256 of raw token</span></div>
+        <div class="db-row"><span class="db-col-name">issued_at</span><span class="db-col-type">timestamptz</span></div>
+        <div class="db-row"><span class="db-col-name">expires_at</span><span class="db-col-type">timestamptz</span></div>
+        <div class="db-row"><span class="db-col-name">used_at</span><span class="db-col-type">timestamptz</span><span class="db-col-note">nullable</span></div>
+        <div class="db-row"><span class="db-col-name">ip_address</span><span class="db-col-type">inet</span></div>
+        <div class="db-row"><span class="db-col-name">is_revoked</span><span class="db-col-type">boolean</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">✅</span>authorisation_decisions</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">token_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">estimate_line_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">decision</span><span class="db-col-type">varchar</span><span class="db-col-note">approved|declined</span></div>
+        <div class="db-row"><span class="db-col-name">customer_comment</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">decided_at</span><span class="db-col-type">timestamptz</span></div>
+        <div class="db-row"><span class="db-col-name">ip_address</span><span class="db-col-type">inet</span></div>
+      </div>
+    </div>
+
+    <div>
+      <span class="mono-label">Deferred Work & Media</span>
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">📅</span>deferred_work</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">customer_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">vehicle_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">original_job_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">estimate_line_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">status</span><span class="db-col-type">varchar</span><span class="db-col-note">pending|reminded|booked|closed</span></div>
+        <div class="db-row"><span class="db-col-name">remind_after</span><span class="db-col-type">date</span></div>
+        <div class="db-row"><span class="db-col-name">last_reminded_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-header"><span class="icon">📸</span>media_files</div>
+        <div class="db-row"><span class="db-col-name">id<span class="pk">PK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">job_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">inspection_response_id<span class="fk">FK</span></span><span class="db-col-type">uuid</span><span class="db-col-note">nullable</span></div>
+        <div class="db-row"><span class="db-col-name">s3_key</span><span class="db-col-type">text</span></div>
+        <div class="db-row"><span class="db-col-name">file_type</span><span class="db-col-type">varchar</span><span class="db-col-note">image|video</span></div>
+        <div class="db-row"><span class="db-col-name">mime_type</span><span class="db-col-type">varchar</span></div>
+        <div class="db-row"><span class="db-col-name">size_bytes</span><span class="db-col-type">bigint</span></div>
+        <div class="db-row"><span class="db-col-name">uploaded_by<span class="fk">FK</span></span><span class="db-col-type">uuid</span></div>
+        <div class="db-row"><span class="db-col-name">uploaded_at</span><span class="db-col-type">timestamptz</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ WORKFLOW ═══════════════════════════════ -->
+<section id="workflow" class="section">
+  <h2><span class="num">05</span>Core Workflows</h2>
+  <p class="section-desc">These are the 5 end-to-end flows the app must support. Each maps to specific API calls and module events.</p>
+
+  <h3 style="margin-bottom:16px">A — Job Creation</h3>
+  <div class="workflow">
+    <div class="wf-step">
+      <div class="wf-step-num">01</div>
+      <div class="wf-step-title">Source</div>
+      <ul class="wf-step-items">
+        <li>DMS import</li>
+        <li>or manual entry</li>
+        <li>VIN scan/lookup</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">02</div>
+      <div class="wf-step-title">Create Job</div>
+      <ul class="wf-step-items">
+        <li>attach customer</li>
+        <li>attach vehicle</li>
+        <li>assign advisor</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">03</div>
+      <div class="wf-step-title">Assign Tech</div>
+      <ul class="wf-step-items">
+        <li>select technician</li>
+        <li>push notification</li>
+        <li>job appears in app</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">04</div>
+      <div class="wf-step-title">Status: NEW</div>
+      <ul class="wf-step-items">
+        <li>job_status_history entry</li>
+        <li>audit log created</li>
+        <li>ready for inspection</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:16px">B — Inspection</h3>
+  <div class="workflow">
+    <div class="wf-step">
+      <div class="wf-step-num">01</div>
+      <div class="wf-step-title">Pull Template</div>
+      <ul class="wf-step-items">
+        <li>by vehicle type</li>
+        <li>cached locally</li>
+        <li>works offline</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">02</div>
+      <div class="wf-step-title">Fill Items</div>
+      <ul class="wf-step-items">
+        <li>ok/warn/danger</li>
+        <li>add notes</li>
+        <li>set urgency</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">03</div>
+      <div class="wf-step-title">Capture Media</div>
+      <ul class="wf-step-items">
+        <li>photo per item</li>
+        <li>video evidence</li>
+        <li>stored locally</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">04</div>
+      <div class="wf-step-title">Submit</div>
+      <ul class="wf-step-items">
+        <li>sync responses</li>
+        <li>upload media queue</li>
+        <li>status → inspection</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">05</div>
+      <div class="wf-step-title">Advisor Notified</div>
+      <ul class="wf-step-items">
+        <li>WS push to web</li>
+        <li>review findings</li>
+        <li>ready to price</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:16px">C — Pricing & Sending</h3>
+  <div class="workflow">
+    <div class="wf-step">
+      <div class="wf-step-num">01</div>
+      <div class="wf-step-title">Review Findings</div>
+      <ul class="wf-step-items">
+        <li>see all items</li>
+        <li>view photos</li>
+        <li>read tech notes</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">02</div>
+      <div class="wf-step-title">Add Lines</div>
+      <ul class="wf-step-items">
+        <li>labour + parts</li>
+        <li>tax auto-applied</li>
+        <li>totals calculated</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">03</div>
+      <div class="wf-step-title">Preview Report</div>
+      <ul class="wf-step-items">
+        <li>see customer view</li>
+        <li>verify content</li>
+        <li>adjust if needed</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">04</div>
+      <div class="wf-step-title">Send to Customer</div>
+      <ul class="wf-step-items">
+        <li>generate token</li>
+        <li>send SMS/email</li>
+        <li>status → sent</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:16px">D — Customer Authorisation</h3>
+  <div class="workflow">
+    <div class="wf-step">
+      <div class="wf-step-num">01</div>
+      <div class="wf-step-title">Opens Link</div>
+      <ul class="wf-step-items">
+        <li>token validated</li>
+        <li>expiry checked</li>
+        <li>portal loads</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">02</div>
+      <div class="wf-step-title">Reviews Report</div>
+      <ul class="wf-step-items">
+        <li>sees all items</li>
+        <li>watches video</li>
+        <li>sees price each</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">03</div>
+      <div class="wf-step-title">Decides Per Item</div>
+      <ul class="wf-step-items">
+        <li>approve or decline</li>
+        <li>per line item</li>
+        <li>optional comment</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">04</div>
+      <div class="wf-step-title">Decision Saved</div>
+      <ul class="wf-step-items">
+        <li>IP + timestamp</li>
+        <li>token marked used</li>
+        <li>advisor notified</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">05</div>
+      <div class="wf-step-title">Status Updated</div>
+      <ul class="wf-step-items">
+        <li>approved/partial</li>
+        <li>/declined set</li>
+        <li>deferred created</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:16px">E — Deferred Work Follow-up</h3>
+  <div class="workflow">
+    <div class="wf-step">
+      <div class="wf-step-num">01</div>
+      <div class="wf-step-title">Declined Item</div>
+      <ul class="wf-step-items">
+        <li>auto-creates deferred</li>
+        <li>linked to customer</li>
+        <li>remind_after set</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">02</div>
+      <div class="wf-step-title">Deferred Queue</div>
+      <ul class="wf-step-items">
+        <li>advisor reviews</li>
+        <li>sorted by value</li>
+        <li>filter by date</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">03</div>
+      <div class="wf-step-title">Auto Reminder</div>
+      <ul class="wf-step-items">
+        <li>BullMQ cron job</li>
+        <li>sends SMS/email</li>
+        <li>logs reminder sent</li>
+      </ul>
+    </div>
+    <div class="wf-step">
+      <div class="wf-step-num">04</div>
+      <div class="wf-step-title">Customer Books</div>
+      <ul class="wf-step-items">
+        <li>new job created</li>
+        <li>deferred → booked</li>
+        <li>history preserved</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ ROLES ═══════════════════════════════ -->
+<section id="roles" class="section">
+  <h2><span class="num">06</span>Roles & Permissions</h2>
+  <p class="section-desc">Four internal roles + customer portal access. Never show a technician the pricing screen. Never show a customer the admin panel.</p>
+
+  <div class="role-grid">
+    <div class="role-card" style="border-color: rgba(255,107,77,0.3);">
+      <div class="role-header">
+        <div class="role-avatar" style="background:rgba(255,107,77,0.1)">🔧</div>
+        <div>
+          <div class="role-name">Technician</div>
+          <div class="role-app">Flutter Mobile App</div>
+        </div>
+      </div>
+      <ul class="perm-list">
+        <li class="perm-allow"><span class="perm-icon">✅</span>View assigned jobs only</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Fill inspection responses</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Upload photos and videos</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Set urgency on items</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Submit inspection</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>See pricing or estimates</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>See customer contact info</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Create or assign jobs</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Access admin settings</li>
+      </ul>
+    </div>
+
+    <div class="role-card" style="border-color: rgba(77,170,255,0.3);">
+      <div class="role-header">
+        <div class="role-avatar" style="background:rgba(77,170,255,0.1)">💼</div>
+        <div>
+          <div class="role-name">Service Advisor</div>
+          <div class="role-app">React Web App</div>
+        </div>
+      </div>
+      <ul class="perm-list">
+        <li class="perm-allow"><span class="perm-icon">✅</span>Create and manage jobs</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>View inspection results</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Add/edit estimate lines</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Send estimate to customer</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Track approval status</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Manage deferred work</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>View customer contacts</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Change labour rates globally</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Manage users or roles</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Configure integrations</li>
+      </ul>
+    </div>
+
+    <div class="role-card" style="border-color: rgba(232,255,77,0.3);">
+      <div class="role-header">
+        <div class="role-avatar" style="background:rgba(232,255,77,0.1)">⚙️</div>
+        <div>
+          <div class="role-name">Admin</div>
+          <div class="role-app">React Web App — Full Access</div>
+        </div>
+      </div>
+      <ul class="perm-list">
+        <li class="perm-allow"><span class="perm-icon">✅</span>Everything advisors can do</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Manage users and roles</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Build inspection templates</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Set labour rates and tax</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Configure message templates</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Manage integrations</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>View audit logs</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>View all reports</li>
+      </ul>
+    </div>
+
+    <div class="role-card" style="border-color: rgba(77,255,200,0.3);">
+      <div class="role-header">
+        <div class="role-avatar" style="background:rgba(77,255,200,0.1)">👤</div>
+        <div>
+          <div class="role-name">Customer</div>
+          <div class="role-app">Separate Portal — Token Access</div>
+        </div>
+      </div>
+      <ul class="perm-list">
+        <li class="perm-allow"><span class="perm-icon">✅</span>View their job report only</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Watch photo/video evidence</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Approve or decline items</li>
+        <li class="perm-allow"><span class="perm-icon">✅</span>Leave a comment</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>No login — token only</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Cannot see other jobs</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Cannot see internal notes</li>
+        <li class="perm-deny"><span class="perm-icon">❌</span>Cannot modify after submit</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ STACK ═══════════════════════════════ -->
+<section id="stack" class="section">
+  <h2><span class="num">07</span>Tech Stack</h2>
+  <p class="section-desc">Every choice is deliberate. Optimised for your self-hosted VPS setup and existing n8n workflows.</p>
+
+  <div class="grid-2">
+    <div class="card card-accent-yellow">
+      <h3 style="margin-bottom:16px">Frontend</h3>
+      <table class="stack-table">
+        <thead><tr><th>Layer</th><th>Technology</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>Mobile</td><td><span class="tech-name">Flutter</span><div class="why">Single codebase iOS+Android, offline-first with Hive, good camera API</div></td><td></td></tr>
+          <tr><td>Web App</td><td><span class="tech-name">Next.js 14</span><div class="why">SSR for advisor dashboard, app router, easy auth middleware</div></td><td></td></tr>
+          <tr><td>Customer Portal</td><td><span class="tech-name">Next.js (separate)</span><div class="why">Isolated app, no shared auth state with advisor app</div></td><td></td></tr>
+          <tr><td>UI Components</td><td><span class="tech-name">shadcn/ui + Tailwind</span><div class="why">Unstyled base, easy to theme for workshop branding</div></td><td></td></tr>
+          <tr><td>State</td><td><span class="tech-name">Zustand</span><div class="why">Lightweight, works well with WebSocket updates</div></td><td></td></tr>
+          <tr><td>Realtime</td><td><span class="tech-name">Socket.io client</span><div class="why">Advisor sees approvals live without polling</div></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card card-accent-blue">
+      <h3 style="margin-bottom:16px">Backend</h3>
+      <table class="stack-table">
+        <thead><tr><th>Layer</th><th>Technology</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>Framework</td><td><span class="tech-name">NestJS</span><div class="why">Module system maps directly to our domain modules, TypeScript-first</div></td><td></td></tr>
+          <tr><td>Database</td><td><span class="tech-name">PostgreSQL 16</span><div class="why">ACID, UUID support, JSONB for permissions, full-text search</div></td><td></td></tr>
+          <tr><td>ORM</td><td><span class="tech-name">Prisma</span><div class="why">Type-safe queries, great migration tooling, readable schema</div></td><td></td></tr>
+          <tr><td>Cache / Queue</td><td><span class="tech-name">Redis + BullMQ</span><div class="why">Queue for notifications, media processing, DMS sync, deferred reminders</div></td><td></td></tr>
+          <tr><td>File Storage</td><td><span class="tech-name">MinIO (S3-compatible)</span><div class="why">Self-hosted on your VPS, same S3 API, swap to AWS later if needed</div></td><td></td></tr>
+          <tr><td>Realtime</td><td><span class="tech-name">Socket.io (NestJS gateway)</span><div class="why">WS for advisor live updates when customer approves</div></td><td></td></tr>
+          <tr><td>Auth</td><td><span class="tech-name">JWT + refresh tokens</span><div class="why">Stateless, RBAC enforced at guard level per route</div></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card card-accent-green">
+      <h3 style="margin-bottom:16px">Infrastructure & DevOps</h3>
+      <table class="stack-table">
+        <thead><tr><th>Component</th><th>Technology</th></tr></thead>
+        <tbody>
+          <tr><td>Containerisation</td><td><span class="tech-name">Docker + Docker Compose</span><div class="why">API, PostgreSQL, Redis, MinIO all in compose</div></td></tr>
+          <tr><td>Reverse Proxy</td><td><span class="tech-name">Caddy</span><div class="why">Auto HTTPS, simpler than nginx for your VPS setup</div></td></tr>
+          <tr><td>Hosting</td><td><span class="tech-name">srv1230622 (your VPS)</span><div class="why">Already running, add containers alongside n8n</div></td></tr>
+          <tr><td>CI/CD</td><td><span class="tech-name">GitHub Actions</span><div class="why">Build → test → deploy via SSH on push to main</div></td></tr>
+          <tr><td>Monitoring</td><td><span class="tech-name">Uptime Kuma</span><div class="why">Self-hosted monitoring, you likely already have this</div></td></tr>
+          <tr><td>Backups</td><td><span class="tech-name">pg_dump cron → your backup skill</span><div class="why">Extends your existing openclaw-backup approach</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card card-accent-red">
+      <h3 style="margin-bottom:16px">Integrations & Automation</h3>
+      <table class="stack-table">
+        <thead><tr><th>Service</th><th>Approach</th></tr></thead>
+        <tbody>
+          <tr><td>Notifications (SMS)</td><td><span class="tech-name">Vonage / Twilio</span><div class="why">Via n8n webhook → your existing automation layer</div></td></tr>
+          <tr><td>Notifications (Email)</td><td><span class="tech-name">Resend / SMTP</span><div class="why">Transactional email via n8n or direct API call</div></td></tr>
+          <tr><td>WhatsApp</td><td><span class="tech-name">Meta Cloud API → n8n</span><div class="why">Leverages your existing Meta API experience</div></td></tr>
+          <tr><td>VIN Lookup</td><td><span class="tech-name">NHTSA API (free)</span><div class="why">US VINs free, swap for regional provider if needed</div></td></tr>
+          <tr><td>DMS Integration</td><td><span class="tech-name">Adapter pattern + n8n</span><div class="why">Each DMS gets its own adapter, n8n handles webhooks</div></td></tr>
+          <tr><td>Workflow Automation</td><td><span class="tech-name">n8n (existing)</span><div class="why">Deferred reminders, DMS sync, notification routing</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ SECURITY ═══════════════════════════════ -->
+<section id="security" class="section">
+  <h2><span class="num">08</span>Security Guidelines</h2>
+  <p class="section-desc">Workshop systems handle customer PII and financial decisions. Non-negotiable rules from day one.</p>
+
+  <div class="grid-2">
+    <div>
+      <h3 style="margin-bottom:12px; color: var(--accent3)">🔐 Authentication & Tokens</h3>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🎟️</span>JWT access tokens — 15 min expiry. Refresh tokens — 30 days, stored hashed in DB</li>
+        <li><span class="rule-icon">🔗</span>Customer approval tokens — 72h expiry, SHA-256 hashed, single-use, IP logged</li>
+        <li><span class="rule-icon">🚫</span>Revoke all refresh tokens on password change or logout-all action</li>
+        <li><span class="rule-icon">📱</span>Mobile app stores refresh token in secure storage (Flutter Secure Storage), never plain SharedPreferences</li>
+      </ul>
+
+      <h3 style="margin-bottom:12px; margin-top:24px; color: var(--accent3)">🛡️ API Security</h3>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🚧</span>Rate limiting on all public routes — especially <code style="font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px">/auth/login</code> and portal token routes</li>
+        <li><span class="rule-icon">✅</span>Server-side validation on all inputs — never trust mobile client data</li>
+        <li><span class="rule-icon">🔒</span>RBAC guard on every route — no route is unprotected by default</li>
+        <li><span class="rule-icon">🌐</span>CORS locked to known origins — advisor app, customer portal, mobile</li>
+        <li><span class="rule-icon">🔍</span>Separate API base paths: <code style="font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px">/api/v1/internal</code> vs <code style="font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px">/api/v1/portal</code></li>
+      </ul>
+    </div>
+
+    <div>
+      <h3 style="margin-bottom:12px; color: var(--accent2)">📁 Media & File Security</h3>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🔗</span>Never expose raw S3 keys or paths to clients — always generate signed URLs server-side</li>
+        <li><span class="rule-icon">⏰</span>Signed URLs expire in 1 hour — regenerated on demand</li>
+        <li><span class="rule-icon">🧹</span>Scan uploads for malware before confirming — run async on worker</li>
+        <li><span class="rule-icon">📐</span>File type validation on server — check MIME type, not just extension</li>
+        <li><span class="rule-icon">💾</span>Max file size enforced both client-side and server-side</li>
+      </ul>
+
+      <h3 style="margin-bottom:12px; margin-top:24px; color: var(--accent2)">📋 Data & Compliance</h3>
+      <ul class="rule-list">
+        <li><span class="rule-icon">🔐</span>Encrypt PII at rest — customer email, phone in encrypted columns</li>
+        <li><span class="rule-icon">📝</span>Full audit log on all state changes, price edits, approvals</li>
+        <li><span class="rule-icon">🗑️</span>Data deletion: anonymise customer data on request, keep job records for audit</li>
+        <li><span class="rule-icon">🔒</span>MinIO bucket — private, no public read, all access via signed URLs</li>
+        <li><span class="rule-icon">🌐</span>HTTPS enforced via Caddy — HTTP redirects to HTTPS automatically</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ ROADMAP ═══════════════════════════════ -->
+<section id="roadmap" class="section">
+  <h2><span class="num">09</span>Build Roadmap</h2>
+  <p class="section-desc">Three phases. Build the core loop first — don't add complexity until the fundamentals work end-to-end.</p>
+
+  <div class="timeline">
+
+    <div class="tl-item">
+      <div class="tl-marker" style="color:var(--accent);border-color:rgba(232,255,77,0.4);background:rgba(232,255,77,0.06)">MVP</div>
+      <div class="tl-content" style="border-color:rgba(232,255,77,0.2)">
+        <div class="tl-phase" style="color:var(--accent)">Phase 1 — 6 to 10 weeks</div>
+        <div class="tl-title">Close the Core Loop</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Goal: A job can go from creation to customer approval end-to-end. No gaps in the main workflow.</p>
+        <div class="tl-items">
+          <span class="tl-tag">Auth + roles</span>
+          <span class="tl-tag">Customer/vehicle CRUD</span>
+          <span class="tl-tag">Job creation</span>
+          <span class="tl-tag">Inspection templates (admin)</span>
+          <span class="tl-tag">Mobile inspection entry</span>
+          <span class="tl-tag">Photo upload (online)</span>
+          <span class="tl-tag">Advisor review screen</span>
+          <span class="tl-tag">Estimate builder</span>
+          <span class="tl-tag">Customer approval portal</span>
+          <span class="tl-tag">Approval token system</span>
+          <span class="tl-tag">Job status state machine</span>
+          <span class="tl-tag">Basic email notification</span>
+          <span class="tl-tag">Audit logs</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-marker" style="color:var(--accent2);border-color:rgba(77,170,255,0.4);background:rgba(77,170,255,0.06)">P2</div>
+      <div class="tl-content" style="border-color:rgba(77,170,255,0.2)">
+        <div class="tl-phase" style="color:var(--accent2)">Phase 2 — 4 to 6 weeks</div>
+        <div class="tl-title">Operations & Automation</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Goal: The app runs a real workshop day-to-day. Deferred work, notifications, offline inspection.</p>
+        <div class="tl-items">
+          <span class="tl-tag">Deferred work queue</span>
+          <span class="tl-tag">Automated reminders (BullMQ)</span>
+          <span class="tl-tag">SMS notifications</span>
+          <span class="tl-tag">WhatsApp (via n8n)</span>
+          <span class="tl-tag">Message templates (admin)</span>
+          <span class="tl-tag">Mobile offline mode</span>
+          <span class="tl-tag">Background media upload</span>
+          <span class="tl-tag">Advisor dashboard</span>
+          <span class="tl-tag">Role permissions UI</span>
+          <span class="tl-tag">WebSocket live updates</span>
+          <span class="tl-tag">Basic reporting</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-marker" style="color:var(--accent4);border-color:rgba(77,255,200,0.4);background:rgba(77,255,200,0.06)">P3</div>
+      <div class="tl-content" style="border-color:rgba(77,255,200,0.2)">
+        <div class="tl-phase" style="color:var(--accent4)">Phase 3 — Ongoing</div>
+        <div class="tl-title">Integrations & Intelligence</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Goal: Connect to real dealership systems, advanced pricing rules, analytics.</p>
+        <div class="tl-items">
+          <span class="tl-tag">DMS integration</span>
+          <span class="tl-tag">VIN auto-lookup</span>
+          <span class="tl-tag">Parts pricing connector</span>
+          <span class="tl-tag">Advanced tax rules</span>
+          <span class="tl-tag">Alternate parts suggestion</span>
+          <span class="tl-tag">OEM-specific templates</span>
+          <span class="tl-tag">Analytics dashboard</span>
+          <span class="tl-tag">Approval rate reporting</span>
+          <span class="tl-tag">Deferred value tracking</span>
+          <span class="tl-tag">Automation rules engine</span>
+          <span class="tl-tag">Multi-workshop support</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="card card-accent-red" style="margin-top:8px">
+    <h3 style="color:var(--accent3);margin-bottom:12px">⚠️ Mistakes to Avoid</h3>
+    <div class="grid-3" style="gap:10px">
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ Starting with microservices — use modular monolith first</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ Hardcoding inspection forms — make templates configurable from day one</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ Mixing technician and customer flows in one app</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ Storing media as generic attachments — link to inspection items</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ No state machine — transitions must be enforced server-side</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ Synchronous DMS integration — always async with retry queue</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ No audit trail — every price change and approval must be logged</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ No deferred work model — declined ≠ forgotten</div>
+      <div style="font-size:12px;padding:8px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">❌ Raw file URLs in API responses — always signed, always expiring</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

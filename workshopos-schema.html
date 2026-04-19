@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkshopOS — Full Database Schema</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f2eb;
+  --bg2: #ede9df;
+  --surface: #ffffff;
+  --surface2: #f9f7f3;
+  --border: #ddd9cf;
+  --border2: #c8c3b5;
+  --ink: #1a1814;
+  --ink2: #4a4740;
+  --ink3: #8a8680;
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Fraunces', serif;
+  --sans: 'Instrument Sans', sans-serif;
+  /* domain colours */
+  --d-auth:    #c0392b;
+  --d-cust:    #1a6e3c;
+  --d-job:     #1a4a8e;
+  --d-insp:    #6d3a9e;
+  --d-media:   #b45309;
+  --d-price:   #0e7490;
+  --d-auth2:   #be185d;
+  --d-defer:   #065f46;
+  --d-notif:   #7c3aed;
+  --d-audit:   #374151;
+  --d-integ:   #9a3412;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--ink);
+  color: #f5f2eb;
+  padding: 52px 64px 44px;
+  position: relative;
+  overflow: hidden;
+}
+header::after {
+  content: 'SCHEMA';
+  position: absolute;
+  right: 48px; top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--display);
+  font-size: 120px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.04);
+  letter-spacing: -4px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.header-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8a8680;
+  margin-bottom: 14px;
+}
+h1 {
+  font-family: var(--display);
+  font-size: clamp(36px, 5vw, 64px);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+h1 em { font-style: normal; color: #c8a96e; }
+.header-meta {
+  display: flex; gap: 24px; flex-wrap: wrap;
+  margin-top: 20px;
+}
+.meta-chip {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 2px;
+  color: #a8a49e;
+  letter-spacing: 0.08em;
+}
+.meta-chip b { color: #f5f2eb; }
+
+/* ── NAV ── */
+nav {
+  background: var(--ink);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 0 64px;
+  display: flex; gap: 0;
+  overflow-x: auto;
+  position: sticky; top: 0; z-index: 100;
+}
+nav button {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 10px;
+  color: #6b6760;
+  padding: 13px 16px;
+  border-bottom: 2px solid transparent;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+nav button.active { color: #c8a96e; border-bottom-color: #c8a96e; }
+nav button:hover:not(.active) { color: #a8a49e; }
+
+/* ── MAIN ── */
+main { padding: 48px 64px; max-width: 1500px; }
+.section { display: none; animation: fadeUp 0.25s ease; }
+.section.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SECTION HEADER ── */
+.section-header {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 8px;
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  letter-spacing: 0.1em;
+}
+h2 {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+.section-desc { color: var(--ink2); max-width: 700px; margin-bottom: 36px; font-size: 14px; }
+
+/* ── DOMAIN GROUPS ── */
+.domain-group { margin-bottom: 48px; }
+.domain-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid currentColor;
+}
+.domain-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.domain-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink3);
+  margin-left: auto;
+}
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+/* ── TABLE CARD ── */
+.tbl {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.tbl:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+.tbl-header {
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tbl-icon { font-size: 16px; }
+.tbl-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  flex: 1;
+}
+.tbl-row-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink3);
+  letter-spacing: 0.05em;
+}
+.tbl-desc {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--ink2);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-style: italic;
+}
+
+/* ── COLUMNS ── */
+.col-row {
+  display: grid;
+  grid-template-columns: 180px 110px 1fr;
+  gap: 8px;
+  padding: 6px 16px;
+  border-bottom: 1px solid rgba(200,195,185,0.35);
+  align-items: center;
+  transition: background 0.15s;
+}
+.col-row:last-child { border-bottom: none; }
+.col-row:hover { background: var(--surface2); }
+.col-row.pk-row { background: rgba(200,169,110,0.06); }
+.col-row.pk-row:hover { background: rgba(200,169,110,0.12); }
+
+.col-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  display: flex; align-items: center; gap: 5px;
+}
+.badge-pk {
+  font-size: 8px; padding: 1px 4px;
+  background: #c8a96e; color: #fff;
+  border-radius: 2px; font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.badge-fk {
+  font-size: 8px; padding: 1px 4px;
+  background: #1a4a8e; color: #fff;
+  border-radius: 2px; font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.badge-uk {
+  font-size: 8px; padding: 1px 4px;
+  background: #1a6e3c; color: #fff;
+  border-radius: 2px; font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.badge-idx {
+  font-size: 8px; padding: 1px 4px;
+  background: #6d3a9e; color: #fff;
+  border-radius: 2px; font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.col-type {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #c0392b;
+  font-weight: 500;
+}
+.col-note {
+  font-size: 10px;
+  color: var(--ink3);
+}
+.col-note .nn { color: var(--ink2); font-weight: 600; }
+.col-note .def { color: #1a6e3c; }
+.col-note .ref { color: #1a4a8e; }
+
+/* ── INDEXES BLOCK ── */
+.tbl-indexes {
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+}
+.idx-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 4px;
+}
+.idx-item {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink2);
+  padding: 2px 0;
+}
+.idx-item span { color: #6d3a9e; }
+
+/* ── RELATIONS DIAGRAM ── */
+.rel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.rel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 18px;
+}
+.rel-line {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.rel-line:last-child { border-bottom: none; }
+.rel-from { color: var(--ink); font-weight: 600; min-width: 180px; }
+.rel-type {
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.rt-1m  { background: rgba(26,74,142,0.1); color: #1a4a8e; }
+.rt-mm  { background: rgba(109,58,158,0.1); color: #6d3a9e; }
+.rt-11  { background: rgba(26,110,60,0.1); color: #1a6e3c; }
+.rel-to { color: var(--ink2); }
+.rel-action { color: var(--ink3); font-size: 9px; margin-left: auto; }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 32px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--ink2);
+}
+
+/* ── ERD SVG ── */
+.erd-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 24px;
+  overflow-x: auto;
+  margin-bottom: 32px;
+}
+.erd-wrap svg { min-width: 900px; }
+
+/* ── PRISMA SCHEMA ── */
+.prisma-block {
+  background: #1a1814;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.prisma-header {
+  padding: 10px 20px;
+  background: #252220;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b6760;
+  border-bottom: 1px solid #2e2b28;
+}
+.prisma-code {
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.8;
+  color: #d4cfc8;
+  white-space: pre;
+  overflow-x: auto;
+}
+.pk  { color: #c8a96e; }
+.kw  { color: #d08060; }
+.ty  { color: #7ec8a0; }
+.cm  { color: #6b6760; font-style: italic; }
+.st  { color: #9ec8e0; }
+.at  { color: #c87ec8; }
+.nu  { color: #a0c878; }
+
+/* ── MISC ── */
+.divider { height: 1px; background: var(--border); margin: 40px 0; }
+.note-box {
+  background: #fefce8;
+  border: 1px solid #ca8a04;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #713f12;
+  margin-bottom: 20px;
+  display: flex; gap: 8px; align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+  header, nav, main { padding-left: 20px; padding-right: 20px; }
+  .tables-grid { grid-template-columns: 1fr; }
+  .rel-grid { grid-template-columns: 1fr; }
+  .col-row { grid-template-columns: 1fr 80px; }
+  .col-note { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">WorkshopOS · Database Design · MariaDB 10.5+</div>
+  <h1>Full <em>Schema</em><br>Reference</h1>
+  <div class="header-meta">
+    <span class="meta-chip"><b>28</b> tables</span>
+    <span class="meta-chip"><b>11</b> domains</span>
+    <span class="meta-chip"><b>MariaDB</b> 10.5+</span>
+    <span class="meta-chip"><b>Prisma</b> ORM · mysql provider</span>
+    <span class="meta-chip"><b>UUID</b> primary keys</span>
+    <span class="meta-chip"><b>InnoDB</b> engine · utf8mb4</span>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="show('overview')">Overview</button>
+  <button onclick="show('auth')">Auth &amp; Roles</button>
+  <button onclick="show('customers')">Customers &amp; Vehicles</button>
+  <button onclick="show('jobs')">Jobs</button>
+  <button onclick="show('inspections')">Inspections</button>
+  <button onclick="show('media')">Media</button>
+  <button onclick="show('pricing')">Pricing</button>
+  <button onclick="show('authorisation')">Authorisation</button>
+  <button onclick="show('deferred')">Deferred Work</button>
+  <button onclick="show('notifications')">Notifications</button>
+  <button onclick="show('audit')">Audit &amp; Admin</button>
+  <button onclick="show('prisma')">Prisma Schema</button>
+</nav>
+
+<main>
+
+<!-- ═══════════ OVERVIEW ═══════════ -->
+<section id="overview" class="section active">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <h2>Schema Overview</h2>
+  </div>
+  <p class="section-desc">28 tables across 11 business domains. All primary keys are CHAR(36) UUIDs generated at the application layer. All timestamps are DATETIME with UTC. Engine: InnoDB. Charset: utf8mb4.</p>
+
+  <div class="legend">
+    <div class="legend-item"><span class="badge-pk">PK</span> Primary Key</div>
+    <div class="legend-item"><span class="badge-fk">FK</span> Foreign Key</div>
+    <div class="legend-item"><span class="badge-uk">UK</span> Unique Key</div>
+    <div class="legend-item"><span class="badge-idx">IDX</span> Index</div>
+    <div class="legend-item" style="color:#1a6e3c;font-family:var(--mono);font-size:10px;">DEFAULT</div>
+    <div class="legend-item" style="color:#c0392b;font-family:var(--mono);font-size:10px;">DATA TYPE</div>
+    <div class="legend-item" style="color:#374151;font-family:var(--mono);font-size:10px;font-style:italic;">// NOT NULL unless noted nullable</div>
+  </div>
+
+  <!-- ERD overview -->
+  <div class="erd-wrap">
+    <svg viewBox="0 0 1100 680" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#8a8680"/>
+        </marker>
+        <style>
+          .erd-box { rx: 4; ry: 4; }
+          .erd-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+          .erd-field { font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+          .erd-line { stroke: #c8c3b5; stroke-width: 1; fill: none; marker-end: url(#arr); }
+        </style>
+      </defs>
+
+      <!-- USERS -->
+      <rect x="20" y="20" width="140" height="70" fill="#fff" stroke="#c0392b" stroke-width="2" rx="4"/>
+      <rect x="20" y="20" width="140" height="22" fill="#c0392b" rx="4"/>
+      <rect x="20" y="40" width="140" height="2" fill="#c0392b"/>
+      <text x="90" y="35" class="erd-title" fill="#fff" text-anchor="middle">users</text>
+      <text x="28" y="53" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="28" y="65" class="erd-field" fill="#555">role_id (FK)</text>
+      <text x="28" y="77" class="erd-field" fill="#555">email, name...</text>
+
+      <!-- ROLES -->
+      <rect x="200" y="20" width="130" height="60" fill="#fff" stroke="#c0392b" stroke-width="1.5" rx="4"/>
+      <rect x="200" y="20" width="130" height="22" fill="#c0392b" rx="4"/>
+      <rect x="200" y="40" width="130" height="2" fill="#c0392b"/>
+      <text x="265" y="35" class="erd-title" fill="#fff" text-anchor="middle">roles</text>
+      <text x="208" y="53" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="208" y="65" class="erd-field" fill="#555">name, permissions</text>
+      <line x1="200" y1="50" x2="160" y2="50" class="erd-line"/>
+
+      <!-- CUSTOMERS -->
+      <rect x="20" y="130" width="150" height="80" fill="#fff" stroke="#1a6e3c" stroke-width="2" rx="4"/>
+      <rect x="20" y="130" width="150" height="22" fill="#1a6e3c" rx="4"/>
+      <rect x="20" y="150" width="150" height="2" fill="#1a6e3c"/>
+      <text x="95" y="145" class="erd-title" fill="#fff" text-anchor="middle">customers</text>
+      <text x="28" y="162" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="28" y="174" class="erd-field" fill="#555">name, email, phone</text>
+      <text x="28" y="186" class="erd-field" fill="#555">preferred_contact</text>
+      <text x="28" y="198" class="erd-field" fill="#555">dms_id</text>
+
+      <!-- VEHICLES -->
+      <rect x="210" y="130" width="150" height="90" fill="#fff" stroke="#1a6e3c" stroke-width="1.5" rx="4"/>
+      <rect x="210" y="130" width="150" height="22" fill="#1a6e3c" rx="4"/>
+      <rect x="210" y="150" width="150" height="2" fill="#1a6e3c"/>
+      <text x="285" y="145" class="erd-title" fill="#fff" text-anchor="middle">vehicles</text>
+      <text x="218" y="162" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="218" y="174" class="erd-field" fill="#555">customer_id (FK)</text>
+      <text x="218" y="186" class="erd-field" fill="#555">vin (UK), make, model</text>
+      <text x="218" y="198" class="erd-field" fill="#555">year, plate, odometer</text>
+      <text x="218" y="210" class="erd-field" fill="#555">dms_id</text>
+      <line x1="210" y1="174" x2="170" y2="174" class="erd-line"/>
+
+      <!-- JOBS -->
+      <rect x="420" y="100" width="160" height="120" fill="#fff" stroke="#1a4a8e" stroke-width="2.5" rx="4"/>
+      <rect x="420" y="100" width="160" height="22" fill="#1a4a8e" rx="4"/>
+      <rect x="420" y="120" width="160" height="2" fill="#1a4a8e"/>
+      <text x="500" y="115" class="erd-title" fill="#fff" text-anchor="middle">jobs ★</text>
+      <text x="428" y="132" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="428" y="144" class="erd-field" fill="#555">customer_id (FK)</text>
+      <text x="428" y="156" class="erd-field" fill="#555">vehicle_id (FK)</text>
+      <text x="428" y="168" class="erd-field" fill="#555">advisor_id (FK)</text>
+      <text x="428" y="180" class="erd-field" fill="#555">technician_id (FK)</text>
+      <text x="428" y="192" class="erd-field" fill="#555">status (ENUM)</text>
+      <text x="428" y="204" class="erd-field" fill="#555">job_number (UK)</text>
+      <text x="428" y="216" class="erd-field" fill="#555">dms_ro_number</text>
+      <line x1="420" y1="144" x2="170" y2="170" class="erd-line"/>
+      <line x1="420" y1="156" x2="360" y2="185" class="erd-line"/>
+      <line x1="420" y1="168" x2="160" y2="55" class="erd-line"/>
+
+      <!-- INSPECTIONS -->
+      <rect x="420" y="260" width="155" height="90" fill="#fff" stroke="#6d3a9e" stroke-width="1.5" rx="4"/>
+      <rect x="420" y="260" width="155" height="22" fill="#6d3a9e" rx="4"/>
+      <rect x="420" y="280" width="155" height="2" fill="#6d3a9e"/>
+      <text x="497" y="275" class="erd-title" fill="#fff" text-anchor="middle">inspections</text>
+      <text x="428" y="292" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="428" y="304" class="erd-field" fill="#555">job_id (FK)</text>
+      <text x="428" y="316" class="erd-field" fill="#555">template_id (FK)</text>
+      <text x="428" y="328" class="erd-field" fill="#555">technician_id (FK)</text>
+      <text x="428" y="340" class="erd-field" fill="#555">status, submitted_at</text>
+      <line x1="500" y1="260" x2="500" y2="220" class="erd-line"/>
+
+      <!-- INSPECTION RESPONSES -->
+      <rect x="200" y="280" width="170" height="80" fill="#fff" stroke="#6d3a9e" stroke-width="1.5" rx="4"/>
+      <rect x="200" y="280" width="170" height="22" fill="#6d3a9e" rx="4"/>
+      <rect x="200" y="300" width="170" height="2" fill="#6d3a9e"/>
+      <text x="285" y="295" class="erd-title" fill="#fff" text-anchor="middle">inspection_responses</text>
+      <text x="208" y="308" class="erd-field" fill="#555">🔑 id</text>
+      <text x="208" y="320" class="erd-field" fill="#555">inspection_id (FK)</text>
+      <text x="208" y="332" class="erd-field" fill="#555">item_id (FK)</text>
+      <text x="208" y="344" class="erd-field" fill="#555">value, urgency, notes</text>
+      <text x="208" y="356" class="erd-field" fill="#555">media_count</text>
+      <line x1="370" y1="316" x2="420" y2="300" class="erd-line"/>
+
+      <!-- ESTIMATE LINES -->
+      <rect x="640" y="100" width="160" height="90" fill="#fff" stroke="#0e7490" stroke-width="1.5" rx="4"/>
+      <rect x="640" y="100" width="160" height="22" fill="#0e7490" rx="4"/>
+      <rect x="640" y="120" width="160" height="2" fill="#0e7490"/>
+      <text x="720" y="115" class="erd-title" fill="#fff" text-anchor="middle">estimate_lines</text>
+      <text x="648" y="132" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="648" y="144" class="erd-field" fill="#555">job_id (FK)</text>
+      <text x="648" y="156" class="erd-field" fill="#555">response_id (FK)</text>
+      <text x="648" y="168" class="erd-field" fill="#555">type, unit_price</text>
+      <text x="648" y="180" class="erd-field" fill="#555">quantity, total, tax</text>
+      <line x1="640" y1="144" x2="580" y2="155" class="erd-line"/>
+
+      <!-- APPROVAL TOKENS -->
+      <rect x="640" y="220" width="155" height="90" fill="#fff" stroke="#be185d" stroke-width="1.5" rx="4"/>
+      <rect x="640" y="220" width="155" height="22" fill="#be185d" rx="4"/>
+      <rect x="640" y="240" width="155" height="2" fill="#be185d"/>
+      <text x="717" y="235" class="erd-title" fill="#fff" text-anchor="middle">approval_tokens</text>
+      <text x="648" y="252" class="erd-field" fill="#555">🔑 id (PK)</text>
+      <text x="648" y="264" class="erd-field" fill="#555">job_id (FK)</text>
+      <text x="648" y="276" class="erd-field" fill="#555">token_hash (UK)</text>
+      <text x="648" y="288" class="erd-field" fill="#555">expires_at, used_at</text>
+      <text x="648" y="300" class="erd-field" fill="#555">is_revoked</text>
+      <line x1="640" y1="264" x2="580" y2="200" class="erd-line"/>
+
+      <!-- AUTH DECISIONS -->
+      <rect x="840" y="220" width="155" height="80" fill="#fff" stroke="#be185d" stroke-width="1.5" rx="4"/>
+      <rect x="840" y="220" width="155" height="22" fill="#be185d" rx="4"/>
+      <rect x="840" y="240" width="155" height="2" fill="#be185d"/>
+      <text x="917" y="235" class="erd-title" fill="#fff" text-anchor="middle">auth_decisions</text>
+      <text x="848" y="252" class="erd-field" fill="#555">🔑 id</text>
+      <text x="848" y="264" class="erd-field" fill="#555">token_id (FK)</text>
+      <text x="848" y="276" class="erd-field" fill="#555">line_id (FK)</text>
+      <text x="848" y="288" class="erd-field" fill="#555">decision, ip, decided_at</text>
+      <line x1="840" y1="264" x2="795" y2="264" class="erd-line"/>
+
+      <!-- DEFERRED WORK -->
+      <rect x="640" y="340" width="155" height="90" fill="#fff" stroke="#065f46" stroke-width="1.5" rx="4"/>
+      <rect x="640" y="340" width="155" height="22" fill="#065f46" rx="4"/>
+      <rect x="640" y="360" width="155" height="2" fill="#065f46"/>
+      <text x="717" y="355" class="erd-title" fill="#fff" text-anchor="middle">deferred_work</text>
+      <text x="648" y="368" class="erd-field" fill="#555">🔑 id</text>
+      <text x="648" y="380" class="erd-field" fill="#555">customer_id, vehicle_id</text>
+      <text x="648" y="392" class="erd-field" fill="#555">job_id, line_id (FKs)</text>
+      <text x="648" y="404" class="erd-field" fill="#555">status, remind_after</text>
+      <text x="648" y="416" class="erd-field" fill="#555">last_reminded_at</text>
+      <line x1="640" y1="380" x2="580" y2="200" class="erd-line"/>
+
+      <!-- NOTIFICATIONS -->
+      <rect x="20" y="430" width="155" height="70" fill="#fff" stroke="#7c3aed" stroke-width="1.5" rx="4"/>
+      <rect x="20" y="430" width="155" height="22" fill="#7c3aed" rx="4"/>
+      <rect x="20" y="450" width="155" height="2" fill="#7c3aed"/>
+      <text x="97" y="445" class="erd-title" fill="#fff" text-anchor="middle">notifications</text>
+      <text x="28" y="458" class="erd-field" fill="#555">🔑 id</text>
+      <text x="28" y="470" class="erd-field" fill="#555">job_id (FK, nullable)</text>
+      <text x="28" y="482" class="erd-field" fill="#555">channel, status, sent_at</text>
+      <text x="28" y="494" class="erd-field" fill="#555">template_id (FK)</text>
+
+      <!-- MEDIA FILES -->
+      <rect x="20" y="540" width="155" height="80" fill="#fff" stroke="#b45309" stroke-width="1.5" rx="4"/>
+      <rect x="20" y="540" width="155" height="22" fill="#b45309" rx="4"/>
+      <rect x="20" y="560" width="155" height="2" fill="#b45309"/>
+      <text x="97" y="555" class="erd-title" fill="#fff" text-anchor="middle">media_files</text>
+      <text x="28" y="568" class="erd-field" fill="#555">🔑 id</text>
+      <text x="28" y="580" class="erd-field" fill="#555">job_id (FK)</text>
+      <text x="28" y="592" class="erd-field" fill="#555">response_id (FK, null)</text>
+      <text x="28" y="604" class="erd-field" fill="#555">s3_key, file_type</text>
+      <text x="28" y="616" class="erd-field" fill="#555">size_bytes, uploaded_by</text>
+
+      <!-- AUDIT LOGS -->
+      <rect x="840" y="380" width="155" height="80" fill="#fff" stroke="#374151" stroke-width="1.5" rx="4"/>
+      <rect x="840" y="380" width="155" height="22" fill="#374151" rx="4"/>
+      <rect x="840" y="400" width="155" height="2" fill="#374151"/>
+      <text x="917" y="395" class="erd-title" fill="#fff" text-anchor="middle">audit_logs</text>
+      <text x="848" y="408" class="erd-field" fill="#555">🔑 id</text>
+      <text x="848" y="420" class="erd-field" fill="#555">user_id (FK)</text>
+      <text x="848" y="432" class="erd-field" fill="#555">entity_type, entity_id</text>
+      <text x="848" y="444" class="erd-field" fill="#555">action, old_value</text>
+      <text x="848" y="456" class="erd-field" fill="#555">new_value, ip, at</text>
+
+      <!-- Legend -->
+      <rect x="840" y="500" width="240" height="80" fill="#f9f7f3" stroke="#ddd9cf" rx="4"/>
+      <text x="856" y="520" class="erd-field" fill="#374151" font-weight="700">ERD Legend</text>
+      <rect x="856" y="528" width="8" height="8" fill="#1a4a8e"/>
+      <text x="870" y="536" class="erd-field" fill="#555">jobs — Central entity</text>
+      <text x="856" y="550" class="erd-field" fill="#8a8680">→ Foreign key relationship</text>
+      <text x="856" y="562" class="erd-field" fill="#8a8680">Colour = domain group</text>
+      <text x="856" y="574" class="erd-field" fill="#c8a96e">★ = Core / most referenced</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ═══════════ AUTH ═══════════ -->
+<section id="auth" class="section">
+  <div class="section-header"><span class="section-num">01</span><h2>Auth &amp; Roles</h2></div>
+  <p class="section-desc">3 tables. Controls who can access what. Permissions stored as JSON array in roles.</p>
+  <div class="domain-group">
+    <div class="tables-grid">
+
+      <!-- users -->
+      <div class="tbl">
+        <div class="tbl-header" style="background:#fef2f2;border-bottom-color:#fecaca;">
+          <span class="tbl-icon">👤</span>
+          <span class="tbl-name" style="color:#c0392b">users</span>
+          <span class="tbl-row-count">CORE</span>
+        </div>
+        <div class="tbl-desc">All internal staff — technicians, advisors, admins, parts team.</div>
+        <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="def">DEFAULT uuid()</span></span></div>
+        <div class="col-row"><span class="col-name">role_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ roles.id</span> · ON DELETE RESTRICT</span></div>
+        <div class="col-row"><span class="col-name">name</span><span class="col-type">VARCHAR(120)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+        <div class="col-row"><span class="col-name">email <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(255)</span><span class="col-note"><span class="nn">NOT NULL</span> · unique</span></div>
+        <div class="col-row"><span class="col-name">password_hash</span><span class="col-type">VARCHAR(255)</span><span class="col-note"><span class="nn">NOT NULL</span> · bcrypt</span></div>
+        <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+        <div class="col-row"><span class="col-name">avatar_url</span><span class="col-type">VARCHAR(500)</span><span class="col-note">nullable</span></div>
+        <div class="col-row"><span class="col-name">last_login_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+        <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+        <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW() ON UPDATE NOW()</span></span></div>
+        <div class="tbl-indexes">
+          <div class="idx-label">Indexes</div>
+          <div class="idx-item">IDX: <span>idx_users_role_id</span> (role_id)</div>
+          <div class="idx-item">IDX: <span>idx_users_email</span> (email) — unique</div>
+        </div>
+      </div>
+
+      <!-- roles -->
+      <div class="tbl">
+        <div class="tbl-header" style="background:#fef2f2;border-bottom-color:#fecaca;">
+          <span class="tbl-icon">🔑</span>
+          <span class="tbl-name" style="color:#c0392b">roles</span>
+        </div>
+        <div class="tbl-desc">Named roles with JSON permission array. Seed: technician, advisor, parts, admin.</div>
+        <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="def">DEFAULT uuid()</span></span></div>
+        <div class="col-row"><span class="col-name">name <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(60)</span><span class="col-note"><span class="nn">NOT NULL</span> · unique</span></div>
+        <div class="col-row"><span class="col-name">permissions</span><span class="col-type">JSON</span><span class="col-note"><span class="nn">NOT NULL</span> · array of strings</span></div>
+        <div class="col-row"><span class="col-name">description</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable</span></div>
+        <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      </div>
+
+      <!-- refresh_tokens -->
+      <div class="tbl">
+        <div class="tbl-header" style="background:#fef2f2;border-bottom-color:#fecaca;">
+          <span class="tbl-icon">🎟️</span>
+          <span class="tbl-name" style="color:#c0392b">refresh_tokens</span>
+        </div>
+        <div class="tbl-desc">Hashed refresh tokens for JWT rotation. Never store raw tokens.</div>
+        <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+        <div class="col-row"><span class="col-name">user_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span> · ON DELETE CASCADE</span></div>
+        <div class="col-row"><span class="col-name">token_hash <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(255)</span><span class="col-note">SHA-256 hash of raw token</span></div>
+        <div class="col-row"><span class="col-name">device_info</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable · user agent</span></div>
+        <div class="col-row"><span class="col-name">ip_address</span><span class="col-type">VARCHAR(45)</span><span class="col-note">nullable · IPv4 or IPv6</span></div>
+        <div class="col-row"><span class="col-name">expires_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+        <div class="col-row"><span class="col-name">revoked_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+        <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+        <div class="tbl-indexes">
+          <div class="idx-label">Indexes</div>
+          <div class="idx-item">IDX: <span>idx_rt_user_id</span> (user_id)</div>
+          <div class="idx-item">IDX: <span>idx_rt_expires</span> (expires_at) — for cleanup job</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ CUSTOMERS ═══════════ -->
+<section id="customers" class="section">
+  <div class="section-header"><span class="section-num">02</span><h2>Customers &amp; Vehicles</h2></div>
+  <p class="section-desc">3 tables. Customer records, vehicle registry, and service history ledger.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f0fdf4;border-bottom-color:#bbf7d0;">
+        <span class="tbl-icon">👥</span>
+        <span class="tbl-name" style="color:#1a6e3c">customers</span>
+      </div>
+      <div class="tbl-desc">End customers whose vehicles are serviced. May sync from DMS.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">name</span><span class="col-type">VARCHAR(120)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">email</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">phone</span><span class="col-type">VARCHAR(30)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">preferred_contact</span><span class="col-type">ENUM</span><span class="col-note">'email','sms','whatsapp' · <span class="def">DEFAULT 'sms'</span></span></div>
+      <div class="col-row"><span class="col-name">language</span><span class="col-type">VARCHAR(10)</span><span class="col-note"><span class="def">DEFAULT 'en'</span> · ISO 639-1</span></div>
+      <div class="col-row"><span class="col-name">dms_customer_id</span><span class="col-type">VARCHAR(60)</span><span class="col-note">nullable · external DMS ref</span></div>
+      <div class="col-row"><span class="col-name">notes</span><span class="col-type">TEXT</span><span class="col-note">nullable · internal notes</span></div>
+      <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note">ON UPDATE NOW()</span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">IDX: <span>idx_customers_email</span> (email)</div>
+        <div class="idx-item">IDX: <span>idx_customers_phone</span> (phone)</div>
+        <div class="idx-item">IDX: <span>idx_customers_dms</span> (dms_customer_id)</div>
+      </div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f0fdf4;border-bottom-color:#bbf7d0;">
+        <span class="tbl-icon">🚗</span>
+        <span class="tbl-name" style="color:#1a6e3c">vehicles</span>
+      </div>
+      <div class="tbl-desc">Vehicles belonging to customers. VIN is unique per vehicle globally.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">customer_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ customers.id</span> · ON DELETE RESTRICT</span></div>
+      <div class="col-row"><span class="col-name">vin <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(17)</span><span class="col-note">nullable · unique if present</span></div>
+      <div class="col-row"><span class="col-name">make</span><span class="col-type">VARCHAR(60)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">model</span><span class="col-type">VARCHAR(60)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">year</span><span class="col-type">SMALLINT</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">plate</span><span class="col-type">VARCHAR(20)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">color</span><span class="col-type">VARCHAR(40)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">odometer_km</span><span class="col-type">INT UNSIGNED</span><span class="col-note">nullable · at last visit</span></div>
+      <div class="col-row"><span class="col-name">vehicle_type</span><span class="col-type">ENUM</span><span class="col-note">'sedan','suv','truck','van','ute','other'</span></div>
+      <div class="col-row"><span class="col-name">engine</span><span class="col-type">VARCHAR(60)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">dms_vehicle_id</span><span class="col-type">VARCHAR(60)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note">ON UPDATE NOW()</span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">IDX: <span>idx_vehicles_customer</span> (customer_id)</div>
+        <div class="idx-item">IDX: <span>idx_vehicles_vin</span> (vin) — unique</div>
+        <div class="idx-item">IDX: <span>idx_vehicles_plate</span> (plate)</div>
+      </div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f0fdf4;border-bottom-color:#bbf7d0;">
+        <span class="tbl-icon">📖</span>
+        <span class="tbl-name" style="color:#1a6e3c">vehicle_service_history</span>
+      </div>
+      <div class="tbl-desc">Summary log linking vehicle to past jobs. Auto-populated on job completion.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">vehicle_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ vehicles.id</span></span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span></span></div>
+      <div class="col-row"><span class="col-name">odometer_km</span><span class="col-type">INT UNSIGNED</span><span class="col-note">at time of service</span></div>
+      <div class="col-row"><span class="col-name">summary</span><span class="col-type">TEXT</span><span class="col-note">nullable · auto-generated</span></div>
+      <div class="col-row"><span class="col-name">serviced_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ JOBS ═══════════ -->
+<section id="jobs" class="section">
+  <div class="section-header"><span class="section-num">03</span><h2>Jobs</h2></div>
+  <p class="section-desc">2 tables. The central entity of the entire system. Every other table links back to jobs.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#eff6ff;border-bottom-color:#bfdbfe;">
+        <span class="tbl-icon">📋</span>
+        <span class="tbl-name" style="color:#1a4a8e">jobs ★ Central Entity</span>
+      </div>
+      <div class="tbl-desc">One row = one vehicle visit. Links customer, vehicle, advisor, and technician. Status drives the entire workflow.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">job_number <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(20)</span><span class="col-note">e.g. WS-00001 — auto-generated</span></div>
+      <div class="col-row"><span class="col-name">customer_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ customers.id</span> · RESTRICT</span></div>
+      <div class="col-row"><span class="col-name">vehicle_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ vehicles.id</span> · RESTRICT</span></div>
+      <div class="col-row"><span class="col-name">advisor_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span> · SET NULL on deactivate</span></div>
+      <div class="col-row"><span class="col-name">technician_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span> · nullable</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">ENUM</span><span class="col-note">'new','inspection','priced','sent','approved','partial','declined','completed','cancelled' · <span class="def">DEFAULT 'new'</span></span></div>
+      <div class="col-row"><span class="col-name">customer_concern</span><span class="col-type">TEXT</span><span class="col-note">nullable · reason for visit</span></div>
+      <div class="col-row"><span class="col-name">internal_notes</span><span class="col-type">TEXT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">odometer_in</span><span class="col-type">INT UNSIGNED</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">promised_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable · promised completion</span></div>
+      <div class="col-row"><span class="col-name">dms_ro_number</span><span class="col-type">VARCHAR(60)</span><span class="col-note">nullable · DMS repair order #</span></div>
+      <div class="col-row"><span class="col-name">dms_synced_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">completed_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note">ON UPDATE NOW()</span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">IDX: <span>idx_jobs_customer</span> (customer_id)</div>
+        <div class="idx-item">IDX: <span>idx_jobs_vehicle</span> (vehicle_id)</div>
+        <div class="idx-item">IDX: <span>idx_jobs_advisor</span> (advisor_id)</div>
+        <div class="idx-item">IDX: <span>idx_jobs_technician</span> (technician_id)</div>
+        <div class="idx-item">IDX: <span>idx_jobs_status</span> (status)</div>
+        <div class="idx-item">IDX: <span>idx_jobs_created</span> (created_at DESC)</div>
+        <div class="idx-item">UK: <span>idx_jobs_number</span> (job_number)</div>
+      </div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#eff6ff;border-bottom-color:#bfdbfe;">
+        <span class="tbl-icon">🔄</span>
+        <span class="tbl-name" style="color:#1a4a8e">job_status_history</span>
+      </div>
+      <div class="tbl-desc">Immutable record of every status change. Never delete rows from this table.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span> <span class="badge-idx">IDX</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span> · ON DELETE CASCADE</span></div>
+      <div class="col-row"><span class="col-name">from_status</span><span class="col-type">VARCHAR(20)</span><span class="col-note">nullable · null on creation</span></div>
+      <div class="col-row"><span class="col-name">to_status</span><span class="col-type">VARCHAR(20)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">changed_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span> · nullable (system events)</span></div>
+      <div class="col-row"><span class="col-name">reason</span><span class="col-type">TEXT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">changed_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ INSPECTIONS ═══════════ -->
+<section id="inspections" class="section">
+  <div class="section-header"><span class="section-num">04</span><h2>Inspections</h2></div>
+  <p class="section-desc">5 tables. Configurable templates, sections, items, and per-job responses. Nothing hardcoded.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#faf5ff;border-bottom-color:#e9d5ff;">
+        <span class="tbl-icon">📄</span>
+        <span class="tbl-name" style="color:#6d3a9e">inspection_templates</span>
+      </div>
+      <div class="tbl-desc">Admin-configurable templates. One template per vehicle type or custom.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">name</span><span class="col-type">VARCHAR(120)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">vehicle_type</span><span class="col-type">VARCHAR(20)</span><span class="col-note">'sedan','suv','truck','all'</span></div>
+      <div class="col-row"><span class="col-name">description</span><span class="col-type">TEXT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">is_default</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+      <div class="col-row"><span class="col-name">created_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span></span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note">ON UPDATE NOW()</span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#faf5ff;border-bottom-color:#e9d5ff;">
+        <span class="tbl-icon">📂</span>
+        <span class="tbl-name" style="color:#6d3a9e">inspection_sections</span>
+      </div>
+      <div class="tbl-desc">Groups items within a template. e.g. Brakes, Tyres, Fluids, Lights.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">template_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspection_templates.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">name</span><span class="col-type">VARCHAR(80)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">icon</span><span class="col-type">VARCHAR(10)</span><span class="col-note">nullable · emoji or icon code</span></div>
+      <div class="col-row"><span class="col-name">sort_order</span><span class="col-type">SMALLINT</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#faf5ff;border-bottom-color:#e9d5ff;">
+        <span class="tbl-icon">✏️</span>
+        <span class="tbl-name" style="color:#6d3a9e">inspection_items</span>
+      </div>
+      <div class="tbl-desc">Individual checklist questions. Belongs to a section within a template.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">section_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspection_sections.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">label</span><span class="col-type">VARCHAR(180)</span><span class="col-note"><span class="nn">NOT NULL</span> · e.g. "Brake Pad Thickness"</span></div>
+      <div class="col-row"><span class="col-name">input_type</span><span class="col-type">ENUM</span><span class="col-note">'traffic_light','numeric','text','yes_no','multi_choice'</span></div>
+      <div class="col-row"><span class="col-name">options</span><span class="col-type">JSON</span><span class="col-note">nullable · for multi_choice</span></div>
+      <div class="col-row"><span class="col-name">unit</span><span class="col-type">VARCHAR(20)</span><span class="col-note">nullable · e.g. "mm", "%" </span></div>
+      <div class="col-row"><span class="col-name">requires_photo</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">requires_note_on</span><span class="col-type">VARCHAR(20)</span><span class="col-note">nullable · 'warning','danger'</span></div>
+      <div class="col-row"><span class="col-name">help_text</span><span class="col-type">TEXT</span><span class="col-note">nullable · shown to technician</span></div>
+      <div class="col-row"><span class="col-name">sort_order</span><span class="col-type">SMALLINT</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#faf5ff;border-bottom-color:#e9d5ff;">
+        <span class="tbl-icon">🔬</span>
+        <span class="tbl-name" style="color:#6d3a9e">inspections</span>
+      </div>
+      <div class="tbl-desc">One inspection session per job. Links the job to the template used.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span> <span class="badge-uk">UK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span> · RESTRICT · unique (1 per job)</span></div>
+      <div class="col-row"><span class="col-name">template_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspection_templates.id</span></span></div>
+      <div class="col-row"><span class="col-name">technician_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span></span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">ENUM</span><span class="col-note">'draft','in_progress','submitted' · <span class="def">DEFAULT 'draft'</span></span></div>
+      <div class="col-row"><span class="col-name">offline_draft</span><span class="col-type">JSON</span><span class="col-note">nullable · temp offline data before sync</span></div>
+      <div class="col-row"><span class="col-name">started_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">submitted_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#faf5ff;border-bottom-color:#e9d5ff;">
+        <span class="tbl-icon">📝</span>
+        <span class="tbl-name" style="color:#6d3a9e">inspection_responses</span>
+      </div>
+      <div class="tbl-desc">Technician's answer for each checklist item. One row per item per inspection.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">inspection_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspections.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">item_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspection_items.id</span></span></div>
+      <div class="col-row"><span class="col-name">value</span><span class="col-type">VARCHAR(100)</span><span class="col-note">nullable · 'ok'|'warning'|'danger'|numeric|text</span></div>
+      <div class="col-row"><span class="col-name">urgency</span><span class="col-type">ENUM</span><span class="col-note">nullable · 'immediate','advisory','monitor'</span></div>
+      <div class="col-row"><span class="col-name">tech_notes</span><span class="col-type">TEXT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">media_count</span><span class="col-type">TINYINT</span><span class="col-note"><span class="def">DEFAULT 0</span> · cached count</span></div>
+      <div class="col-row"><span class="col-name">recorded_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">UK: <span>idx_ir_inspection_item</span> (inspection_id, item_id)</div>
+        <div class="idx-item">IDX: <span>idx_ir_urgency</span> (urgency)</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ MEDIA ═══════════ -->
+<section id="media" class="section">
+  <div class="section-header"><span class="section-num">05</span><h2>Media Files</h2></div>
+  <p class="section-desc">1 table. Photos and videos are first-class data — always linked to the inspection response that generated them.</p>
+  <div class="tables-grid">
+    <div class="tbl">
+      <div class="tbl-header" style="background:#fffbeb;border-bottom-color:#fed7aa;">
+        <span class="tbl-icon">📸</span>
+        <span class="tbl-name" style="color:#b45309">media_files</span>
+      </div>
+      <div class="tbl-desc">One row per uploaded photo or video. S3 key stored — never expose raw paths to clients.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span> <span class="badge-idx">IDX</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">inspection_response_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspection_responses.id</span> · nullable · SET NULL</span></div>
+      <div class="col-row"><span class="col-name">uploaded_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span></span></div>
+      <div class="col-row"><span class="col-name">s3_bucket</span><span class="col-type">VARCHAR(100)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">s3_key</span><span class="col-type">VARCHAR(500)</span><span class="col-note"><span class="nn">NOT NULL</span> · unique path in bucket</span></div>
+      <div class="col-row"><span class="col-name">file_type</span><span class="col-type">ENUM</span><span class="col-note">'image','video'</span></div>
+      <div class="col-row"><span class="col-name">mime_type</span><span class="col-type">VARCHAR(60)</span><span class="col-note">e.g. image/jpeg, video/mp4</span></div>
+      <div class="col-row"><span class="col-name">original_filename</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">size_bytes</span><span class="col-type">BIGINT UNSIGNED</span></div>
+      <div class="col-row"><span class="col-name">width_px</span><span class="col-type">SMALLINT UNSIGNED</span><span class="col-note">nullable · images only</span></div>
+      <div class="col-row"><span class="col-name">height_px</span><span class="col-type">SMALLINT UNSIGNED</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">duration_sec</span><span class="col-type">SMALLINT UNSIGNED</span><span class="col-note">nullable · videos only</span></div>
+      <div class="col-row"><span class="col-name">thumbnail_key</span><span class="col-type">VARCHAR(500)</span><span class="col-note">nullable · auto-generated thumbnail</span></div>
+      <div class="col-row"><span class="col-name">scan_status</span><span class="col-type">ENUM</span><span class="col-note">'pending','clean','flagged' · <span class="def">DEFAULT 'pending'</span></span></div>
+      <div class="col-row"><span class="col-name">is_deleted</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 0</span> · soft delete</span></div>
+      <div class="col-row"><span class="col-name">uploaded_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">IDX: <span>idx_media_job</span> (job_id)</div>
+        <div class="idx-item">IDX: <span>idx_media_response</span> (inspection_response_id)</div>
+        <div class="idx-item">IDX: <span>idx_media_scan</span> (scan_status) — for worker queue</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ PRICING ═══════════ -->
+<section id="pricing" class="section">
+  <div class="section-header"><span class="section-num">06</span><h2>Pricing &amp; Estimates</h2></div>
+  <p class="section-desc">2 tables. Labour, parts, and sublet lines. Tax applied from settings. Price history preserved — never overwrite.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#ecfeff;border-bottom-color:#a5f3fc;">
+        <span class="tbl-icon">💰</span>
+        <span class="tbl-name" style="color:#0e7490">estimate_lines</span>
+      </div>
+      <div class="tbl-desc">Each billable line item. Linked to a job and optionally to the inspection response that generated it.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span> <span class="badge-idx">IDX</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">inspection_response_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ inspection_responses.id</span> · nullable</span></div>
+      <div class="col-row"><span class="col-name">type</span><span class="col-type">ENUM</span><span class="col-note">'labour','part','sublet','fee'</span></div>
+      <div class="col-row"><span class="col-name">description</span><span class="col-type">TEXT</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">part_number</span><span class="col-type">VARCHAR(60)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">quantity</span><span class="col-type">DECIMAL(8,2)</span><span class="col-note"><span class="def">DEFAULT 1.00</span></span></div>
+      <div class="col-row"><span class="col-name">unit_price</span><span class="col-type">DECIMAL(10,2)</span><span class="col-note"><span class="nn">NOT NULL</span></span></div>
+      <div class="col-row"><span class="col-name">discount_pct</span><span class="col-type">DECIMAL(5,2)</span><span class="col-note"><span class="def">DEFAULT 0.00</span></span></div>
+      <div class="col-row"><span class="col-name">tax_rate_pct</span><span class="col-type">DECIMAL(5,2)</span><span class="col-note"><span class="nn">NOT NULL</span> · copied from tax_rules at time of creation</span></div>
+      <div class="col-row"><span class="col-name">line_total</span><span class="col-type">DECIMAL(10,2)</span><span class="col-note">computed: qty × unit × (1 - disc%)</span></div>
+      <div class="col-row"><span class="col-name">tax_amount</span><span class="col-type">DECIMAL(10,2)</span><span class="col-note">computed: line_total × tax_rate%</span></div>
+      <div class="col-row"><span class="col-name">is_recommended</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span> · 0 = included by default</span></div>
+      <div class="col-row"><span class="col-name">sort_order</span><span class="col-type">SMALLINT</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">added_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span></span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note">ON UPDATE NOW()</span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#ecfeff;border-bottom-color:#a5f3fc;">
+        <span class="tbl-icon">📜</span>
+        <span class="tbl-name" style="color:#0e7490">estimate_line_history</span>
+      </div>
+      <div class="tbl-desc">Snapshot of estimate line on every edit. Preserves price audit trail required for disputes.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">line_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ estimate_lines.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">snapshot</span><span class="col-type">JSON</span><span class="col-note">full row snapshot at time of change</span></div>
+      <div class="col-row"><span class="col-name">changed_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span></span></div>
+      <div class="col-row"><span class="col-name">changed_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ AUTHORISATION ═══════════ -->
+<section id="authorisation" class="section">
+  <div class="section-header"><span class="section-num">07</span><h2>Authorisation</h2></div>
+  <p class="section-desc">2 tables. Secure token-based customer approval. Decisions are immutable once recorded.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#fdf2f8;border-bottom-color:#f9a8d4;">
+        <span class="tbl-icon">🔐</span>
+        <span class="tbl-name" style="color:#be185d">approval_tokens</span>
+      </div>
+      <div class="tbl-desc">Secure single-use links sent to customers. Raw token never stored — only SHA-256 hash.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span> <span class="badge-idx">IDX</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">token_hash <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(64)</span><span class="col-note">SHA-256 hex of raw UUID token</span></div>
+      <div class="col-row"><span class="col-name">channel</span><span class="col-type">ENUM</span><span class="col-note">'sms','email','whatsapp'</span></div>
+      <div class="col-row"><span class="col-name">sent_to</span><span class="col-type">VARCHAR(255)</span><span class="col-note">email or phone sent to</span></div>
+      <div class="col-row"><span class="col-name">issued_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">expires_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="nn">NOT NULL</span> · typically +72h</span></div>
+      <div class="col-row"><span class="col-name">first_opened_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable · when portal first loaded</span></div>
+      <div class="col-row"><span class="col-name">used_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable · when decision submitted</span></div>
+      <div class="col-row"><span class="col-name">ip_address</span><span class="col-type">VARCHAR(45)</span><span class="col-note">nullable · customer IP at decision</span></div>
+      <div class="col-row"><span class="col-name">user_agent</span><span class="col-type">VARCHAR(500)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">is_revoked</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">revoked_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">revoked_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note">nullable · <span class="ref">→ users.id</span></span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#fdf2f8;border-bottom-color:#f9a8d4;">
+        <span class="tbl-icon">✅</span>
+        <span class="tbl-name" style="color:#be185d">authorisation_decisions</span>
+      </div>
+      <div class="tbl-desc">Customer's approve/decline per line item. One row per line per token. Immutable after insert.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">token_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ approval_tokens.id</span></span></div>
+      <div class="col-row"><span class="col-name">estimate_line_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ estimate_lines.id</span></span></div>
+      <div class="col-row"><span class="col-name">decision</span><span class="col-type">ENUM</span><span class="col-note">'approved','declined'</span></div>
+      <div class="col-row"><span class="col-name">customer_comment</span><span class="col-type">TEXT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">ip_address</span><span class="col-type">VARCHAR(45)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">decided_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">UK: <span>idx_ad_token_line</span> (token_id, estimate_line_id) — prevent duplicate decisions</div>
+        <div class="idx-item">IDX: <span>idx_ad_decision</span> (decision)</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ DEFERRED ═══════════ -->
+<section id="deferred" class="section">
+  <div class="section-header"><span class="section-num">08</span><h2>Deferred Work</h2></div>
+  <p class="section-desc">2 tables. Declined items become deferred work items. Tracked until booked or closed.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f0fdf4;border-bottom-color:#86efac;">
+        <span class="tbl-icon">📅</span>
+        <span class="tbl-name" style="color:#065f46">deferred_work</span>
+      </div>
+      <div class="tbl-desc">Auto-created when a customer declines an estimate line. Tracks follow-up lifecycle.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">customer_id <span class="badge-fk">FK</span> <span class="badge-idx">IDX</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ customers.id</span></span></div>
+      <div class="col-row"><span class="col-name">vehicle_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ vehicles.id</span></span></div>
+      <div class="col-row"><span class="col-name">original_job_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span></span></div>
+      <div class="col-row"><span class="col-name">estimate_line_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ estimate_lines.id</span></span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">ENUM</span><span class="col-note">'pending','reminded','booked','cancelled','closed' · <span class="def">DEFAULT 'pending'</span></span></div>
+      <div class="col-row"><span class="col-name">urgency</span><span class="col-type">ENUM</span><span class="col-note">'immediate','advisory','monitor' · copied from response</span></div>
+      <div class="col-row"><span class="col-name">estimated_value</span><span class="col-type">DECIMAL(10,2)</span><span class="col-note">copied from line total at creation</span></div>
+      <div class="col-row"><span class="col-name">remind_after</span><span class="col-type">DATE</span><span class="col-note">nullable · date to send first reminder</span></div>
+      <div class="col-row"><span class="col-name">remind_count</span><span class="col-type">TINYINT</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">last_reminded_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">booked_job_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note">nullable · <span class="ref">→ jobs.id</span> when rebooked</span></div>
+      <div class="col-row"><span class="col-name">closed_reason</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">IDX: <span>idx_dw_customer</span> (customer_id)</div>
+        <div class="idx-item">IDX: <span>idx_dw_status_remind</span> (status, remind_after) — for cron worker</div>
+      </div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f0fdf4;border-bottom-color:#86efac;">
+        <span class="tbl-icon">📬</span>
+        <span class="tbl-name" style="color:#065f46">deferred_work_reminders</span>
+      </div>
+      <div class="tbl-desc">Log of every reminder sent for deferred work. Tracks delivery and response.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">deferred_work_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ deferred_work.id</span> · CASCADE</span></div>
+      <div class="col-row"><span class="col-name">channel</span><span class="col-type">ENUM</span><span class="col-note">'sms','email','whatsapp'</span></div>
+      <div class="col-row"><span class="col-name">sent_to</span><span class="col-type">VARCHAR(255)</span></div>
+      <div class="col-row"><span class="col-name">delivery_status</span><span class="col-type">ENUM</span><span class="col-note">'queued','sent','delivered','failed'</span></div>
+      <div class="col-row"><span class="col-name">sent_at</span><span class="col-type">DATETIME</span></div>
+      <div class="col-row"><span class="col-name">delivered_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ NOTIFICATIONS ═══════════ -->
+<section id="notifications" class="section">
+  <div class="section-header"><span class="section-num">09</span><h2>Notifications</h2></div>
+  <p class="section-desc">2 tables. All outbound messages — SMS, email, WhatsApp, push. Templated and logged.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f5f3ff;border-bottom-color:#ddd6fe;">
+        <span class="tbl-icon">📝</span>
+        <span class="tbl-name" style="color:#7c3aed">notification_templates</span>
+      </div>
+      <div class="tbl-desc">Admin-configurable message templates with variable placeholders like {{customer_name}}.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">name <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(80)</span><span class="col-note">e.g. 'approval_request_sms'</span></div>
+      <div class="col-row"><span class="col-name">event_type</span><span class="col-type">VARCHAR(60)</span><span class="col-note">e.g. 'job.sent','deferred.reminder'</span></div>
+      <div class="col-row"><span class="col-name">channel</span><span class="col-type">ENUM</span><span class="col-note">'sms','email','whatsapp','push'</span></div>
+      <div class="col-row"><span class="col-name">subject</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable · email only</span></div>
+      <div class="col-row"><span class="col-name">body</span><span class="col-type">TEXT</span><span class="col-note">template with {{variables}}</span></div>
+      <div class="col-row"><span class="col-name">language</span><span class="col-type">VARCHAR(10)</span><span class="col-note"><span class="def">DEFAULT 'en'</span></span></div>
+      <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f5f3ff;border-bottom-color:#ddd6fe;">
+        <span class="tbl-icon">🔔</span>
+        <span class="tbl-name" style="color:#7c3aed">notifications</span>
+      </div>
+      <div class="tbl-desc">Log of every notification sent. Tracks delivery status and external provider ID.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">template_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ notification_templates.id</span> · nullable</span></div>
+      <div class="col-row"><span class="col-name">job_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ jobs.id</span> · nullable</span></div>
+      <div class="col-row"><span class="col-name">customer_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ customers.id</span> · nullable</span></div>
+      <div class="col-row"><span class="col-name">channel</span><span class="col-type">ENUM</span><span class="col-note">'sms','email','whatsapp','push'</span></div>
+      <div class="col-row"><span class="col-name">recipient</span><span class="col-type">VARCHAR(255)</span><span class="col-note">email or phone</span></div>
+      <div class="col-row"><span class="col-name">subject</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">body_rendered</span><span class="col-type">TEXT</span><span class="col-note">final rendered message</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">ENUM</span><span class="col-note">'queued','sent','delivered','failed','bounced'</span></div>
+      <div class="col-row"><span class="col-name">provider</span><span class="col-type">VARCHAR(30)</span><span class="col-note">nullable · 'twilio','resend','meta'</span></div>
+      <div class="col-row"><span class="col-name">provider_message_id</span><span class="col-type">VARCHAR(120)</span><span class="col-note">nullable · for delivery tracking</span></div>
+      <div class="col-row"><span class="col-name">error_message</span><span class="col-type">TEXT</span><span class="col-note">nullable · on failure</span></div>
+      <div class="col-row"><span class="col-name">queued_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="col-row"><span class="col-name">sent_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">delivered_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ AUDIT ═══════════ -->
+<section id="audit" class="section">
+  <div class="section-header"><span class="section-num">10</span><h2>Audit, Admin &amp; Settings</h2></div>
+  <p class="section-desc">5 tables. Audit trail, labour rates, tax rules, integration config, and integration event log.</p>
+  <div class="tables-grid">
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f9fafb;border-bottom-color:#d1d5db;">
+        <span class="tbl-icon">📊</span>
+        <span class="tbl-name" style="color:#374151">audit_logs</span>
+      </div>
+      <div class="tbl-desc">Append-only. Every create/update/delete on sensitive entities. Never delete rows.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">user_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span> · nullable (system events)</span></div>
+      <div class="col-row"><span class="col-name">entity_type</span><span class="col-type">VARCHAR(60)</span><span class="col-note">e.g. 'job','estimate_line','approval_token'</span></div>
+      <div class="col-row"><span class="col-name">entity_id</span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">action</span><span class="col-type">VARCHAR(30)</span><span class="col-note">'create','update','delete','status_change','send'</span></div>
+      <div class="col-row"><span class="col-name">old_values</span><span class="col-type">JSON</span><span class="col-note">nullable · before state</span></div>
+      <div class="col-row"><span class="col-name">new_values</span><span class="col-type">JSON</span><span class="col-note">nullable · after state</span></div>
+      <div class="col-row"><span class="col-name">ip_address</span><span class="col-type">VARCHAR(45)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">user_agent</span><span class="col-type">VARCHAR(500)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span><span class="col-note"><span class="def">DEFAULT NOW()</span></span></div>
+      <div class="tbl-indexes">
+        <div class="idx-label">Indexes</div>
+        <div class="idx-item">IDX: <span>idx_al_entity</span> (entity_type, entity_id)</div>
+        <div class="idx-item">IDX: <span>idx_al_user</span> (user_id)</div>
+        <div class="idx-item">IDX: <span>idx_al_created</span> (created_at DESC)</div>
+      </div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f9fafb;border-bottom-color:#d1d5db;">
+        <span class="tbl-icon">⚙️</span>
+        <span class="tbl-name" style="color:#374151">settings</span>
+      </div>
+      <div class="tbl-desc">Key-value store for workshop-level settings. Simple and extensible.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">key <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(100)</span><span class="col-note">e.g. 'workshop_name','default_tax_rate'</span></div>
+      <div class="col-row"><span class="col-name">value</span><span class="col-type">TEXT</span><span class="col-note">stored as string, parsed by app</span></div>
+      <div class="col-row"><span class="col-name">value_type</span><span class="col-type">ENUM</span><span class="col-note">'string','number','boolean','json'</span></div>
+      <div class="col-row"><span class="col-name">description</span><span class="col-type">VARCHAR(255)</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">updated_by <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ users.id</span></span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span><span class="col-note">ON UPDATE NOW()</span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#f9fafb;border-bottom-color:#d1d5db;">
+        <span class="tbl-icon">💵</span>
+        <span class="tbl-name" style="color:#374151">labour_rates</span>
+      </div>
+      <div class="tbl-desc">Named labour rate categories. Applied when advisor adds labour lines.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">name</span><span class="col-type">VARCHAR(80)</span><span class="col-note">e.g. 'Standard','Express','Specialist'</span></div>
+      <div class="col-row"><span class="col-name">rate_per_hour</span><span class="col-type">DECIMAL(8,2)</span></div>
+      <div class="col-row"><span class="col-name">currency</span><span class="col-type">CHAR(3)</span><span class="col-note"><span class="def">DEFAULT 'AED'</span></span></div>
+      <div class="col-row"><span class="col-name">is_active</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#fff7ed;border-bottom-color:#fed7aa;">
+        <span class="tbl-icon">🔌</span>
+        <span class="tbl-name" style="color:#9a3412">integrations</span>
+      </div>
+      <div class="tbl-desc">Config for each external integration. Credentials stored encrypted.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">name <span class="badge-uk">UK</span></span><span class="col-type">VARCHAR(60)</span><span class="col-note">'dms_xyz','twilio','resend','vin_api'</span></div>
+      <div class="col-row"><span class="col-name">type</span><span class="col-type">ENUM</span><span class="col-note">'dms','sms','email','whatsapp','vin','parts'</span></div>
+      <div class="col-row"><span class="col-name">config</span><span class="col-type">JSON</span><span class="col-note">encrypted at rest · API keys, endpoints</span></div>
+      <div class="col-row"><span class="col-name">is_enabled</span><span class="col-type">TINYINT(1)</span><span class="col-note"><span class="def">DEFAULT 0</span></span></div>
+      <div class="col-row"><span class="col-name">last_tested_at</span><span class="col-type">DATETIME</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">last_test_status</span><span class="col-type">ENUM</span><span class="col-note">nullable · 'ok','failed'</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span></div>
+      <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">DATETIME</span></div>
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-header" style="background:#fff7ed;border-bottom-color:#fed7aa;">
+        <span class="tbl-icon">📡</span>
+        <span class="tbl-name" style="color:#9a3412">integration_events</span>
+      </div>
+      <div class="tbl-desc">Log of every outbound/inbound integration call. Used for debugging and retries.</div>
+      <div class="col-row pk-row"><span class="col-name">id <span class="badge-pk">PK</span></span><span class="col-type">CHAR(36)</span></div>
+      <div class="col-row"><span class="col-name">integration_id <span class="badge-fk">FK</span></span><span class="col-type">CHAR(36)</span><span class="col-note"><span class="ref">→ integrations.id</span></span></div>
+      <div class="col-row"><span class="col-name">event_type</span><span class="col-type">VARCHAR(60)</span><span class="col-note">e.g. 'job.push_to_dms','vin.lookup'</span></div>
+      <div class="col-row"><span class="col-name">direction</span><span class="col-type">ENUM</span><span class="col-note">'outbound','inbound'</span></div>
+      <div class="col-row"><span class="col-name">payload</span><span class="col-type">JSON</span><span class="col-note">request sent</span></div>
+      <div class="col-row"><span class="col-name">response</span><span class="col-type">JSON</span><span class="col-note">nullable · response received</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">ENUM</span><span class="col-note">'success','failed','retrying'</span></div>
+      <div class="col-row"><span class="col-name">http_status</span><span class="col-type">SMALLINT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">attempt_count</span><span class="col-type">TINYINT</span><span class="col-note"><span class="def">DEFAULT 1</span></span></div>
+      <div class="col-row"><span class="col-name">error_message</span><span class="col-type">TEXT</span><span class="col-note">nullable</span></div>
+      <div class="col-row"><span class="col-name">created_at</span><span class="col-type">DATETIME</span></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════ PRISMA ═══════════ -->
+<section id="prisma" class="section">
+  <div class="section-header"><span class="section-num">11</span><h2>Prisma Schema</h2></div>
+  <p class="section-desc">Drop this into <code style="font-family:var(--mono);font-size:12px;background:#f0ede6;padding:1px 5px;border-radius:2px">prisma/schema.prisma</code>. Run <code style="font-family:var(--mono);font-size:12px;background:#f0ede6;padding:1px 5px;border-radius:2px">npx prisma migrate dev</code> to create all tables.</p>
+
+  <div class="note-box">⚠️ <span>MariaDB uses <code style="font-family:var(--mono);font-size:11px">provider = "mysql"</code> in Prisma. UUIDs use <code style="font-family:var(--mono);font-size:11px">@default(uuid())</code> — Prisma generates them in JS before insert. Timestamps use <code style="font-family:var(--mono);font-size:11px">@updatedAt</code> for auto-update fields.</span></div>
+
+  <div class="prisma-block">
+    <div class="prisma-header">prisma/schema.prisma — Core Models</div>
+    <div class="prisma-code"><span class="cm">// ── DATASOURCE ──────────────────────────────────────</span>
+<span class="kw">datasource</span> <span class="st">db</span> {
+  provider = <span class="st">"mysql"</span>
+  url      = <span class="at">env</span>(<span class="st">"DATABASE_URL"</span>)
+}
+
+<span class="kw">generator</span> <span class="st">client</span> {
+  provider = <span class="st">"prisma-client-js"</span>
+}
+
+<span class="cm">// ── ENUMS ────────────────────────────────────────────</span>
+<span class="kw">enum</span> <span class="ty">JobStatus</span> {
+  <span class="nu">new</span>
+  <span class="nu">inspection</span>
+  <span class="nu">priced</span>
+  <span class="nu">sent</span>
+  <span class="nu">approved</span>
+  <span class="nu">partial</span>
+  <span class="nu">declined</span>
+  <span class="nu">completed</span>
+  <span class="nu">cancelled</span>
+}
+
+<span class="kw">enum</span> <span class="ty">PreferredContact</span> { <span class="nu">email</span>  <span class="nu">sms</span>  <span class="nu">whatsapp</span> }
+<span class="kw">enum</span> <span class="ty">VehicleType</span>      { <span class="nu">sedan</span>  <span class="nu">suv</span>  <span class="nu">truck</span>  <span class="nu">van</span>  <span class="nu">ute</span>  <span class="nu">other</span> }
+<span class="kw">enum</span> <span class="ty">Urgency</span>           { <span class="nu">immediate</span>  <span class="nu">advisory</span>  <span class="nu">monitor</span> }
+<span class="kw">enum</span> <span class="ty">EstimateLineType</span>  { <span class="nu">labour</span>  <span class="nu">part</span>  <span class="nu">sublet</span>  <span class="nu">fee</span> }
+<span class="kw">enum</span> <span class="ty">NotifChannel</span>      { <span class="nu">sms</span>  <span class="nu">email</span>  <span class="nu">whatsapp</span>  <span class="nu">push</span> }
+<span class="kw">enum</span> <span class="ty">NotifStatus</span>       { <span class="nu">queued</span>  <span class="nu">sent</span>  <span class="nu">delivered</span>  <span class="nu">failed</span>  <span class="nu">bounced</span> }
+<span class="kw">enum</span> <span class="ty">Decision</span>          { <span class="nu">approved</span>  <span class="nu">declined</span> }
+<span class="kw">enum</span> <span class="ty">DeferredStatus</span>    { <span class="nu">pending</span>  <span class="nu">reminded</span>  <span class="nu">booked</span>  <span class="nu">cancelled</span>  <span class="nu">closed</span> }
+<span class="kw">enum</span> <span class="ty">InspStatus</span>        { <span class="nu">draft</span>  <span class="nu">in_progress</span>  <span class="nu">submitted</span> }
+<span class="kw">enum</span> <span class="ty">ScanStatus</span>        { <span class="nu">pending</span>  <span class="nu">clean</span>  <span class="nu">flagged</span> }
+
+<span class="cm">// ── AUTH ─────────────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">Role</span> {
+  <span class="pk">id</span>          <span class="ty">String</span>   <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  name        <span class="ty">String</span>   <span class="at">@unique</span> <span class="at">@db.VarChar</span>(<span class="nu">60</span>)
+  permissions <span class="ty">Json</span>
+  description <span class="ty">String?</span>  <span class="at">@db.VarChar</span>(<span class="nu">255</span>)
+  createdAt   <span class="ty">DateTime</span> <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  users       <span class="ty">User</span>[]
+  <span class="at">@@map</span>(<span class="st">"roles"</span>)
+}
+
+<span class="kw">model</span> <span class="ty">User</span> {
+  <span class="pk">id</span>            <span class="ty">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  roleId        <span class="ty">String</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"role_id"</span>)
+  name          <span class="ty">String</span>    <span class="at">@db.VarChar</span>(<span class="nu">120</span>)
+  email         <span class="ty">String</span>    <span class="at">@unique</span> <span class="at">@db.VarChar</span>(<span class="nu">255</span>)
+  passwordHash  <span class="ty">String</span>    <span class="at">@db.VarChar</span>(<span class="nu">255</span>) <span class="at">@map</span>(<span class="st">"password_hash"</span>)
+  isActive      <span class="ty">Boolean</span>   <span class="at">@default</span>(<span class="nu">true</span>) <span class="at">@map</span>(<span class="st">"is_active"</span>)
+  avatarUrl     <span class="ty">String?</span>   <span class="at">@db.VarChar</span>(<span class="nu">500</span>) <span class="at">@map</span>(<span class="st">"avatar_url"</span>)
+  lastLoginAt   <span class="ty">DateTime?</span> <span class="at">@map</span>(<span class="st">"last_login_at"</span>)
+  createdAt     <span class="ty">DateTime</span>  <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  updatedAt     <span class="ty">DateTime</span>  <span class="at">@updatedAt</span> <span class="at">@map</span>(<span class="st">"updated_at"</span>)
+  role          <span class="ty">Role</span>      <span class="at">@relation</span>(fields: [roleId], references: [id])
+  refreshTokens <span class="ty">RefreshToken</span>[]
+  advisorJobs   <span class="ty">Job</span>[]    <span class="at">@relation</span>(<span class="st">"JobAdvisor"</span>)
+  techJobs      <span class="ty">Job</span>[]    <span class="at">@relation</span>(<span class="st">"JobTechnician"</span>)
+  inspections   <span class="ty">Inspection</span>[]
+  mediaFiles    <span class="ty">MediaFile</span>[]
+  estimateLines <span class="ty">EstimateLine</span>[]
+  auditLogs     <span class="ty">AuditLog</span>[]
+  <span class="at">@@map</span>(<span class="st">"users"</span>)
+}
+
+<span class="kw">model</span> <span class="ty">RefreshToken</span> {
+  <span class="pk">id</span>         <span class="ty">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  userId     <span class="ty">String</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"user_id"</span>)
+  tokenHash  <span class="ty">String</span>    <span class="at">@unique</span> <span class="at">@db.VarChar</span>(<span class="nu">255</span>) <span class="at">@map</span>(<span class="st">"token_hash"</span>)
+  deviceInfo <span class="ty">String?</span>   <span class="at">@db.VarChar</span>(<span class="nu">255</span>) <span class="at">@map</span>(<span class="st">"device_info"</span>)
+  ipAddress  <span class="ty">String?</span>   <span class="at">@db.VarChar</span>(<span class="nu">45</span>) <span class="at">@map</span>(<span class="st">"ip_address"</span>)
+  expiresAt  <span class="ty">DateTime</span>  <span class="at">@map</span>(<span class="st">"expires_at"</span>)
+  revokedAt  <span class="ty">DateTime?</span> <span class="at">@map</span>(<span class="st">"revoked_at"</span>)
+  createdAt  <span class="ty">DateTime</span>  <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  user       <span class="ty">User</span>      <span class="at">@relation</span>(fields: [userId], references: [id], onDelete: Cascade)
+  <span class="at">@@index</span>([userId])
+  <span class="at">@@index</span>([expiresAt])
+  <span class="at">@@map</span>(<span class="st">"refresh_tokens"</span>)
+}
+
+<span class="cm">// ── CUSTOMERS ────────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">Customer</span> {
+  <span class="pk">id</span>               <span class="ty">String</span>           <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  name             <span class="ty">String</span>           <span class="at">@db.VarChar</span>(<span class="nu">120</span>)
+  email            <span class="ty">String?</span>          <span class="at">@db.VarChar</span>(<span class="nu">255</span>)
+  phone            <span class="ty">String?</span>          <span class="at">@db.VarChar</span>(<span class="nu">30</span>)
+  preferredContact <span class="ty">PreferredContact</span> <span class="at">@default</span>(<span class="nu">sms</span>) <span class="at">@map</span>(<span class="st">"preferred_contact"</span>)
+  language         <span class="ty">String</span>           <span class="at">@default</span>(<span class="st">"en"</span>) <span class="at">@db.VarChar</span>(<span class="nu">10</span>)
+  dmsCustomerId    <span class="ty">String?</span>          <span class="at">@db.VarChar</span>(<span class="nu">60</span>) <span class="at">@map</span>(<span class="st">"dms_customer_id"</span>)
+  notes            <span class="ty">String?</span>          <span class="at">@db.Text</span>
+  isActive         <span class="ty">Boolean</span>          <span class="at">@default</span>(<span class="nu">true</span>) <span class="at">@map</span>(<span class="st">"is_active"</span>)
+  createdAt        <span class="ty">DateTime</span>         <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  updatedAt        <span class="ty">DateTime</span>         <span class="at">@updatedAt</span> <span class="at">@map</span>(<span class="st">"updated_at"</span>)
+  vehicles         <span class="ty">Vehicle</span>[]
+  jobs             <span class="ty">Job</span>[]
+  deferredWork     <span class="ty">DeferredWork</span>[]
+  notifications    <span class="ty">Notification</span>[]
+  <span class="at">@@index</span>([email])
+  <span class="at">@@index</span>([phone])
+  <span class="at">@@map</span>(<span class="st">"customers"</span>)
+}
+
+<span class="kw">model</span> <span class="ty">Vehicle</span> {
+  <span class="pk">id</span>           <span class="ty">String</span>      <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  customerId   <span class="ty">String</span>      <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"customer_id"</span>)
+  vin          <span class="ty">String?</span>     <span class="at">@unique</span> <span class="at">@db.VarChar</span>(<span class="nu">17</span>)
+  make         <span class="ty">String</span>      <span class="at">@db.VarChar</span>(<span class="nu">60</span>)
+  model        <span class="ty">String</span>      <span class="at">@db.VarChar</span>(<span class="nu">60</span>)
+  year         <span class="ty">Int</span>         <span class="at">@db.SmallInt</span>
+  plate        <span class="ty">String?</span>     <span class="at">@db.VarChar</span>(<span class="nu">20</span>)
+  color        <span class="ty">String?</span>     <span class="at">@db.VarChar</span>(<span class="nu">40</span>)
+  odometerKm   <span class="ty">Int?</span>        <span class="at">@map</span>(<span class="st">"odometer_km"</span>)
+  vehicleType  <span class="ty">VehicleType</span> <span class="at">@default</span>(<span class="nu">sedan</span>) <span class="at">@map</span>(<span class="st">"vehicle_type"</span>)
+  engine       <span class="ty">String?</span>     <span class="at">@db.VarChar</span>(<span class="nu">60</span>)
+  dmsVehicleId <span class="ty">String?</span>     <span class="at">@db.VarChar</span>(<span class="nu">60</span>) <span class="at">@map</span>(<span class="st">"dms_vehicle_id"</span>)
+  createdAt    <span class="ty">DateTime</span>    <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  updatedAt    <span class="ty">DateTime</span>    <span class="at">@updatedAt</span> <span class="at">@map</span>(<span class="st">"updated_at"</span>)
+  customer     <span class="ty">Customer</span>    <span class="at">@relation</span>(fields: [customerId], references: [id])
+  jobs         <span class="ty">Job</span>[]
+  deferredWork <span class="ty">DeferredWork</span>[]
+  <span class="at">@@index</span>([customerId])
+  <span class="at">@@map</span>(<span class="st">"vehicles"</span>)
+}
+
+<span class="cm">// ── JOBS ─────────────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">Job</span> {
+  <span class="pk">id</span>              <span class="ty">String</span>     <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  jobNumber       <span class="ty">String</span>     <span class="at">@unique</span> <span class="at">@db.VarChar</span>(<span class="nu">20</span>) <span class="at">@map</span>(<span class="st">"job_number"</span>)
+  customerId      <span class="ty">String</span>     <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"customer_id"</span>)
+  vehicleId       <span class="ty">String</span>     <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"vehicle_id"</span>)
+  advisorId       <span class="ty">String?</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"advisor_id"</span>)
+  technicianId    <span class="ty">String?</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"technician_id"</span>)
+  status          <span class="ty">JobStatus</span>  <span class="at">@default</span>(<span class="nu">new</span>)
+  customerConcern <span class="ty">String?</span>    <span class="at">@db.Text</span> <span class="at">@map</span>(<span class="st">"customer_concern"</span>)
+  internalNotes   <span class="ty">String?</span>    <span class="at">@db.Text</span> <span class="at">@map</span>(<span class="st">"internal_notes"</span>)
+  odometerIn      <span class="ty">Int?</span>       <span class="at">@map</span>(<span class="st">"odometer_in"</span>)
+  promisedAt      <span class="ty">DateTime?</span>  <span class="at">@map</span>(<span class="st">"promised_at"</span>)
+  dmsRoNumber     <span class="ty">String?</span>    <span class="at">@db.VarChar</span>(<span class="nu">60</span>) <span class="at">@map</span>(<span class="st">"dms_ro_number"</span>)
+  dmsSyncedAt     <span class="ty">DateTime?</span>  <span class="at">@map</span>(<span class="st">"dms_synced_at"</span>)
+  completedAt     <span class="ty">DateTime?</span>  <span class="at">@map</span>(<span class="st">"completed_at"</span>)
+  createdAt       <span class="ty">DateTime</span>   <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  updatedAt       <span class="ty">DateTime</span>   <span class="at">@updatedAt</span> <span class="at">@map</span>(<span class="st">"updated_at"</span>)
+  customer        <span class="ty">Customer</span>   <span class="at">@relation</span>(fields: [customerId], references: [id])
+  vehicle         <span class="ty">Vehicle</span>    <span class="at">@relation</span>(fields: [vehicleId], references: [id])
+  advisor         <span class="ty">User?</span>      <span class="at">@relation</span>(<span class="st">"JobAdvisor"</span>, fields: [advisorId], references: [id])
+  technician      <span class="ty">User?</span>      <span class="at">@relation</span>(<span class="st">"JobTechnician"</span>, fields: [technicianId], references: [id])
+  statusHistory   <span class="ty">JobStatusHistory</span>[]
+  inspection      <span class="ty">Inspection?</span>
+  estimateLines   <span class="ty">EstimateLine</span>[]
+  approvalTokens  <span class="ty">ApprovalToken</span>[]
+  mediaFiles      <span class="ty">MediaFile</span>[]
+  notifications   <span class="ty">Notification</span>[]
+  deferredWork    <span class="ty">DeferredWork</span>[]
+  <span class="at">@@index</span>([customerId])
+  <span class="at">@@index</span>([vehicleId])
+  <span class="at">@@index</span>([status])
+  <span class="at">@@index</span>([createdAt(sort: Desc)])
+  <span class="at">@@map</span>(<span class="st">"jobs"</span>)
+}
+
+<span class="kw">model</span> <span class="ty">JobStatusHistory</span> {
+  <span class="pk">id</span>         <span class="ty">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  jobId      <span class="ty">String</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"job_id"</span>)
+  fromStatus <span class="ty">String?</span>   <span class="at">@db.VarChar</span>(<span class="nu">20</span>) <span class="at">@map</span>(<span class="st">"from_status"</span>)
+  toStatus   <span class="ty">String</span>    <span class="at">@db.VarChar</span>(<span class="nu">20</span>) <span class="at">@map</span>(<span class="st">"to_status"</span>)
+  changedBy  <span class="ty">String?</span>   <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"changed_by"</span>)
+  reason     <span class="ty">String?</span>   <span class="at">@db.Text</span>
+  changedAt  <span class="ty">DateTime</span>  <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"changed_at"</span>)
+  job        <span class="ty">Job</span>       <span class="at">@relation</span>(fields: [jobId], references: [id], onDelete: Cascade)
+  <span class="at">@@index</span>([jobId])
+  <span class="at">@@map</span>(<span class="st">"job_status_history"</span>)
+}
+
+<span class="cm">// ── INSPECTIONS ──────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">InspectionTemplate</span> {
+  <span class="pk">id</span>          <span class="ty">String</span>   <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  name        <span class="ty">String</span>   <span class="at">@db.VarChar</span>(<span class="nu">120</span>)
+  vehicleType <span class="ty">String</span>   <span class="at">@default</span>(<span class="st">"all"</span>) <span class="at">@db.VarChar</span>(<span class="nu">20</span>) <span class="at">@map</span>(<span class="st">"vehicle_type"</span>)
+  description <span class="ty">String?</span>  <span class="at">@db.Text</span>
+  isDefault   <span class="ty">Boolean</span>  <span class="at">@default</span>(<span class="nu">false</span>) <span class="at">@map</span>(<span class="st">"is_default"</span>)
+  isActive    <span class="ty">Boolean</span>  <span class="at">@default</span>(<span class="nu">true</span>) <span class="at">@map</span>(<span class="st">"is_active"</span>)
+  createdBy   <span class="ty">String</span>   <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"created_by"</span>)
+  createdAt   <span class="ty">DateTime</span> <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  updatedAt   <span class="ty">DateTime</span> <span class="at">@updatedAt</span> <span class="at">@map</span>(<span class="st">"updated_at"</span>)
+  sections    <span class="ty">InspectionSection</span>[]
+  inspections <span class="ty">Inspection</span>[]
+  <span class="at">@@map</span>(<span class="st">"inspection_templates"</span>)
+}
+
+<span class="kw">model</span> <span class="ty">Inspection</span> {
+  <span class="pk">id</span>           <span class="ty">String</span>             <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  jobId        <span class="ty">String</span>             <span class="at">@unique</span> <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"job_id"</span>)
+  templateId   <span class="ty">String</span>             <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"template_id"</span>)
+  technicianId <span class="ty">String</span>             <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"technician_id"</span>)
+  status       <span class="ty">InspStatus</span>         <span class="at">@default</span>(<span class="nu">draft</span>)
+  offlineDraft <span class="ty">Json?</span>              <span class="at">@map</span>(<span class="st">"offline_draft"</span>)
+  startedAt    <span class="ty">DateTime?</span>          <span class="at">@map</span>(<span class="st">"started_at"</span>)
+  submittedAt  <span class="ty">DateTime?</span>          <span class="at">@map</span>(<span class="st">"submitted_at"</span>)
+  createdAt    <span class="ty">DateTime</span>           <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  job          <span class="ty">Job</span>                <span class="at">@relation</span>(fields: [jobId], references: [id])
+  template     <span class="ty">InspectionTemplate</span> <span class="at">@relation</span>(fields: [templateId], references: [id])
+  technician   <span class="ty">User</span>               <span class="at">@relation</span>(fields: [technicianId], references: [id])
+  responses    <span class="ty">InspectionResponse</span>[]
+  <span class="at">@@map</span>(<span class="st">"inspections"</span>)
+}
+
+<span class="cm">// ── ESTIMATE LINES ───────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">EstimateLine</span> {
+  <span class="pk">id</span>                   <span class="ty">String</span>           <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  jobId                <span class="ty">String</span>           <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"job_id"</span>)
+  inspectionResponseId <span class="ty">String?</span>          <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"inspection_response_id"</span>)
+  type                 <span class="ty">EstimateLineType</span>
+  description          <span class="ty">String</span>           <span class="at">@db.Text</span>
+  partNumber           <span class="ty">String?</span>          <span class="at">@db.VarChar</span>(<span class="nu">60</span>) <span class="at">@map</span>(<span class="st">"part_number"</span>)
+  quantity             <span class="ty">Decimal</span>          <span class="at">@default</span>(<span class="nu">1</span>) <span class="at">@db.Decimal</span>(<span class="nu">8</span>,<span class="nu">2</span>)
+  unitPrice            <span class="ty">Decimal</span>          <span class="at">@db.Decimal</span>(<span class="nu">10</span>,<span class="nu">2</span>) <span class="at">@map</span>(<span class="st">"unit_price"</span>)
+  discountPct          <span class="ty">Decimal</span>          <span class="at">@default</span>(<span class="nu">0</span>) <span class="at">@db.Decimal</span>(<span class="nu">5</span>,<span class="nu">2</span>) <span class="at">@map</span>(<span class="st">"discount_pct"</span>)
+  taxRatePct           <span class="ty">Decimal</span>          <span class="at">@db.Decimal</span>(<span class="nu">5</span>,<span class="nu">2</span>) <span class="at">@map</span>(<span class="st">"tax_rate_pct"</span>)
+  lineTotal            <span class="ty">Decimal</span>          <span class="at">@db.Decimal</span>(<span class="nu">10</span>,<span class="nu">2</span>) <span class="at">@map</span>(<span class="st">"line_total"</span>)
+  taxAmount            <span class="ty">Decimal</span>          <span class="at">@db.Decimal</span>(<span class="nu">10</span>,<span class="nu">2</span>) <span class="at">@map</span>(<span class="st">"tax_amount"</span>)
+  isRecommended        <span class="ty">Boolean</span>          <span class="at">@default</span>(<span class="nu">true</span>) <span class="at">@map</span>(<span class="st">"is_recommended"</span>)
+  sortOrder            <span class="ty">Int</span>              <span class="at">@default</span>(<span class="nu">0</span>) <span class="at">@map</span>(<span class="st">"sort_order"</span>) <span class="at">@db.SmallInt</span>
+  addedBy              <span class="ty">String</span>           <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"added_by"</span>)
+  createdAt            <span class="ty">DateTime</span>         <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  updatedAt            <span class="ty">DateTime</span>         <span class="at">@updatedAt</span> <span class="at">@map</span>(<span class="st">"updated_at"</span>)
+  job                  <span class="ty">Job</span>              <span class="at">@relation</span>(fields: [jobId], references: [id], onDelete: Cascade)
+  addedByUser          <span class="ty">User</span>             <span class="at">@relation</span>(fields: [addedBy], references: [id])
+  authDecisions        <span class="ty">AuthorisationDecision</span>[]
+  deferredWork         <span class="ty">DeferredWork</span>[]
+  history              <span class="ty">EstimateLineHistory</span>[]
+  <span class="at">@@index</span>([jobId])
+  <span class="at">@@map</span>(<span class="st">"estimate_lines"</span>)
+}
+
+<span class="cm">// ── AUTHORISATION ─────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">ApprovalToken</span> {
+  <span class="pk">id</span>            <span class="ty">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  jobId         <span class="ty">String</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"job_id"</span>)
+  tokenHash     <span class="ty">String</span>    <span class="at">@unique</span> <span class="at">@db.VarChar</span>(<span class="nu">64</span>) <span class="at">@map</span>(<span class="st">"token_hash"</span>)
+  channel       <span class="ty">NotifChannel</span>
+  sentTo        <span class="ty">String</span>    <span class="at">@db.VarChar</span>(<span class="nu">255</span>) <span class="at">@map</span>(<span class="st">"sent_to"</span>)
+  issuedAt      <span class="ty">DateTime</span>  <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"issued_at"</span>)
+  expiresAt     <span class="ty">DateTime</span>  <span class="at">@map</span>(<span class="st">"expires_at"</span>)
+  firstOpenedAt <span class="ty">DateTime?</span> <span class="at">@map</span>(<span class="st">"first_opened_at"</span>)
+  usedAt        <span class="ty">DateTime?</span> <span class="at">@map</span>(<span class="st">"used_at"</span>)
+  ipAddress     <span class="ty">String?</span>   <span class="at">@db.VarChar</span>(<span class="nu">45</span>) <span class="at">@map</span>(<span class="st">"ip_address"</span>)
+  isRevoked     <span class="ty">Boolean</span>   <span class="at">@default</span>(<span class="nu">false</span>) <span class="at">@map</span>(<span class="st">"is_revoked"</span>)
+  revokedAt     <span class="ty">DateTime?</span> <span class="at">@map</span>(<span class="st">"revoked_at"</span>)
+  job           <span class="ty">Job</span>       <span class="at">@relation</span>(fields: [jobId], references: [id], onDelete: Cascade)
+  decisions     <span class="ty">AuthorisationDecision</span>[]
+  <span class="at">@@index</span>([jobId])
+  <span class="at">@@map</span>(<span class="st">"approval_tokens"</span>)
+}
+
+<span class="kw">model</span> <span class="ty">AuthorisationDecision</span> {
+  <span class="pk">id</span>             <span class="ty">String</span>        <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  tokenId        <span class="ty">String</span>        <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"token_id"</span>)
+  estimateLineId <span class="ty">String</span>        <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"estimate_line_id"</span>)
+  decision       <span class="ty">Decision</span>
+  customerComment <span class="ty">String?</span>      <span class="at">@db.Text</span> <span class="at">@map</span>(<span class="st">"customer_comment"</span>)
+  ipAddress      <span class="ty">String?</span>       <span class="at">@db.VarChar</span>(<span class="nu">45</span>) <span class="at">@map</span>(<span class="st">"ip_address"</span>)
+  decidedAt      <span class="ty">DateTime</span>      <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"decided_at"</span>)
+  token          <span class="ty">ApprovalToken</span> <span class="at">@relation</span>(fields: [tokenId], references: [id])
+  estimateLine   <span class="ty">EstimateLine</span>  <span class="at">@relation</span>(fields: [estimateLineId], references: [id])
+  <span class="at">@@unique</span>([tokenId, estimateLineId])
+  <span class="at">@@map</span>(<span class="st">"authorisation_decisions"</span>)
+}
+
+<span class="cm">// ── DEFERRED WORK ─────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">DeferredWork</span> {
+  <span class="pk">id</span>             <span class="ty">String</span>         <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  customerId     <span class="ty">String</span>         <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"customer_id"</span>)
+  vehicleId      <span class="ty">String</span>         <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"vehicle_id"</span>)
+  originalJobId  <span class="ty">String</span>         <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"original_job_id"</span>)
+  estimateLineId <span class="ty">String</span>         <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"estimate_line_id"</span>)
+  status         <span class="ty">DeferredStatus</span> <span class="at">@default</span>(<span class="nu">pending</span>)
+  urgency        <span class="ty">Urgency?</span>
+  estimatedValue <span class="ty">Decimal</span>        <span class="at">@db.Decimal</span>(<span class="nu">10</span>,<span class="nu">2</span>) <span class="at">@map</span>(<span class="st">"estimated_value"</span>)
+  remindAfter    <span class="ty">DateTime?</span>      <span class="at">@map</span>(<span class="st">"remind_after"</span>)
+  remindCount    <span class="ty">Int</span>            <span class="at">@default</span>(<span class="nu">0</span>) <span class="at">@map</span>(<span class="st">"remind_count"</span>) <span class="at">@db.TinyInt</span>
+  lastRemindedAt <span class="ty">DateTime?</span>      <span class="at">@map</span>(<span class="st">"last_reminded_at"</span>)
+  bookedJobId    <span class="ty">String?</span>        <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"booked_job_id"</span>)
+  closedReason   <span class="ty">String?</span>        <span class="at">@db.VarChar</span>(<span class="nu">255</span>) <span class="at">@map</span>(<span class="st">"closed_reason"</span>)
+  createdAt      <span class="ty">DateTime</span>       <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  customer       <span class="ty">Customer</span>       <span class="at">@relation</span>(fields: [customerId], references: [id])
+  vehicle        <span class="ty">Vehicle</span>        <span class="at">@relation</span>(fields: [vehicleId], references: [id])
+  originalJob    <span class="ty">Job</span>            <span class="at">@relation</span>(fields: [originalJobId], references: [id])
+  estimateLine   <span class="ty">EstimateLine</span>   <span class="at">@relation</span>(fields: [estimateLineId], references: [id])
+  reminders      <span class="ty">DeferredWorkReminder</span>[]
+  <span class="at">@@index</span>([customerId])
+  <span class="at">@@index</span>([status, remindAfter])
+  <span class="at">@@map</span>(<span class="st">"deferred_work"</span>)
+}
+
+<span class="cm">// ── AUDIT LOGS ───────────────────────────────────────</span>
+<span class="kw">model</span> <span class="ty">AuditLog</span> {
+  <span class="pk">id</span>         <span class="ty">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="nu">uuid</span>()) <span class="at">@db.Char</span>(<span class="nu">36</span>)
+  userId     <span class="ty">String?</span>   <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"user_id"</span>)
+  entityType <span class="ty">String</span>    <span class="at">@db.VarChar</span>(<span class="nu">60</span>) <span class="at">@map</span>(<span class="st">"entity_type"</span>)
+  entityId   <span class="ty">String</span>    <span class="at">@db.Char</span>(<span class="nu">36</span>) <span class="at">@map</span>(<span class="st">"entity_id"</span>)
+  action     <span class="ty">String</span>    <span class="at">@db.VarChar</span>(<span class="nu">30</span>)
+  oldValues  <span class="ty">Json?</span>     <span class="at">@map</span>(<span class="st">"old_values"</span>)
+  newValues  <span class="ty">Json?</span>     <span class="at">@map</span>(<span class="st">"new_values"</span>)
+  ipAddress  <span class="ty">String?</span>   <span class="at">@db.VarChar</span>(<span class="nu">45</span>) <span class="at">@map</span>(<span class="st">"ip_address"</span>)
+  createdAt  <span class="ty">DateTime</span>  <span class="at">@default</span>(<span class="nu">now</span>()) <span class="at">@map</span>(<span class="st">"created_at"</span>)
+  user       <span class="ty">User?</span>     <span class="at">@relation</span>(fields: [userId], references: [id])
+  <span class="at">@@index</span>([entityType, entityId])
+  <span class="at">@@index</span>([userId])
+  <span class="at">@@index</span>([createdAt(sort: Desc)])
+  <span class="at">@@map</span>(<span class="st">"audit_logs"</span>)
+}
+</div>
+  </div>
+</section>
+
+</main>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
