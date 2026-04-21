@@ -29,36 +29,86 @@ export class JobsService {
     });
   }
 
-  async findAll(pagination: PaginationDto, status?: string) {
+  async findAll(pagination: PaginationDto, status?: string, search?: string, userId?: string, role?: string) {
     const skip = (pagination.page - 1) * pagination.limit;
-    const where = status ? { status: status as any } : {};
+    const where: any = {};
+
+    if (status) where.status = status;
+
+    if (search) {
+      where.OR = [
+        { job_number: { contains: search } },
+        { customer_concern: { contains: search } },
+        { customers: { is: { name: { contains: search } } } },
+        { vehicles: { is: { make: { contains: search } } } },
+        { vehicles: { is: { model: { contains: search } } } },
+        { vehicles: { is: { plate: { contains: search } } } },
+      ];
+    }
+
+    if (role === 'service_advisor') where.advisor_id = userId;
+    if (role === 'technician') where.technician_id = userId;
+
     const [items, total] = await Promise.all([
       this.prisma.jobs.findMany({
-        skip, take: pagination.limit, where,
-        include: { customers: { select: { id: true, name: true, phone: true } }, vehicles: { select: { id: true, make: true, model: true, plate: true } } },
+        skip,
+        take: pagination.limit,
+        where,
+        include: {
+          customers: { select: { id: true, name: true, phone: true, email: true } },
+          vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true } },
+          users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
+          users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
+        },
         orderBy: { created_at: 'desc' },
       }),
       this.prisma.jobs.count({ where }),
     ]);
-    return { items, total, page: pagination.page, limit: pagination.limit };
+    const data = items.map((item) => ({
+      ...item,
+      customer: item.customers,
+      vehicle: item.vehicles,
+      advisor: item.users_jobs_advisor_idTousers,
+      technician: item.users_jobs_technician_idTousers,
+    }));
+    return { items: data, data, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
     const job = await this.prisma.jobs.findUnique({
       where: { id },
       include: {
-        customers: true, vehicles: true,
-        estimate_lines: true, inspections: { include: { inspection_responses: true } },
-        media_files: true, approval_tokens: { include: { authorisation_decisions: true } },
+        customers: true,
+        vehicles: true,
+        users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
+        users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
+        estimate_lines: true,
+        inspections: { include: { inspection_responses: true } },
+        media_files: true,
+        approval_tokens: { include: { authorisation_decisions: true } },
+        job_status_history: { orderBy: { changed_at: 'desc' } },
       },
     });
     if (!job) throw new NotFoundException('Job not found');
-    return job;
+    return {
+      ...job,
+      customer: job.customers,
+      vehicle: job.vehicles,
+      advisor: job.users_jobs_advisor_idTousers,
+      technician: job.users_jobs_technician_idTousers,
+      inspection: job.inspections ? { ...job.inspections, responses: job.inspections.inspection_responses } : null,
+    };
   }
 
   async update(id: string, dto: UpdateJobDto) {
     await this.findOne(id);
-    return this.prisma.jobs.update({ where: { id }, data: dto });
+    return this.prisma.jobs.update({
+      where: { id },
+      data: {
+        ...dto,
+        promised_at: dto.promised_at ? new Date(dto.promised_at) : undefined,
+      },
+    });
   }
 
   async transition(id: string, dto: TransitionStatusDto, userId: string) {
@@ -70,12 +120,33 @@ export class JobsService {
     const [updated] = await this.prisma.$transaction([
       this.prisma.jobs.update({
         where: { id },
-        data: { status: dto.to_status as any, completed_at: dto.to_status === 'completed' ? new Date() : null },
+        data: {
+          status: dto.to_status as any,
+          completed_at: dto.to_status === 'completed' ? new Date() : null,
+        },
       }),
       this.prisma.job_status_history.create({
-        data: { id: uuid(), job_id: id, from_status: job.status, to_status: dto.to_status, changed_by: userId, reason: dto.reason },
+        data: {
+          id: uuid(),
+          job_id: id,
+          from_status: job.status,
+          to_status: dto.to_status,
+          changed_by: userId,
+          reason: dto.reason,
+        },
       }),
     ]);
     return updated;
+  }
+
+  async assignTechnician(id: string, technicianId: string) {
+    await this.findOne(id);
+    const technician = await this.prisma.users.findUnique({ where: { id: technicianId } });
+    if (!technician || !technician.is_active) throw new BadRequestException('Technician not found or inactive');
+
+    return this.prisma.jobs.update({
+      where: { id },
+      data: { technician_id: technicianId },
+    });
   }
 }

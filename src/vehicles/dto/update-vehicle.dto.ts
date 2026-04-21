@@ -1,10 +1,15 @@
-import { IsString, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsOptional, IsInt, MinLength, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateVehicleDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() customer_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(17) @MaxLength(17) vin?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() make?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() model?: string;
+  @ApiPropertyOptional() @IsOptional() @IsInt() year?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() plate?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() color?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() odometer_km?: number;
+  @ApiPropertyOptional() @IsOptional() vehicle_type?: 'sedan' | 'suv' | 'coupe' | 'hatchback' | 'convertible' | 'pickup' | 'van' | 'truck' | 'motorcycle' | 'other';
   @ApiPropertyOptional() @IsOptional() @IsString() engine?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() customer_id?: string;
 }

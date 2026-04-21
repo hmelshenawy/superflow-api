@@ -5,6 +5,6 @@ import { NotificationsProcessor } from './notifications.processor';
 
 @Module({
   providers: [NotificationsService, RendererService, NotificationsProcessor],
-  exports: [NotificationsService],
+  exports: [NotificationsService, RendererService],
 })
 export class NotificationsModule {}

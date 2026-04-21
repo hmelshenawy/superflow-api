@@ -17,11 +17,9 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Refresh access token' })
-  refresh(@Req() req: any, @Body('refreshToken') refreshToken: string) {
-    return this.auth.refresh(req.user.sub, refreshToken);
+  refresh(@Body('refreshToken') refreshToken?: string, @Body('refresh_token') refreshTokenSnake?: string) {
+    return this.auth.refresh(refreshToken || refreshTokenSnake || '');
   }
 
   @Post('logout')

@@ -1,4 +1,9 @@
 node_modules/
 dist/
 .env
+.env.production
 *.log
+.git
+superflow-web/node_modules
+superflow-web/.next
+superflow-web/.env.local

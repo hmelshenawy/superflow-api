@@ -2,12 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api', { exclude: ['health'] });
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+    credentials: true,
+  });
 
   // Health check
   app.use('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -18,6 +22,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalInterceptors(app.get(AuditInterceptor));
 
   const config = new DocumentBuilder()
     .setTitle('SuperFlow API')

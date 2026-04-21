@@ -1,20 +1,23 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   constructor(private service: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all users' })
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'List all staff (admin)' })
   findAll(@Query() pagination: PaginationDto) {
     return this.service.findAll(pagination);
   }
@@ -26,19 +29,29 @@ export class UsersController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create user' })
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Create staff account' })
   create(@Body() dto: CreateUserDto) {
     return this.service.create(dto);
   }
 
-  @Put(':id')
+  @Post('invite')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Invite/create staff account' })
+  invite(@Body() dto: CreateUserDto) {
+    return this.service.create(dto);
+  }
+
+  @Patch(':id')
+  @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Update user' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.service.update(id, dto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Deactivate user' })
+  @Roles('admin')
+  @ApiOperation({ summary: 'Deactivate user (soft delete)' })
   remove(@Param('id') id: string) {
     return this.service.remove(id);
   }

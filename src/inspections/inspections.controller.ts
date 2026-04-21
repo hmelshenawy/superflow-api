@@ -18,19 +18,24 @@ export class InspectionsController {
   findAll(@Query() pagination: PaginationDto) { return this.service.findAll(pagination); }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get inspection + responses' })
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
-  @ApiOperation({ summary: 'Create inspection for a job' })
+  @ApiOperation({ summary: 'Start inspection session' })
   create(@Body() body: { jobId: string; templateId: string }, @CurrentUser('sub') userId: string) {
     return this.service.create(body.jobId, body.templateId, userId);
   }
 
-  @Post('response')
-  @ApiOperation({ summary: 'Add or update a response (upsert)' })
-  addResponse(@Body() dto: CreateResponseDto) { return this.service.addResponse(dto); }
+  @Put(':id/responses')
+  @ApiOperation({ summary: 'Save answers in batch, supports offline draft payload' })
+  saveResponses(@Param('id') id: string, @Body() dto: CreateResponseDto) {
+    return this.service.saveResponses(id, dto);
+  }
 
-  @Put(':id/status')
-  @ApiOperation({ summary: 'Submit / review / approve inspection' })
-  submit(@Param('id') id: string, @Body() dto: SubmitInspectionDto) { return this.service.submit(id, dto); }
+  @Post(':id/submit')
+  @ApiOperation({ summary: 'Lock and finalize inspection, queues advisor alert' })
+  submit(@Param('id') id: string, @Body() dto: SubmitInspectionDto, @CurrentUser('sub') userId: string) {
+    return this.service.submit(id, dto, userId);
+  }
 }

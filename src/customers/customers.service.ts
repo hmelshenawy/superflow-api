@@ -38,6 +38,32 @@ export class CustomersService {
     return this.prisma.customers.update({ where: { id }, data: { is_active: false } });
   }
 
+  async getJobs(customerId: string, pagination: PaginationDto) {
+    const skip = (pagination.page - 1) * pagination.limit;
+    const [items, total] = await Promise.all([
+      this.prisma.jobs.findMany({
+        skip, take: pagination.limit, where: { customer_id: customerId },
+        include: { vehicles: { select: { make: true, model: true, plate: true } } },
+        orderBy: { created_at: 'desc' },
+      }),
+      this.prisma.jobs.count({ where: { customer_id: customerId } }),
+    ]);
+    return { items, total, page: pagination.page, limit: pagination.limit };
+  }
+
+  async getDeferred(customerId: string, pagination: PaginationDto) {
+    const skip = (pagination.page - 1) * pagination.limit;
+    const [items, total] = await Promise.all([
+      this.prisma.deferred_work.findMany({
+        skip, take: pagination.limit, where: { customer_id: customerId },
+        include: { vehicles: { select: { make: true, model: true, plate: true } }, estimate_lines: true },
+        orderBy: { created_at: 'desc' },
+      }),
+      this.prisma.deferred_work.count({ where: { customer_id: customerId } }),
+    ]);
+    return { items, total, page: pagination.page, limit: pagination.limit };
+  }
+
   async search(query: string) {
     return this.prisma.customers.findMany({
       where: {

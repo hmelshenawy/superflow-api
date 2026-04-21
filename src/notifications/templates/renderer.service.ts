@@ -5,19 +5,28 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class RendererService {
   constructor(private prisma: PrismaService) {}
 
-  async render(templateName: string, variables: Record<string, string>) {
+  private applyVariables(input: string, variables: Record<string, any>) {
+    let output = input || '';
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+      output = output.replace(regex, String(value ?? ''));
+    }
+    return output;
+  }
+
+  async render(templateName: string, variables: Record<string, any>) {
     const template = await this.prisma.notification_templates.findUnique({ where: { name: templateName } });
     if (!template) return null;
 
-    let body = template.body || '';
-    let subject = template.subject || '';
+    const subject = this.applyVariables(template.subject || '', variables);
+    const body = this.applyVariables(template.body || '', variables);
 
-    for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      body = body.replace(regex, value);
-      subject = subject.replace(regex, value);
-    }
-
-    return { subject, body, channel: template.channel, language: template.language };
+    return {
+      templateId: template.id,
+      subject,
+      body,
+      channel: template.channel,
+      language: template.language,
+    };
   }
 }

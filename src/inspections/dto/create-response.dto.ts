@@ -1,11 +1,23 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateResponseDto {
-  @ApiProperty() @IsString() inspection_id: string;
+export class InspectionResponseItemDto {
   @ApiProperty() @IsString() item_id: string;
   @ApiPropertyOptional() @IsOptional() @IsString() value?: string;
-  @ApiPropertyOptional() @IsOptional() @IsEnum(['none','low','medium','high','critical']) urgency?: string;
+  @ApiPropertyOptional() @IsOptional() urgency?: 'none' | 'low' | 'medium' | 'high' | 'critical';
   @ApiPropertyOptional() @IsOptional() @IsString() tech_notes?: string;
-  @ApiPropertyOptional() @IsOptional() media_count?: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() media_count?: number;
+}
+
+export class CreateResponseDto {
+  @ApiProperty({ type: [InspectionResponseItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InspectionResponseItemDto)
+  responses: InspectionResponseItemDto[];
+
+  @ApiPropertyOptional({ description: 'Optional offline draft payload for mobile/offline support' })
+  @IsOptional()
+  offline_draft?: any;
 }

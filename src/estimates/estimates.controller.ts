@@ -32,4 +32,14 @@ export class EstimatesController {
 
   @Delete(':id')
   remove(@Param('id') id: string) { return this.service.remove(id); }
+
+  @Put('job/:jobId/bulk')
+  @ApiOperation({ summary: 'Bulk replace all estimate lines for a job' })
+  bulkReplace(
+    @Param('jobId') jobId: string,
+    @Body() body: { lines: any[] },
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.service.bulkReplace(jobId, body.lines, userId);
+  }
 }

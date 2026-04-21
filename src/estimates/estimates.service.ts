@@ -75,4 +75,49 @@ export class EstimatesService {
     await this.findOne(id);
     return this.prisma.estimate_lines.delete({ where: { id } });
   }
+
+  /**
+   * Bulk replace all estimate lines for a job.
+   * Deletes existing lines and creates new ones from the array.
+   */
+  async bulkReplace(jobId: string, lines: any[], userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Delete existing lines
+      await tx.estimate_lines.deleteMany({ where: { job_id: jobId } });
+
+      // Create new lines
+      const created = [];
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        const qty = Number(l.quantity ?? 1);
+        const unitPrice = Number(l.unit_price ?? 0);
+        const discount = Number(l.discount_pct ?? 0);
+        const taxRate = Number(l.tax_rate_pct ?? 5);
+        const lineTotal = qty * unitPrice * (1 - discount / 100);
+        const taxAmount = lineTotal * (taxRate / 100);
+
+        const line = await tx.estimate_lines.create({
+          data: {
+            id: l.id || uuid(),
+            job_id: jobId,
+            type: l.type || 'labour',
+            description: l.description || '',
+            part_number: l.part_number || null,
+            quantity: qty,
+            unit_price: unitPrice,
+            discount_pct: discount,
+            tax_rate_pct: taxRate,
+            line_total: lineTotal,
+            tax_amount: taxAmount,
+            is_recommended: l.is_recommended ?? false,
+            sort_order: i,
+            added_by: userId,
+            inspection_response_id: l.inspection_response_id || null,
+          },
+        });
+        created.push(line);
+      }
+      return created;
+    });
+  }
 }

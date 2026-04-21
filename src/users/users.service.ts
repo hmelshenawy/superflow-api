@@ -25,16 +25,31 @@ export class UsersService {
   async findAll(pagination: PaginationDto) {
     const skip = (pagination.page - 1) * pagination.limit;
     const [items, total] = await Promise.all([
-      this.prisma.users.findMany({ skip, take: pagination.limit, select: { id: true, name: true, email: true, role_id: true, is_active: true, last_login_at: true, created_at: true } }),
+      this.prisma.users.findMany({
+        skip,
+        take: pagination.limit,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role_id: true,
+          is_active: true,
+          last_login_at: true,
+          created_at: true,
+          updated_at: true,
+          roles: { select: { id: true, name: true, permissions: true, description: true } },
+        },
+      }),
       this.prisma.users.count(),
     ]);
-    return { items, total, page: pagination.page, limit: pagination.limit };
+    const data = items.map((item) => ({ ...item, role: item.roles }));
+    return { items: data, data, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.users.findUnique({ where: { id }, select: { id: true, name: true, email: true, role_id: true, is_active: true, avatar_url: true, last_login_at: true, created_at: true, updated_at: true } });
+    const user = await this.prisma.users.findUnique({ where: { id }, select: { id: true, name: true, email: true, role_id: true, is_active: true, avatar_url: true, last_login_at: true, created_at: true, updated_at: true, roles: { select: { id: true, name: true, permissions: true, description: true } } } });
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return { ...user, role: user.roles };
   }
 
   async update(id: string, dto: UpdateUserDto) {

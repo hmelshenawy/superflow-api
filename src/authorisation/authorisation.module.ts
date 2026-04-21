@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuthorisationService } from './authorisation.service';
-import { AuthorisationController } from './authorisation.controller';
+import { AuthorisationController, PortalAuthorisationController } from './authorisation.controller';
 
 @Module({
-  controllers: [AuthorisationController],
+  controllers: [AuthorisationController, PortalAuthorisationController],
   providers: [AuthorisationService],
   exports: [AuthorisationService],
 })
