@@ -325,7 +325,7 @@ model jobs {
   vehicle_id                                        String?                   @db.Char(36)
   advisor_id                                        String?                   @db.Char(36)
   technician_id                                     String?                   @db.Char(36)
-  status                                            jobs_status               @default(open)
+  status                                            jobs_status               @default(booked)
   customer_concern                                  String?                   @db.Text
   internal_notes                                    String?                   @db.Text
   odometer_in                                       Int?                      @db.UnsignedInt
@@ -675,12 +675,16 @@ enum integrations_last_test_status {
 }
 
 enum jobs_status {
-  open
+  booked
+  checking
+  estimate_sent
+  approved
   in_progress
   waiting_parts
+  quality_check
   completed
-  closed
   invoiced
+  closed
 }
 
 enum media_files_file_type {

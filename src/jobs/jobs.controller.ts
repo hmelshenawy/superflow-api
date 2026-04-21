@@ -4,7 +4,7 @@ import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { ListJobsDto } from './dto/list-jobs.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -18,13 +18,11 @@ export class JobsController {
   @Get()
   @ApiOperation({ summary: 'List jobs, filtered by role, optional ?status=' })
   findAll(
-    @Query() pagination: PaginationDto,
-    @Query('status') status: string,
-    @Query('search') search: string,
+    @Query() query: ListJobsDto,
     @CurrentUser('sub') userId: string,
     @CurrentUser('role') role: string,
   ) {
-    return this.service.findAll(pagination, status, search, userId, role);
+    return this.service.findAll(query, query.status, query.search, userId, role);
   }
 
   @Get(':id')

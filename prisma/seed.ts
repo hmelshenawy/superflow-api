@@ -58,7 +58,7 @@ async function main() {
   // 6. Sample customer + vehicle + job
   const customer = await prisma.customers.create({ data: { id: uuid(), name: 'Mohammed Al Maktoum', email: 'mohammed@example.com', phone: '+971501234567', preferred_contact: 'whatsapp', language: 'ar', is_active: true } });
   const vehicle = await prisma.vehicles.create({ data: { id: uuid(), customer_id: customer.id, vin: 'WDDGF4HB1EA123456', make: 'Mercedes-Benz', model: 'C200', year: 2022, plate: 'DXB-A-12345', color: 'Obsidian Black', vehicle_type: 'sedan', engine: '2.0L Turbo' } });
-  const job = await prisma.jobs.create({ data: { id: uuid(), job_number: 'SF-001', customer_id: customer.id, vehicle_id: vehicle.id, advisor_id: advisor.id, technician_id: tech.id, status: 'open', customer_concern: 'Strange noise from front left when braking', odometer_in: 45000, promised_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) } });
+  const job = await prisma.jobs.create({ data: { id: uuid(), job_number: 'SF-001', customer_id: customer.id, vehicle_id: vehicle.id, advisor_id: advisor.id, technician_id: tech.id, status: 'booked', customer_concern: 'Strange noise from front left when braking', odometer_in: 45000, promised_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) } });
 
   console.log('✅ Seed complete!');
   console.log('');

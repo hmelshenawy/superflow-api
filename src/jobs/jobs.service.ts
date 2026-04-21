@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
 
 @Injectable()
@@ -29,7 +29,7 @@ export class JobsService {
     });
   }
 
-  async findAll(pagination: PaginationDto, status?: string, search?: string, userId?: string, role?: string) {
+  async findAll(pagination: ListJobsDto, status?: string, search?: string, userId?: string, role?: string) {
     const skip = (pagination.page - 1) * pagination.limit;
     const where: any = {};
 
@@ -102,13 +102,14 @@ export class JobsService {
 
   async update(id: string, dto: UpdateJobDto) {
     await this.findOne(id);
-    return this.prisma.jobs.update({
-      where: { id },
-      data: {
-        ...dto,
-        promised_at: dto.promised_at ? new Date(dto.promised_at) : undefined,
-      },
-    });
+    const data: any = {
+      ...dto,
+      promised_at: dto.promised_at ? new Date(dto.promised_at) : undefined,
+    };
+    // Allow clearing optional fields by sending empty string → null
+    if (data.advisor_id === '') data.advisor_id = null;
+    if (data.technician_id === '') data.technician_id = null;
+    return this.prisma.jobs.update({ where: { id }, data });
   }
 
   async transition(id: string, dto: TransitionStatusDto, userId: string) {

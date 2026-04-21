@@ -33,12 +33,16 @@ export interface LoginRequest {
 
 // ─── Jobs ───────────────────────────────────────────────
 export type JobStatus =
-  | "open"
+  | "booked"
+  | "checking"
+  | "estimate_sent"
+  | "approved"
   | "in_progress"
   | "waiting_parts"
+  | "quality_check"
   | "completed"
-  | "closed"
-  | "invoiced";
+  | "invoiced"
+  | "closed";
 
 export interface Job {
   id: string;

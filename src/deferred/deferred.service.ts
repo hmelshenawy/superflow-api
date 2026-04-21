@@ -118,7 +118,7 @@ export class DeferredService {
           customer_id: item.customer_id,
           vehicle_id: item.vehicle_id,
           advisor_id: advisorId || item.jobs_deferred_work_original_job_idTojobs?.advisor_id || null,
-          status: 'open',
+          status: 'booked',
           customer_concern: `Booked from deferred work: ${description}`,
         },
       });

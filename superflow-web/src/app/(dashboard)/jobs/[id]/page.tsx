@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import type { Job } from "@/types";
@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EstimateBuilder } from "@/components/estimates/estimate-builder";
 import { SendApprovalButton } from "@/components/estimates/send-approval-button";
 import { InspectionWorkspace } from "@/components/inspections/inspection-workspace";
@@ -25,13 +32,43 @@ import {
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
-  open: "Open",
+  booked: "Booked",
+  checking: "Checking",
+  estimate_sent: "Estimate Sent",
+  approved: "Approved",
   in_progress: "In Progress",
   waiting_parts: "Waiting Parts",
+  quality_check: "Quality Check",
   completed: "Completed",
-  closed: "Closed",
   invoiced: "Invoiced",
+  closed: "Closed",
 };
+
+const ALL_STATUSES: string[] = [
+  "booked",
+  "checking",
+  "estimate_sent",
+  "approved",
+  "in_progress",
+  "waiting_parts",
+  "quality_check",
+  "completed",
+  "invoiced",
+  "closed",
+];
+
+const FLOW_ORDER: string[] = [...ALL_STATUSES];
+
+const VALID_TRANSITIONS: Record<string, string[]> = {};
+ALL_STATUSES.forEach((s) => {
+  VALID_TRANSITIONS[s] = ALL_STATUSES.filter((x) => x !== s);
+});
+
+function getCompletedStages(current: string): string[] {
+  const idx = FLOW_ORDER.indexOf(current);
+  if (idx <= 0) return [];
+  return FLOW_ORDER.slice(0, idx);
+}
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +77,35 @@ export default function JobDetailPage() {
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [startingInspection, setStartingInspection] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
+  const [nextStatus, setNextStatus] = useState("");
+  const [users, setUsers] = useState<any[]>([]);
+  const [assigningAdvisor, setAssigningAdvisor] = useState(false);
+  const [assigningTech, setAssigningTech] = useState(false);
+
+  const advisors = users.filter((u: any) => {
+    const roleName = u.role?.name ?? "";
+    return ["admin", "service_advisor"].includes(roleName);
+  });
+  const technicians = users.filter((u: any) => {
+    const roleName = u.role?.name ?? "";
+    return ["technician"].includes(roleName);
+  });
+
+  const advisorName = (id: string | null | undefined) => {
+    if (!id) return "Unassigned";
+    const u = users.find((u: any) => u.id === id);
+    if (u) return u.name;
+    if (job?.advisor?.id === id) return job.advisor.name;
+    return id;
+  };
+  const techName = (id: string | null | undefined) => {
+    if (!id) return "Unassigned";
+    const u = users.find((u: any) => u.id === id);
+    if (u) return u.name;
+    if (job?.technician?.id === id) return job.technician.name;
+    return id;
+  };
 
   const refreshJob = async () => {
     const { data } = await api.get<Job>(`/jobs/${id}`);
@@ -52,6 +118,14 @@ export default function JobDetailPage() {
     }
   };
 
+  const loadUsers = async () => {
+    try {
+      const { data } = await api.get("/users");
+      const list = data.items ?? data ?? [];
+      setUsers(list.filter((u: any) => u.is_active));
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -62,10 +136,8 @@ export default function JobDetailPage() {
         setLoading(false);
       }
     })();
+    loadUsers();
   }, [id]);
-
-  if (loading) return <div className="py-20 text-center text-slate-400">Loading…</div>;
-  if (!job) return <div className="py-20 text-center text-red-500">Job not found</div>;
 
   const startInspection = async () => {
     if (!job) return;
@@ -87,6 +159,32 @@ export default function JobDetailPage() {
       toast.error("Failed to start inspection");
     } finally {
       setStartingInspection(false);
+    }
+  };
+
+  const validTransitions = useMemo(() => {
+    if (!job) return [] as string[];
+    return VALID_TRANSITIONS[job.status] ?? [];
+  }, [job]);
+
+  useEffect(() => {
+    setNextStatus(validTransitions[0] ?? "");
+  }, [validTransitions]);
+
+  if (loading) return <div className="py-20 text-center text-slate-400">Loading…</div>;
+  if (!job) return <div className="py-20 text-center text-red-500">Job not found</div>;
+
+  const changeStatus = async () => {
+    if (!nextStatus) return;
+    setChangingStatus(true);
+    try {
+      await api.patch(`/jobs/${job.id}/status`, { to_status: nextStatus });
+      await refreshJob();
+      toast.success(`Status changed to ${STATUS_LABELS[nextStatus] || nextStatus}`);
+    } catch {
+      toast.error("Failed to change status");
+    } finally {
+      setChangingStatus(false);
     }
   };
 
@@ -115,6 +213,24 @@ export default function JobDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-sm">{STATUS_LABELS[job.status] || job.status}</Badge>
+          <Select value={nextStatus} onValueChange={(v) => setNextStatus(v ?? "")}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Change status">{nextStatus ? STATUS_LABELS[nextStatus] || nextStatus : "Change status"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {ALL_STATUSES.filter((s) => s !== job.status).map((status) => {
+                const completed = getCompletedStages(job.status).includes(status);
+                return (
+                  <SelectItem key={status} value={status}>
+                    {STATUS_LABELS[status] || status}{completed ? " ✅" : ""}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+          <Button onClick={changeStatus} disabled={!nextStatus || changingStatus}>
+            {changingStatus ? "Updating…" : "Update Status"}
+          </Button>
         </div>
       </div>
 
@@ -160,10 +276,62 @@ export default function JobDetailPage() {
                 <Clock className="h-4 w-4 text-slate-500" />
                 <CardTitle className="text-sm font-medium">Assignment</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                <p><span className="text-slate-500">Advisor:</span> {job.advisor?.name || "—"}</p>
-                <p><span className="text-slate-500">Technician:</span> {job.technician?.name || "—"}</p>
-                <p><span className="text-slate-500">Promised:</span> {job.promised_at ? new Date(job.promised_at).toLocaleString() : "—"}</p>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-500">Service Advisor</p>
+                  <Select
+                    value={job.advisor_id ?? "unassigned"}
+                    onValueChange={async (v) => {
+                      const advisorId = v === "unassigned" ? undefined : v;
+                      setAssigningAdvisor(true);
+                      try {
+                        await api.patch(`/jobs/${job.id}`, advisorId ? { advisor_id: advisorId } : { advisor_id: "" });
+                        await refreshJob();
+                        toast.success(advisorId ? "Advisor assigned" : "Advisor removed");
+                      } catch { toast.error("Failed to update advisor"); }
+                      finally { setAssigningAdvisor(false); }
+                    }}
+                    disabled={assigningAdvisor}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Unassigned">{advisorName(job.advisor_id)}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {advisors.map((u: any) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-slate-500">Technician</p>
+                  <Select
+                    value={job.technician_id ?? "unassigned"}
+                    onValueChange={async (v) => {
+                      const techId = v === "unassigned" ? null : v;
+                      setAssigningTech(true);
+                      try {
+                        await api.post(`/jobs/${job.id}/assign`, { technician_id: techId });
+                        await refreshJob();
+                        toast.success(techId ? "Technician assigned" : "Technician removed");
+                      } catch { toast.error("Failed to update technician"); }
+                      finally { setAssigningTech(false); }
+                    }}
+                    disabled={assigningTech}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Unassigned">{techName(job.technician_id)}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {technicians.map((u: any) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-sm"><span className="text-slate-500">Promised:</span> {job.promised_at ? new Date(job.promised_at).toLocaleString() : "—"}</p>
               </CardContent>
             </Card>
           </div>

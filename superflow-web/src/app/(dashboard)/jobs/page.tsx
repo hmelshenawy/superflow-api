@@ -24,13 +24,17 @@ import {
 } from "@/components/ui/select";
 import { Search, Plus, RefreshCw } from "lucide-react";
 
-const STATUS_CONFIG: Record<JobStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  open: { label: "Open", variant: "secondary" },
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  booked: { label: "Booked", variant: "outline" },
+  checking: { label: "Checking", variant: "default" },
+  estimate_sent: { label: "Estimate Sent", variant: "secondary" },
+  approved: { label: "Approved", variant: "default" },
   in_progress: { label: "In Progress", variant: "default" },
   waiting_parts: { label: "Waiting Parts", variant: "outline" },
-  completed: { label: "Completed", variant: "default" },
-  closed: { label: "Closed", variant: "secondary" },
+  quality_check: { label: "Quality Check", variant: "default" },
+  completed: { label: "Completed", variant: "secondary" },
   invoiced: { label: "Invoiced", variant: "default" },
+  closed: { label: "Closed", variant: "secondary" },
 };
 
 export default function JobsPage() {

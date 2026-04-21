@@ -200,7 +200,7 @@ export class AdminService {
       sentNotifications,
     ] = await Promise.all([
       this.prisma.jobs.count(),
-      this.prisma.jobs.count({ where: { status: 'open' } }),
+      this.prisma.jobs.count({ where: { status: 'booked' } }),
       this.prisma.jobs.count({ where: { status: 'in_progress' } }),
       this.prisma.jobs.count({ where: { status: 'completed' } }),
       this.prisma.customers.count({ where: { is_active: true } }),
