@@ -84,7 +84,7 @@ export class JobsService {
         users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
         estimate_lines: true,
         inspections: { include: { inspection_responses: true } },
-        media_files: true,
+        media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
         job_status_history: { orderBy: { changed_at: 'desc' } },
       },

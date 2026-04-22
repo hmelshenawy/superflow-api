@@ -38,12 +38,14 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
 
   const handleView = async () => {
     try {
-      const res = await api.get(`/media/${file.id}/url`);
-      const { url } = res.data;
-      window.open(url, "_blank");
+      // Fetch the file via the API proxy and open a blob URL
+      const res = await api.get(`/media/${file.id}/download`, { responseType: "blob" });
+      const blobUrl = URL.createObjectURL(res.data);
+      window.open(blobUrl, "_blank");
+      // Revoke after a delay so the new tab has time to load it
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch {
-      // Fallback to download endpoint
-      window.open(`/api/media/${file.id}/download`, "_blank");
+      alert("Failed to open file");
     }
   };
 
