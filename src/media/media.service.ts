@@ -9,6 +9,29 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 export class MediaService {
   constructor(private prisma: PrismaService) {}
 
+  private async resolveInspectionResponseId(dto: PresignUploadDto) {
+    if (dto.inspection_response_id) return dto.inspection_response_id;
+    if (!dto.inspection_id || !dto.item_id) return undefined;
+
+    const existing = await this.prisma.inspection_responses.findFirst({
+      where: { inspection_id: dto.inspection_id, item_id: dto.item_id },
+    });
+    if (existing) return existing.id;
+
+    const created = await this.prisma.inspection_responses.create({
+      data: {
+        id: uuid(),
+        inspection_id: dto.inspection_id,
+        item_id: dto.item_id,
+        value: '',
+        urgency: 'none',
+        tech_notes: '',
+        media_count: 0,
+      },
+    });
+    return created.id;
+  }
+
   private normalizeMedia<T extends Record<string, any>>(file: T): T {
     return {
       ...file,
@@ -36,6 +59,7 @@ export class MediaService {
 
   async presign(dto: PresignUploadDto, userId: string) {
     const bucket = process.env.S3_BUCKET || 'superflow-media';
+    const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
     const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const s3Key = `uploads/${dto.job_id}/${mediaId}/${safeName}`;
@@ -52,7 +76,7 @@ export class MediaService {
       data: {
         id: mediaId,
         job_id: dto.job_id,
-        inspection_response_id: dto.inspection_response_id,
+        inspection_response_id: inspectionResponseId,
         uploaded_by: userId,
         s3_bucket: bucket,
         s3_key: s3Key,
@@ -100,6 +124,7 @@ export class MediaService {
     if (!file) throw new BadRequestException('File is required');
 
     const bucket = process.env.S3_BUCKET || 'superflow-media';
+    const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
     const safeName = (dto.filename || file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
     const s3Key = `uploads/${dto.job_id}/${mediaId}/${safeName}`;
@@ -118,7 +143,7 @@ export class MediaService {
       data: {
         id: mediaId,
         job_id: dto.job_id,
-        inspection_response_id: dto.inspection_response_id,
+        inspection_response_id: inspectionResponseId,
         uploaded_by: userId,
         s3_bucket: bucket,
         s3_key: s3Key,
@@ -130,6 +155,13 @@ export class MediaService {
         uploaded_at: new Date(),
       },
     });
+
+    if (inspectionResponseId) {
+      await this.prisma.inspection_responses.update({
+        where: { id: inspectionResponseId },
+        data: { media_count: { increment: 1 } },
+      }).catch(() => {});
+    }
 
     return this.normalizeMedia(created);
   }
@@ -156,6 +188,27 @@ export class MediaService {
     };
   }
 
+  async getDownloadStream(id: string) {
+    const file = await this.prisma.media_files.findUnique({ where: { id } });
+    if (!file || file.is_deleted) throw new NotFoundException('File not found');
+    if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
+
+    const client = this.getS3();
+    const result = await client.send(
+      new GetObjectCommand({
+        Bucket: file.s3_bucket,
+        Key: file.s3_key,
+        ResponseContentType: file.mime_type || undefined,
+      }),
+    );
+
+    return {
+      stream: result.Body,
+      mime_type: file.mime_type,
+      filename: file.original_filename,
+    };
+  }
+
   async findByJob(jobId: string) {
     const files = await this.prisma.media_files.findMany({
       where: { job_id: jobId, is_deleted: false },
@@ -171,7 +224,14 @@ export class MediaService {
   }
 
   async softDelete(id: string) {
-    await this.findOne(id);
-    return this.prisma.media_files.update({ where: { id }, data: { is_deleted: true } });
+    const file = await this.findOne(id);
+    const deleted = await this.prisma.media_files.update({ where: { id }, data: { is_deleted: true } });
+    if ((file as any).inspection_response_id) {
+      await this.prisma.inspection_responses.update({
+        where: { id: (file as any).inspection_response_id },
+        data: { media_count: { decrement: 1 } },
+      }).catch(() => {});
+    }
+    return deleted;
   }
 }

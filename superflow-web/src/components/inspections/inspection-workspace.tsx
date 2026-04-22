@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,7 +126,9 @@ export function InspectionWorkspace({
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const loadedMediaIds = useRef<Set<string>>(new Set());
 
   const setItem = (itemId: string, patch: Record<string, any>) => {
     setResponses((prev) => ({
@@ -143,6 +145,44 @@ export function InspectionWorkspace({
       },
     }));
   };
+
+  // Derive a stable list of media IDs from responses for the effect dependency
+  const mediaIdList = useMemo(() => {
+    return Object.values(responses)
+      .flatMap((r: any) => (r.media_files ?? []).map((m: MediaFile) => m.id))
+      .sort()
+      .join(",");
+  }, [responses]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const allMedia = Object.values(responses).flatMap((r: any) => r.media_files ?? []) as MediaFile[];
+    const photos = allMedia.filter((m) => m.file_type !== "video" && !loadedMediaIds.current.has(m.id));
+    if (photos.length === 0) return;
+
+    // Mark as loading immediately to prevent duplicates
+    for (const m of photos) loadedMediaIds.current.add(m.id);
+
+    (async () => {
+      const next: Record<string, string> = {};
+      for (const mf of photos) {
+        try {
+          const res = await api.get(`/media/${mf.id}/download`, { responseType: "blob" });
+          const url = URL.createObjectURL(res.data);
+          next[mf.id] = url;
+        } catch (err) {
+          console.error("Preview load error:", mf.id, err);
+          loadedMediaIds.current.delete(mf.id);
+        }
+      }
+      if (!cancelled && Object.keys(next).length > 0) {
+        setPreviewUrls((prev) => ({ ...prev, ...next }));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [mediaIdList]);
 
   const save = async () => {
     setSaving(true);
@@ -186,37 +226,19 @@ export function InspectionWorkspace({
   const handleFileSelect = async (itemId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const resp = responses[itemId];
-    if (!resp) return;
-
     setUploadingFor(itemId);
 
     try {
-      // Ensure we have a saved response (with id) before uploading
-      // Save first if no response_id
-      if (!resp.response_id) {
-        await save();
-      }
-
-      // Reload to get the latest response IDs
-      const { data: freshInspection } = await api.get(`/inspections/${inspection.id}`);
-      const freshResp = (freshInspection?.inspection_responses ?? freshInspection?.responses ?? []).find(
-        (r: any) => r.item_id === itemId
-      );
-
-      const inspectionResponseId = freshResp?.id;
-
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const formData = new FormData();
         formData.append("file", file);
         formData.append("job_id", inspection.job_id);
+        formData.append("inspection_id", inspection.id);
+        formData.append("item_id", itemId);
         formData.append("file_type", file.type.startsWith("video") ? "video" : "photo");
         formData.append("filename", file.name);
         formData.append("mime_type", file.type);
-        if (inspectionResponseId) {
-          formData.append("inspection_response_id", inspectionResponseId);
-        }
 
         await api.post("/media/upload-direct", formData, {
           headers: { "Content-Type": "multipart/form-data" },
@@ -224,14 +246,12 @@ export function InspectionWorkspace({
       }
 
       toast.success(`${files.length} file${files.length > 1 ? "s" : ""} uploaded`);
-
-      // Refresh inspection to get updated media
       onChanged();
-    } catch {
-      toast.error("Upload failed");
+    } catch (err: any) {
+      console.error('Upload error:', err?.response?.data || err?.message || err);
+      toast.error(`Upload failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
     } finally {
       setUploadingFor(null);
-      // Reset file input
       const inputEl = fileInputRefs.current[itemId];
       if (inputEl) inputEl.value = "";
     }
@@ -246,9 +266,16 @@ export function InspectionWorkspace({
         ),
         media_count: Math.max(0, (responses[itemId]?.media_count ?? 1) - 1),
       });
+      setPreviewUrls((prev) => {
+        const next = { ...prev };
+        if (next[mediaId]) URL.revokeObjectURL(next[mediaId]);
+        delete next[mediaId];
+        return next;
+      });
       toast.success("Media removed");
-    } catch {
-      toast.error("Failed to remove media");
+    } catch (err: any) {
+      console.error('Remove media error:', err?.response?.data || err?.message || err);
+      toast.error(`Failed to remove: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
     }
   };
 
@@ -532,21 +559,21 @@ export function InspectionWorkspace({
                               <div className="flex h-full w-full items-center justify-center bg-slate-200">
                                 <FileText className="h-4 w-4 text-slate-500" />
                               </div>
-                            ) : (
+                            ) : previewUrls[mf.id] ? (
                               <img
-                                src={
-                                  mf.thumbnail_url ??
-                                  mf.url ??
-                                  `/api/media/${mf.id}/url`
-                                }
+                                src={previewUrls[mf.id]}
                                 alt={mf.original_filename ?? "media"}
                                 className="h-full w-full object-cover"
                               />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-slate-200">
+                                <Camera className="h-4 w-4 text-slate-400" />
+                              </div>
                             )}
                             <button
                               type="button"
                               onClick={() => removeMedia(mf.id, item.id)}
-                              className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white group-hover:flex"
+                              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white opacity-0 group-hover:opacity-100 transition"
                             >
                               <X className="h-2.5 w-2.5" />
                             </button>

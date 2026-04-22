@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, UseInterceptors, UploadedFile, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { PresignUploadDto } from './dto/presign-upload.dto';
@@ -42,6 +42,16 @@ export class MediaController {
   @ApiOperation({ summary: 'Get signed download URL' })
   getSignedUrl(@Param('id') id: string) {
     return this.service.getSignedDownloadUrl(id);
+  }
+
+  @Get(':id/download')
+  @ApiOperation({ summary: 'Download/stream media content' })
+  async download(@Param('id') id: string) {
+    const file = await this.service.getDownloadStream(id);
+    return new StreamableFile(file.stream as any, {
+      type: file.mime_type || 'application/octet-stream',
+      disposition: `inline; filename="${file.filename || 'file'}"`,
+    });
   }
 
   @Get(':id')

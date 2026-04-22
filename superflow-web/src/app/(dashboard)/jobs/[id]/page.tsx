@@ -19,6 +19,7 @@ import { EstimateBuilder } from "@/components/estimates/estimate-builder";
 import { SendApprovalButton } from "@/components/estimates/send-approval-button";
 import { InspectionWorkspace } from "@/components/inspections/inspection-workspace";
 import { MediaUploader } from "@/components/media/media-uploader";
+import { MediaThumbnail } from "@/components/media/media-thumbnail";
 import {
   ArrowLeft,
   Car,
@@ -113,6 +114,7 @@ export default function JobDetailPage() {
 
   const [job, setJob] = useState<Job | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
+  const [inspectionRev, setInspectionRev] = useState(0);
   const [loading, setLoading] = useState(true);
   const [startingInspection, setStartingInspection] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
@@ -146,6 +148,7 @@ export default function JobDetailPage() {
     if (data.inspection?.id) {
       const inspectionRes = await api.get(`/inspections/${data.inspection.id}`);
       setInspectionDetail(inspectionRes.data);
+      setInspectionRev((r) => r + 1);
     } else {
       setInspectionDetail(null);
     }
@@ -564,7 +567,7 @@ export default function JobDetailPage() {
                 <CardTitle className="text-lg">Inspection workspace</CardTitle>
               </CardHeader>
               <CardContent>
-                <InspectionWorkspace inspection={inspectionDetail} onChanged={refreshJob} />
+                <InspectionWorkspace key={inspectionRev} inspection={inspectionDetail} onChanged={refreshJob} />
               </CardContent>
             </Card>
           ) : (
@@ -596,20 +599,8 @@ export default function JobDetailPage() {
             <CardContent>
               {job.media_files && job.media_files.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  {job.media_files.map((file) => (
-                    <div key={file.id} className="overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50">
-                      <div className="flex h-36 items-center justify-center bg-white text-4xl">
-                        {file.file_type === "photo" ? "📷" : file.file_type === "video" ? "🎬" : "📄"}
-                      </div>
-                      <div className="border-t border-slate-200 px-3 py-2">
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {file.original_filename || file.id}
-                        </p>
-                        <p className="mt-1 text-xs uppercase tracking-wide text-slate-400">
-                          {file.file_type || "file"}
-                        </p>
-                      </div>
-                    </div>
+                  {job.media_files.map((file: any) => (
+                    <MediaThumbnail key={file.id} file={file} onDeleted={refreshJob} />
                   ))}
                 </div>
               ) : (

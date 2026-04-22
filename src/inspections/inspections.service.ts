@@ -59,6 +59,18 @@ export class InspectionsService {
       },
     });
     if (!inspection) throw new NotFoundException('Inspection not found');
+
+    // Generate API proxy URLs for media_files on each response
+    // (browser can't reach minio:9000 directly, so we serve through /media/:id/download)
+    for (const resp of inspection.inspection_responses ?? []) {
+      for (const mf of resp.media_files ?? []) {
+        if (mf.s3_bucket && mf.s3_key && !mf.is_deleted) {
+          (mf as any).url = `/api/media/${mf.id}/download`;
+        }
+      }
+    }
+
+
     return inspection;
   }
 
