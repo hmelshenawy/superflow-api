@@ -35,6 +35,37 @@ export class EstimatesService {
     });
   }
 
+  async getDefaults() {
+    const [settings, labourRates] = await Promise.all([
+      this.prisma.settings.findMany({
+        where: { key: { in: ['default_tax_rate', 'tax_rate', 'currency'] } },
+      }),
+      this.prisma.labour_rates.findMany({
+        where: { is_active: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+
+    const byKey = new Map(settings.map((row) => [row.key, row.value]));
+    const standardRate =
+      labourRates.find((rate) => (rate.name || '').toLowerCase() === 'standard') ||
+      labourRates[0] ||
+      null;
+
+    return {
+      default_tax_rate: Number(byKey.get('default_tax_rate') ?? byKey.get('tax_rate') ?? 0),
+      currency: byKey.get('currency') ?? standardRate?.currency ?? 'AED',
+      standard_labour_rate: Number(standardRate?.rate_per_hour ?? 0),
+      standard_labour_rate_name: standardRate?.name ?? 'Standard',
+      labour_rates: labourRates.map((rate) => ({
+        id: rate.id,
+        name: rate.name,
+        rate_per_hour: Number(rate.rate_per_hour ?? 0),
+        currency: rate.currency ?? 'AED',
+      })),
+    };
+  }
+
   async findAll(pagination: PaginationDto) {
     const skip = (pagination.page - 1) * pagination.limit;
     const [items, total] = await Promise.all([
@@ -77,16 +108,20 @@ export class EstimatesService {
   }
 
   /**
-   * Bulk replace all estimate lines for a job.
-   * Deletes existing lines and creates new ones from the array.
+   * Bulk save estimate lines for a job.
+   * Updates existing lines in place, creates new ones, and only deletes stale
+   * lines when they are not referenced elsewhere.
    */
   async bulkReplace(jobId: string, lines: any[], userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Delete existing lines
-      await tx.estimate_lines.deleteMany({ where: { job_id: jobId } });
+      const existing = await tx.estimate_lines.findMany({ where: { job_id: jobId } });
+      const existingIds = new Set(existing.map((line) => line.id));
+      const incomingIds = new Set(
+        lines
+          .map((line) => line.id)
+          .filter((id: string | null | undefined) => Boolean(id)),
+      );
 
-      // Create new lines
-      const created = [];
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
         const qty = Number(l.quantity ?? 1);
@@ -96,28 +131,64 @@ export class EstimatesService {
         const lineTotal = qty * unitPrice * (1 - discount / 100);
         const taxAmount = lineTotal * (taxRate / 100);
 
-        const line = await tx.estimate_lines.create({
-          data: {
-            id: l.id || uuid(),
-            job_id: jobId,
-            type: l.type || 'labour',
-            description: l.description || '',
-            part_number: l.part_number || null,
-            quantity: qty,
-            unit_price: unitPrice,
-            discount_pct: discount,
-            tax_rate_pct: taxRate,
-            line_total: lineTotal,
-            tax_amount: taxAmount,
-            is_recommended: l.is_recommended ?? false,
-            sort_order: i,
-            added_by: userId,
-            inspection_response_id: l.inspection_response_id || null,
-          },
-        });
-        created.push(line);
+        const data = {
+          job_id: jobId,
+          type: l.type || 'labour',
+          description: l.description || '',
+          part_number: l.part_number || null,
+          quantity: qty,
+          unit_price: unitPrice,
+          discount_pct: discount,
+          tax_rate_pct: taxRate,
+          line_total: lineTotal,
+          tax_amount: taxAmount,
+          is_recommended: l.is_recommended ?? false,
+          sort_order: i,
+          added_by: userId,
+          inspection_response_id: l.inspection_response_id || null,
+        };
+
+        if (l.id && existingIds.has(l.id)) {
+          await tx.estimate_lines.update({
+            where: { id: l.id },
+            data,
+          });
+        } else {
+          await tx.estimate_lines.create({
+            data: {
+              id: l.id || uuid(),
+              ...data,
+            },
+          });
+        }
       }
-      return created;
+
+      const staleLines = existing.filter((line) => !incomingIds.has(line.id));
+      let preservedSortOrder = lines.length;
+
+      for (const stale of staleLines) {
+        const [approvalCount, deferredCount, historyCount] = await Promise.all([
+          tx.authorisation_decisions.count({ where: { estimate_line_id: stale.id } }),
+          tx.deferred_work.count({ where: { estimate_line_id: stale.id } }),
+          tx.estimate_line_history.count({ where: { line_id: stale.id } }),
+        ]);
+
+        const hasReferences = approvalCount > 0 || deferredCount > 0 || historyCount > 0;
+
+        if (hasReferences) {
+          await tx.estimate_lines.update({
+            where: { id: stale.id },
+            data: { sort_order: preservedSortOrder++ },
+          });
+        } else {
+          await tx.estimate_lines.delete({ where: { id: stale.id } });
+        }
+      }
+
+      return tx.estimate_lines.findMany({
+        where: { job_id: jobId },
+        orderBy: { sort_order: 'asc' },
+      });
     });
   }
 }

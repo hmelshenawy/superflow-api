@@ -14,6 +14,10 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class EstimatesController {
   constructor(private service: EstimatesService) {}
 
+  @Get('defaults')
+  @ApiOperation({ summary: 'Get default tax and standard labour rate for quote builder' })
+  getDefaults() { return this.service.getDefaults(); }
+
   @Get('job/:jobId')
   @ApiOperation({ summary: 'List estimate lines for a job' })
   findByJob(@Param('jobId') jobId: string) { return this.service.findByJob(jobId); }
