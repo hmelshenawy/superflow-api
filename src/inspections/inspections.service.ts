@@ -44,7 +44,7 @@ export class InspectionsService {
       where: { id },
       include: {
         inspection_responses: {
-          include: { inspection_items: true },
+          include: { inspection_items: true, media_files: true },
           orderBy: { recorded_at: 'asc' },
         },
         jobs: true,
