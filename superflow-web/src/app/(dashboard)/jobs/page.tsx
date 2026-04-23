@@ -135,7 +135,15 @@ function getPlate(job: Job) {
 
 function getPromisedLabel(value: string | null) {
   if (!value) return "No promise set";
-  return new Date(value).toLocaleString();
+  return new Intl.DateTimeFormat("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(new Date(value));
 }
 
 function isOverdue(job: Job) {
@@ -566,7 +574,7 @@ export default function JobsPage() {
                         <StatusPill status={job.status} />
                       </TableCell>
                       <TableCell>{job.advisor?.name || "Unassigned"}</TableCell>
-                      <TableCell>{job.promised_at ? new Date(job.promised_at).toLocaleDateString() : "—"}</TableCell>
+                      <TableCell>{job.promised_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "—"}</TableCell>
                       <TableCell className="text-right">
                         {isOverdue(job) ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">

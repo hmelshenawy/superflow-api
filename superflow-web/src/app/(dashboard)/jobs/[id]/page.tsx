@@ -81,9 +81,20 @@ function vehicleLabel(job: Job) {
 
 function formatDate(value?: string | null, withTime = false) {
   if (!value) return "—";
-  return withTime
-    ? new Date(value).toLocaleString()
-    : new Date(value).toLocaleDateString();
+  const date = new Date(value);
+  return new Intl.DateTimeFormat("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    ...(withTime
+      ? {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+          timeZone: "UTC",
+        }
+      : { timeZone: "UTC" }),
+  }).format(date);
 }
 
 function estimateTotal(job: Job) {
@@ -706,7 +717,7 @@ export default function JobDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} onUpdate={refreshJob} />
+              <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} />
             </CardContent>
           </Card>
         </TabsContent>

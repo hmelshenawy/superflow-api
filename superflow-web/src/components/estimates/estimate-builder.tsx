@@ -1,16 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
 import type { EstimateLine, EstimateLineType } from "@/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_COLORS: Record<EstimateLineType, string> = {
@@ -34,6 +26,7 @@ interface Props {
   jobId: string;
   lines: EstimateLine[];
   onUpdate: () => void;
+  inspection?: any | null;
 }
 
 interface LabourRateOption {
@@ -51,6 +44,17 @@ interface EstimateDefaults {
   labour_rates?: LabourRateOption[];
 }
 
+type ConcernSeverity = "amber" | "red" | "other";
+
+interface ConcernGroup {
+  key: string;
+  title: string;
+  detail?: string;
+  responseId: string | null;
+  severity: ConcernSeverity;
+  lines: EstimateLine[];
+}
+
 function normalizeLines(lines: EstimateLine[]) {
   return lines.map((line) => ({
     ...line,
@@ -63,7 +67,45 @@ function normalizeLines(lines: EstimateLine[]) {
   }));
 }
 
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate }: Props) {
+function resultToSeverity(value?: string | null, urgency?: string | null): ConcernSeverity | null {
+  const u = String(urgency ?? "").toLowerCase();
+  if (["medium", "amber", "yellow"].includes(u)) return "amber";
+  if (["high", "critical", "red"].includes(u)) return "red";
+
+  const v = String(value ?? "").toLowerCase();
+  if (["warn", "warning", "medium", "amber", "yellow"].includes(v)) return "amber";
+  if (["fail", "bad", "critical", "high", "red", "no"].includes(v)) return "red";
+  return null;
+}
+
+function severityMeta(severity: ConcernSeverity) {
+  if (severity === "red") {
+    return {
+      tone: "border-rose-200 bg-rose-50",
+      badge: "bg-rose-100 text-rose-700",
+      icon: <XCircle className="h-3.5 w-3.5" />,
+      label: "Red concern",
+    };
+  }
+
+  if (severity === "amber") {
+    return {
+      tone: "border-amber-200 bg-amber-50",
+      badge: "bg-amber-100 text-amber-800",
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      label: "Yellow concern",
+    };
+  }
+
+  return {
+    tone: "border-slate-200 bg-slate-50",
+    badge: "bg-slate-100 text-slate-700",
+    icon: null,
+    label: "General",
+  };
+}
+
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
   const [defaults, setDefaults] = useState<EstimateDefaults>({
@@ -113,12 +155,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate }: Props)
     fetchDefaults();
   }, []);
 
-  const addLine = (type: EstimateLineType = "labour") => {
+  const addLine = (type: EstimateLineType = "labour", inspectionResponseId: string | null = null) => {
     const isLabour = type === "labour";
     const newLine: EstimateLine = {
       id: crypto.randomUUID(),
       job_id: jobId,
-      inspection_response_id: null,
+      inspection_response_id: inspectionResponseId,
       type,
       description: "",
       part_number: null,
@@ -128,13 +170,13 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate }: Props)
       tax_rate_pct: defaults.default_tax_rate,
       line_total: 0,
       tax_amount: 0,
-      is_recommended: false,
+      is_recommended: Boolean(inspectionResponseId),
       sort_order: lines.length,
       added_by: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    setLines([...lines, { ...newLine, ...recalc(newLine) }]);
+    setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
   };
 
   const getMatchedLabourRateId = (line: EstimateLine) => {
@@ -193,6 +235,60 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate }: Props)
     setLines((prev) => prev.filter((l) => l.id !== id));
   };
 
+  const concernGroups = useMemo(() => {
+    const allResponses = inspection?.inspection_responses ?? inspection?.responses ?? [];
+    const flaggedResponses = allResponses.filter((response: any) => {
+      const severity = resultToSeverity(response?.value, response?.urgency);
+      return severity === "amber" || severity === "red";
+    });
+
+    const byResponseId = new Map<string, EstimateLine[]>();
+    const generalLines: EstimateLine[] = [];
+
+    for (const line of lines) {
+      if (line.inspection_response_id) {
+        const bucket = byResponseId.get(line.inspection_response_id) ?? [];
+        bucket.push(line);
+        byResponseId.set(line.inspection_response_id, bucket);
+      } else {
+        generalLines.push(line);
+      }
+    }
+
+    const groups: ConcernGroup[] = flaggedResponses.map((response: any) => {
+      const severity = resultToSeverity(response?.value, response?.urgency) ?? "amber";
+      const detail = [response?.tech_notes, response?.value ? `Result: ${response.value}` : null, response?.urgency && response.urgency !== "none" ? `Urgency: ${response.urgency}` : null]
+        .filter(Boolean)
+        .join(" • ");
+      return {
+        key: response.id,
+        title: response?.inspection_items?.label || "Inspection concern",
+        detail,
+        responseId: response.id,
+        severity,
+        lines: byResponseId.get(response.id) ?? [],
+      };
+    });
+
+    const linkedResponseIds = new Set(flaggedResponses.map((response: any) => response.id));
+    const orphanLinkedLines = lines.filter(
+      (line) => line.inspection_response_id && !linkedResponseIds.has(line.inspection_response_id),
+    );
+
+    if (generalLines.length > 0 || orphanLinkedLines.length > 0 || groups.length === 0) {
+      groups.push({
+        key: "general",
+        title: "General / Other",
+        detail: groups.length === 0 ? "Add manual estimate items here." : "Items not linked to a red or yellow checklist concern.",
+        responseId: null,
+        severity: "other",
+        lines: [...orphanLinkedLines, ...generalLines],
+      });
+    }
+
+    return groups;
+  }, [inspection, lines]);
+
   const save = async () => {
     setSaving(true);
     try {
@@ -209,168 +305,197 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate }: Props)
   const total = lines.reduce((s, l) => s + Number(l.line_total ?? 0), 0);
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-24">Type</TableHead>
-              <TableHead className="min-w-[360px]">Description</TableHead>
-              <TableHead className="w-16">Qty</TableHead>
-              <TableHead className="w-40">Unit Price ({defaults.currency})</TableHead>
-              <TableHead className="w-14">Disc %</TableHead>
-              <TableHead className="w-14">Tax %</TableHead>
-              <TableHead className="w-28 text-right">Total ({defaults.currency})</TableHead>
-              <TableHead className="w-12" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lines.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-20 text-center text-slate-400">
-                  No lines yet — click Add Line
-                </TableCell>
-              </TableRow>
-            ) : (
-              lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>
-                    <Select
-                      value={line.type}
-                      onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}
-                    >
-                      <SelectTrigger className="h-8 w-24">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="labour">
-                          <span className={TYPE_COLORS.labour}>Labour</span>
-                        </SelectItem>
-                        <SelectItem value="part">
-                          <span className={TYPE_COLORS.part}>Part</span>
-                        </SelectItem>
-                        <SelectItem value="sublet">
-                          <span className={TYPE_COLORS.sublet}>Sublet</span>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="w-full min-w-[360px]">
-                    <Input
-                      className="h-8 w-full"
-                      value={line.description ?? ""}
-                      onChange={(e) => updateLine(line.id, { description: e.target.value })}
-                      placeholder="Description…"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      className="h-8 w-16 text-right"
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      value={line.quantity ?? 1}
-                      onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
-                      <Select
-                        value={getMatchedLabourRateId(line)}
-                        onValueChange={(value) => {
-                          if (value === "custom") return;
-                          const matched = defaults.labour_rates?.find((rate) => rate.id === value);
-                          if (!matched) return;
-                          updateLine(line.id, {
-                            unit_price: Number(matched.rate_per_hour ?? 0),
-                            tax_rate_pct: defaults.default_tax_rate,
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="h-8 w-[160px] text-xs">
-                          <SelectValue>{getLabourRateLabel(line)}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(defaults.labour_rates ?? []).map((rate) => (
-                            <SelectItem key={rate.id} value={rate.id}>
-                              {rate.name} • {defaults.currency} {rate.rate_per_hour.toFixed(2)}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="custom">
-                            Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        className="h-8 w-24 text-right"
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={line.unit_price ?? 0}
-                        onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      className="h-8 w-14 px-2 text-right"
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={line.discount_pct ?? 0}
-                      onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      className="h-8 w-14 px-2 text-right"
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={line.tax_rate_pct ?? defaults.default_tax_rate}
-                      onChange={(e) => updateLine(line.id, { tax_rate_pct: parseFloat(e.target.value) || 0 })}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {Number(line.line_total ?? 0).toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-red-400 hover:text-red-600"
-                      onClick={() => removeLine(line.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+    <div className="space-y-4">
+      {concernGroups.map((group) => {
+        const meta = severityMeta(group.severity);
+        const groupTotal = group.lines.reduce((sum, line) => sum + Number(line.line_total ?? 0), 0);
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => addLine("labour")}>
-            <Plus className="mr-1 h-4 w-4" /> Add Labour
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => addLine("part")}>
-            <Plus className="mr-1 h-4 w-4" /> Add Part
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => addLine("sublet")}>
-            <Plus className="mr-1 h-4 w-4" /> Add Sublet
-          </Button>
+        return (
+          <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone}`}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-950">{group.title}</h3>
+                  <Badge className={meta.badge}>
+                    <span className="mr-1 inline-flex">{meta.icon}</span>
+                    {meta.label}
+                  </Badge>
+                </div>
+                {group.detail ? (
+                  <p className="mt-1 text-sm text-slate-600">{group.detail}</p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+                  Total: <span className="font-semibold text-slate-950">{defaults.currency} {groupTotal.toFixed(2)}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => addLine("labour", group.responseId)}>
+                  <Plus className="mr-1 h-4 w-4" /> Labour
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => addLine("part", group.responseId)}>
+                  <Plus className="mr-1 h-4 w-4" /> Part
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => addLine("sublet", group.responseId)}>
+                  <Plus className="mr-1 h-4 w-4" /> Sublet
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {group.lines.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm text-slate-500">
+                  No parts or labour added under this concern yet.
+                </div>
+              ) : (
+                group.lines.map((line) => (
+                  <div key={line.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="grid gap-3 xl:grid-cols-[110px_minmax(240px,1fr)_72px_170px_72px_72px_130px_44px]">
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Type</p>
+                        <Select
+                          value={line.type}
+                          onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="labour">
+                              <span className={TYPE_COLORS.labour}>Labour</span>
+                            </SelectItem>
+                            <SelectItem value="part">
+                              <span className={TYPE_COLORS.part}>Part</span>
+                            </SelectItem>
+                            <SelectItem value="sublet">
+                              <span className={TYPE_COLORS.sublet}>Sublet</span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Description</p>
+                        <Input
+                          className="h-9"
+                          value={line.description ?? ""}
+                          onChange={(e) => updateLine(line.id, { description: e.target.value })}
+                          placeholder="Description"
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Qty</p>
+                        <Input
+                          className="h-9 text-right"
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          value={line.quantity ?? 1}
+                          onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Unit price</p>
+                        {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
+                          <Select
+                            value={getMatchedLabourRateId(line)}
+                            onValueChange={(value) => {
+                              if (value === "custom") return;
+                              const matched = defaults.labour_rates?.find((rate) => rate.id === value);
+                              if (!matched) return;
+                              updateLine(line.id, {
+                                unit_price: Number(matched.rate_per_hour ?? 0),
+                                tax_rate_pct: defaults.default_tax_rate,
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue>{getLabourRateLabel(line)}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(defaults.labour_rates ?? []).map((rate) => (
+                                <SelectItem key={rate.id} value={rate.id}>
+                                  {rate.name} • {defaults.currency} {rate.rate_per_hour.toFixed(2)}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="custom">
+                                Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            className="h-9 text-right"
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={line.unit_price ?? 0}
+                            onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })}
+                          />
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Disc %</p>
+                        <Input
+                          className="h-9 text-right"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={line.discount_pct ?? 0}
+                          onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Tax %</p>
+                        <Input
+                          className="h-9 text-right"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={line.tax_rate_pct ?? defaults.default_tax_rate}
+                          onChange={(e) => updateLine(line.id, { tax_rate_pct: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Line total</p>
+                        <div className="flex h-9 items-center justify-end rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900">
+                          {defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-end justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-red-400 hover:text-red-600"
+                          onClick={() => removeLine(line.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-sm text-slate-500">Grouped by checklist concerns when the inspection item is marked yellow or red.</p>
+          <p className="text-xs text-slate-400">Each concern can carry its own parts, labour, and subtotal.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <p className="text-sm text-slate-500">
             Total: <span className="text-lg font-bold text-slate-900">{defaults.currency} {total.toFixed(2)}</span>
           </p>
-          <div className="text-right text-xs text-slate-500">
-            Defaults: {defaults.standard_labour_rate_name} labour {defaults.currency} {defaults.standard_labour_rate.toFixed(2)} • tax {defaults.default_tax_rate}%
-          </div>
           <Button onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save Estimate"}
           </Button>

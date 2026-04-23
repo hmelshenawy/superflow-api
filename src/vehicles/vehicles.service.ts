@@ -9,20 +9,52 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class VehiclesService {
   constructor(private prisma: PrismaService) {}
 
+  private cleanString(value?: string | null) {
+    const cleaned = value?.trim();
+    return cleaned ? cleaned : null;
+  }
+
   async create(dto: CreateVehicleDto) {
+    const vin = this.cleanString(dto.vin)?.toUpperCase() ?? null;
+    const plate = this.cleanString(dto.plate);
+    const make = this.cleanString(dto.make);
+    const model = this.cleanString(dto.model);
+    const color = this.cleanString(dto.color);
+    const engine = this.cleanString(dto.engine);
+
+    if (vin) {
+      const existing = await this.prisma.vehicles.findUnique({ where: { vin } });
+      if (existing) {
+        return this.prisma.vehicles.update({
+          where: { id: existing.id },
+          data: {
+            customer_id: dto.customer_id || existing.customer_id,
+            make: make ?? existing.make,
+            model: model ?? existing.model,
+            year: dto.year ?? existing.year,
+            plate: plate ?? existing.plate,
+            color: color ?? existing.color,
+            odometer_km: dto.odometer_km ?? existing.odometer_km,
+            vehicle_type: dto.vehicle_type || existing.vehicle_type || undefined,
+            engine: engine ?? existing.engine,
+          },
+        });
+      }
+    }
+
     return this.prisma.vehicles.create({
       data: {
         id: uuid(),
         customer_id: dto.customer_id,
-        vin: dto.vin?.toUpperCase(),
-        make: dto.make,
-        model: dto.model,
+        vin,
+        make: make ?? dto.make,
+        model: model ?? dto.model,
         year: dto.year,
-        plate: dto.plate,
-        color: dto.color,
+        plate,
+        color,
         odometer_km: dto.odometer_km,
         vehicle_type: dto.vehicle_type || undefined,
-        engine: dto.engine,
+        engine,
       },
     });
   }
@@ -100,7 +132,12 @@ export class VehiclesService {
       where: { id },
       data: {
         ...dto,
-        vin: dto.vin?.toUpperCase(),
+        vin: this.cleanString(dto.vin)?.toUpperCase() ?? null,
+        plate: this.cleanString(dto.plate),
+        color: this.cleanString(dto.color),
+        engine: this.cleanString(dto.engine),
+        make: this.cleanString(dto.make) ?? undefined,
+        model: this.cleanString(dto.model) ?? undefined,
         vehicle_type: dto.vehicle_type || undefined,
       },
     });
