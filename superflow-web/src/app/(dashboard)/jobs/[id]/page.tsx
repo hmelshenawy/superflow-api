@@ -8,6 +8,8 @@ import type { Job, JobStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -28,9 +30,12 @@ import {
   Clock3,
   FileText,
   Image as ImageIcon,
+  Pencil,
+  Save,
   Send,
   User,
   Wrench,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -122,6 +127,62 @@ export default function JobDetailPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [assigningAdvisor, setAssigningAdvisor] = useState(false);
   const [assigningTech, setAssigningTech] = useState(false);
+
+  // Inline editing states
+  const [editingConcern, setEditingConcern] = useState(false);
+  const [draftConcern, setDraftConcern] = useState("");
+  const [savingConcern, setSavingConcern] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [draftNotes, setDraftNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [editingPromise, setEditingPromise] = useState(false);
+  const [draftPromise, setDraftPromise] = useState("");
+  const [savingPromise, setSavingPromise] = useState(false);
+
+  const saveConcern = async () => {
+    if (!job) return;
+    setSavingConcern(true);
+    try {
+      await api.patch(`/jobs/${job.id}`, { customer_concern: draftConcern });
+      await refreshJob();
+      setEditingConcern(false);
+      toast.success("Customer concern updated");
+    } catch {
+      toast.error("Failed to update concern");
+    } finally {
+      setSavingConcern(false);
+    }
+  };
+
+  const saveNotes = async () => {
+    if (!job) return;
+    setSavingNotes(true);
+    try {
+      await api.patch(`/jobs/${job.id}`, { internal_notes: draftNotes });
+      await refreshJob();
+      setEditingNotes(false);
+      toast.success("Internal notes updated");
+    } catch {
+      toast.error("Failed to update notes");
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const savePromise = async () => {
+    if (!job) return;
+    setSavingPromise(true);
+    try {
+      await api.patch(`/jobs/${job.id}`, { promised_at: draftPromise || null });
+      await refreshJob();
+      setEditingPromise(false);
+      toast.success("Promise time updated");
+    } catch {
+      toast.error("Failed to update promise time");
+    } finally {
+      setSavingPromise(false);
+    }
+  };
 
   const advisors = users.filter((u: any) => ["admin", "service_advisor"].includes(u.role?.name ?? ""));
   const technicians = users.filter((u: any) => ["technician"].includes(u.role?.name ?? ""));
@@ -357,7 +418,39 @@ export default function JobDetailPage() {
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <StatCard label="Promised" value={formatDate(job.promised_at, true)} />
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Promised time</p>
+                  {editingPromise ? null : (
+                    <button
+                      onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }}
+                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {editingPromise ? (
+                  <div className="mt-2 space-y-2">
+                    <Input
+                      type="datetime-local"
+                      className="h-9 rounded-lg border-slate-200 text-sm"
+                      value={draftPromise}
+                      onChange={(e) => setDraftPromise(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={savePromise} disabled={savingPromise}>
+                        <Save className="mr-1 h-3 w-3" /> {savingPromise ? "Saving..." : "Save"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingPromise(false)} disabled={savingPromise}>
+                        <X className="mr-1 h-3 w-3" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xl font-semibold text-slate-950">{formatDate(job.promised_at, true)}</p>
+                )}
+              </div>
               <StatCard label="Estimate total" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} line items`} />
               <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
               <StatCard label="Media" value={`${mediaCount} file${mediaCount === 1 ? "" : "s"}`} />
@@ -365,16 +458,74 @@ export default function JobDetailPage() {
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer concern</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {job.customer_concern || "No customer concern added yet."}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer concern</p>
+                  {editingConcern ? null : (
+                    <button
+                      onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
+                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {editingConcern ? (
+                  <div className="mt-2 space-y-2">
+                    <Textarea
+                      className="min-h-[80px] rounded-lg border-slate-200 text-sm"
+                      placeholder="Describe the customer's concern..."
+                      value={draftConcern}
+                      onChange={(e) => setDraftConcern(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveConcern} disabled={savingConcern}>
+                        <Save className="mr-1 h-3 w-3" /> {savingConcern ? "Saving..." : "Save"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingConcern(false)} disabled={savingConcern}>
+                        <X className="mr-1 h-3 w-3" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                    {job.customer_concern || "No customer concern added yet."}
+                  </p>
+                )}
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Internal notes</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {job.internal_notes || "No internal notes yet."}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Internal notes</p>
+                  {editingNotes ? null : (
+                    <button
+                      onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}
+                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {editingNotes ? (
+                  <div className="mt-2 space-y-2">
+                    <Textarea
+                      className="min-h-[80px] rounded-lg border-slate-200 text-sm"
+                      placeholder="Internal notes visible to the team..."
+                      value={draftNotes}
+                      onChange={(e) => setDraftNotes(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveNotes} disabled={savingNotes}>
+                        <Save className="mr-1 h-3 w-3" /> {savingNotes ? "Saving..." : "Save"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingNotes(false)} disabled={savingNotes}>
+                        <X className="mr-1 h-3 w-3" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                    {job.internal_notes || "No internal notes yet."}
+                  </p>
+                )}
               </div>
             </div>
           </div>
