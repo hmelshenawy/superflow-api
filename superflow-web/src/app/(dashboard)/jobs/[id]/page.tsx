@@ -657,7 +657,7 @@ export default function JobDetailPage() {
                 <StatCard label="Current status" value={STATUS_META[job.status].label} />
                 <StatCard label="Advisor" value={job.advisor?.name || "Unassigned"} />
                 <StatCard label="Technician" value={job.technician?.name || "Unassigned"} />
-                <StatCard label="Odometer" value={job.odometer_in ? `${Number(job.odometer_in).toLocaleString()} km` : "—"} />
+                <StatCard label="Odometer" value={job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "—"} />
                 <StatCard label="Media evidence" value={`${mediaCount}`} hint="photos, videos, documents" />
                 <StatCard label="Estimate lines" value={`${estimateCount}`} hint="editable commercial items" />
               </CardContent>

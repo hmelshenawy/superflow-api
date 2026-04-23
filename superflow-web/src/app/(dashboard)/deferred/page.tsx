@@ -160,7 +160,7 @@ export default function DeferredWorkPage() {
                   </TableCell>
                   <TableCell>
                     {item.remind_after
-                      ? new Date(item.remind_after).toLocaleDateString()
+                      ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(item.remind_after))
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right">

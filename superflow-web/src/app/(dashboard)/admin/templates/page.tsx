@@ -93,7 +93,7 @@ export default function TemplatesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-slate-500">
-                    {new Date(t.created_at).toLocaleDateString()}
+                    {new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(t.created_at))}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

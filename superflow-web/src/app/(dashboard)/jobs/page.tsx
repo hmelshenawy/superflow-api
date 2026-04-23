@@ -146,10 +146,11 @@ function getPromisedLabel(value: string | null) {
   }).format(new Date(value));
 }
 
-function isOverdue(job: Job) {
+function isOverdue(job: Job, nowTs?: number | null) {
   if (!job.promised_at) return false;
   if (["completed", "invoiced", "closed"].includes(job.status)) return false;
-  return new Date(job.promised_at).getTime() < Date.now();
+  if (!nowTs) return false;
+  return new Date(job.promised_at).getTime() < nowTs;
 }
 
 function getEstimateTotal(job: Job) {
@@ -183,18 +184,12 @@ export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"board" | "list">("board");
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dropColumn, setDropColumn] = useState<JobStatus | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
-  const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(() => {
-    if (typeof window === "undefined") return new Set();
-    try {
-      const saved = localStorage.getItem("superflow-collapsed-columns");
-      return saved ? new Set(JSON.parse(saved) as JobStatus[]) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [nowTs, setNowTs] = useState<number | null>(null);
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
 
   const toggleColumn = useCallback((column: JobStatus) => {
     setCollapsedColumns((prev) => {
@@ -221,8 +216,26 @@ export default function JobsPage() {
   }, [page, limit, status, search]);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     fetchJobs();
-  }, [fetchJobs]);
+  }, [fetchJobs, mounted]);
+
+  useEffect(() => {
+    setNowTs(Date.now());
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("superflow-collapsed-columns");
+      setCollapsedColumns(saved ? new Set(JSON.parse(saved) as JobStatus[]) : new Set());
+    } catch {
+      setCollapsedColumns(new Set());
+    }
+  }, []);
 
   const boardJobs = useMemo(() => {
     const grouped = Object.fromEntries(BOARD_COLUMNS.map((column) => [column, [] as Job[]])) as Record<JobStatus, Job[]>;
@@ -233,12 +246,16 @@ export default function JobsPage() {
   const stats = useMemo(() => {
     const awaitingApproval = jobs.filter((job) => job.status === "estimate_sent").length;
     const inWorkshop = jobs.filter((job) => ["checking", "approved", "in_progress", "waiting_parts", "quality_check"].includes(job.status)).length;
-    const overdue = jobs.filter(isOverdue).length;
+    const overdue = jobs.filter((job) => isOverdue(job, nowTs)).length;
     const totalEstimate = jobs.reduce((sum, job) => sum + getEstimateTotal(job), 0);
     return { awaitingApproval, inWorkshop, overdue, totalEstimate };
-  }, [jobs]);
+  }, [jobs, nowTs]);
 
   const totalPages = Math.ceil(total / limit);
+
+  if (!mounted) {
+    return <div className="py-20 text-center text-slate-400">Loading...</div>;
+  }
 
   const moveJobToStatus = async (jobId: string, nextStatus: JobStatus) => {
     const currentJob = jobs.find((job) => job.id === jobId);
@@ -444,7 +461,7 @@ export default function JobsPage() {
                       ) : (
                         columnJobs.map((job) => {
                           const estimateTotal = getEstimateTotal(job);
-                          const overdue = isOverdue(job);
+                          const overdue = isOverdue(job, nowTs);
                           return (
                             <Link
                               key={job.id}
@@ -515,7 +532,7 @@ export default function JobsPage() {
                               <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
                                 <div className="flex min-w-0 items-center gap-1">
                                   <Clock3 className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">{job.promised_at ? new Date(job.promised_at).toLocaleDateString() : "—"}</span>
+                                  <span className="truncate">{job.promised_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "—"}</span>
                                 </div>
                                 <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-slate-900 group-hover:text-blue-700">
                                   {updatingJobId === job.id ? "..." : "Open"}
@@ -576,7 +593,7 @@ export default function JobsPage() {
                       <TableCell>{job.advisor?.name || "Unassigned"}</TableCell>
                       <TableCell>{job.promised_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "—"}</TableCell>
                       <TableCell className="text-right">
-                        {isOverdue(job) ? (
+                        {isOverdue(job, nowTs) ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
                             <TriangleAlert className="h-3.5 w-3.5" /> Overdue
                           </span>

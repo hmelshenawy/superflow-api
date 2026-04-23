@@ -161,7 +161,7 @@ export default function UsersRolesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-slate-500">
-                    {u.last_login_at ? new Date(u.last_login_at).toLocaleDateString() : "Never"}
+                    {u.last_login_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(u.last_login_at)) : "Never"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
