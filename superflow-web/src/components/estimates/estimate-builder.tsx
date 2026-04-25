@@ -290,10 +290,28 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   const save = async () => {
     setSaving(true);
     try {
-      await api.put(`/estimates/job/${jobId}/bulk`, { lines });
+      const payloadLines = lines.map((line) => ({
+        id: line.id,
+        job_id: line.job_id,
+        type: line.type,
+        description: line.description ?? "",
+        part_number: line.part_number ?? undefined,
+        quantity: Number(line.quantity ?? 0),
+        unit_price: Number(line.unit_price ?? 0),
+        discount_pct: Number(line.discount_pct ?? 0),
+        tax_rate_pct: Number(line.tax_rate_pct ?? 0),
+        is_recommended: Boolean(line.is_recommended),
+        inspection_response_id: line.inspection_response_id ?? undefined,
+        quote_group_id: line.quote_group_id ?? undefined,
+        quote_group_title: line.quote_group_title ?? undefined,
+      }));
+
+      await api.put(`/estimates/job/${jobId}/bulk`, { lines: payloadLines });
       toast.success("Estimate saved");
       onUpdate();
-    } catch { toast.error("Failed to save estimate"); }
+    } catch {
+      toast.error("Failed to save estimate");
+    }
     finally { setSaving(false); }
   };
 
