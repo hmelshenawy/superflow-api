@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateDeferredDto } from './dto/update-deferred.dto';
@@ -25,7 +26,7 @@ export class DeferredService {
       }),
       this.prisma.deferred_work.count({ where }),
     ]);
-    const data = items.map((item) => ({
+    const data = items.map((item: Prisma.deferred_workGetPayload<{include: {customers: {select: {id: true, name: true, phone: true, email: true}}, vehicles: {select: {id: true, make: true, model: true, plate: true, year: true}}, estimate_lines: true}}>) => ({
       ...item,
       customer: item.customers,
       vehicle: item.vehicles,
@@ -59,15 +60,16 @@ export class DeferredService {
   async remindNow(id: string) {
     const item = await this.findOne(id);
     if (!item.customers) throw new BadRequestException('Deferred item has no customer');
+    const customer = item.customers;
 
-    const recipient = item.customers.phone || item.customers.email || 'customer';
+    const recipient = customer.phone || customer.email || 'customer';
 
-    const reminder = await this.prisma.$transaction(async (tx) => {
+    const reminder = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const row = await tx.deferred_work_reminders.create({
         data: {
           id: uuid(),
           deferred_work_id: id,
-          channel: item.customers.phone ? 'whatsapp' : 'email',
+          channel: customer.phone ? 'whatsapp' : 'email',
           sent_to: recipient,
           delivery_status: 'sent',
         },
@@ -85,9 +87,9 @@ export class DeferredService {
       await tx.notifications.create({
         data: {
           id: uuid(),
-          customer_id: item.customer_id,
-          job_id: item.original_job_id,
-          channel: item.customers.phone ? 'whatsapp' : 'email',
+          customer_id: item.customer_id ?? undefined,
+          job_id: item.original_job_id ?? undefined,
+          channel: customer.phone ? 'whatsapp' : 'email',
           recipient,
           subject: 'Deferred work reminder',
           body_rendered: `Reminder: ${item.estimate_lines?.description || 'recommended work'} is still pending for your vehicle.`,
@@ -110,7 +112,7 @@ export class DeferredService {
     const jobNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
     const description = item.estimate_lines?.description || 'Deferred work booking';
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const newJob = await tx.jobs.create({
         data: {
           id: uuid(),

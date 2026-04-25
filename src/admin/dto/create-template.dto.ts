@@ -5,7 +5,7 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 export class CreateAdminTemplateDto {
   @ApiProperty()
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional()
   @IsOptional()

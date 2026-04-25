@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import type { settings, labour_rates, estimate_lines } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLineDto } from './dto/create-line.dto';
@@ -49,9 +51,9 @@ export class EstimatesService {
       }),
     ]);
 
-    const byKey = new Map(settings.map((row) => [row.key, row.value]));
+    const byKey = new Map(settings.map((row: settings) => [row.key, row.value]));
     const standardRate =
-      labourRates.find((rate) => (rate.name || '').toLowerCase() === 'standard') ||
+      labourRates.find((rate: labour_rates) => (rate.name || '').toLowerCase() === 'standard') ||
       labourRates[0] ||
       null;
 
@@ -60,7 +62,7 @@ export class EstimatesService {
       currency: byKey.get('currency') ?? standardRate?.currency ?? 'AED',
       standard_labour_rate: Number(standardRate?.rate_per_hour ?? 0),
       standard_labour_rate_name: standardRate?.name ?? 'Standard',
-      labour_rates: labourRates.map((rate) => ({
+      labour_rates: labourRates.map((rate: labour_rates) => ({
         id: rate.id,
         name: rate.name,
         rate_per_hour: Number(rate.rate_per_hour ?? 0),
@@ -116,9 +118,9 @@ export class EstimatesService {
    * lines when they are not referenced elsewhere.
    */
   async bulkReplace(jobId: string, lines: any[], userId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const existing = await tx.estimate_lines.findMany({ where: { job_id: jobId } });
-      const existingIds = new Set(existing.map((line) => line.id));
+      const existingIds = new Set(existing.map((line: estimate_lines) => line.id));
       const incomingIds = new Set(
         lines
           .map((line) => line.id)
@@ -168,7 +170,7 @@ export class EstimatesService {
         }
       }
 
-      const staleLines = existing.filter((line) => !incomingIds.has(line.id));
+      const staleLines = existing.filter((line: estimate_lines) => !incomingIds.has(line.id));
       let preservedSortOrder = lines.length;
 
       for (const stale of staleLines) {

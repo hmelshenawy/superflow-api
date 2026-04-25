@@ -2,8 +2,8 @@ import { IsString, IsOptional, IsInt } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateJobDto {
-  @ApiProperty() @IsString() customer_id: string;
-  @ApiProperty() @IsString() vehicle_id: string;
+  @ApiProperty() @IsString() customer_id!: string;
+  @ApiProperty() @IsString() vehicle_id!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() advisor_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() technician_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() customer_concern?: string;

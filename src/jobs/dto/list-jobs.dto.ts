@@ -8,14 +8,14 @@ export class ListJobsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page?: number = 1;
+  page: number = 1;
 
   @ApiPropertyOptional({ default: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number = 20;
+  limit: number = 20;
 
   @ApiPropertyOptional()
   @IsOptional()

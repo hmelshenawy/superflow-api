@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -64,7 +65,7 @@ export class JobsService {
       }),
       this.prisma.jobs.count({ where }),
     ]);
-    const data = items.map((item) => ({
+    const data = items.map((item: Prisma.jobsGetPayload<{include: {customers: {select: {id: true, name: true, phone: true, email: true}}, vehicles: {select: {id: true, make: true, model: true, plate: true, vin: true, year: true}}, users_jobs_advisor_idTousers: {select: {id: true, name: true, email: true}}, users_jobs_technician_idTousers: {select: {id: true, name: true, email: true}}}}>) => ({
       ...item,
       customer: item.customers,
       vehicle: item.vehicles,

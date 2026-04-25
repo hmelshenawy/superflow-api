@@ -4,11 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
-
-// Fix BigInt serialization from Prisma
-(BigInt.prototype as any).toJSON = function () {
-  return Number(this);
-};
+import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,7 +23,7 @@ async function bootstrap() {
   });
 
   // Health check
-  app.use('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.use('/health', (req: any, res: any) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -35,7 +31,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.useGlobalInterceptors(app.get(AuditInterceptor));
+  app.useGlobalInterceptors(app.get(AuditInterceptor), app.get(BigIntInterceptor));
 
   const config = new DocumentBuilder()
     .setTitle('SuperFlow API')

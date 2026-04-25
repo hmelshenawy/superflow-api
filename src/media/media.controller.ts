@@ -61,7 +61,7 @@ export class MediaController {
     const file = await this.service.getDownloadStream(id);
     return new StreamableFile(file.stream as any, {
       type: file.mime_type || 'application/octet-stream',
-      disposition: toSafeInlineDisposition(file.filename),
+      disposition: toSafeInlineDisposition(file.filename ?? undefined),
     });
   }
 

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateResponseDto } from './dto/create-response.dto';
@@ -80,11 +81,11 @@ export class InspectionsService {
   async saveResponses(id: string, dto: CreateResponseDto) {
     const inspection = await this.prisma.inspections.findUnique({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
-    if (['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
+    if (['submitted', 'reviewed', 'approved'].includes(inspection.status!)) {
       throw new BadRequestException('Inspection is locked and can no longer be edited');
     }
 
-    const results = await this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];
       for (const r of dto.responses) {
         const existing = await tx.inspection_responses.findFirst({
@@ -153,7 +154,7 @@ export class InspectionsService {
     });
 
     const job = await this.prisma.jobs.findUnique({
-      where: { id: inspection.job_id },
+      where: { id: inspection.job_id! },
       include: { customers: true, vehicles: true, users_jobs_advisor_idTousers: true },
     });
 
@@ -162,11 +163,11 @@ export class InspectionsService {
         data: {
           id: uuid(),
           job_id: job.id,
-          customer_id: job.customer_id,
+          customer_id: job.customer_id ?? undefined,
           channel: 'push',
-          recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
+          recipient: job.users_jobs_advisor_idTousers?.email ?? job.users_jobs_advisor_idTousers?.name ?? 'advisor',
           subject: `Inspection submitted for ${job.job_number}`,
-          body_rendered: `Inspection for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.model || ''} has been submitted by technician.${dto.advisor_note ? ` Note: ${dto.advisor_note}` : ''}`,
+          body_rendered: `Inspection for ${job.customers?.name ?? 'customer'} / ${job.vehicles?.make ?? ''} ${job.vehicles?.model ?? ''} has been submitted by technician.${dto.advisor_note ? ` Note: ${dto.advisor_note}` : ''}`,
           status: 'queued',
           provider: 'internal',
         },
@@ -190,7 +191,7 @@ export class InspectionsService {
   async reopen(id: string, userId: string) {
     const inspection = await this.prisma.inspections.findUnique({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
-    if (!['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
+    if (!['submitted', 'reviewed', 'approved'].includes(inspection.status!)) {
       throw new BadRequestException('Inspection is not locked');
     }
 

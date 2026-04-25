@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import type { authorisation_decisions, estimate_lines } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -146,12 +148,12 @@ export class AuthorisationService {
     });
     if (!job) throw new NotFoundException('Job not found');
 
-    const allDecisions = job.approval_tokens.flatMap((t) => t.authorisation_decisions);
+    const allDecisions = job.approval_tokens.flatMap((t: Prisma.approval_tokensGetPayload<{include: {authorisation_decisions: true}}>) => t.authorisation_decisions);
     const counts = {
       totalLines: job.estimate_lines.length,
-      approved: allDecisions.filter((d) => d.decision === 'approved').length,
-      declined: allDecisions.filter((d) => d.decision === 'declined').length,
-      deferred: allDecisions.filter((d) => d.decision === 'deferred').length,
+      approved: allDecisions.filter((d: authorisation_decisions) => d.decision === 'approved').length,
+      declined: allDecisions.filter((d: authorisation_decisions) => d.decision === 'declined').length,
+      deferred: allDecisions.filter((d: authorisation_decisions) => d.decision === 'deferred').length,
       pending: Math.max(job.estimate_lines.length - allDecisions.length, 0),
     };
 
@@ -281,14 +283,14 @@ export class AuthorisationService {
     if (token.used_at) throw new BadRequestException('Approval link already used');
     if (!dto.decisions.length) throw new BadRequestException('No decisions provided');
 
-    const allowedLineIds = new Set((token.jobs?.estimate_lines || []).map((l) => l.id));
+    const allowedLineIds = new Set((token.jobs?.estimate_lines || []).map((l: estimate_lines) => l.id));
     for (const item of dto.decisions) {
       if (!allowedLineIds.has(item.estimate_line_id)) {
         throw new BadRequestException(`Estimate line ${item.estimate_line_id} does not belong to this job`);
       }
     }
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const rows: any[] = [];
       for (const item of dto.decisions) {
         const row = await tx.authorisation_decisions.create({

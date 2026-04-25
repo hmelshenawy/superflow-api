@@ -2,10 +2,10 @@ import { IsString, IsOptional, IsInt, MinLength, MaxLength } from 'class-validat
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateVehicleDto {
-  @ApiProperty() @IsString() customer_id: string;
+  @ApiProperty() @IsString() customer_id!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(17) @MaxLength(17) vin?: string;
-  @ApiProperty() @IsString() make: string;
-  @ApiProperty() @IsString() model: string;
+  @ApiProperty() @IsString() make!: string;
+  @ApiProperty() @IsString() model!: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() year?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() plate?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() color?: string;

@@ -70,7 +70,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     const notification = await this.prisma.notifications.findUnique({ where: { id: job.data.notificationId } });
     if (!notification) throw new Error('Notification not found');
 
-    const webhook = this.getWebhook(notification.channel);
+    const webhook = this.getWebhook(String(notification.channel));
 
     if (!webhook) {
       await this.prisma.notifications.update({
@@ -110,7 +110,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
       const json = JSON.parse(text || '{}');
       providerMessageId = json.messageId || json.id || notification.provider_message_id || null;
     } catch {
-      providerMessageId = notification.provider_message_id || null;
+      providerMessageId = notification.provider_message_id ?? null;
     }
 
     await this.prisma.notifications.update({

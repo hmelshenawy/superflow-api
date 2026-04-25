@@ -15,11 +15,11 @@ export class BulkEstimateLineDto {
 
   @ApiProperty()
   @IsEnum(['labour', 'part', 'sublet'])
-  type: 'labour' | 'part' | 'sublet';
+  type!: 'labour' | 'part' | 'sublet';
 
   @ApiProperty()
   @IsString()
-  description: string;
+  description!: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -77,5 +77,5 @@ export class BulkReplaceLinesDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BulkEstimateLineDto)
-  lines: BulkEstimateLineDto[];
+  lines!: BulkEstimateLineDto[];
 }

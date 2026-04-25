@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { media_files } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { PresignUploadDto } from './dto/presign-upload.dto';
@@ -196,7 +197,7 @@ export class MediaService {
       where: { job_id: jobId, is_deleted: false },
       orderBy: { uploaded_at: 'desc' },
     });
-    return files.map((file) => this.normalizeMedia(file));
+    return files.map((file: media_files) => this.normalizeMedia(file));
   }
 
   async findOne(id: string) {

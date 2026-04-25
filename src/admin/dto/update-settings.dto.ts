@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class SettingItemDto {
   @ApiProperty()
   @IsString()
-  key: string;
+  key!: string;
 
   @ApiPropertyOptional({ enum: ['string', 'number', 'boolean', 'json'] })
   @IsOptional()
@@ -27,5 +27,5 @@ export class UpdateSettingsDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SettingItemDto)
-  settings: SettingItemDto[];
+  settings!: SettingItemDto[];
 }

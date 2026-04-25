@@ -2,9 +2,9 @@ import { IsString, IsOptional, IsEnum, IsNumber, IsBoolean } from 'class-validat
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateLineDto {
-  @ApiProperty() @IsString() job_id: string;
-  @ApiProperty() @IsEnum(['labour','part','sublet']) type: string;
-  @ApiProperty() @IsString() description: string;
+  @ApiProperty() @IsString() job_id!: string;
+  @ApiProperty() @IsEnum(['labour','part','sublet']) type!: string;
+  @ApiProperty() @IsString() description!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() part_number?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() quantity?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() unit_price?: number;

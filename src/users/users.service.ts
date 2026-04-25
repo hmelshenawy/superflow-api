@@ -1,4 +1,5 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
@@ -42,7 +43,7 @@ export class UsersService {
       }),
       this.prisma.users.count(),
     ]);
-    const data = items.map((item) => ({ ...item, role: item.roles }));
+    const data = items.map((item: Prisma.usersGetPayload<{select: {id: true, name: true, email: true, role_id: true, is_active: true, last_login_at: true, created_at: true, updated_at: true, roles: {select: {id: true, name: true, permissions: true, description: true}}}}>) => ({ ...item, role: item.roles }));
     return { items: data, total, page: pagination.page, limit: pagination.limit };
   }
 

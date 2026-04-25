@@ -4,5 +4,5 @@ import { IsString } from 'class-validator';
 export class AssignTechnicianDto {
   @ApiProperty()
   @IsString()
-  technician_id: string;
+  technician_id!: string;
 }

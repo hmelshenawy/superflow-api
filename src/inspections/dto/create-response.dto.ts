@@ -3,7 +3,7 @@ import { IsArray, IsInt, IsOptional, IsString, ValidateNested } from 'class-vali
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class InspectionResponseItemDto {
-  @ApiProperty() @IsString() item_id: string;
+  @ApiProperty() @IsString() item_id!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() value?: string;
   @ApiPropertyOptional() @IsOptional() urgency?: 'none' | 'low' | 'medium' | 'high' | 'critical';
   @ApiPropertyOptional() @IsOptional() @IsString() tech_notes?: string;
@@ -15,7 +15,7 @@ export class CreateResponseDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => InspectionResponseItemDto)
-  responses: InspectionResponseItemDto[];
+  responses!: InspectionResponseItemDto[];
 
   @ApiPropertyOptional({ description: 'Optional offline draft payload for mobile/offline support' })
   @IsOptional()
