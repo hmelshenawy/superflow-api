@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import IORedis from 'ioredis';
+import { REDIS_CONNECTION } from './redis.constants';
 import { NotificationsService } from './notifications.service';
 import { RendererService } from './templates/renderer.service';
 import { NotificationsProcessor } from './notifications.processor';
-
-export const REDIS_CONNECTION = 'REDIS_CONNECTION';
 
 @Module({
   providers: [

@@ -3,7 +3,7 @@ import { Job, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
-import { REDIS_CONNECTION } from './notifications.module';
+import { REDIS_CONNECTION } from './redis.constants';
 
 @Injectable()
 export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {

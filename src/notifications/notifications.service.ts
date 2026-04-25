@@ -4,7 +4,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { RendererService } from './templates/renderer.service';
-import { REDIS_CONNECTION } from './notifications.module';
+import { REDIS_CONNECTION } from './redis.constants';
 
 @Injectable()
 export class NotificationsService {
