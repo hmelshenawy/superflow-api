@@ -38,4 +38,10 @@ export class InspectionsController {
   submit(@Param('id') id: string, @Body() dto: SubmitInspectionDto, @CurrentUser('sub') userId: string) {
     return this.service.submit(id, dto, userId);
   }
+
+  @Post(':id/reopen')
+  @ApiOperation({ summary: 'Re-open a locked inspection for edits' })
+  reopen(@Param('id') id: string, @CurrentUser('sub') userId: string) {
+    return this.service.reopen(id, userId);
+  }
 }

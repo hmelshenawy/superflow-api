@@ -6,6 +6,17 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
+function toSafeInlineDisposition(filename?: string) {
+  const fallback = 'file';
+  const cleaned = (filename || fallback)
+    .replace(/[\r\n]/g, ' ')
+    .replace(/["\\]/g, '_')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim();
+
+  return `inline; filename="${cleaned || fallback}"`;
+}
+
 @ApiTags('Media')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -50,7 +61,7 @@ export class MediaController {
     const file = await this.service.getDownloadStream(id);
     return new StreamableFile(file.stream as any, {
       type: file.mime_type || 'application/octet-stream',
-      disposition: `inline; filename="${file.filename || 'file'}"`,
+      disposition: toSafeInlineDisposition(file.filename),
     });
   }
 

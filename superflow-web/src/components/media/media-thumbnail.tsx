@@ -37,14 +37,27 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
   }, [file.id, file.file_type]);
 
   const handleView = async () => {
+    const popup = window.open("", "_blank");
+
     try {
-      // Fetch the file via the API proxy and open a blob URL
       const res = await api.get(`/media/${file.id}/download`, { responseType: "blob" });
       const blobUrl = URL.createObjectURL(res.data);
-      window.open(blobUrl, "_blank");
-      // Revoke after a delay so the new tab has time to load it
+
+      if (popup) {
+        popup.location.href = blobUrl;
+      } else {
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch {
+      if (popup && !popup.closed) popup.close();
       alert("Failed to open file");
     }
   };

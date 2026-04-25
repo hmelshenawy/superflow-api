@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Plus, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Plus, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_COLORS: Record<EstimateLineType, string> = {
@@ -51,6 +51,7 @@ interface ConcernGroup {
   title: string;
   detail?: string;
   responseId: string | null;
+  quoteGroupId: string | null;
   severity: ConcernSeverity;
   lines: EstimateLine[];
 }
@@ -58,6 +59,8 @@ interface ConcernGroup {
 function normalizeLines(lines: EstimateLine[]) {
   return lines.map((line) => ({
     ...line,
+    quote_group_id: line.quote_group_id ?? null,
+    quote_group_title: line.quote_group_title ?? null,
     quantity: Number(line.quantity ?? 0),
     unit_price: Number(line.unit_price ?? 0),
     discount_pct: Number(line.discount_pct ?? 0),
@@ -71,7 +74,6 @@ function resultToSeverity(value?: string | null, urgency?: string | null): Conce
   const u = String(urgency ?? "").toLowerCase();
   if (["medium", "amber", "yellow"].includes(u)) return "amber";
   if (["high", "critical", "red"].includes(u)) return "red";
-
   const v = String(value ?? "").toLowerCase();
   if (["warn", "warning", "medium", "amber", "yellow"].includes(v)) return "amber";
   if (["fail", "bad", "critical", "high", "red", "no"].includes(v)) return "red";
@@ -79,41 +81,24 @@ function resultToSeverity(value?: string | null, urgency?: string | null): Conce
 }
 
 function severityMeta(severity: ConcernSeverity) {
-  if (severity === "red") {
-    return {
-      tone: "border-rose-200 bg-rose-50",
-      badge: "bg-rose-100 text-rose-700",
-      icon: <XCircle className="h-3.5 w-3.5" />,
-      label: "Red concern",
-    };
-  }
-
-  if (severity === "amber") {
-    return {
-      tone: "border-amber-200 bg-amber-50",
-      badge: "bg-amber-100 text-amber-800",
-      icon: <AlertTriangle className="h-3.5 w-3.5" />,
-      label: "Yellow concern",
-    };
-  }
-
-  return {
-    tone: "border-slate-200 bg-slate-50",
-    badge: "bg-slate-100 text-slate-700",
-    icon: null,
-    label: "General",
-  };
+  if (severity === "red") return { tone: "border-rose-200 bg-rose-50", badge: "bg-rose-100 text-rose-700", icon: <XCircle className="h-3.5 w-3.5" />, label: "Red" };
+  if (severity === "amber") return { tone: "border-amber-200 bg-amber-50", badge: "bg-amber-100 text-amber-800", icon: <AlertTriangle className="h-3.5 w-3.5" />, label: "Yellow" };
+  return { tone: "border-slate-200 bg-slate-50", badge: "bg-slate-100 text-slate-700", icon: null, label: "General" };
 }
 
 export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
+  const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
+  const [draftGroupTitle, setDraftGroupTitle] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`estimate-collapsed-${jobId}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set<string>();
+    } catch { return new Set<string>(); }
+  });
   const [defaults, setDefaults] = useState<EstimateDefaults>({
-    default_tax_rate: 5,
-    currency: "AED",
-    standard_labour_rate: 0,
-    standard_labour_rate_name: "Standard",
-    labour_rates: [],
+    default_tax_rate: 5, currency: "AED", standard_labour_rate: 0, standard_labour_rate_name: "Standard", labour_rates: [],
   });
 
   const recalc = (line: Partial<EstimateLine>) => {
@@ -123,15 +108,10 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     const tax = Number(line.tax_rate_pct ?? 0);
     const sub = qty * price * (1 - disc / 100);
     const taxAmt = sub * (tax / 100);
-    return {
-      line_total: Math.round(sub * 100) / 100,
-      tax_amount: Math.round(taxAmt * 100) / 100,
-    };
+    return { line_total: Math.round(sub * 100) / 100, tax_amount: Math.round(taxAmt * 100) / 100 };
   };
 
-  useEffect(() => {
-    setLines(normalizeLines(initialLines));
-  }, [initialLines]);
+  useEffect(() => { setLines(normalizeLines(initialLines)); }, [initialLines]);
 
   useEffect(() => {
     const fetchDefaults = async () => {
@@ -142,149 +122,138 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
           currency: data.currency || "AED",
           standard_labour_rate: Number(data.standard_labour_rate ?? 0),
           standard_labour_rate_name: data.standard_labour_rate_name || "Standard",
-          labour_rates: (data.labour_rates ?? []).map((rate) => ({
-            ...rate,
-            rate_per_hour: Number(rate.rate_per_hour ?? 0),
-          })),
+          labour_rates: (data.labour_rates ?? []).map((r) => ({ ...r, rate_per_hour: Number(r.rate_per_hour ?? 0) })),
         });
-      } catch {
-        // keep safe defaults silently
-      }
+      } catch {}
     };
-
     fetchDefaults();
   }, []);
 
-  const addLine = (type: EstimateLineType = "labour", inspectionResponseId: string | null = null) => {
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); try { localStorage.setItem(`estimate-collapsed-${jobId}`, JSON.stringify([...next])); } catch {} return next; });
+  };
+
+  const addLine = (type: EstimateLineType = "labour", opts?: { inspectionResponseId?: string | null; quoteGroupId?: string | null; quoteGroupTitle?: string | null }) => {
     const isLabour = type === "labour";
     const newLine: EstimateLine = {
-      id: crypto.randomUUID(),
-      job_id: jobId,
-      inspection_response_id: inspectionResponseId,
-      type,
-      description: "",
-      part_number: null,
-      quantity: 1,
+      id: crypto.randomUUID(), job_id: jobId,
+      inspection_response_id: opts?.inspectionResponseId ?? null,
+      quote_group_id: opts?.quoteGroupId ?? null,
+      quote_group_title: opts?.quoteGroupTitle ?? null,
+      type, description: "", part_number: null, quantity: 1,
       unit_price: isLabour ? defaults.standard_labour_rate : 0,
-      discount_pct: 0,
-      tax_rate_pct: defaults.default_tax_rate,
-      line_total: 0,
-      tax_amount: 0,
-      is_recommended: Boolean(inspectionResponseId),
-      sort_order: lines.length,
-      added_by: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      discount_pct: 0, tax_rate_pct: defaults.default_tax_rate,
+      line_total: 0, tax_amount: 0,
+      is_recommended: Boolean(opts?.inspectionResponseId),
+      sort_order: lines.length, added_by: null,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
     setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
   };
 
   const getMatchedLabourRateId = (line: EstimateLine) => {
     if (line.type !== "labour") return "custom";
-    const match = (defaults.labour_rates ?? []).find(
-      (rate) => Number(rate.rate_per_hour) === Number(line.unit_price ?? 0),
-    );
-    return match?.id ?? "custom";
+    return (defaults.labour_rates ?? []).find((r) => Number(r.rate_per_hour) === Number(line.unit_price ?? 0))?.id ?? "custom";
   };
 
   const getLabourRateLabel = (line: EstimateLine) => {
-    const matched = (defaults.labour_rates ?? []).find(
-      (rate) => rate.id === getMatchedLabourRateId(line),
-    );
-
-    if (matched) {
-      return `${matched.name} • ${defaults.currency} ${matched.rate_per_hour.toFixed(2)}`;
-    }
-
-    return `Custom • ${defaults.currency} ${Number(line.unit_price ?? 0).toFixed(2)}`;
+    const m = (defaults.labour_rates ?? []).find((r) => r.id === getMatchedLabourRateId(line));
+    return m ? `${m.name} • ${defaults.currency} ${m.rate_per_hour.toFixed(2)}` : `Custom • ${defaults.currency} ${Number(line.unit_price ?? 0).toFixed(2)}`;
   };
 
   const updateLine = (id: string, patch: Partial<EstimateLine>) => {
-    setLines((prev) =>
-      prev.map((l) => {
-        if (l.id !== id) return l;
-        const merged = { ...l, ...patch };
-
-        if (patch.type === "labour" && l.type !== "labour") {
-          merged.unit_price = defaults.standard_labour_rate;
-          merged.tax_rate_pct = defaults.default_tax_rate;
-        }
-
-        if ((patch.type === "part" || patch.type === "sublet") && l.type !== patch.type) {
-          if (Number(l.unit_price ?? 0) === Number(defaults.standard_labour_rate)) {
-            merged.unit_price = 0;
-          }
-          merged.tax_rate_pct = defaults.default_tax_rate;
-        }
-
-        if (patch.type === "labour") {
-          if (!Number(merged.unit_price ?? 0)) {
-            merged.unit_price = defaults.standard_labour_rate;
-          }
-          if (!Number(merged.tax_rate_pct ?? 0)) {
-            merged.tax_rate_pct = defaults.default_tax_rate;
-          }
-        }
-
-        return { ...merged, ...recalc(merged) };
-      }),
-    );
+    setLines((prev) => prev.map((l) => {
+      if (l.id !== id) return l;
+      const merged = { ...l, ...patch };
+      if (patch.type === "labour" && l.type !== "labour") { merged.unit_price = defaults.standard_labour_rate; merged.tax_rate_pct = defaults.default_tax_rate; }
+      if ((patch.type === "part" || patch.type === "sublet") && l.type !== patch.type) { if (Number(l.unit_price ?? 0) === Number(defaults.standard_labour_rate)) merged.unit_price = 0; merged.tax_rate_pct = defaults.default_tax_rate; }
+      if (patch.type === "labour") { if (!Number(merged.unit_price ?? 0)) merged.unit_price = defaults.standard_labour_rate; if (!Number(merged.tax_rate_pct ?? 0)) merged.tax_rate_pct = defaults.default_tax_rate; }
+      return { ...merged, ...recalc(merged) };
+    }));
   };
 
-  const removeLine = (id: string) => {
-    setLines((prev) => prev.filter((l) => l.id !== id));
+  const removeLine = (id: string) => { setLines((prev) => prev.filter((l) => l.id !== id)); };
+
+  const createCustomGroup = () => {
+    const groupId = crypto.randomUUID();
+    const newLine: EstimateLine = {
+      id: crypto.randomUUID(), job_id: jobId,
+      inspection_response_id: null, quote_group_id: groupId, quote_group_title: "New group",
+      type: "labour", description: "", part_number: null, quantity: 1,
+      unit_price: defaults.standard_labour_rate, discount_pct: 0,
+      tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,
+      is_recommended: false, sort_order: lines.length, added_by: null,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    };
+    setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
+  };
+
+  const renameCustomGroup = (groupId: string, title: string) => {
+    setLines((prev) => prev.map((l) => l.quote_group_id === groupId ? { ...l, quote_group_title: title } : l));
+  };
+
+  const deleteCustomGroup = (groupId: string) => {
+    setLines((prev) => prev.filter((l) => l.quote_group_id !== groupId));
   };
 
   const concernGroups = useMemo(() => {
     const allResponses = inspection?.inspection_responses ?? inspection?.responses ?? [];
-    const flaggedResponses = allResponses.filter((response: any) => {
-      const severity = resultToSeverity(response?.value, response?.urgency);
-      return severity === "amber" || severity === "red";
-    });
+    const flaggedResponses = allResponses.filter((r: any) => { const s = resultToSeverity(r?.value, r?.urgency); return s === "amber" || s === "red"; });
 
     const byResponseId = new Map<string, EstimateLine[]>();
+    const byQuoteGroupId = new Map<string, EstimateLine[]>();
     const generalLines: EstimateLine[] = [];
 
     for (const line of lines) {
       if (line.inspection_response_id) {
-        const bucket = byResponseId.get(line.inspection_response_id) ?? [];
-        bucket.push(line);
-        byResponseId.set(line.inspection_response_id, bucket);
+        const b = byResponseId.get(line.inspection_response_id) ?? []; b.push(line); byResponseId.set(line.inspection_response_id, b);
+      } else if (line.quote_group_id) {
+        const b = byQuoteGroupId.get(line.quote_group_id) ?? []; b.push(line); byQuoteGroupId.set(line.quote_group_id, b);
       } else {
         generalLines.push(line);
       }
     }
 
-    const groups: ConcernGroup[] = flaggedResponses.map((response: any) => {
-      const severity = resultToSeverity(response?.value, response?.urgency) ?? "amber";
-      const detail = [response?.tech_notes, response?.value ? `Result: ${response.value}` : null, response?.urgency && response.urgency !== "none" ? `Urgency: ${response.urgency}` : null]
-        .filter(Boolean)
-        .join(" • ");
-      return {
-        key: response.id,
-        title: response?.inspection_items?.label || "Inspection concern",
-        detail,
-        responseId: response.id,
-        severity,
-        lines: byResponseId.get(response.id) ?? [],
-      };
+    const groups: ConcernGroup[] = flaggedResponses.map((r: any) => {
+      const severity = resultToSeverity(r?.value, r?.urgency) ?? "amber";
+      const detail = [r?.tech_notes, r?.value ? `Result: ${r.value}` : null, r?.urgency && r.urgency !== "none" ? `Urgency: ${r.urgency}` : null].filter(Boolean).join(" • ");
+      return { key: r.id, title: r?.inspection_items?.label || "Inspection concern", detail, responseId: r.id, quoteGroupId: null, severity, lines: byResponseId.get(r.id) ?? [] };
     });
 
-    const linkedResponseIds = new Set(flaggedResponses.map((response: any) => response.id));
-    const orphanLinkedLines = lines.filter(
-      (line) => line.inspection_response_id && !linkedResponseIds.has(line.inspection_response_id),
-    );
+    const seenGroupIds = new Set<string>();
+    for (const line of lines) {
+      if (line.quote_group_id && !seenGroupIds.has(line.quote_group_id)) {
+        seenGroupIds.add(line.quote_group_id);
+        groups.push({
+          key: line.quote_group_id,
+          title: line.quote_group_title || "Custom group",
+          responseId: null,
+          quoteGroupId: line.quote_group_id,
+          severity: "other",
+          lines: byQuoteGroupId.get(line.quote_group_id) ?? [],
+        });
+      }
+    }
+
+    const linkedResponseIds = new Set(flaggedResponses.map((r: any) => r.id));
+    const orphanLinkedLines = lines.filter((l) => l.inspection_response_id && !linkedResponseIds.has(l.inspection_response_id)).map((l) => ({ ...l, inspection_response_id: null }));
 
     if (generalLines.length > 0 || orphanLinkedLines.length > 0 || groups.length === 0) {
       groups.push({
-        key: "general",
-        title: "General / Other",
-        detail: groups.length === 0 ? "Add manual estimate items here." : "Items not linked to a red or yellow checklist concern.",
-        responseId: null,
-        severity: "other",
+        key: "general", title: "General / Other",
+        detail: groups.length === 0 ? "Add manual estimate items here." : "Items not linked to a checklist concern.",
+        responseId: null, quoteGroupId: null, severity: "other",
         lines: [...orphanLinkedLines, ...generalLines],
       });
     }
+
+    // Sort: red → amber → custom (other with quoteGroupId) → general
+    const severityOrder: Record<string, number> = { red: 0, amber: 1 };
+    groups.sort((a, b) => {
+      const aOrder = a.key === "general" ? 3 : a.quoteGroupId ? 2 : (severityOrder[a.severity] ?? 1);
+      const bOrder = b.key === "general" ? 3 : b.quoteGroupId ? 2 : (severityOrder[b.severity] ?? 1);
+      return aOrder - bOrder;
+    });
 
     return groups;
   }, [inspection, lines]);
@@ -295,11 +264,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       await api.put(`/estimates/job/${jobId}/bulk`, { lines });
       toast.success("Estimate saved");
       onUpdate();
-    } catch {
-      toast.error("Failed to save estimate");
-    } finally {
-      setSaving(false);
-    }
+    } catch { toast.error("Failed to save estimate"); }
+    finally { setSaving(false); }
   };
 
   const total = lines.reduce((s, l) => s + Number(l.line_total ?? 0), 0);
@@ -308,173 +274,140 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     <div className="space-y-4">
       {concernGroups.map((group) => {
         const meta = severityMeta(group.severity);
-        const groupTotal = group.lines.reduce((sum, line) => sum + Number(line.line_total ?? 0), 0);
+        const groupTotal = group.lines.reduce((sum, l) => sum + Number(l.line_total ?? 0), 0);
+        const isCustom = Boolean(group.quoteGroupId);
+        const isCollapsed = collapsedGroups.has(group.key);
 
         return (
           <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone}`}>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-sm font-semibold text-slate-950">{group.title}</h3>
+            {/* Header — always visible */}
+            <div className="cursor-pointer select-none" onClick={() => { if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); }}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {isCollapsed ? <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />}
+                  {isCustom ? (
+                    editingGroupTitle === group.quoteGroupId ? (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Input
+                          className="h-8 w-[200px] bg-white font-semibold text-sm"
+                          value={draftGroupTitle}
+                          onChange={(e) => setDraftGroupTitle(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { renameCustomGroup(group.quoteGroupId as string, draftGroupTitle); setEditingGroupTitle(null); }
+                            if (e.key === "Escape") { setEditingGroupTitle(null); }
+                          }}
+                        />
+                        <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={() => { renameCustomGroup(group.quoteGroupId as string, draftGroupTitle); setEditingGroupTitle(null); }}>Save</Button>
+                        <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingGroupTitle(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <h3 className="cursor-pointer rounded px-1 text-sm font-semibold text-slate-950 hover:bg-slate-100" onClick={(e) => { e.stopPropagation(); setDraftGroupTitle(group.title); setEditingGroupTitle(group.quoteGroupId); }}>
+                        {group.title}
+                      </h3>
+                    )
+                  ) : (
+                    <h3 className="text-sm font-semibold text-slate-950">{group.title}</h3>
+                  )}
                   <Badge className={meta.badge}>
                     <span className="mr-1 inline-flex">{meta.icon}</span>
-                    {meta.label}
+                    {isCustom ? "Custom" : meta.label}
                   </Badge>
                 </div>
-                {group.detail ? (
-                  <p className="mt-1 text-sm text-slate-600">{group.detail}</p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
-                  Total: <span className="font-semibold text-slate-950">{defaults.currency} {groupTotal.toFixed(2)}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+                    Total: <span className="font-semibold text-slate-950">{defaults.currency} {groupTotal.toFixed(2)}</span>
+                  </div>
+                  {!isCollapsed && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, quoteGroupTitle: group.title }); }}>
+                      <Plus className="mr-1 h-4 w-4" /> Labour
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, quoteGroupTitle: group.title }); }}>
+                      <Plus className="mr-1 h-4 w-4" /> Part
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, quoteGroupTitle: group.title }); }}>
+                      <Plus className="mr-1 h-4 w-4" /> Sublet
+                    </Button>
+                    {isCustom ? (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteCustomGroup(group.quoteGroupId as string); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : group.key === "general" ? (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setLines((prev) => prev.filter((l) => l.inspection_response_id || l.quote_group_id)); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </>
+                  )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => addLine("labour", group.responseId)}>
-                  <Plus className="mr-1 h-4 w-4" /> Labour
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => addLine("part", group.responseId)}>
-                  <Plus className="mr-1 h-4 w-4" /> Part
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => addLine("sublet", group.responseId)}>
-                  <Plus className="mr-1 h-4 w-4" /> Sublet
-                </Button>
               </div>
+              {(group.detail && !isCustom) ? <p className="mt-1.5 text-xs text-slate-500">{group.detail}</p> : null}
             </div>
 
+            {/* Lines — collapsible */}
+            {!isCollapsed && (
             <div className="mt-4 space-y-3">
               {group.lines.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm text-slate-500">
-                  No parts or labour added under this concern yet.
+                  No parts or labour added yet.
                 </div>
               ) : (
-                group.lines.map((line) => (
+                [...group.lines].sort((a, b) => {
+                  const order: Record<EstimateLineType, number> = { labour: 0, part: 1, sublet: 2 };
+                  return (order[a.type] ?? 3) - (order[b.type] ?? 3);
+                }).map((line) => (
                   <div key={line.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                     <div className="grid gap-3 xl:grid-cols-[110px_minmax(240px,1fr)_72px_170px_72px_72px_130px_44px]">
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Type</p>
-                        <Select
-                          value={line.type}
-                          onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
+                        <Select value={line.type} onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="labour">
-                              <span className={TYPE_COLORS.labour}>Labour</span>
-                            </SelectItem>
-                            <SelectItem value="part">
-                              <span className={TYPE_COLORS.part}>Part</span>
-                            </SelectItem>
-                            <SelectItem value="sublet">
-                              <span className={TYPE_COLORS.sublet}>Sublet</span>
-                            </SelectItem>
+                            <SelectItem value="labour"><span className={TYPE_COLORS.labour}>Labour</span></SelectItem>
+                            <SelectItem value="part"><span className={TYPE_COLORS.part}>Part</span></SelectItem>
+                            <SelectItem value="sublet"><span className={TYPE_COLORS.sublet}>Sublet</span></SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Description</p>
-                        <Input
-                          className="h-9"
-                          value={line.description ?? ""}
-                          onChange={(e) => updateLine(line.id, { description: e.target.value })}
-                          placeholder="Description"
-                        />
+                        <Input className="h-9" value={line.description ?? ""} onChange={(e) => updateLine(line.id, { description: e.target.value })} placeholder="Description" />
                       </div>
-
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Qty</p>
-                        <Input
-                          className="h-9 text-right"
-                          type="number"
-                          min={0}
-                          step={0.5}
-                          value={line.quantity ?? 1}
-                          onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })}
-                        />
+                        <Input className="h-9 text-right" type="number" min={0} step={0.5} value={line.quantity ?? 1} onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })} />
                       </div>
-
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Unit price</p>
                         {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
-                          <Select
-                            value={getMatchedLabourRateId(line)}
-                            onValueChange={(value) => {
-                              if (value === "custom") return;
-                              const matched = defaults.labour_rates?.find((rate) => rate.id === value);
-                              if (!matched) return;
-                              updateLine(line.id, {
-                                unit_price: Number(matched.rate_per_hour ?? 0),
-                                tax_rate_pct: defaults.default_tax_rate,
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="h-9 text-xs">
-                              <SelectValue>{getLabourRateLabel(line)}</SelectValue>
-                            </SelectTrigger>
+                          <Select value={getMatchedLabourRateId(line)} onValueChange={(v) => { if (v === "custom") return; const m = defaults.labour_rates?.find((r) => r.id === v); if (!m) return; updateLine(line.id, { unit_price: Number(m.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); }}>
+                            <SelectTrigger className="h-9 text-xs"><SelectValue>{getLabourRateLabel(line)}</SelectValue></SelectTrigger>
                             <SelectContent>
-                              {(defaults.labour_rates ?? []).map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.name} • {defaults.currency} {rate.rate_per_hour.toFixed(2)}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="custom">
-                                Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}
-                              </SelectItem>
+                              {(defaults.labour_rates ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} • {defaults.currency} {r.rate_per_hour.toFixed(2)}</SelectItem>)}
+                              <SelectItem value="custom">Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Input
-                            className="h-9 text-right"
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={line.unit_price ?? 0}
-                            onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })}
-                          />
+                          <Input className="h-9 text-right" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })} />
                         )}
                       </div>
-
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Disc %</p>
-                        <Input
-                          className="h-9 text-right"
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={line.discount_pct ?? 0}
-                          onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })}
-                        />
+                        <Input className="h-9 text-right" type="number" min={0} max={100} value={line.discount_pct ?? 0} onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })} />
                       </div>
-
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Tax %</p>
-                        <Input
-                          className="h-9 text-right"
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={line.tax_rate_pct ?? defaults.default_tax_rate}
-                          onChange={(e) => updateLine(line.id, { tax_rate_pct: parseFloat(e.target.value) || 0 })}
-                        />
+                        <Input className="h-9 text-right" type="number" min={0} max={100} value={line.tax_rate_pct ?? defaults.default_tax_rate} onChange={(e) => updateLine(line.id, { tax_rate_pct: parseFloat(e.target.value) || 0 })} />
                       </div>
-
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Line total</p>
                         <div className="flex h-9 items-center justify-end rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900">
                           {defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}
                         </div>
                       </div>
-
                       <div className="flex items-end justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-red-400 hover:text-red-600"
-                          onClick={() => removeLine(line.id)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-red-400 hover:text-red-600" onClick={() => removeLine(line.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -483,17 +416,20 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                 ))
               )}
             </div>
+            )}
           </div>
         );
       })}
 
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm text-slate-500">Grouped by checklist concerns when the inspection item is marked yellow or red.</p>
-          <p className="text-xs text-slate-400">Each concern can carry its own parts, labour, and subtotal.</p>
+          <p className="text-sm text-slate-500">Checklist concerns are auto-grouped above. Add custom groups for things like customer requests.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <p className="text-sm text-slate-500">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={createCustomGroup}>
+            <Plus className="mr-1 h-4 w-4" /> New group
+          </Button>
+          <p className="ml-2 text-sm text-slate-500">
             Total: <span className="text-lg font-bold text-slate-900">{defaults.currency} {total.toFixed(2)}</span>
           </p>
           <Button onClick={save} disabled={saving}>

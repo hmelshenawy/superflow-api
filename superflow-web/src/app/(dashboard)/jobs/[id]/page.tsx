@@ -31,6 +31,7 @@ import {
   FileText,
   Image as ImageIcon,
   Pencil,
+  RotateCcw,
   Save,
   Send,
   User,
@@ -133,6 +134,7 @@ export default function JobDetailPage() {
   const [inspectionRev, setInspectionRev] = useState(0);
   const [loading, setLoading] = useState(true);
   const [startingInspection, setStartingInspection] = useState(false);
+  const [reopeningInspection, setReopeningInspection] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const [nextStatus, setNextStatus] = useState<JobStatus | "">("");
   const [users, setUsers] = useState<any[]>([]);
@@ -281,6 +283,22 @@ export default function JobDetailPage() {
     }
   };
 
+  const reopenInspection = async () => {
+    if (!job?.inspection?.id && !inspectionDetail?.id) return;
+    const inspectionId = inspectionDetail?.id || job?.inspection?.id;
+    setReopeningInspection(true);
+    try {
+      await api.post(`/inspections/${inspectionId}/reopen`);
+      await refreshJob();
+      toast.success("Inspection reopened");
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to reopen inspection");
+    } finally {
+      setReopeningInspection(false);
+    }
+  };
+
   const changeStatus = async () => {
     if (!job || !nextStatus) return;
     setChangingStatus(true);
@@ -310,6 +328,7 @@ export default function JobDetailPage() {
   const mediaCount = job.media_files?.length ?? 0;
   const estimateCount = job.estimate_lines?.length ?? 0;
   const inspectionState = inspectionDetail?.status || job.inspection?.status || "not started";
+  const inspectionLocked = ["submitted", "reviewed", "approved"].includes(inspectionState);
 
   return (
     <div className="space-y-6">
@@ -498,8 +517,11 @@ export default function JobDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {job.customer_concern || "No customer concern added yet."}
+                  <p
+                    className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950"
+                    onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
+                  >
+                    {job.customer_concern || "Click to add a customer concern."}
                   </p>
                 )}
               </div>
@@ -533,8 +555,11 @@ export default function JobDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {job.internal_notes || "No internal notes yet."}
+                  <p
+                    className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950"
+                    onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}
+                  >
+                    {job.internal_notes || "Click to add internal notes."}
                   </p>
                 )}
               </div>
@@ -725,8 +750,26 @@ export default function JobDetailPage() {
         <TabsContent value="inspection" className="space-y-4" id="inspection">
           {inspectionDetail ? (
             <Card className="rounded-[24px] border-slate-200 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">Inspection workspace</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg">Inspection workspace</CardTitle>
+                  {inspectionLocked ? (
+                    <p className="mt-1 text-sm text-slate-500">
+                      This inspection is locked. Re-open it to continue editing.
+                    </p>
+                  ) : null}
+                </div>
+                {inspectionLocked ? (
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={reopenInspection}
+                    disabled={reopeningInspection}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    {reopeningInspection ? "Re-opening..." : "Re-open inspection"}
+                  </Button>
+                ) : null}
               </CardHeader>
               <CardContent>
                 <InspectionWorkspace key={inspectionRev} inspection={inspectionDetail} onChanged={refreshJob} />

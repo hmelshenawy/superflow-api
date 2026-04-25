@@ -44,7 +44,10 @@ export class InspectionsService {
       where: { id },
       include: {
         inspection_responses: {
-          include: { inspection_items: true, media_files: true },
+          include: {
+            inspection_items: true,
+            media_files: { where: { is_deleted: false } },
+          },
           orderBy: { recorded_at: 'asc' },
         },
         jobs: true,
@@ -178,6 +181,37 @@ export class InspectionsService {
         entity_id: id,
         action: 'SUBMIT',
         new_values: JSON.stringify({ status: 'submitted' }),
+      },
+    }).catch(() => {});
+
+    return updated;
+  }
+
+  async reopen(id: string, userId: string) {
+    const inspection = await this.prisma.inspections.findUnique({ where: { id } });
+    if (!inspection) throw new NotFoundException('Inspection not found');
+    if (!['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
+      throw new BadRequestException('Inspection is not locked');
+    }
+
+    const updated = await this.prisma.inspections.update({
+      where: { id },
+      data: {
+        status: 'in_progress',
+        submitted_at: null,
+        started_at: inspection.started_at || new Date(),
+      },
+    });
+
+    await this.prisma.audit_logs.create({
+      data: {
+        id: uuid(),
+        user_id: userId,
+        entity_type: 'inspection',
+        entity_id: id,
+        action: 'REOPEN',
+        old_values: JSON.stringify({ status: inspection.status }),
+        new_values: JSON.stringify({ status: 'in_progress' }),
       },
     }).catch(() => {});
 

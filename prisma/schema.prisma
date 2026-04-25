@@ -150,6 +150,8 @@ model estimate_lines {
   id                      String                    @id @db.Char(36)
   job_id                  String?                   @db.Char(36)
   inspection_response_id  String?                   @db.Char(36)
+  quote_group_id          String?                   @db.Char(36)
+  quote_group_title       String?                   @db.VarChar(120)
   type                    estimate_lines_type
   description             String?                   @db.Text
   part_number             String?                   @db.VarChar(60)
@@ -175,6 +177,7 @@ model estimate_lines {
   @@index([inspection_response_id], map: "fk_el_response")
   @@index([job_id], map: "idx_el_job")
   @@index([is_recommended], map: "idx_el_recommended")
+  @@index([quote_group_id], map: "idx_el_quote_group")
   @@index([type], map: "idx_el_type")
 }
 

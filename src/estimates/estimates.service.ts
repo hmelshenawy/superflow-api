@@ -23,7 +23,10 @@ export class EstimatesService {
         part_number: dto.part_number, quantity: qty, unit_price: unitPrice,
         discount_pct: discount, tax_rate_pct: taxRate, line_total: lineTotal,
         tax_amount: taxAmount, is_recommended: dto.is_recommended ?? false,
-        inspection_response_id: dto.inspection_response_id, added_by: userId,
+        inspection_response_id: dto.inspection_response_id,
+        quote_group_id: dto.quote_group_id,
+        quote_group_title: dto.quote_group_title,
+        added_by: userId,
       },
     });
   }
@@ -146,6 +149,8 @@ export class EstimatesService {
           sort_order: i,
           added_by: userId,
           inspection_response_id: l.inspection_response_id || null,
+          quote_group_id: l.quote_group_id || null,
+          quote_group_title: l.quote_group_title || null,
         };
 
         if (l.id && existingIds.has(l.id)) {

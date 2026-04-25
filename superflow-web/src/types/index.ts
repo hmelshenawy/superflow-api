@@ -124,6 +124,8 @@ export interface EstimateLine {
   id: string;
   job_id: string | null;
   inspection_response_id: string | null;
+  quote_group_id: string | null;
+  quote_group_title: string | null;
   type: EstimateLineType;
   description: string | null;
   part_number: string | null;

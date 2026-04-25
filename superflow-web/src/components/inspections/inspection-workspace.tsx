@@ -107,6 +107,7 @@ export function InspectionWorkspace({
   inspection: any;
   onChanged: () => void;
 }) {
+  const isLocked = ["submitted", "reviewed", "approved"].includes(inspection?.status);
   const responsesMap = useMemo(() => {
     const map: Record<string, any> = {};
     for (const r of inspection?.inspection_responses ?? inspection?.responses ?? []) {
@@ -199,24 +200,40 @@ export function InspectionWorkspace({
       await api.put(`/inspections/${inspection.id}/responses`, payload);
       toast.success("Inspection saved");
       onChanged();
-    } catch {
-      toast.error("Failed to save inspection");
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to save inspection");
     } finally {
       setSaving(false);
     }
   };
 
   const submit = async () => {
+    if (isLocked) {
+      toast.error("Inspection is already submitted and locked");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await save();
+      const payload = {
+        responses: Object.entries(responses).map(([item_id, r]) => ({
+          item_id,
+          value: r.value || "",
+          urgency: r.urgency || "none",
+          tech_notes: r.tech_notes || "",
+          media_count: Number(r.media_files?.length ?? r.media_count ?? 0),
+        })),
+      };
+      await api.put(`/inspections/${inspection.id}/responses`, payload);
       await api.post(`/inspections/${inspection.id}/submit`, {
         advisor_note: "Submitted from advisor web app",
       });
       toast.success("Inspection submitted");
       onChanged();
-    } catch {
-      toast.error("Failed to submit inspection");
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to submit inspection");
     } finally {
       setSubmitting(false);
     }
@@ -592,6 +609,7 @@ export function InspectionWorkspace({
                           setItem(item.id, { tech_notes: e.target.value })
                         }
                         placeholder="Notes…"
+                        disabled={isLocked}
                       />
                     </div>
                   </div>
@@ -602,22 +620,29 @@ export function InspectionWorkspace({
         ))
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          className="h-9 rounded-lg"
-          onClick={save}
-          disabled={saving || submitting}
-        >
-          {saving ? "Saving…" : "Save"}
-        </Button>
-        <Button
-          className="h-9 rounded-lg"
-          onClick={submit}
-          disabled={saving || submitting}
-        >
-          {submitting ? "Submitting…" : "Submit"}
-        </Button>
+      <div className="space-y-3">
+        {isLocked && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            This inspection is already submitted and locked.
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            className="h-9 rounded-lg"
+            onClick={save}
+            disabled={saving || submitting || isLocked}
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          <Button
+            className="h-9 rounded-lg"
+            onClick={submit}
+            disabled={saving || submitting || isLocked}
+          >
+            {submitting ? "Submitting…" : "Submit"}
+          </Button>
+        </div>
       </div>
     </div>
   );

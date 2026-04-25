@@ -12,4 +12,6 @@ export class CreateLineDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() tax_rate_pct?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_recommended?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() inspection_response_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() quote_group_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() quote_group_title?: string;
 }
