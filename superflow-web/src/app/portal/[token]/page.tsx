@@ -7,7 +7,6 @@ import {
   XCircle,
   Clock,
   AlertTriangle,
-  Camera,
   Car,
   User,
   FileText,
@@ -96,7 +95,6 @@ export default function PortalPage() {
   const [decisions, setDecisions] = useState<Record<string, { decision: string; comment: string }>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [expandedPhotos, setExpandedPhotos] = useState<Record<string, boolean>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -125,7 +123,6 @@ export default function PortalPage() {
   }, [token]);
 
   const toggleGroup = (key: string) => setExpandedGroups((p) => ({ ...p, [key]: !p[key] }));
-  const togglePhotos = (id: string) => setExpandedPhotos((p) => ({ ...p, [id]: !p[id] }));
 
   const setDecision = (lineId: string, decision: string) =>
     setDecisions((p) => ({ ...p, [lineId]: { ...p[lineId], decision, comment: p[lineId]?.comment || "" } }));
@@ -271,28 +268,16 @@ export default function PortalPage() {
                     </span>
                   </div>
                   {f.photos.length > 0 && (
-                    <div className="mt-3">
-                      <button
-                        onClick={() => togglePhotos(f.id)}
-                        className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
-                      >
-                        <Camera className="h-3.5 w-3.5" />
-                        {f.photos.length} photo{f.photos.length > 1 ? "s" : ""}
-                        {expandedPhotos[f.id] ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                      </button>
-                      {expandedPhotos[f.id] && (
-                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {f.photos.map((p) => (
-                            <a key={p.id} href={`/api/portal/${token}/media/${p.id}`} target="_blank" rel="noopener noreferrer">
-                              <img
-                                src={`/api/portal/${token}/media/${p.id}`}
-                                alt={p.filename || "Inspection photo"}
-                                className="h-28 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
-                              />
-                            </a>
-                          ))}
-                        </div>
-                      )}
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {f.photos.map((p) => (
+                        <a key={p.id} href={`/api/portal/${token}/media/${p.id}`} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={`/api/portal/${token}/media/${p.id}`}
+                            alt={p.filename || "Inspection photo"}
+                            className="h-28 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
+                          />
+                        </a>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -331,6 +316,19 @@ export default function PortalPage() {
                   {/* Lines */}
                   {isExpanded && (
                     <div className="border-t border-slate-100 px-4 pb-3">
+                      {group.finding && group.finding.photos.length > 0 && (
+                        <div className="mb-3 mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {group.finding.photos.map((p) => (
+                            <a key={p.id} href={`/api/portal/${token}/media/${p.id}`} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={`/api/portal/${token}/media/${p.id}`}
+                                alt={p.filename || "Inspection photo"}
+                                className="h-28 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                       <div className="mt-3 space-y-2">
                         {group.lines.map((line) => {
                           const d = decisions[line.id];
