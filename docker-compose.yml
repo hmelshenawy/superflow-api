@@ -51,7 +51,6 @@ services:
       traefik.http.routers.superflow-api.tls.certresolver: "${TRAEFIK_CERTRESOLVER:-mytlschallenge}"
       traefik.http.services.superflow-api.loadbalancer.server.port: "3000"
     networks:
-      - mariadb-bzki_default
       - superflow_internal
       - traefik_public
 
@@ -129,8 +128,6 @@ volumes:
   superflow_minio_data:
 
 networks:
-  mariadb-bzki_default:
-    external: true
   superflow_internal:
     driver: bridge
   traefik_public:
