@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -12,6 +13,10 @@ export class AuthService {
     private jwt: JwtService,
     private config: ConfigService,
   ) {}
+
+  private hashRefreshToken(token: string) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
 
   async validateUser(email: string, password: string) {
     const user = await this.prisma.users.findUnique({ where: { email }, include: { roles: true } });
@@ -30,7 +35,7 @@ export class AuthService {
 
     const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown' });
     const refreshToken = uuid();
-    const refreshHash = await bcrypt.hash(refreshToken, 10);
+    const refreshHash = this.hashRefreshToken(refreshToken);
 
     await this.prisma.refresh_tokens.create({
       data: {
@@ -53,26 +58,41 @@ export class AuthService {
   async refresh(refreshToken: string) {
     if (!refreshToken) throw new UnauthorizedException('Refresh token is required');
 
-    const tokens = await this.prisma.refresh_tokens.findMany({
-      where: { revoked_at: null, expires_at: { gt: new Date() } },
+    const refreshHash = this.hashRefreshToken(refreshToken);
+    let matchedToken = await this.prisma.refresh_tokens.findUnique({
+      where: { token_hash: refreshHash },
     });
 
-    let matchedToken: { id: string; user_id: string | null } | null = null;
-    for (const t of tokens) {
-      if (await bcrypt.compare(refreshToken, t.token_hash || '')) {
-        matchedToken = { id: t.id, user_id: t.user_id };
-        await this.prisma.refresh_tokens.update({ where: { id: t.id }, data: { revoked_at: new Date() } });
-        break;
+    // Backward compatibility for legacy bcrypt-hashed refresh tokens.
+    if (!matchedToken) {
+      const legacyTokens = await this.prisma.refresh_tokens.findMany({
+        where: {
+          revoked_at: null,
+          expires_at: { gt: new Date() },
+          token_hash: { startsWith: '$2' },
+        },
+      });
+
+      for (const t of legacyTokens) {
+        if (await bcrypt.compare(refreshToken, t.token_hash || '')) {
+          matchedToken = t;
+          break;
+        }
       }
     }
+
     if (!matchedToken?.user_id) throw new UnauthorizedException('Invalid refresh token');
+    if (matchedToken.revoked_at) throw new UnauthorizedException('Refresh token revoked');
+    if (matchedToken.expires_at && matchedToken.expires_at <= new Date()) throw new UnauthorizedException('Refresh token expired');
+
+    await this.prisma.refresh_tokens.update({ where: { id: matchedToken.id }, data: { revoked_at: new Date() } });
 
     const user = await this.prisma.users.findUnique({ where: { id: matchedToken.user_id }, include: { roles: true } });
     if (!user) throw new UnauthorizedException();
 
     const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown' });
     const newRefresh = uuid();
-    const newHash = await bcrypt.hash(newRefresh, 10);
+    const newHash = this.hashRefreshToken(newRefresh);
     await this.prisma.refresh_tokens.create({
       data: { id: uuid(), user_id: user.id, token_hash: newHash, expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
     });
