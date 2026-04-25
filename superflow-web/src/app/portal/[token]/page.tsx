@@ -113,9 +113,9 @@ export default function PortalPage() {
       })
       .then((d: PortalData) => {
         setData(d);
-        // Pre-expand all groups
+        // Default all groups to collapsed
         const expanded: Record<string, boolean> = {};
-        d.grouped_estimate.forEach((g) => (expanded[g.key] = true));
+        d.grouped_estimate.forEach((g) => (expanded[g.key] = false));
         setExpandedGroups(expanded);
         // Pre-fill existing decisions
         const existingByLine = new Map(
