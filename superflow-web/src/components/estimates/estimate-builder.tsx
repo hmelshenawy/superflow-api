@@ -58,7 +58,7 @@ interface ConcernGroup {
 }
 
 interface GroupDecisionSummary {
-  decision: "approved" | "declined" | "deferred" | "mixed";
+  decision: "approved" | "declined" | "deferred" | "mixed" | "pending";
   comment: string | null;
   decidedAt: string | null;
 }
@@ -98,7 +98,7 @@ function summarizeGroupDecision(lines: EstimateLine[], decisionByLine: Record<st
     .map((line) => decisionByLine[line.id])
     .filter(Boolean) as JobAuthorisationDecision[];
 
-  if (!decisions.length) return null;
+  if (!decisions.length) return { decision: "pending", comment: null, decidedAt: null };
 
   const uniqueDecisions = Array.from(new Set(decisions.map((item) => item.decision)));
   const comment = decisions.find((item) => item.customer_comment)?.customer_comment ?? null;
@@ -313,16 +313,20 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
             ? "bg-rose-100 text-rose-800"
             : groupDecision?.decision === "deferred"
               ? "bg-amber-100 text-amber-800"
-              : "bg-slate-200 text-slate-700";
+              : groupDecision?.decision === "pending"
+                ? "bg-slate-100 text-slate-700"
+                : "bg-slate-200 text-slate-700";
         const groupDecisionLabel = groupDecision?.decision === "approved"
-          ? "Customer approved"
+          ? "Approved"
           : groupDecision?.decision === "declined"
-            ? "Customer rejected"
+            ? "Rejected"
             : groupDecision?.decision === "deferred"
-              ? "Customer deferred"
-              : groupDecision?.decision === "mixed"
-                ? "Mixed customer response"
-                : null;
+              ? "Deferred"
+              : groupDecision?.decision === "pending"
+                ? "Pending"
+                : groupDecision?.decision === "mixed"
+                  ? "Mixed"
+                  : null;
 
         return (
           <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone}`}>
