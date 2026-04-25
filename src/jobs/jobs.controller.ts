@@ -5,6 +5,7 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
+import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -45,7 +46,7 @@ export class JobsController {
 
   @Post(':id/assign')
   @ApiOperation({ summary: 'Assign technician' })
-  assign(@Param('id') id: string, @Body('technician_id') technicianId: string) {
-    return this.service.assignTechnician(id, technicianId);
+  assign(@Param('id') id: string, @Body() dto: AssignTechnicianDto) {
+    return this.service.assignTechnician(id, dto.technician_id);
   }
 }

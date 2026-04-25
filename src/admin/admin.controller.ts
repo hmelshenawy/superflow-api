@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Post, Put, Patch, Delete, UseGuards, Param } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { CreateAdminTemplateDto } from './dto/create-template.dto';
+import { UpdateAdminTemplateDto } from './dto/update-template.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -21,7 +24,7 @@ export class AdminController {
   @Put('settings')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Bulk update settings' })
-  updateSettings(@Body() body: any, @CurrentUser('sub') userId: string) {
+  updateSettings(@Body() body: UpdateSettingsDto, @CurrentUser('sub') userId: string) {
     return this.service.updateSettings(body, userId);
   }
 
@@ -135,14 +138,14 @@ export class AdminController {
   @Post('admin/templates')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Create inspection template' })
-  createTemplate(@Body() body: any, @CurrentUser('sub') userId: string) {
+  createTemplate(@Body() body: CreateAdminTemplateDto, @CurrentUser('sub') userId: string) {
     return this.service.createTemplate(body, userId);
   }
 
   @Patch('admin/templates/:id')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Update template metadata' })
-  updateTemplate(@Param('id') id: string, @Body() body: any) {
+  updateTemplate(@Param('id') id: string, @Body() body: UpdateAdminTemplateDto) {
     return this.service.updateTemplate(id, body);
   }
 

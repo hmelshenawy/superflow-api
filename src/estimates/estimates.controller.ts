@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { EstimatesService } from './estimates.service';
 import { CreateLineDto } from './dto/create-line.dto';
 import { UpdateLineDto } from './dto/update-line.dto';
+import { BulkReplaceLinesDto } from './dto/bulk-replace-lines.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -41,7 +42,7 @@ export class EstimatesController {
   @ApiOperation({ summary: 'Bulk replace all estimate lines for a job' })
   bulkReplace(
     @Param('jobId') jobId: string,
-    @Body() body: { lines: any[] },
+    @Body() body: BulkReplaceLinesDto,
     @CurrentUser('sub') userId: string,
   ) {
     return this.service.bulkReplace(jobId, body.lines, userId);

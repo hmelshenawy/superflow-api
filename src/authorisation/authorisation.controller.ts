@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthorisationService } from './authorisation.service';
 import { DecideDto } from './dto/decide.dto';
+import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { MediaService } from '../media/media.service';
 import { Request, Response } from 'express';
@@ -15,7 +16,7 @@ export class AuthorisationController {
 
   @Post(':id/auth-request')
   @ApiOperation({ summary: 'Resend/create approval link for a job (staff)' })
-  request(@Param('id') jobId: string, @Body() body: { channel?: string; sentTo?: string }) {
+  request(@Param('id') jobId: string, @Body() body: RequestAuthorisationDto) {
     return this.service.requestAuthorisation(jobId, body?.channel, body?.sentTo);
   }
 
