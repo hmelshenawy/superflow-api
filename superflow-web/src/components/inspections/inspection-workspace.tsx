@@ -246,6 +246,9 @@ export function InspectionWorkspace({
     setUploadingFor(itemId);
 
     try {
+      const uploadedMedia: MediaFile[] = [];
+      let latestResponseId: string | null = responses[itemId]?.response_id ?? null;
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const formData = new FormData();
@@ -257,13 +260,24 @@ export function InspectionWorkspace({
         formData.append("filename", file.name);
         formData.append("mime_type", file.type);
 
-        await api.post("/media/upload-direct", formData, {
+        const { data } = await api.post("/media/upload-direct", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+
+        uploadedMedia.push(data);
+        latestResponseId = data?.inspection_response_id ?? latestResponseId;
       }
 
+      setItem(itemId, {
+        response_id: latestResponseId,
+        media_files: [
+          ...(responses[itemId]?.media_files ?? []),
+          ...uploadedMedia.filter((media) => !(responses[itemId]?.media_files ?? []).some((existing: MediaFile) => existing.id === media.id)),
+        ],
+        media_count: (responses[itemId]?.media_files ?? []).length + uploadedMedia.length,
+      });
+
       toast.success(`${files.length} file${files.length > 1 ? "s" : ""} uploaded`);
-      onChanged();
     } catch (err: any) {
       console.error('Upload error:', err?.response?.data || err?.message || err);
       toast.error(`Upload failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
