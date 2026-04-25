@@ -65,17 +65,30 @@ export class CustomersService {
   }
 
   async search(query: string) {
-    return this.prisma.customers.findMany({
-      where: {
-        is_active: true,
-        OR: [
-          { name: { contains: query } },
-          { email: { contains: query } },
-          { phone: { contains: query } },
-          { dms_customer_id: { contains: query } },
-        ],
-      },
-      take: 20,
+    const term = `%${query.trim().toLowerCase()}%`;
+    const matches = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT c.id
+      FROM customers c
+      WHERE c.is_active = 1
+        AND (
+          LOWER(COALESCE(c.name, '')) LIKE ${term}
+          OR LOWER(COALESCE(c.email, '')) LIKE ${term}
+          OR LOWER(COALESCE(c.phone, '')) LIKE ${term}
+          OR LOWER(COALESCE(c.dms_customer_id, '')) LIKE ${term}
+        )
+      ORDER BY c.created_at DESC
+      LIMIT 20
+    `;
+
+    if (!matches.length) return [];
+
+    const items = await this.prisma.customers.findMany({
+      where: { id: { in: matches.map((row: (typeof matches)[number]) => row.id) } },
     });
+
+    const byId = new Map(items.map((item: (typeof items)[number]) => [item.id, item]));
+    return matches
+      .map((row: (typeof matches)[number]) => byId.get(row.id))
+      .filter((item: (typeof items)[number] | undefined): item is (typeof items)[number] => Boolean(item));
   }
 }

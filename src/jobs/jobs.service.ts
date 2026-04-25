@@ -35,15 +35,28 @@ export class JobsService {
 
     if (status) where.status = status;
 
-    if (search) {
-      where.OR = [
-        { job_number: { contains: search } },
-        { customer_concern: { contains: search } },
-        { customers: { is: { name: { contains: search } } } },
-        { vehicles: { is: { make: { contains: search } } } },
-        { vehicles: { is: { model: { contains: search } } } },
-        { vehicles: { is: { plate: { contains: search } } } },
-      ];
+    if (search?.trim()) {
+      const term = `%${search.trim().toLowerCase()}%`;
+      const matches = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT DISTINCT j.id
+        FROM jobs j
+        LEFT JOIN customers c ON c.id = j.customer_id
+        LEFT JOIN vehicles v ON v.id = j.vehicle_id
+        WHERE (
+          LOWER(COALESCE(j.job_number, '')) LIKE ${term}
+          OR LOWER(COALESCE(j.customer_concern, '')) LIKE ${term}
+          OR LOWER(COALESCE(c.name, '')) LIKE ${term}
+          OR LOWER(COALESCE(v.make, '')) LIKE ${term}
+          OR LOWER(COALESCE(v.model, '')) LIKE ${term}
+          OR LOWER(COALESCE(v.plate, '')) LIKE ${term}
+        )
+      `;
+
+      if (!matches.length) {
+        return { items: [], total: 0, page: pagination.page, limit: pagination.limit };
+      }
+
+      where.id = { in: matches.map((row: (typeof matches)[number]) => row.id) };
     }
 
     if (role === 'service_advisor') where.advisor_id = userId;
