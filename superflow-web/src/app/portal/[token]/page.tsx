@@ -321,13 +321,13 @@ export default function PortalPage() {
               return (
                 <div key={group.key} className={`rounded-xl border ${SEVERITY_STYLE[group.severity || ""] || "border-slate-200 bg-white"} overflow-hidden`}>
                   {/* Group header */}
-                  <button
-                    onClick={() => toggleGroup(group.key)}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-                      <span className="font-semibold text-slate-800">{group.title}</span>
+                  <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      onClick={() => toggleGroup(group.key)}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    >
+                      {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />}
+                      <span className="truncate font-semibold text-slate-800">{group.title}</span>
                       {group.severity && (
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${SEVERITY_BADGE[group.severity]}`}>
                           {group.severity === "red" ? "Red" : "Yellow"}
@@ -350,11 +350,33 @@ export default function PortalPage() {
                               : "Deferred"}
                         </span>
                       ) : null}
+                    </button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <span className="shrink-0 font-semibold text-slate-800">
+                        AED {group.total.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() => setDecision(group.key, "approved")}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          groupDecision?.decision === "approved"
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300"
+                            : "border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
+                        }`}
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" /> Approve
+                      </button>
+                      <button
+                        onClick={() => setDecision(group.key, "declined")}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          groupDecision?.decision === "declined"
+                            ? "bg-rose-100 text-rose-800 border-rose-300 ring-1 ring-rose-300"
+                            : "border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-700"
+                        }`}
+                      >
+                        <XCircle className="h-3.5 w-3.5" /> Reject
+                      </button>
                     </div>
-                    <span className="shrink-0 font-semibold text-slate-800">
-                      AED {group.total.toFixed(2)}
-                    </span>
-                  </button>
+                  </div>
 
                   {/* Lines */}
                   {isExpanded && (
