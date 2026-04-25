@@ -296,6 +296,7 @@ export class AuthorisationService {
         title: gLines[0]?.quote_group_title || finding?.label || 'Quote items',
         severity: finding?.severity || null,
         finding: finding || null,
+        isCustom: Boolean(gLines[0]?.quote_group_id),
         lines: gLines,
         total: gLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
       });
@@ -305,13 +306,25 @@ export class AuthorisationService {
       generalLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
       grouped.push({
         key: 'general',
-        title: 'Other items',
+        title: 'General / Other',
         severity: null,
         finding: null,
+        isCustom: false,
         lines: generalLines,
         total: generalLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
       });
     }
+
+    grouped.sort((a, b) => {
+      const order = (group: { key: string; severity: string | null; isCustom?: boolean }) => {
+        if (group.severity === 'red') return 0;
+        if (group.severity === 'amber') return 1;
+        if (group.isCustom) return 2;
+        if (group.key === 'general') return 3;
+        return 4;
+      };
+      return order(a) - order(b);
+    });
 
     return {
       token: {
