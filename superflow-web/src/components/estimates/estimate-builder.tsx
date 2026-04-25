@@ -359,9 +359,9 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                     <span className="mr-1 inline-flex">{meta.icon}</span>
                     {isCustom ? "Custom" : meta.label}
                   </Badge>
-                  {groupDecisionLabel ? <Badge className={groupDecisionTone}>{groupDecisionLabel}</Badge> : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {groupDecisionLabel ? <Badge className={groupDecisionTone}>{groupDecisionLabel}</Badge> : null}
                   <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
                     Total: <span className="font-semibold text-slate-950">{defaults.currency} {groupTotal.toFixed(2)}</span>
                   </div>
