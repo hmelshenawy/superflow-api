@@ -203,6 +203,9 @@ export default function PortalPage() {
 
   const { job, findings, grouped_estimate, grand_total } = data;
   const isExpired = data.token.expires_at && new Date(data.token.expires_at) < new Date();
+  const approvedTotal = grouped_estimate.reduce((sum, group) => {
+    return decisions[group.key]?.decision === "approved" ? sum + Number(group.total || 0) : sum;
+  }, 0);
 
   /* ── Submitted ────────────────────────────────────── */
   if (submitted)
@@ -490,9 +493,15 @@ export default function PortalPage() {
         {/* ── Grand Total + Submit ─────────────────── */}
         <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/90 px-4 py-4 backdrop-blur sm:-mx-0 sm:rounded-2xl sm:border sm:shadow-lg">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Estimate</p>
-              <p className="text-3xl font-bold text-slate-900">AED {grand_total.toFixed(2)}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-sm text-slate-500">Total Estimate</p>
+                <p className="text-3xl font-bold text-slate-900">AED {grand_total.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Approved Total</p>
+                <p className="text-3xl font-bold text-emerald-700">AED {approvedTotal.toFixed(2)}</p>
+              </div>
             </div>
             <button
               onClick={submit}
