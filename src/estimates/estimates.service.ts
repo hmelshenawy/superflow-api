@@ -184,7 +184,13 @@ export class EstimatesService {
         if (hasReferences) {
           await tx.estimate_lines.update({
             where: { id: stale.id },
-            data: { sort_order: preservedSortOrder++ },
+            data: {
+              job_id: null,
+              inspection_response_id: null,
+              quote_group_id: null,
+              quote_group_title: null,
+              sort_order: preservedSortOrder++,
+            },
           });
         } else {
           await tx.estimate_lines.delete({ where: { id: stale.id } });

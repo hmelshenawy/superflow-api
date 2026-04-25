@@ -187,17 +187,21 @@ export class AuthorisationService {
 
     const latestToken = job.approval_tokens[0] ?? null;
     const latestDecisions = latestToken?.authorisation_decisions ?? [];
+    const activeLineIds = new Set(job.estimate_lines.map((line: (typeof job.estimate_lines)[number]) => line.id));
+    const activeDecisions = latestDecisions.filter((decision: (typeof latestDecisions)[number]) =>
+      Boolean(decision.estimate_line_id) && activeLineIds.has(decision.estimate_line_id as string),
+    );
     const counts = {
       totalLines: job.estimate_lines.length,
-      approved: latestDecisions.filter((d: (typeof latestDecisions)[number]) => d.decision === 'approved').length,
-      declined: latestDecisions.filter((d: (typeof latestDecisions)[number]) => d.decision === 'declined').length,
-      deferred: latestDecisions.filter((d: (typeof latestDecisions)[number]) => d.decision === 'deferred').length,
-      pending: Math.max(job.estimate_lines.length - latestDecisions.length, 0),
+      approved: activeDecisions.filter((d: (typeof activeDecisions)[number]) => d.decision === 'approved').length,
+      declined: activeDecisions.filter((d: (typeof activeDecisions)[number]) => d.decision === 'declined').length,
+      deferred: activeDecisions.filter((d: (typeof activeDecisions)[number]) => d.decision === 'deferred').length,
+      pending: Math.max(job.estimate_lines.length - activeDecisions.length, 0),
     };
 
     const decisionByLine = Object.fromEntries(
-      latestDecisions
-        .filter((decision: (typeof latestDecisions)[number]) => Boolean(decision.estimate_line_id))
+      activeDecisions
+        .filter((decision: (typeof activeDecisions)[number]) => Boolean(decision.estimate_line_id))
         .map((decision: (typeof latestDecisions)[number]) => [
           decision.estimate_line_id,
           {
