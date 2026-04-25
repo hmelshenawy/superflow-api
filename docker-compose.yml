@@ -45,7 +45,7 @@ services:
       traefik.enable: "true"
       traefik.docker.network: "n8n_default"
       traefik.http.routers.superflow-api.entrypoints: "${TRAEFIK_ENTRYPOINTS:-websecure}"
-      traefik.http.routers.superflow-api.rule: "Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/portal`) || Path(`/health`))"
+      traefik.http.routers.superflow-api.rule: "Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || Path(`/health`))"
       traefik.http.routers.superflow-api.priority: "100"
       traefik.http.routers.superflow-api.tls: "true"
       traefik.http.routers.superflow-api.tls.certresolver: "${TRAEFIK_CERTRESOLVER:-mytlschallenge}"

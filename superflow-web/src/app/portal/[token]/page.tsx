@@ -101,8 +101,8 @@ export default function PortalPage() {
 
   useEffect(() => {
     if (!token) return;
-    const apiBase = window.location.origin;
-    fetch(`${apiBase}/api/portal/${token}`)
+    const apiBase = `${window.location.origin}/api`;
+    fetch(`${apiBase}/portal/${token}`)
       .then((r) => {
         if (!r.ok) throw new Error(r.status === 404 ? "Link not found" : r.status === 410 ? "Link expired" : "Failed to load");
         return r.json();
@@ -139,7 +139,7 @@ export default function PortalPage() {
     if (!data || !allDecided) return;
     setSubmitting(true);
     try {
-      const apiBase = window.location.origin;
+      const apiBase = `${window.location.origin}/api`;
       const payload = {
         decisions: Object.entries(decisions).map(([lineId, d]) => ({
           estimate_line_id: lineId,
@@ -147,7 +147,7 @@ export default function PortalPage() {
           customer_comment: d.comment || null,
         })),
       };
-      const res = await fetch(`${apiBase}/api/portal/${token}/decide`, {
+      const res = await fetch(`${apiBase}/portal/${token}/decide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -283,9 +283,9 @@ export default function PortalPage() {
                       {expandedPhotos[f.id] && (
                         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {f.photos.map((p) => (
-                            <a key={p.id} href={`${window.location.origin}${p.url}`} target="_blank" rel="noopener noreferrer">
+                            <a key={p.id} href={`${window.location.origin}/api${p.url}`} target="_blank" rel="noopener noreferrer">
                               <img
-                                src={`${window.location.origin}${p.url}`}
+                                src={`${window.location.origin}/api${p.url}`}
                                 alt={p.filename || "Inspection photo"}
                                 className="h-28 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
                               />
