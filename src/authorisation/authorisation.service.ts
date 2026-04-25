@@ -269,6 +269,7 @@ export class AuthorisationService {
         vehicle: token.jobs?.vehicles,
       },
       findings: inspectionFindings.length ? inspectionFindings : undefined,
+      job_photos: (token.jobs?.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
       grouped_estimate: grouped,
       grand_total: lines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
       existing_decisions: token.authorisation_decisions,
