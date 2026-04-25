@@ -245,24 +245,6 @@ export default function PortalPage() {
           )}
         </div>
 
-        {/* ── Vehicle / General Photos ──────────────── */}
-        {data.job_photos && data.job_photos.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-4 text-lg font-bold text-slate-900">Vehicle Photos</h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-              {data.job_photos.map((p) => (
-                <a key={p.id} href={`/api/portal/${token}/media/${p.id}`} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={`/api/portal/${token}/media/${p.id}`}
-                    alt={p.filename || "Vehicle photo"}
-                    className="h-32 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── Inspection Findings ──────────────────── */}
         {findings && findings.length > 0 && (
           <div className="mb-8">
@@ -422,6 +404,24 @@ export default function PortalPage() {
             })}
           </div>
         </div>
+
+        {/* ── Vehicle / General Photos ──────────────── */}
+        {data.job_photos && data.job_photos.length > 0 && (
+          <div className="mb-8">
+            <h2 className="mb-4 text-lg font-bold text-slate-900">Vehicle Photos</h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {data.job_photos.map((p) => (
+                <a key={p.id} href={`/api/portal/${token}/media/${p.id}`} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={`/api/portal/${token}/media/${p.id}`}
+                    alt={p.filename || "Vehicle photo"}
+                    className="h-32 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Grand Total + Submit ─────────────────── */}
         <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/90 px-4 py-4 backdrop-blur sm:-mx-0 sm:rounded-2xl sm:border sm:shadow-lg">
