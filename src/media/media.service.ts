@@ -1,13 +1,17 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { PresignUploadDto } from './dto/presign-upload.dto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3_CLIENT } from './media.constants';
 
 @Injectable()
 export class MediaService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(S3_CLIENT) private s3: S3Client,
+  ) {}
 
   private async resolveInspectionResponseId(dto: PresignUploadDto) {
     if (dto.inspection_response_id) return dto.inspection_response_id;
@@ -39,24 +43,6 @@ export class MediaService {
     };
   }
 
-  private getS3() {
-    const endpoint = process.env.S3_ENDPOINT;
-    const region = process.env.S3_REGION || 'us-east-1';
-    const accessKeyId = process.env.S3_ACCESS_KEY;
-    const secretAccessKey = process.env.S3_SECRET_KEY;
-
-    if (!endpoint || !accessKeyId || !secretAccessKey) {
-      throw new BadRequestException('S3/MinIO is not configured');
-    }
-
-    return new S3Client({
-      endpoint,
-      region,
-      forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false',
-      credentials: { accessKeyId, secretAccessKey },
-    });
-  }
-
   async presign(dto: PresignUploadDto, userId: string) {
     const bucket = process.env.S3_BUCKET || 'superflow-media';
     const inspectionResponseId = await this.resolveInspectionResponseId(dto);
@@ -64,13 +50,12 @@ export class MediaService {
     const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const s3Key = `uploads/${dto.job_id}/${mediaId}/${safeName}`;
 
-    const client = this.getS3();
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: s3Key,
       ContentType: dto.mime_type || 'application/octet-stream',
     });
-    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 15 * 60 });
+    const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: 15 * 60 });
 
     await this.prisma.media_files.create({
       data: {
@@ -129,8 +114,7 @@ export class MediaService {
     const safeName = (dto.filename || file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
     const s3Key = `uploads/${dto.job_id}/${mediaId}/${safeName}`;
 
-    const client = this.getS3();
-    await client.send(
+    await this.s3.send(
       new PutObjectCommand({
         Bucket: bucket,
         Key: s3Key,
@@ -171,13 +155,12 @@ export class MediaService {
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
 
-    const client = this.getS3();
     const command = new GetObjectCommand({
       Bucket: file.s3_bucket,
       Key: file.s3_key,
       ResponseContentType: file.mime_type || undefined,
     });
-    const url = await getSignedUrl(client, command, { expiresIn: 15 * 60 });
+    const url = await getSignedUrl(this.s3, command, { expiresIn: 15 * 60 });
 
     return {
       id: file.id,
@@ -193,8 +176,7 @@ export class MediaService {
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
 
-    const client = this.getS3();
-    const result = await client.send(
+    const result = await this.s3.send(
       new GetObjectCommand({
         Bucket: file.s3_bucket,
         Key: file.s3_key,
