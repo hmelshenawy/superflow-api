@@ -1,33 +1,55 @@
-type JobStatus = 'booked' | 'checking' | 'estimate_sent' | 'approved' | 'in_progress' | 'waiting_parts' | 'quality_check' | 'completed' | 'invoiced' | 'closed';
+type JobStatus =
+  | 'booked'
+  | 'checking'
+  | 'estimate_sent'
+  | 'approved'
+  | 'in_progress'
+  | 'waiting_parts'
+  | 'quality_check'
+  | 'completed'
+  | 'invoiced'
+  | 'closed';
 
-// All statuses can transition to any other status (workshop reality: cars go back and forth)
-const ALL: JobStatus[] = ['booked', 'checking', 'estimate_sent', 'approved', 'in_progress', 'waiting_parts', 'quality_check', 'completed', 'invoiced', 'closed'];
+const FLOW_ORDER: JobStatus[] = [
+  'booked',
+  'checking',
+  'estimate_sent',
+  'approved',
+  'in_progress',
+  'waiting_parts',
+  'quality_check',
+  'completed',
+  'invoiced',
+  'closed',
+];
 
+// Practical workshop transitions:
+// - mostly forward-only
+// - small number of controlled backtracks where operations commonly bounce
 const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
-  booked: ALL,
-  checking: ALL,
-  estimate_sent: ALL,
-  approved: ALL,
-  in_progress: ALL,
-  waiting_parts: ALL,
-  quality_check: ALL,
-  completed: ALL,
-  invoiced: ALL,
-  closed: ALL,
+  booked: ['checking', 'closed'],
+  checking: ['estimate_sent', 'approved', 'in_progress', 'closed'],
+  estimate_sent: ['checking', 'approved', 'closed'],
+  approved: ['estimate_sent', 'in_progress', 'closed'],
+  in_progress: ['waiting_parts', 'quality_check', 'completed', 'closed'],
+  waiting_parts: ['in_progress', 'closed'],
+  quality_check: ['in_progress', 'completed'],
+  completed: ['quality_check', 'invoiced'],
+  invoiced: ['completed', 'closed'],
+  closed: [],
 };
 
 export function canTransition(from: JobStatus, to: JobStatus): boolean {
-  return from !== to; // can go anywhere except staying put
+  if (from === to) return false;
+  return TRANSITIONS[from]?.includes(to) ?? false;
 }
 
 export function getValidTransitions(current: JobStatus): JobStatus[] {
-  return ALL.filter(s => s !== current);
+  return [...(TRANSITIONS[current] ?? [])];
 }
 
 // Returns which stages are "completed" relative to the current status
 // This gives the green checkmark logic: stages before current in the flow
-const FLOW_ORDER: JobStatus[] = ['booked', 'checking', 'estimate_sent', 'approved', 'in_progress', 'waiting_parts', 'quality_check', 'completed', 'invoiced', 'closed'];
-
 export function getCompletedStages(current: JobStatus): JobStatus[] {
   const idx = FLOW_ORDER.indexOf(current);
   if (idx <= 0) return [];
