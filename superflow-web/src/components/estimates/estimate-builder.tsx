@@ -57,6 +57,12 @@ interface ConcernGroup {
   lines: EstimateLine[];
 }
 
+interface GroupDecisionSummary {
+  decision: "approved" | "declined" | "deferred" | "mixed";
+  comment: string | null;
+  decidedAt: string | null;
+}
+
 function normalizeLines(lines: EstimateLine[]) {
   return lines.map((line) => ({
     ...line,
@@ -85,6 +91,28 @@ function severityMeta(severity: ConcernSeverity) {
   if (severity === "red") return { tone: "border-rose-200 bg-rose-50", badge: "bg-rose-100 text-rose-700", icon: <XCircle className="h-3.5 w-3.5" />, label: "Red" };
   if (severity === "amber") return { tone: "border-amber-200 bg-amber-50", badge: "bg-amber-100 text-amber-800", icon: <AlertTriangle className="h-3.5 w-3.5" />, label: "Yellow" };
   return { tone: "border-slate-200 bg-slate-50", badge: "bg-slate-100 text-slate-700", icon: null, label: "General" };
+}
+
+function summarizeGroupDecision(lines: EstimateLine[], decisionByLine: Record<string, JobAuthorisationDecision>): GroupDecisionSummary | null {
+  const decisions = lines
+    .map((line) => decisionByLine[line.id])
+    .filter(Boolean) as JobAuthorisationDecision[];
+
+  if (!decisions.length) return null;
+
+  const uniqueDecisions = Array.from(new Set(decisions.map((item) => item.decision)));
+  const comment = decisions.find((item) => item.customer_comment)?.customer_comment ?? null;
+  const decidedAt = decisions
+    .map((item) => item.decided_at)
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? null;
+
+  if (uniqueDecisions.length === 1) {
+    return { decision: uniqueDecisions[0], comment, decidedAt };
+  }
+
+  return { decision: "mixed", comment, decidedAt };
 }
 
 export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, decisionByLine = {} }: Props) {
@@ -278,6 +306,23 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         const groupTotal = group.lines.reduce((sum, l) => sum + Number(l.line_total ?? 0), 0);
         const isCustom = Boolean(group.quoteGroupId);
         const isCollapsed = collapsedGroups.has(group.key);
+        const groupDecision = summarizeGroupDecision(group.lines, decisionByLine);
+        const groupDecisionTone = groupDecision?.decision === "approved"
+          ? "bg-emerald-100 text-emerald-800"
+          : groupDecision?.decision === "declined"
+            ? "bg-rose-100 text-rose-800"
+            : groupDecision?.decision === "deferred"
+              ? "bg-amber-100 text-amber-800"
+              : "bg-slate-200 text-slate-700";
+        const groupDecisionLabel = groupDecision?.decision === "approved"
+          ? "Customer approved"
+          : groupDecision?.decision === "declined"
+            ? "Customer rejected"
+            : groupDecision?.decision === "deferred"
+              ? "Customer deferred"
+              : groupDecision?.decision === "mixed"
+                ? "Mixed customer response"
+                : null;
 
         return (
           <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone}`}>
@@ -314,6 +359,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                     <span className="mr-1 inline-flex">{meta.icon}</span>
                     {isCustom ? "Custom" : meta.label}
                   </Badge>
+                  {groupDecisionLabel ? <Badge className={groupDecisionTone}>{groupDecisionLabel}</Badge> : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
@@ -344,6 +390,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                 </div>
               </div>
               {(group.detail && !isCustom) ? <p className="mt-1.5 text-xs text-slate-500">{group.detail}</p> : null}
+              {groupDecision ? (
+                <div className="mt-2 text-xs text-slate-600">
+                  {groupDecision.decidedAt ? <span>Reply: {new Date(groupDecision.decidedAt).toLocaleString("en-GB")}</span> : null}
+                  {groupDecision.comment ? <p className="mt-1">Comment: {groupDecision.comment}</p> : null}
+                </div>
+              ) : null}
             </div>
 
             {/* Lines — collapsible */}
@@ -358,28 +410,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   const order: Record<EstimateLineType, number> = { labour: 0, part: 1, sublet: 2 };
                   return (order[a.type] ?? 3) - (order[b.type] ?? 3);
                 }).map((line) => {
-                  const customerDecision = decisionByLine[line.id];
-                  const decisionTone = customerDecision?.decision === "approved"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : customerDecision?.decision === "declined"
-                      ? "border-rose-200 bg-rose-50 text-rose-800"
-                      : "border-amber-200 bg-amber-50 text-amber-800";
-
                   return (
                   <div key={line.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                    {customerDecision ? (
-                      <div className={`mb-3 rounded-xl border px-3 py-2 text-sm ${decisionTone}`}>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-semibold capitalize">Customer {customerDecision.decision}</span>
-                          {customerDecision.decided_at ? (
-                            <span className="text-xs opacity-80">{new Date(customerDecision.decided_at).toLocaleString("en-GB")}</span>
-                          ) : null}
-                        </div>
-                        {customerDecision.customer_comment ? (
-                          <p className="mt-1 text-xs opacity-90">Comment: {customerDecision.customer_comment}</p>
-                        ) : null}
-                      </div>
-                    ) : null}
                     <div className="grid gap-3 xl:grid-cols-[110px_minmax(240px,1fr)_72px_170px_72px_72px_130px_44px]">
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Type</p>

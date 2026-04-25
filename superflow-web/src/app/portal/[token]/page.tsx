@@ -54,6 +54,11 @@ interface ExistingDecision {
   customer_comment?: string;
 }
 
+type GroupDecisionState = {
+  decision: "approved" | "declined" | "deferred";
+  comment: string;
+};
+
 interface PortalData {
   token: { expires_at: string; is_revoked: boolean; used_at: string | null };
   job: {
@@ -93,7 +98,7 @@ export default function PortalPage() {
   const [data, setData] = useState<PortalData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [decisions, setDecisions] = useState<Record<string, { decision: string; comment: string }>>({});
+  const [decisions, setDecisions] = useState<Record<string, GroupDecisionState>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -113,9 +118,24 @@ export default function PortalPage() {
         d.grouped_estimate.forEach((g) => (expanded[g.key] = true));
         setExpandedGroups(expanded);
         // Pre-fill existing decisions
-        const existing: Record<string, { decision: string; comment: string }> = {};
-        d.existing_decisions?.forEach((ed) => {
-          existing[ed.estimate_line_id] = { decision: ed.decision, comment: ed.customer_comment || "" };
+        const existingByLine = new Map(
+          (d.existing_decisions ?? []).map((ed) => [ed.estimate_line_id, { decision: ed.decision, comment: ed.customer_comment || "" }]),
+        );
+        const existing: Record<string, GroupDecisionState> = {};
+        d.grouped_estimate.forEach((group) => {
+          const groupDecisions = group.lines
+            .map((line) => existingByLine.get(line.id))
+            .filter(Boolean) as GroupDecisionState[];
+
+          if (!groupDecisions.length) return;
+
+          const first = groupDecisions[0];
+          const allSameDecision = groupDecisions.every((item) => item.decision === first.decision);
+          const sharedComment = groupDecisions.find((item) => item.comment)?.comment || "";
+
+          if (allSameDecision) {
+            existing[group.key] = { decision: first.decision, comment: sharedComment };
+          }
         });
         setDecisions(existing);
       })
@@ -125,13 +145,13 @@ export default function PortalPage() {
 
   const toggleGroup = (key: string) => setExpandedGroups((p) => ({ ...p, [key]: !p[key] }));
 
-  const setDecision = (lineId: string, decision: string) =>
-    setDecisions((p) => ({ ...p, [lineId]: { ...p[lineId], decision, comment: p[lineId]?.comment || "" } }));
+  const setDecision = (groupKey: string, decision: "approved" | "declined" | "deferred") =>
+    setDecisions((p) => ({ ...p, [groupKey]: { ...p[groupKey], decision, comment: p[groupKey]?.comment || "" } }));
 
-  const setComment = (lineId: string, comment: string) =>
-    setDecisions((p) => ({ ...p, [lineId]: { ...p[lineId], decision: p[lineId]?.decision || "approved", comment } }));
+  const setComment = (groupKey: string, comment: string) =>
+    setDecisions((p) => ({ ...p, [groupKey]: { ...p[groupKey], decision: p[groupKey]?.decision || "approved", comment } }));
 
-  const allDecided = data?.grouped_estimate.every((g) => g.lines.every((l) => decisions[l.id]?.decision));
+  const allDecided = data?.grouped_estimate.every((g) => g.lines.length > 0 && decisions[g.key]?.decision);
 
   const submit = async () => {
     if (!data || !allDecided) return;
@@ -139,11 +159,15 @@ export default function PortalPage() {
     try {
       const apiBase = `${window.location.origin}/api`;
       const payload = {
-        decisions: Object.entries(decisions).map(([lineId, d]) => ({
-          estimate_line_id: lineId,
-          decision: d.decision,
-          customer_comment: d.comment || null,
-        })),
+        decisions: data.grouped_estimate.flatMap((group) => {
+          const groupDecision = decisions[group.key];
+          if (!groupDecision) return [];
+          return group.lines.map((line) => ({
+            estimate_line_id: line.id,
+            decision: groupDecision.decision,
+            customer_comment: groupDecision.comment || null,
+          }));
+        }),
       };
       const res = await fetch(`${apiBase}/portal/${token}/decide`, {
         method: "POST",
@@ -293,6 +317,7 @@ export default function PortalPage() {
           <div className="space-y-3">
             {grouped_estimate.map((group) => {
               const isExpanded = expandedGroups[group.key] !== false;
+              const groupDecision = decisions[group.key];
               return (
                 <div key={group.key} className={`rounded-xl border ${SEVERITY_STYLE[group.severity || ""] || "border-slate-200 bg-white"} overflow-hidden`}>
                   {/* Group header */}
@@ -308,6 +333,23 @@ export default function PortalPage() {
                           {group.severity === "red" ? "Red" : "Yellow"}
                         </span>
                       )}
+                      {groupDecision ? (
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            groupDecision.decision === "approved"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : groupDecision.decision === "declined"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {groupDecision.decision === "approved"
+                            ? "Approved"
+                            : groupDecision.decision === "declined"
+                              ? "Rejected"
+                              : "Deferred"}
+                        </span>
+                      ) : null}
                     </div>
                     <span className="shrink-0 font-semibold text-slate-800">
                       AED {group.total.toFixed(2)}
@@ -330,9 +372,51 @@ export default function PortalPage() {
                           ))}
                         </div>
                       )}
+                      <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Approve this whole group</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {(["approved", "declined", "deferred"] as const).map((dec) => {
+                            const active = groupDecision?.decision === dec;
+                            const styles = {
+                              approved: active
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300"
+                                : "border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700",
+                              declined: active
+                                ? "bg-rose-100 text-rose-800 border-rose-300 ring-1 ring-rose-300"
+                                : "border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-700",
+                              deferred: active
+                                ? "bg-amber-100 text-amber-800 border-amber-300 ring-1 ring-amber-300"
+                                : "border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-700",
+                            };
+                            const icons = {
+                              approved: <CheckCircle className="h-3.5 w-3.5" />,
+                              declined: <XCircle className="h-3.5 w-3.5" />,
+                              deferred: <Clock className="h-3.5 w-3.5" />,
+                            };
+                            const labels = { approved: "Approve group", declined: "Reject group", deferred: "Defer group" };
+                            return (
+                              <button
+                                key={dec}
+                                onClick={() => setDecision(group.key, dec)}
+                                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${styles[dec]}`}
+                              >
+                                {icons[dec]} {labels[dec]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {(groupDecision?.decision === "declined" || groupDecision?.decision === "deferred") && (
+                          <input
+                            type="text"
+                            placeholder="Add a comment (optional)…"
+                            value={groupDecision?.comment || ""}
+                            onChange={(e) => setComment(group.key, e.target.value)}
+                            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                          />
+                        )}
+                      </div>
                       <div className="mt-3 space-y-2">
                         {group.lines.map((line) => {
-                          const d = decisions[line.id];
                           return (
                             <div key={line.id} className="rounded-lg border border-slate-100 bg-white p-3">
                               <div className="flex items-start justify-between gap-3">
@@ -351,48 +435,6 @@ export default function PortalPage() {
                                 </div>
                                 <span className="shrink-0 font-semibold text-slate-800">AED {Number(line.line_total).toFixed(2)}</span>
                               </div>
-
-                              {/* Decision buttons */}
-                              <div className="mt-3 flex flex-wrap items-center gap-2">
-                                {(["approved", "declined", "deferred"] as const).map((dec) => {
-                                  const active = d?.decision === dec;
-                                  const styles = {
-                                    approved: active
-                                      ? "bg-emerald-100 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300"
-                                      : "border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700",
-                                    declined: active
-                                      ? "bg-rose-100 text-rose-800 border-rose-300 ring-1 ring-rose-300"
-                                      : "border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-700",
-                                    deferred: active
-                                      ? "bg-amber-100 text-amber-800 border-amber-300 ring-1 ring-amber-300"
-                                      : "border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-700",
-                                  };
-                                  const icons = {
-                                    approved: <CheckCircle className="h-3.5 w-3.5" />,
-                                    declined: <XCircle className="h-3.5 w-3.5" />,
-                                    deferred: <Clock className="h-3.5 w-3.5" />,
-                                  };
-                                  const labels = { approved: "Approve", declined: "Decline", deferred: "Defer" };
-                                  return (
-                                    <button
-                                      key={dec}
-                                      onClick={() => setDecision(line.id, dec)}
-                                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${styles[dec]}`}
-                                    >
-                                      {icons[dec]} {labels[dec]}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                              {(d?.decision === "declined" || d?.decision === "deferred") && (
-                                <input
-                                  type="text"
-                                  placeholder="Add a comment (optional)…"
-                                  value={d?.comment || ""}
-                                  onChange={(e) => setComment(line.id, e.target.value)}
-                                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
-                                />
-                              )}
                             </div>
                           );
                         })}
@@ -440,7 +482,7 @@ export default function PortalPage() {
                 : submitting
                 ? "Submitting…"
                 : !allDecided
-                ? "Review all items first"
+                ? "Review all groups first"
                 : "Submit My Decisions"}
             </button>
           </div>
