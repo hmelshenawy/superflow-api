@@ -71,7 +71,7 @@ export class JobsService {
       advisor: item.users_jobs_advisor_idTousers,
       technician: item.users_jobs_technician_idTousers,
     }));
-    return { items: data, data, total, page: pagination.page, limit: pagination.limit };
+    return { items: data, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {

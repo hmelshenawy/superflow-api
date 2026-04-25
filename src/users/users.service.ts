@@ -43,7 +43,7 @@ export class UsersService {
       this.prisma.users.count(),
     ]);
     const data = items.map((item) => ({ ...item, role: item.roles }));
-    return { items: data, data, total, page: pagination.page, limit: pagination.limit };
+    return { items: data, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {

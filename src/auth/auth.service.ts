@@ -49,8 +49,6 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      access_token: accessToken,
-      refresh_token: refreshToken,
       user: { id: user.id, name: user.name, email: user.email, role: user.roles?.name },
     };
   }
@@ -100,8 +98,6 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: newRefresh,
-      access_token: accessToken,
-      refresh_token: newRefresh,
     };
   }
 
