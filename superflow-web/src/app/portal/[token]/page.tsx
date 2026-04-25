@@ -283,9 +283,9 @@ export default function PortalPage() {
                       {expandedPhotos[f.id] && (
                         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {f.photos.map((p) => (
-                            <a key={p.id} href={`${window.location.origin}/api${p.url}`} target="_blank" rel="noopener noreferrer">
+                            <a key={p.id} href={`/api/portal/${token}/media/${p.id}`} target="_blank" rel="noopener noreferrer">
                               <img
-                                src={`${window.location.origin}/api${p.url}`}
+                                src={`/api/portal/${token}/media/${p.id}`}
                                 alt={p.filename || "Inspection photo"}
                                 className="h-28 w-full rounded-lg border border-slate-200 object-cover shadow-sm"
                               />

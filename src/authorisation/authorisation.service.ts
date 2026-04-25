@@ -55,7 +55,7 @@ export class AuthorisationService {
     const rewriteMediaUrls = (files: any[]) => {
       for (const mf of files ?? []) {
         if (mf.s3_bucket && mf.s3_key && !mf.is_deleted) {
-          (mf as any).url = `/api/media/${mf.id}/download`;
+          (mf as any).url = `/api/portal/${rawToken}/media/${mf.id}`;
         }
       }
     };
@@ -68,6 +68,16 @@ export class AuthorisationService {
     }
     rewriteMediaUrls(token.jobs?.media_files ?? []);
 
+    return token;
+  }
+
+  async validatePortalToken(rawToken: string) {
+    const token = await this.prisma.approval_tokens.findUnique({
+      where: { token_hash: this.hashToken(rawToken) },
+    });
+    if (!token) throw new NotFoundException('Approval link not found');
+    if (token.is_revoked) throw new BadRequestException('Approval link revoked');
+    if (token.expires_at && token.expires_at < new Date()) throw new BadRequestException('Approval link expired');
     return token;
   }
 

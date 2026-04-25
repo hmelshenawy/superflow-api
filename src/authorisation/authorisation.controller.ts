@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthorisationService } from './authorisation.service';
 import { DecideDto } from './dto/decide.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
+import { MediaService } from '../media/media.service';
+import { Request, Response } from 'express';
 
 @ApiTags('Authorisation')
 @ApiBearerAuth()
@@ -27,7 +29,10 @@ export class AuthorisationController {
 @ApiTags('Portal')
 @Controller('portal')
 export class PortalAuthorisationController {
-  constructor(private service: AuthorisationService) {}
+  constructor(
+    private service: AuthorisationService,
+    private mediaService: MediaService,
+  ) {}
 
   @Get(':token')
   @ApiOperation({ summary: 'Load approval report for customer (no JWT)' })
@@ -39,5 +44,18 @@ export class PortalAuthorisationController {
   @ApiOperation({ summary: 'Submit customer decisions (no JWT)' })
   decide(@Param('token') token: string, @Body() dto: DecideDto, @Req() req: any) {
     return this.service.decideFromPortal(token, dto, req.ip, req.headers['user-agent']);
+  }
+
+  @Get(':token/media/:mediaId')
+  @ApiOperation({ summary: 'Proxy media file for customer portal (no JWT)' })
+  async proxyMedia(@Param('token') token: string, @Param('mediaId') mediaId: string, @Res() res: Response) {
+    // Validate the portal token first
+    await this.service.validatePortalToken(token);
+    const file = await this.mediaService.getDownloadStream(mediaId);
+    res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${(file.filename || 'file').replace(/["\\]/g, '_')}"`);
+    const { Readable } = await import('stream');
+    const nodeStream = file.stream instanceof Readable ? file.stream : Readable.fromWeb(file.stream as any);
+    nodeStream.pipe(res);
   }
 }
