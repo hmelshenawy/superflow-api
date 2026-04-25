@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import type { EstimateLine, EstimateLineType } from "@/types";
+import type { EstimateLine, EstimateLineType, JobAuthorisationDecision } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,6 +27,7 @@ interface Props {
   lines: EstimateLine[];
   onUpdate: () => void;
   inspection?: any | null;
+  decisionByLine?: Record<string, JobAuthorisationDecision>;
 }
 
 interface LabourRateOption {
@@ -86,7 +87,7 @@ function severityMeta(severity: ConcernSeverity) {
   return { tone: "border-slate-200 bg-slate-50", badge: "bg-slate-100 text-slate-700", icon: null, label: "General" };
 }
 
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection }: Props) {
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, decisionByLine = {} }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
@@ -356,8 +357,29 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                 [...group.lines].sort((a, b) => {
                   const order: Record<EstimateLineType, number> = { labour: 0, part: 1, sublet: 2 };
                   return (order[a.type] ?? 3) - (order[b.type] ?? 3);
-                }).map((line) => (
+                }).map((line) => {
+                  const customerDecision = decisionByLine[line.id];
+                  const decisionTone = customerDecision?.decision === "approved"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : customerDecision?.decision === "declined"
+                      ? "border-rose-200 bg-rose-50 text-rose-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800";
+
+                  return (
                   <div key={line.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                    {customerDecision ? (
+                      <div className={`mb-3 rounded-xl border px-3 py-2 text-sm ${decisionTone}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-semibold capitalize">Customer {customerDecision.decision}</span>
+                          {customerDecision.decided_at ? (
+                            <span className="text-xs opacity-80">{new Date(customerDecision.decided_at).toLocaleString("en-GB")}</span>
+                          ) : null}
+                        </div>
+                        {customerDecision.customer_comment ? (
+                          <p className="mt-1 text-xs opacity-90">Comment: {customerDecision.customer_comment}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="grid gap-3 xl:grid-cols-[110px_minmax(240px,1fr)_72px_170px_72px_72px_130px_44px]">
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Type</p>
@@ -413,7 +435,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                       </div>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
             )}

@@ -147,29 +147,46 @@ export class AuthorisationService {
     });
     if (!job) throw new NotFoundException('Job not found');
 
-    const allDecisions = job.approval_tokens.flatMap((t: (typeof job.approval_tokens)[number]) => t.authorisation_decisions);
+    const latestToken = job.approval_tokens[0] ?? null;
+    const latestDecisions = latestToken?.authorisation_decisions ?? [];
     const counts = {
       totalLines: job.estimate_lines.length,
-      approved: allDecisions.filter((d: (typeof allDecisions)[number]) => d.decision === 'approved').length,
-      declined: allDecisions.filter((d: (typeof allDecisions)[number]) => d.decision === 'declined').length,
-      deferred: allDecisions.filter((d: (typeof allDecisions)[number]) => d.decision === 'deferred').length,
-      pending: Math.max(job.estimate_lines.length - allDecisions.length, 0),
+      approved: latestDecisions.filter((d: (typeof latestDecisions)[number]) => d.decision === 'approved').length,
+      declined: latestDecisions.filter((d: (typeof latestDecisions)[number]) => d.decision === 'declined').length,
+      deferred: latestDecisions.filter((d: (typeof latestDecisions)[number]) => d.decision === 'deferred').length,
+      pending: Math.max(job.estimate_lines.length - latestDecisions.length, 0),
     };
+
+    const decisionByLine = Object.fromEntries(
+      latestDecisions
+        .filter((decision: (typeof latestDecisions)[number]) => Boolean(decision.estimate_line_id))
+        .map((decision: (typeof latestDecisions)[number]) => [
+          decision.estimate_line_id,
+          {
+            id: decision.id,
+            estimate_line_id: decision.estimate_line_id,
+            decision: decision.decision,
+            customer_comment: decision.customer_comment,
+            decided_at: decision.decided_at,
+          },
+        ]),
+    );
 
     return {
       jobId,
       counts,
-      latestToken: job.approval_tokens[0]
+      latestToken: latestToken
         ? {
-            id: job.approval_tokens[0].id,
-            issued_at: job.approval_tokens[0].issued_at,
-            expires_at: job.approval_tokens[0].expires_at,
-            first_opened_at: job.approval_tokens[0].first_opened_at,
-            used_at: job.approval_tokens[0].used_at,
-            is_revoked: job.approval_tokens[0].is_revoked,
+            id: latestToken.id,
+            issued_at: latestToken.issued_at,
+            expires_at: latestToken.expires_at,
+            first_opened_at: latestToken.first_opened_at,
+            used_at: latestToken.used_at,
+            is_revoked: latestToken.is_revoked,
           }
         : null,
-      decisions: allDecisions,
+      decisions: latestDecisions,
+      decisionByLine,
     };
   }
 

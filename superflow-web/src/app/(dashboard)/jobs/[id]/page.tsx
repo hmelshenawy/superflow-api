@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Job, JobStatus } from "@/types";
+import type { Job, JobAuthorisationStatus, JobStatus } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -131,6 +131,7 @@ export default function JobDetailPage() {
 
   const [job, setJob] = useState<Job | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
+  const [authStatus, setAuthStatus] = useState<JobAuthorisationStatus | null>(null);
   const [inspectionRev, setInspectionRev] = useState(0);
   const [loading, setLoading] = useState(true);
   const [startingInspection, setStartingInspection] = useState(false);
@@ -217,8 +218,13 @@ export default function JobDetailPage() {
   };
 
   const refreshJob = async () => {
-    const { data } = await api.get<Job>(`/jobs/${id}`);
+    const [{ data }, authRes] = await Promise.all([
+      api.get<Job>(`/jobs/${id}`),
+      api.get<JobAuthorisationStatus>(`/jobs/${id}/auth-status`).catch(() => ({ data: null })),
+    ]);
+
     setJob(data);
+    setAuthStatus(authRes?.data ?? null);
     if (data.inspection?.id) {
       const inspectionRes = await api.get(`/inspections/${data.inspection.id}`);
       setInspectionDetail(inspectionRes.data);
@@ -329,6 +335,17 @@ export default function JobDetailPage() {
   const estimateCount = job.estimate_lines?.length ?? 0;
   const inspectionState = inspectionDetail?.status || job.inspection?.status || "not started";
   const inspectionLocked = ["submitted", "reviewed", "approved"].includes(inspectionState);
+  const approvalCounts = authStatus?.counts;
+  const latestApprovalToken = authStatus?.latestToken;
+  const approvalStatusLabel = latestApprovalToken?.used_at
+    ? "Customer replied"
+    : latestApprovalToken?.first_opened_at
+      ? "Viewed by customer"
+      : latestApprovalToken
+        ? "Link sent"
+        : job.status === "approved"
+          ? "Approved"
+          : "Not sent";
 
   return (
     <div className="space-y-6">
@@ -378,7 +395,7 @@ export default function JobDetailPage() {
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {estimateCount > 0 ? <SendApprovalButton jobId={job.id} /> : null}
+              {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : null}
               <Button variant="outline" className="h-11 rounded-xl" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
                 <ClipboardList className="mr-2 h-4 w-4" /> Inspection
               </Button>
@@ -646,9 +663,7 @@ export default function JobDetailPage() {
                   <span className="inline-flex items-center gap-2">
                     <Send className="h-4 w-4 text-slate-400" /> Approval status
                   </span>
-                  <span className="font-medium text-slate-900">
-                    {job.status === "estimate_sent" ? "Awaiting customer" : job.status === "approved" ? "Approved" : "Not sent"}
-                  </span>
+                  <span className="font-medium text-slate-900">{approvalStatusLabel}</span>
                 </div>
               </div>
             </div>
@@ -724,10 +739,12 @@ export default function JobDetailPage() {
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Authorization</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-950">
-                      {job.status === "estimate_sent" ? "Awaiting customer" : job.status === "approved" ? "Approved" : "Not sent"}
+                    <p className="mt-2 text-sm font-semibold text-slate-950">{approvalStatusLabel}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {approvalCounts
+                        ? `${approvalCounts.approved} approved · ${approvalCounts.declined} rejected · ${approvalCounts.deferred} deferred · ${approvalCounts.pending} pending`
+                        : `${estimateCount} line item${estimateCount === 1 ? "" : "s"}`}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">{estimateCount} line item{estimateCount === 1 ? "" : "s"}</p>
                   </div>
                 </div>
               </div>
@@ -737,12 +754,39 @@ export default function JobDetailPage() {
                   Send the customer approval link once the quote and media evidence are ready.
                 </p>
                 <div className="w-full lg:w-auto">
-                  {estimateCount > 0 ? <SendApprovalButton jobId={job.id} /> : <Button disabled className="w-full rounded-xl">Add estimate lines first</Button>}
+                  {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="w-full rounded-xl">Add estimate lines first</Button>}
                 </div>
               </div>
+
+              {authStatus ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">Customer approval feedback</p>
+                      <p className="text-xs text-slate-500">
+                        {latestApprovalToken?.used_at
+                          ? `Customer submitted a response on ${formatDate(latestApprovalToken.used_at, true)}.`
+                          : latestApprovalToken?.first_opened_at
+                            ? `Customer viewed the quote on ${formatDate(latestApprovalToken.first_opened_at, true)} but has not submitted yet.`
+                            : latestApprovalToken?.issued_at
+                              ? `Approval link sent on ${formatDate(latestApprovalToken.issued_at, true)}.`
+                              : "No approval request has been sent yet."}
+                      </p>
+                    </div>
+                    {approvalCounts ? (
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-800">Approved: {approvalCounts.approved}</span>
+                        <span className="rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-800">Rejected: {approvalCounts.declined}</span>
+                        <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">Deferred: {approvalCounts.deferred}</span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">Pending: {approvalCounts.pending}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </CardHeader>
             <CardContent>
-              <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} />
+              <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
             </CardContent>
           </Card>
         </TabsContent>

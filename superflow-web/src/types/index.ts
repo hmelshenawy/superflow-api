@@ -142,6 +142,37 @@ export interface EstimateLine {
   updated_at: string;
 }
 
+export type AuthorisationDecisionType = "approved" | "declined" | "deferred";
+
+export interface JobAuthorisationDecision {
+  id: string;
+  estimate_line_id: string | null;
+  decision: AuthorisationDecisionType;
+  customer_comment: string | null;
+  decided_at: string | null;
+}
+
+export interface JobAuthorisationStatus {
+  jobId: string;
+  counts: {
+    totalLines: number;
+    approved: number;
+    declined: number;
+    deferred: number;
+    pending: number;
+  };
+  latestToken: {
+    id: string;
+    issued_at: string | null;
+    expires_at: string | null;
+    first_opened_at: string | null;
+    used_at: string | null;
+    is_revoked: boolean | null;
+  } | null;
+  decisions: JobAuthorisationDecision[];
+  decisionByLine: Record<string, JobAuthorisationDecision>;
+}
+
 // ─── Inspections ────────────────────────────────────────
 export type InspectionStatus =
   | "draft"

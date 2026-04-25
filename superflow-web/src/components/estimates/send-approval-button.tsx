@@ -15,9 +15,10 @@ import { toast } from "sonner";
 
 interface Props {
   jobId: string;
+  onSent?: () => void | Promise<void>;
 }
 
-export function SendApprovalButton({ jobId }: Props) {
+export function SendApprovalButton({ jobId, onSent }: Props) {
   const [sending, setSending] = useState(false);
   const [channel, setChannel] = useState<string>("link");
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export function SendApprovalButton({ jobId }: Props) {
     try {
       const { data } = await api.post(`/jobs/${jobId}/auth-request`, { channel });
       setPortalUrl(data.portalUrl);
+      await onSent?.();
       toast.success(channel === "link" ? "Link generated" : `Approval request sent via ${channel}`);
     } catch {
       toast.error("Failed to send approval request");
