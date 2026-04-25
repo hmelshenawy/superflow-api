@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { RendererService } from './templates/renderer.service';
+import { REDIS_CONNECTION } from './notifications.module';
 
 @Injectable()
 export class NotificationsService {
@@ -14,15 +15,10 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private renderer: RendererService,
+    @Inject(REDIS_CONNECTION) private connection: IORedis,
   ) {
     try {
-      const connection = new IORedis({
-        host: process.env.REDIS_HOST || '127.0.0.1',
-        port: Number(process.env.REDIS_PORT || 6379),
-        password: process.env.REDIS_PASSWORD || undefined,
-        maxRetriesPerRequest: null,
-      });
-      this.queue = new Queue(this.queueName, { connection });
+      this.queue = new Queue(this.queueName, { connection: this.connection });
     } catch (error) {
       this.logger.warn('BullMQ queue not initialized, notifications will remain queued in DB');
     }

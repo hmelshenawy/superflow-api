@@ -1,30 +1,23 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Job, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
+import { REDIS_CONNECTION } from './notifications.module';
 
 @Injectable()
 export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsProcessor.name);
   private readonly queueName = 'notifications';
   private worker?: Worker;
-  private connection?: IORedis;
   private pollTimer?: NodeJS.Timeout;
-
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    @Inject(REDIS_CONNECTION) private connection: IORedis,
   ) {}
 
   async onModuleInit() {
-    this.connection = new IORedis({
-      host: process.env.REDIS_HOST || '127.0.0.1',
-      port: Number(process.env.REDIS_PORT || 6379),
-      password: process.env.REDIS_PASSWORD || undefined,
-      maxRetriesPerRequest: null,
-    });
-
     this.worker = new Worker(
       this.queueName,
       async (job: Job) => this.process(job),
@@ -63,7 +56,6 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     if (this.pollTimer) clearInterval(this.pollTimer);
     await this.worker?.close().catch(() => {});
-    await this.connection?.quit().catch(() => {});
   }
 
   private getWebhook(channel: string) {
