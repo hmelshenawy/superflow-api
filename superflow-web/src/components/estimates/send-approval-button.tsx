@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Send } from "lucide-react";
+import { Send, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -19,13 +19,16 @@ interface Props {
 
 export function SendApprovalButton({ jobId }: Props) {
   const [sending, setSending] = useState(false);
-  const [channel, setChannel] = useState<string>("email");
+  const [channel, setChannel] = useState<string>("link");
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const send = async () => {
     setSending(true);
     try {
-      await api.post(`/jobs/${jobId}/auth-request`, { channel });
-      toast.success(`Approval request sent via ${channel}`);
+      const { data } = await api.post(`/jobs/${jobId}/auth-request`, { channel });
+      setPortalUrl(data.portalUrl);
+      toast.success(channel === "link" ? "Link generated" : `Approval request sent via ${channel}`);
     } catch {
       toast.error("Failed to send approval request");
     } finally {
@@ -33,23 +36,45 @@ export function SendApprovalButton({ jobId }: Props) {
     }
   };
 
+  const copyLink = () => {
+    if (!portalUrl) return;
+    navigator.clipboard.writeText(portalUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="flex items-center gap-2">
-      <Select value={channel} onValueChange={(v) => setChannel(v ?? "")}>
-        <SelectTrigger className="h-9 w-32">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="email">Email</SelectItem>
-          <SelectItem value="sms">SMS</SelectItem>
-          <SelectItem value="whatsapp">WhatsApp</SelectItem>
-          <SelectItem value="link">Link</SelectItem>
-        </SelectContent>
-      </Select>
-      <Button size="sm" onClick={send} disabled={sending}>
-        <Send className="mr-2 h-4 w-4" />
-        {sending ? "Sending…" : "Send to Customer"}
-      </Button>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Select value={channel} onValueChange={(v) => setChannel(v ?? "")}>
+          <SelectTrigger className="h-9 w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="link">Link</SelectItem>
+            <SelectItem value="email">Email</SelectItem>
+            <SelectItem value="sms">SMS</SelectItem>
+            <SelectItem value="whatsapp">WhatsApp</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" onClick={send} disabled={sending}>
+          <Send className="mr-2 h-4 w-4" />
+          {sending ? "Sending…" : "Send to Customer"}
+        </Button>
+      </div>
+      {portalUrl && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+          <input
+            type="text"
+            readOnly
+            value={portalUrl}
+            className="flex-1 bg-transparent text-xs text-emerald-800 outline-none"
+          />
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyLink}>
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

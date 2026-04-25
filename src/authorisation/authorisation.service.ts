@@ -21,6 +21,26 @@ export class AuthorisationService {
             customers: true,
             vehicles: true,
             estimate_lines: { orderBy: { created_at: 'asc' } },
+            inspections: {
+              include: {
+                inspection_responses: {
+                  include: {
+                    inspection_items: true,
+                    media_files: { where: { is_deleted: false } },
+                  },
+                  orderBy: { recorded_at: 'asc' },
+                },
+                inspection_templates: {
+                  include: {
+                    inspection_sections: {
+                      include: { inspection_items: { orderBy: { sort_order: 'asc' } } },
+                      orderBy: { sort_order: 'asc' },
+                    },
+                  },
+                },
+              },
+            },
+            media_files: { where: { is_deleted: false } },
           },
         },
         authorisation_decisions: true,
@@ -30,6 +50,23 @@ export class AuthorisationService {
     if (!token) throw new NotFoundException('Approval link not found');
     if (token.is_revoked) throw new BadRequestException('Approval link revoked');
     if (token.expires_at && token.expires_at < new Date()) throw new BadRequestException('Approval link expired');
+
+    // Generate API proxy URLs for all media files
+    const rewriteMediaUrls = (files: any[]) => {
+      for (const mf of files ?? []) {
+        if (mf.s3_bucket && mf.s3_key && !mf.is_deleted) {
+          (mf as any).url = `/api/media/${mf.id}/download`;
+        }
+      }
+    };
+
+    if (token.jobs?.inspections) {
+      const insp = token.jobs.inspections;
+      for (const resp of insp.inspection_responses ?? []) {
+        rewriteMediaUrls(resp.media_files ?? []);
+      }
+    }
+    rewriteMediaUrls(token.jobs?.media_files ?? []);
 
     return token;
   }
@@ -135,6 +172,77 @@ export class AuthorisationService {
       }).catch(() => {});
     }
 
+    // Build inspection findings for customer view
+    const inspectionFindings: any[] = [];
+    if (token.jobs?.inspections) {
+      const insp = token.jobs.inspections;
+      for (const resp of insp.inspection_responses ?? []) {
+        const severity = (() => {
+          const u = String(resp.urgency ?? '').toLowerCase();
+          const v = String(resp.value ?? '').toLowerCase();
+          if (['high', 'critical', 'red'].includes(u) || ['fail', 'bad', 'no'].includes(v)) return 'red';
+          if (['medium', 'amber', 'yellow'].includes(u) || ['warn', 'warning'].includes(v)) return 'amber';
+          return null;
+        })();
+        if (!severity) continue; // skip normal/pass findings
+        inspectionFindings.push({
+          id: resp.id,
+          label: resp.inspection_items?.label || 'Inspection finding',
+          value: resp.value,
+          urgency: resp.urgency,
+          severity,
+          tech_notes: resp.tech_notes,
+          photos: (resp.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.filename })),
+        });
+      }
+    }
+
+    // Sort findings: red first, then amber
+    const severityOrder: Record<string, number> = { red: 0, amber: 1 };
+    inspectionFindings.sort((a, b) => (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2));
+
+    // Group estimate lines for customer view
+    const lines = token.jobs?.estimate_lines || [];
+    const grouped: any[] = [];
+    const byGroup = new Map<string, any[]>();
+    const generalLines: any[] = [];
+    for (const line of lines) {
+      const gid = line.quote_group_id || line.inspection_response_id;
+      if (gid) {
+        if (!byGroup.has(gid)) byGroup.set(gid, []);
+        byGroup.get(gid)!.push(line);
+      } else {
+        generalLines.push(line);
+      }
+    }
+    // Link groups to findings
+    const findingMap = new Map(inspectionFindings.map((f) => [f.id, f]));
+    for (const [gid, gLines] of byGroup) {
+      const finding = findingMap.get(gid);
+      const typeOrder: Record<string, number> = { labour: 0, part: 1, sublet: 2 };
+      gLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
+      grouped.push({
+        key: gid,
+        title: gLines[0]?.quote_group_title || finding?.label || 'Quote items',
+        severity: finding?.severity || null,
+        finding: finding || null,
+        lines: gLines,
+        total: gLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
+      });
+    }
+    if (generalLines.length > 0) {
+      const typeOrder: Record<string, number> = { labour: 0, part: 1, sublet: 2 };
+      generalLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
+      grouped.push({
+        key: 'general',
+        title: 'Other items',
+        severity: null,
+        finding: null,
+        lines: generalLines,
+        total: generalLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
+      });
+    }
+
     return {
       token: {
         expires_at: token.expires_at,
@@ -146,10 +254,13 @@ export class AuthorisationService {
         id: token.jobs?.id,
         job_number: token.jobs?.job_number,
         status: token.jobs?.status,
+        customer_concern: token.jobs?.customer_concern,
         customer: token.jobs?.customers,
         vehicle: token.jobs?.vehicles,
       },
-      estimate_lines: token.jobs?.estimate_lines || [],
+      findings: inspectionFindings.length ? inspectionFindings : undefined,
+      grouped_estimate: grouped,
+      grand_total: lines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
       existing_decisions: token.authorisation_decisions,
     };
   }
