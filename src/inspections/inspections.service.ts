@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateResponseDto } from './dto/create-response.dto';
@@ -80,11 +81,11 @@ export class InspectionsService {
   async saveResponses(id: string, dto: CreateResponseDto) {
     const inspection = await this.prisma.inspections.findUnique({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
-    if (['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
+    if (inspection.status && ['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
       throw new BadRequestException('Inspection is locked and can no longer be edited');
     }
 
-    const results = await this.prisma.$transaction(async (tx) => {
+    const results = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];
       for (const r of dto.responses) {
         const existing = await tx.inspection_responses.findFirst({
@@ -152,6 +153,8 @@ export class InspectionsService {
       },
     });
 
+    if (!inspection.job_id) throw new BadRequestException('Inspection is missing linked job');
+
     const job = await this.prisma.jobs.findUnique({
       where: { id: inspection.job_id },
       include: { customers: true, vehicles: true, users_jobs_advisor_idTousers: true },
@@ -190,7 +193,7 @@ export class InspectionsService {
   async reopen(id: string, userId: string) {
     const inspection = await this.prisma.inspections.findUnique({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
-    if (!['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
+    if (!inspection.status || !['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
       throw new BadRequestException('Inspection is not locked');
     }
 

@@ -196,7 +196,7 @@ export class MediaService {
       where: { job_id: jobId, is_deleted: false },
       orderBy: { uploaded_at: 'desc' },
     });
-    return files.map((file) => this.normalizeMedia(file));
+    return files.map((file: (typeof files)[number]) => this.normalizeMedia(file));
   }
 
   async findOne(id: string) {

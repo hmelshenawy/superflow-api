@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -27,7 +28,7 @@ async function bootstrap() {
   });
 
   // Health check
-  app.use('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.use('/health', (_req: Request, res: Response) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

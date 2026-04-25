@@ -22,7 +22,7 @@ export class AdminService {
       orderBy: { key: 'asc' },
     });
 
-    return rows.map((row) => ({
+    return rows.map((row: (typeof rows)[number]) => ({
       ...row,
       parsed_value: this.parseSettingValue(row.value, row.value_type),
     }));
@@ -85,7 +85,7 @@ export class AdminService {
       orderBy: { name: 'asc' },
     });
 
-    return rows.map((row) => ({
+    return rows.map((row: (typeof rows)[number]) => ({
       ...row,
       parsed_config: row.config ? (() => { try { return JSON.parse(row.config); } catch { return row.config; } })() : null,
     }));

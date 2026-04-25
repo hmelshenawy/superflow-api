@@ -58,7 +58,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     await this.worker?.close().catch(() => {});
   }
 
-  private getWebhook(channel: string) {
+  private getWebhook(channel?: string | null) {
     if (channel === 'email') return process.env.NOTIFICATIONS_EMAIL_WEBHOOK;
     if (channel === 'sms') return process.env.NOTIFICATIONS_SMS_WEBHOOK;
     if (channel === 'whatsapp') return process.env.NOTIFICATIONS_WHATSAPP_WEBHOOK;

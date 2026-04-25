@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
-function toSafeInlineDisposition(filename?: string) {
+function toSafeInlineDisposition(filename?: string | null) {
   const fallback = 'file';
   const cleaned = (filename || fallback)
     .replace(/[\r\n]/g, ' ')

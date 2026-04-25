@@ -64,7 +64,7 @@ export class JobsService {
       }),
       this.prisma.jobs.count({ where }),
     ]);
-    const data = items.map((item) => ({
+    const data = items.map((item: (typeof items)[number]) => ({
       ...item,
       customer: item.customers,
       vehicle: item.vehicles,
