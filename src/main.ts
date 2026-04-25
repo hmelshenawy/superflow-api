@@ -6,15 +6,14 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
-// Fix BigInt serialization from Prisma
-(BigInt.prototype as any).toJSON = function () {
-  return Number(this);
-};
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const httpAdapter = app.getHttpAdapter().getInstance();
 
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  httpAdapter.set('trust proxy', 1);
+  httpAdapter.set('json replacer', (_key: string, value: unknown) =>
+    typeof value === 'bigint' ? value.toString() : value,
+  );
   app.use(
     helmet({
       contentSecurityPolicy: false,
