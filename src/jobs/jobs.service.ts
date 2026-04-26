@@ -144,6 +144,15 @@ export class JobsService {
     };
     if (dto.to_status === 'ready') transitionData.completed_at = new Date();
     if (dto.to_status === 'closed') transitionData.invoiced_at = new Date();
+    // If moving away from closed, clear invoiced_at and archived_at to prevent accidental archiving
+    if (job.status === 'closed' && dto.to_status !== 'closed') {
+      transitionData.invoiced_at = null;
+      transitionData.archived_at = null;
+    }
+    // If moving away from ready back to earlier stage, clear completed_at
+    if (job.status === 'ready' && dto.to_status !== 'ready' && dto.to_status !== 'closed') {
+      transitionData.completed_at = null;
+    }
 
     const [updated] = await this.prisma.$transaction([
       this.prisma.jobs.update({
