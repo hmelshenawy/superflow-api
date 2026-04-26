@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -256,6 +256,38 @@ export default function JobDetailPage() {
     })();
     loadUsers();
   }, [id]);
+
+  /* ── Auto-poll auth status when estimate is sent ──────────── */
+  const prevAuthCounts = useRef<{ approved: number; declined: number; deferred: number } | null>(null);
+
+  useEffect(() => {
+    if (!job || job.status !== 'estimate_sent') {
+      prevAuthCounts.current = null;
+      return;
+    }
+    const pollAuth = async () => {
+      try {
+        const { data } = await api.get<JobAuthorisationStatus>(`/jobs/${id}/auth-status`);
+        setAuthStatus(data);
+        const counts = data?.counts;
+        if (counts && prevAuthCounts.current) {
+          const prev = prevAuthCounts.current;
+          if (counts.approved > prev.approved || counts.declined > prev.declined || counts.deferred > prev.deferred) {
+            toast.success('Customer submitted estimate decisions!', { duration: 8000 });
+            // Also refresh full job since status may have changed
+            refreshJob();
+          }
+        }
+        if (counts) prevAuthCounts.current = { approved: counts.approved, declined: counts.declined, deferred: counts.deferred };
+      } catch {
+        // ignore polling errors
+      }
+    };
+    // Capture initial counts
+    if (authStatus?.counts) prevAuthCounts.current = { ...authStatus.counts };
+    const interval = setInterval(pollAuth, 15000);
+    return () => clearInterval(interval);
+  }, [job?.status, id]);
 
   const availableStatuses = useMemo(
     () => (job ? ALL_STATUSES.filter((status) => status !== job.status) : []),

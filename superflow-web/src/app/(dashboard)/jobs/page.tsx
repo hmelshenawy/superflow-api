@@ -224,6 +224,14 @@ export default function JobsPage() {
     fetchJobs();
   }, [fetchJobs, mounted]);
 
+  /* ── Auto-poll jobs when there are estimate_sent items ───── */
+  useEffect(() => {
+    const hasAwaiting = jobs.some((j) => j.status === 'estimate_sent');
+    if (!hasAwaiting || !mounted) return;
+    const interval = setInterval(() => fetchJobs(), 20000);
+    return () => clearInterval(interval);
+  }, [jobs, mounted, fetchJobs]);
+
   useEffect(() => {
     setNowTs(Date.now());
   }, []);
