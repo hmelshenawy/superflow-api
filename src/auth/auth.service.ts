@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -138,6 +138,44 @@ export class AuthService {
     const session = await this.prisma.refresh_tokens.findUnique({ where: { id: sessionId } });
     if (!session || session.user_id !== userId) throw new UnauthorizedException('Session not found');
     await this.prisma.refresh_tokens.update({ where: { id: sessionId }, data: { revoked_at: new Date() } });
+    return { success: true };
+  }
+
+  async updateProfile(userId: string, dto: { name?: string; avatar_url?: string }) {
+    const data: any = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.avatar_url !== undefined) data.avatar_url = dto.avatar_url;
+    if (Object.keys(data).length === 0) throw new BadRequestException('No fields to update');
+
+    const user = await this.prisma.users.update({ where: { id: userId }, data, include: { roles: true } });
+    const { password_hash, ...result } = user;
+    return { ...result, role: result.roles };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.users.findUnique({ where: { id: userId } });
+    if (!user || !user.password_hash) throw new UnauthorizedException('User not found');
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) throw new BadRequestException('Current password is incorrect');
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.prisma.users.update({ where: { id: userId }, data: { password_hash: hashed } });
+
+    // Revoke all other sessions (keep current one)
+    const currentSessions = await this.prisma.refresh_tokens.findMany({
+      where: { user_id: userId, revoked_at: null, expires_at: { gt: new Date() } },
+      orderBy: { created_at: 'desc' },
+    });
+    // Keep only the most recent session, revoke the rest
+    if (currentSessions.length > 1) {
+      const keepId = currentSessions[0].id;
+      await this.prisma.refresh_tokens.updateMany({
+        where: { user_id: userId, id: { not: keepId }, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+    }
+
     return { success: true };
   }
 }
