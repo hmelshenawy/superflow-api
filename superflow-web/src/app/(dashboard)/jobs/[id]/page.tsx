@@ -257,11 +257,11 @@ export default function JobDetailPage() {
     loadUsers();
   }, [id]);
 
-  /* ── Auto-poll auth status when estimate is sent ──────────── */
+  /* ── Auto-poll auth status only while active token exists ── */
   const prevAuthCounts = useRef<{ approved: number; declined: number; deferred: number } | null>(null);
 
   useEffect(() => {
-    if (!job || job.status !== 'estimate_sent') {
+    if (!authStatus?.hasActiveToken) {
       prevAuthCounts.current = null;
       return;
     }
@@ -274,7 +274,6 @@ export default function JobDetailPage() {
           const prev = prevAuthCounts.current;
           if (counts.approved > prev.approved || counts.declined > prev.declined || counts.deferred > prev.deferred) {
             toast.success('Customer submitted estimate decisions!', { duration: 8000 });
-            // Also refresh full job since status may have changed
             refreshJob();
           }
         }
@@ -283,11 +282,10 @@ export default function JobDetailPage() {
         // ignore polling errors
       }
     };
-    // Capture initial counts
     if (authStatus?.counts) prevAuthCounts.current = { ...authStatus.counts };
-    const interval = setInterval(pollAuth, 15000);
+    const interval = setInterval(pollAuth, 30000);
     return () => clearInterval(interval);
-  }, [job?.status, id]);
+  }, [authStatus?.hasActiveToken, id]);
 
   const availableStatuses = useMemo(
     () => (job ? ALL_STATUSES.filter((status) => status !== job.status) : []),

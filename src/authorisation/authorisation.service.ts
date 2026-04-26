@@ -214,9 +214,15 @@ export class AuthorisationService {
         ]),
     );
 
+    // Add hasActiveToken flag for smart polling
+    const hasActiveToken = latestToken
+      ? !latestToken.is_revoked && (!latestToken.expires_at || new Date(latestToken.expires_at) > new Date()) && !latestToken.used_at
+      : false;
+
     return {
       jobId,
       counts,
+      hasActiveToken,
       latestToken: latestToken
         ? {
             id: latestToken.id,

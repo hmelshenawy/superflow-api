@@ -224,13 +224,13 @@ export default function JobsPage() {
     fetchJobs();
   }, [fetchJobs, mounted]);
 
-  /* ── Auto-poll jobs when there are estimate_sent items ───── */
+  /* ── Auto-poll jobs board when awaiting approval ────────── */
   useEffect(() => {
     const hasAwaiting = jobs.some((j) => j.status === 'estimate_sent');
     if (!hasAwaiting || !mounted) return;
-    const interval = setInterval(() => fetchJobs(), 20000);
+    const interval = setInterval(() => fetchJobs(), 45000);
     return () => clearInterval(interval);
-  }, [jobs, mounted, fetchJobs]);
+  }, [jobs.length, mounted, fetchJobs, jobs.some((j) => j.status === 'estimate_sent')]);
 
   useEffect(() => {
     setNowTs(Date.now());

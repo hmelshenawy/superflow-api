@@ -161,6 +161,7 @@ export interface JobAuthorisationStatus {
     deferred: number;
     pending: number;
   };
+  hasActiveToken: boolean;
   latestToken: {
     id: string;
     issued_at: string | null;
