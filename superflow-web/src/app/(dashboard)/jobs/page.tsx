@@ -89,17 +89,11 @@ const STATUS_META: Record<
     chip: "bg-cyan-100 text-cyan-800",
     dot: "bg-cyan-500",
   },
-  completed: {
-    label: "Completed",
+  ready: {
+    label: "Ready",
     tone: "border-teal-200 bg-teal-50 text-teal-800",
     chip: "bg-teal-100 text-teal-800",
     dot: "bg-teal-500",
-  },
-  invoiced: {
-    label: "Invoiced",
-    tone: "border-indigo-200 bg-indigo-50 text-indigo-800",
-    chip: "bg-indigo-100 text-indigo-800",
-    dot: "bg-indigo-500",
   },
   closed: {
     label: "Closed",
@@ -117,8 +111,7 @@ const BOARD_COLUMNS: JobStatus[] = [
   "in_progress",
   "waiting_parts",
   "quality_check",
-  "completed",
-  "invoiced",
+  "ready",
   "closed",
 ];
 
@@ -148,7 +141,7 @@ function getPromisedLabel(value: string | null) {
 
 function isOverdue(job: Job, nowTs?: number | null) {
   if (!job.promised_at) return false;
-  if (["completed", "invoiced", "closed"].includes(job.status)) return false;
+  if (["ready", "closed"].includes(job.status)) return false;
   if (!nowTs) return false;
   return new Date(job.promised_at).getTime() < nowTs;
 }
@@ -190,6 +183,7 @@ export default function JobsPage() {
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   const toggleColumn = useCallback((column: JobStatus) => {
     setCollapsedColumns((prev) => {
@@ -207,13 +201,14 @@ export default function JobsPage() {
       const params: Record<string, string | number> = { page, limit };
       if (status !== "all") params.status = status;
       if (search) params.search = search;
+      if (showArchived) params.archived = "true";
       const { data } = await api.get<PaginatedResponse<Job>>("/jobs", { params });
       setJobs(data.data ?? data.items ?? []);
       setTotal(data.total);
     } finally {
       setLoading(false);
     }
-  }, [page, limit, status, search]);
+  }, [page, limit, status, search, showArchived]);
 
   useEffect(() => {
     setMounted(true);
@@ -401,6 +396,13 @@ export default function JobsPage() {
             <Button variant="outline" className="h-9 rounded-lg text-[13px]" onClick={fetchJobs}>
               <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", loading && "animate-spin")} />
               Refresh
+            </Button>
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              className="h-9 rounded-lg text-[13px]"
+              onClick={() => setShowArchived(!showArchived)}
+            >
+              {showArchived ? "Showing Archive" : "Archive"}
             </Button>
           </div>
         </div>

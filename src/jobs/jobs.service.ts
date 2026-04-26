@@ -33,6 +33,14 @@ export class JobsService {
     const skip = (pagination.page - 1) * pagination.limit;
     const where: any = {};
 
+    // By default, exclude archived jobs unless explicitly requested
+    const showArchived = (pagination as any).archived === 'true' || (pagination as any).archived === true;
+    if (showArchived) {
+      where.archived_at = { not: null };
+    } else if ((pagination as any).archived !== 'all') {
+      where.archived_at = null;
+    }
+
     if (status) where.status = status;
 
     if (search?.trim()) {
@@ -131,13 +139,16 @@ export class JobsService {
       throw new BadRequestException(`Cannot transition from ${job.status} to ${dto.to_status}`);
     }
 
+    const transitionData: any = {
+      status: dto.to_status as any,
+    };
+    if (dto.to_status === 'ready') transitionData.completed_at = new Date();
+    if (dto.to_status === 'closed') transitionData.invoiced_at = new Date();
+
     const [updated] = await this.prisma.$transaction([
       this.prisma.jobs.update({
         where: { id },
-        data: {
-          status: dto.to_status as any,
-          completed_at: dto.to_status === 'completed' ? new Date() : null,
-        },
+        data: transitionData,
       }),
       this.prisma.job_status_history.create({
         data: {
@@ -162,5 +173,36 @@ export class JobsService {
       where: { id },
       data: { technician_id: technicianId },
     });
+  }
+
+  async archiveJob(id: string) {
+    const job = await this.findOne(id);
+    if (job.status !== 'closed') throw new BadRequestException('Only closed jobs can be archived');
+    return this.prisma.jobs.update({
+      where: { id },
+      data: { archived_at: new Date() },
+    });
+  }
+
+  async unarchiveJob(id: string) {
+    const job = await this.prisma.jobs.findUnique({ where: { id } });
+    if (!job) throw new NotFoundException('Job not found');
+    if (!job.archived_at) throw new BadRequestException('Job is not archived');
+    return this.prisma.jobs.update({
+      where: { id },
+      data: { archived_at: null },
+    });
+  }
+
+  async archiveOldClosedJobs(): Promise<number> {
+    const result = await this.prisma.jobs.updateMany({
+      where: {
+        status: 'closed',
+        archived_at: null,
+        updated_at: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      data: { archived_at: new Date() },
+    });
+    return result.count;
   }
 }

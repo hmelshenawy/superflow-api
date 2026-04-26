@@ -40,8 +40,7 @@ export type JobStatus =
   | "in_progress"
   | "waiting_parts"
   | "quality_check"
-  | "completed"
-  | "invoiced"
+  | "ready"
   | "closed";
 
 export interface Job {
@@ -59,6 +58,8 @@ export interface Job {
   dms_ro_number: string | null;
   dms_synced_at: string | null;
   completed_at: string | null;
+  invoiced_at: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
   customer?: Customer;

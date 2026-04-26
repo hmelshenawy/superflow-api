@@ -55,8 +55,7 @@ const STATUS_META: Record<
   in_progress: { label: "In Progress", dot: "bg-blue-500", badge: "bg-blue-100 text-blue-800" },
   waiting_parts: { label: "Waiting Parts", dot: "bg-purple-500", badge: "bg-purple-100 text-purple-800" },
   quality_check: { label: "Quality Check", dot: "bg-cyan-500", badge: "bg-cyan-100 text-cyan-800" },
-  completed: { label: "Completed", dot: "bg-teal-500", badge: "bg-teal-100 text-teal-800" },
-  invoiced: { label: "Invoiced", dot: "bg-indigo-500", badge: "bg-indigo-100 text-indigo-800" },
+  ready: { label: "Ready", dot: "bg-teal-500", badge: "bg-teal-100 text-teal-800" },
   closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-slate-200 text-slate-700" },
 };
 
@@ -68,8 +67,7 @@ const ALL_STATUSES: JobStatus[] = [
   "in_progress",
   "waiting_parts",
   "quality_check",
-  "completed",
-  "invoiced",
+  "ready",
   "closed",
 ];
 
@@ -745,8 +743,7 @@ export default function JobDetailPage() {
                 {job.status === "in_progress" && <p>Track progress, parts, and blockers closely to protect promised time.</p>}
                 {job.status === "waiting_parts" && <p>Update the customer, chase procurement, and keep the board honest about waiting time.</p>}
                 {job.status === "quality_check" && <p>Finish QC fast, validate media if needed, and prepare customer-ready completion messaging.</p>}
-                {job.status === "completed" && <p>Move to invoicing and collection steps so finished work does not sit idle.</p>}
-                {job.status === "invoiced" && <p>Close the loop with payment and delivery confirmation.</p>}
+                {job.status === "ready" && <p>Move to invoicing and collection steps so finished work does not sit idle.</p>}
                 {job.status === "closed" && <p>This job is complete. Use it as a clean historical record.</p>}
               </CardContent>
             </Card>

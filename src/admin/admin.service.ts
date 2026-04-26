@@ -202,7 +202,7 @@ export class AdminService {
       this.prisma.jobs.count(),
       this.prisma.jobs.count({ where: { status: 'booked' } }),
       this.prisma.jobs.count({ where: { status: 'in_progress' } }),
-      this.prisma.jobs.count({ where: { status: 'completed' } }),
+      this.prisma.jobs.count({ where: { status: 'ready' } }),
       this.prisma.customers.count({ where: { is_active: true } }),
       this.prisma.vehicles.count(),
       this.prisma.deferred_work.count({ where: { status: 'pending' } }),

@@ -27,4 +27,9 @@ export class ListJobsDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({ description: "'true' = archived only, 'all' = include both, omit = active only" })
+  @IsOptional()
+  @IsString()
+  archived?: string;
 }

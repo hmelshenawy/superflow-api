@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -48,5 +48,17 @@ export class JobsController {
   @ApiOperation({ summary: 'Assign technician' })
   assign(@Param('id') id: string, @Body() dto: AssignTechnicianDto) {
     return this.service.assignTechnician(id, dto.technician_id);
+  }
+
+  @Patch(':id/archive')
+  @ApiOperation({ summary: 'Archive a closed job' })
+  archive(@Param('id') id: string) {
+    return this.service.archiveJob(id);
+  }
+
+  @Patch(':id/unarchive')
+  @ApiOperation({ summary: 'Unarchive a job back to the board' })
+  unarchive(@Param('id') id: string) {
+    return this.service.unarchiveJob(id);
   }
 }

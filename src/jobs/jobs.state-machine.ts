@@ -6,8 +6,7 @@ type JobStatus =
   | 'in_progress'
   | 'waiting_parts'
   | 'quality_check'
-  | 'completed'
-  | 'invoiced'
+  | 'ready'
   | 'closed';
 
 const FLOW_ORDER: JobStatus[] = [
@@ -18,8 +17,7 @@ const FLOW_ORDER: JobStatus[] = [
   'in_progress',
   'waiting_parts',
   'quality_check',
-  'completed',
-  'invoiced',
+  'ready',
   'closed',
 ];
 
@@ -31,11 +29,10 @@ const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   checking: ['estimate_sent', 'approved', 'in_progress', 'closed'],
   estimate_sent: ['checking', 'approved', 'closed'],
   approved: ['estimate_sent', 'in_progress', 'closed'],
-  in_progress: ['waiting_parts', 'quality_check', 'completed', 'closed'],
+  in_progress: ['waiting_parts', 'quality_check', 'ready', 'closed'],
   waiting_parts: ['in_progress', 'closed'],
-  quality_check: ['in_progress', 'completed'],
-  completed: ['quality_check', 'invoiced'],
-  invoiced: ['completed', 'closed'],
+  quality_check: ['in_progress', 'ready'],
+  ready: ['quality_check', 'closed'],
   closed: [],
 };
 
