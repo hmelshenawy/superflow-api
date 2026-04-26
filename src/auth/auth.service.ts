@@ -33,6 +33,11 @@ export class AuthService {
     // Update last login
     await this.prisma.users.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
 
+    // Clean up expired/revoked refresh tokens for this user
+    await this.prisma.refresh_tokens.deleteMany({
+      where: { user_id: user.id, OR: [{ revoked_at: { not: null } }, { expires_at: { lte: new Date() } }] },
+    }).catch(() => {});
+
     const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown' });
     const refreshToken = uuid();
     const refreshHash = this.hashRefreshToken(refreshToken);
@@ -118,5 +123,21 @@ export class AuthService {
       where: { user_id: userId, revoked_at: null },
       data: { revoked_at: new Date() },
     });
+  }
+
+  async listSessions(userId: string) {
+    const sessions = await this.prisma.refresh_tokens.findMany({
+      where: { user_id: userId, revoked_at: null, expires_at: { gt: new Date() } },
+      select: { id: true, created_at: true, expires_at: true },
+      orderBy: { created_at: 'desc' },
+    });
+    return { sessions };
+  }
+
+  async revokeSession(sessionId: string, userId: string) {
+    const session = await this.prisma.refresh_tokens.findUnique({ where: { id: sessionId } });
+    if (!session || session.user_id !== userId) throw new UnauthorizedException('Session not found');
+    await this.prisma.refresh_tokens.update({ where: { id: sessionId }, data: { revoked_at: new Date() } });
+    return { success: true };
   }
 }

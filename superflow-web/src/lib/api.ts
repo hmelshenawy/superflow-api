@@ -27,17 +27,23 @@ api.interceptors.response.use(
       if (refreshToken) {
         try {
           const { data } = await axios.post(`${API_BASE}/auth/refresh`, {
-            refreshToken, // backend expects camelCase
+            refreshToken,
           });
-          Cookies.set("access_token", data.accessToken, { expires: 0.0104 }); // ~15 min
-          Cookies.set("refresh_token", data.refreshToken, { expires: 30 });
+          // Access token: 8h (0.33 days) to match JWT expiry
+          // Refresh token: 30 days
+          Cookies.set("access_token", data.accessToken, { expires: 0.33, path: "/", sameSite: "lax" });
+          Cookies.set("refresh_token", data.refreshToken, { expires: 30, path: "/", sameSite: "lax" });
           original.headers.Authorization = `Bearer ${data.accessToken}`;
           return api(original);
         } catch {
-          Cookies.remove("access_token");
-          Cookies.remove("refresh_token");
+          // Refresh failed — clear cookies and redirect
+          Cookies.remove("access_token", { path: "/" });
+          Cookies.remove("refresh_token", { path: "/" });
           window.location.href = "/login";
         }
+      } else {
+        // No refresh token — redirect to login
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);
