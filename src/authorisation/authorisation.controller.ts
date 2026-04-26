@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthorisationService } from './authorisation.service';
 import { DecideDto } from './dto/decide.dto';
 import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
@@ -36,12 +37,14 @@ export class PortalAuthorisationController {
   ) {}
 
   @Get(':token')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Load approval report for customer (no JWT)' })
   load(@Param('token') token: string) {
     return this.service.loadPortal(token);
   }
 
   @Post(':token/decide')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Submit customer decisions (no JWT)' })
   decide(@Param('token') token: string, @Body() dto: DecideDto, @Req() req: any) {
     return this.service.decideFromPortal(token, dto, req.ip, req.headers['user-agent']);

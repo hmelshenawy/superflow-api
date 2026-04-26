@@ -203,6 +203,11 @@ export class JobsService {
     });
   }
 
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prisma.jobs.delete({ where: { id } });
+  }
+
   async archiveOldClosedJobs(): Promise<number> {
     const result = await this.prisma.jobs.updateMany({
       where: {

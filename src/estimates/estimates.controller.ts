@@ -6,11 +6,13 @@ import { UpdateLineDto } from './dto/update-line.dto';
 import { BulkReplaceLinesDto } from './dto/bulk-replace-lines.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Estimates')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('estimates')
 export class EstimatesController {
   constructor(private service: EstimatesService) {}
@@ -30,15 +32,19 @@ export class EstimatesController {
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
+  @Roles('admin', 'manager', 'service_advisor')
   create(@Body() dto: CreateLineDto, @CurrentUser('sub') userId: string) { return this.service.create(dto, userId); }
 
   @Put(':id')
+  @Roles('admin', 'manager', 'service_advisor')
   update(@Param('id') id: string, @Body() dto: UpdateLineDto, @CurrentUser('sub') userId: string) { return this.service.update(id, dto, userId); }
 
   @Delete(':id')
+  @Roles('admin', 'manager')
   remove(@Param('id') id: string) { return this.service.remove(id); }
 
   @Put('job/:jobId/bulk')
+  @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'Bulk replace all estimate lines for a job' })
   bulkReplace(
     @Param('jobId') jobId: string,

@@ -5,10 +5,12 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @ApiTags('Customers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('customers')
 export class CustomersController {
   constructor(private service: CustomersService) {}
@@ -32,11 +34,14 @@ export class CustomersController {
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
+  @Roles('admin', 'manager', 'service_advisor')
   create(@Body() dto: CreateCustomerDto) { return this.service.create(dto); }
 
   @Patch(':id')
+  @Roles('admin', 'manager', 'service_advisor')
   update(@Param('id') id: string, @Body() dto: UpdateCustomerDto) { return this.service.update(id, dto); }
 
   @Delete(':id')
+  @Roles('admin')
   remove(@Param('id') id: string) { return this.service.remove(id); }
 }

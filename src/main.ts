@@ -37,14 +37,17 @@ async function bootstrap() {
   );
   app.useGlobalInterceptors(app.get(AuditInterceptor));
 
-  const config = new DocumentBuilder()
-    .setTitle('SuperFlow API')
-    .setDescription('Workshop Management System')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger docs only in non-production environments
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('SuperFlow API')
+      .setDescription('Workshop Management System')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
