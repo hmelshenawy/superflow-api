@@ -12,22 +12,25 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [hydrated, setHydrated] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     setHydrated(true);
     if (Cookies.get("access_token")) {
-      loadUser();
+      loadUser().finally(() => setChecking(false));
+    } else {
+      setChecking(false);
     }
   }, [loadUser]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || checking) return;
     if (!isAuthenticated && !PUBLIC_ROUTES.includes(pathname)) {
       router.replace("/login");
     }
-  }, [hydrated, isAuthenticated, pathname, router]);
+  }, [hydrated, checking, isAuthenticated, pathname, router]);
 
-  if (!hydrated) {
+  if (!hydrated || checking) {
     return null;
   }
 
