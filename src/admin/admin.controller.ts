@@ -126,4 +126,88 @@ export class AdminController {
   @Roles('admin')
   @ApiOperation({ summary: 'Soft-delete template' })
   deleteTemplate(@Param('id') id: string) { return this.service.deleteTemplate(id); }
+
+  // ─── Sections ──────────────────────────────────────────
+  @Post('templates/:id/sections')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Add section to template' })
+  addSection(@Param('id') id: string, @Body() body: { name: string; icon?: string; sort_order?: number }) {
+    return this.service.addSection(id, body);
+  }
+
+  @Patch('templates/sections/:sectionId')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Update section' })
+  updateSection(@Param('sectionId') sectionId: string, @Body() body: { name?: string; icon?: string; sort_order?: number; is_active?: boolean }) {
+    return this.service.updateSection(sectionId, body);
+  }
+
+  @Delete('templates/sections/:sectionId')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Delete section and its items' })
+  deleteSection(@Param('sectionId') sectionId: string) {
+    return this.service.deleteSection(sectionId);
+  }
+
+  @Patch('templates/:id/sections/reorder')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Reorder sections' })
+  reorderSections(@Param('id') id: string, @Body() body: { sectionIds: string[] }) {
+    return this.service.reorderSections(id, body.sectionIds);
+  }
+
+  // ─── Items ─────────────────────────────────────────────
+  @Post('templates/:id/items')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Add item to template section' })
+  addItem(
+    @Param('id') id: string,
+    @Body() body: {
+      section_id: string;
+      label: string;
+      input_type?: string;
+      options?: any;
+      unit?: string;
+      requires_photo?: boolean;
+      requires_note_on?: string;
+      help_text?: string;
+      sort_order?: number;
+    },
+  ) {
+    return this.service.addItem(id, body);
+  }
+
+  @Patch('templates/items/:itemId')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Update item' })
+  updateItem(
+    @Param('itemId') itemId: string,
+    @Body() body: {
+      label?: string;
+      input_type?: string;
+      options?: any;
+      unit?: string;
+      requires_photo?: boolean;
+      requires_note_on?: string;
+      help_text?: string;
+      sort_order?: number;
+      is_active?: boolean;
+    },
+  ) {
+    return this.service.updateItem(itemId, body);
+  }
+
+  @Delete('templates/items/:itemId')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Delete item' })
+  deleteItem(@Param('itemId') itemId: string) {
+    return this.service.deleteItem(itemId);
+  }
+
+  @Patch('templates/sections/:sectionId/items/reorder')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Reorder items within section' })
+  reorderItems(@Param('sectionId') sectionId: string, @Body() body: { itemIds: string[] }) {
+    return this.service.reorderItems(sectionId, body.itemIds);
+  }
 }

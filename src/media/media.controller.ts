@@ -10,10 +10,11 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 function toSafeInlineDisposition(filename?: string | null) {
   const fallback = 'file';
+  // Only keep ASCII alphanumeric, underscore, hyphen, dot — strip everything else
   const cleaned = (filename || fallback)
-    .replace(/[\r\n]/g, ' ')
-    .replace(/["\\]/g, '_')
-    .replace(/[\x00-\x1F\x7F]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
     .trim();
 
   return `inline; filename="${cleaned || fallback}"`;

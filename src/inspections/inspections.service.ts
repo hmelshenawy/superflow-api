@@ -14,6 +14,15 @@ export class InspectionsService {
     const existing = await this.prisma.inspections.findUnique({ where: { job_id: jobId } });
     if (existing) return existing;
 
+    // Move job from booked → checking when inspection is created
+    const job = await this.prisma.jobs.findUnique({ where: { id: jobId } });
+    if (job?.status === 'booked') {
+      await this.prisma.jobs.update({
+        where: { id: jobId },
+        data: { status: 'checking' },
+      });
+    }
+
     return this.prisma.inspections.create({
       data: {
         id: uuid(),

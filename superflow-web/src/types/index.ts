@@ -256,6 +256,30 @@ export interface LabourRate {
 }
 
 // ─── Inspection Template ────────────────────────────────
+export interface InspectionItem {
+  id: string;
+  section_id: string;
+  label: string;
+  input_type: string;
+  options: string | null;
+  unit: string | null;
+  requires_photo: boolean;
+  requires_note_on: string | null;
+  help_text: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface InspectionSection {
+  id: string;
+  template_id: string;
+  name: string;
+  icon: string | null;
+  sort_order: number;
+  is_active: boolean;
+  inspection_items: InspectionItem[];
+}
+
 export interface InspectionTemplate {
   id: string;
   name: string | null;
@@ -265,6 +289,8 @@ export interface InspectionTemplate {
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
+  inspection_sections?: InspectionSection[];
+  created_by?: string;
 }
 
 // ─── API Envelope ───────────────────────────────────────

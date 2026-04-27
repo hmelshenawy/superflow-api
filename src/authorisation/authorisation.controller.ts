@@ -57,7 +57,7 @@ export class PortalAuthorisationController {
     await this.service.validatePortalToken(token);
     const file = await this.mediaService.getDownloadStream(mediaId);
     res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${(file.filename || 'file').replace(/["\\]/g, '_')}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${(file.filename || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')}"`);
     const { Readable } = await import('stream');
     const nodeStream = file.stream instanceof Readable ? file.stream : Readable.fromWeb(file.stream as any);
     nodeStream.pipe(res);

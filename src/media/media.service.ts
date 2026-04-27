@@ -13,6 +13,14 @@ export class MediaService {
     @Inject(S3_CLIENT) private s3: S3Client,
   ) {}
 
+  private async generateCleanFilename(jobId: string, ext: string): Promise<string> {
+    const job = await this.prisma.jobs.findUnique({ where: { id: jobId }, select: { job_number: true } });
+    const jobNum = (job?.job_number || jobId.slice(0, 8)).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const ts = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').replace(/\..+/, '');
+    // e.g. SF-MOGZ76J8_20260427_160100.jpg
+    return `${jobNum}_${ts}.${ext}`;
+  }
+
   private async resolveInspectionResponseId(dto: PresignUploadDto) {
     if (dto.inspection_response_id) return dto.inspection_response_id;
     if (!dto.inspection_id || !dto.item_id) return undefined;
@@ -47,8 +55,9 @@ export class MediaService {
     const bucket = process.env.S3_BUCKET || 'superflow-media';
     const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
-    const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const s3Key = `uploads/${dto.job_id}/${mediaId}/${safeName}`;
+    const ext = (dto.filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const cleanName = await this.generateCleanFilename(dto.job_id, ext);
+    const s3Key = `uploads/${dto.job_id}/${mediaId}/${cleanName}`;
 
     const command = new PutObjectCommand({
       Bucket: bucket,
@@ -67,7 +76,7 @@ export class MediaService {
         s3_key: s3Key,
         file_type: dto.file_type as any,
         mime_type: dto.mime_type,
-        original_filename: dto.filename,
+        original_filename: cleanName,
         scan_status: 'pending',
       },
     });
@@ -111,8 +120,10 @@ export class MediaService {
     const bucket = process.env.S3_BUCKET || 'superflow-media';
     const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
-    const safeName = (dto.filename || file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
-    const s3Key = `uploads/${dto.job_id}/${mediaId}/${safeName}`;
+    const rawName = dto.filename || file.originalname;
+    const ext = (rawName.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const cleanName = await this.generateCleanFilename(dto.job_id, ext);
+    const s3Key = `uploads/${dto.job_id}/${mediaId}/${cleanName}`;
 
     await this.s3.send(
       new PutObjectCommand({
@@ -133,7 +144,7 @@ export class MediaService {
         s3_key: s3Key,
         file_type: dto.file_type as any,
         mime_type: dto.mime_type || file.mimetype,
-        original_filename: dto.filename || file.originalname,
+        original_filename: cleanName,
         size_bytes: file.size,
         scan_status: 'pending',
         uploaded_at: new Date(),
