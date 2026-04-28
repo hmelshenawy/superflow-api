@@ -27,14 +27,14 @@ jobs:
             git checkout main
             git pull origin main
 
-            if [ ! -f .env.production ] && [ -f .env.production.example ]; then
-              echo "Missing .env.production on VPS. Copy .env.production.example and fill real values first."
+            if [ ! -f .env ] && [ -f .env.example ]; then
+              echo "Missing .env on VPS. Copy .env.example and fill real values first."
               exit 1
             fi
 
-            docker compose --env-file .env.production pull || true
-            docker compose --env-file .env.production build api web
-            docker compose --env-file .env.production up -d redis api web
+            docker compose pull || true
+            docker compose build api web
+            docker compose up -d redis api web
 
             docker image prune -f >/dev/null 2>&1 || true
 

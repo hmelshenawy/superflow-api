@@ -4,7 +4,7 @@
 - `docker-compose.yml` for `api`, `web`, and `redis`
 - Traefik labels on `api` and `web`
 - `superflow-web/Dockerfile`
-- `.env.production.example`
+- `.env.example`
 - `.github/workflows/deploy.yml`
 
 ## Reverse proxy model
@@ -17,11 +17,11 @@ This stack is now adapted to that setup on a **single domain**:
 
 ## Safe deploy
 ```bash
-cp .env.production.example .env.production
+cp .env.example .env
 # edit with real domain + secrets
 
-docker compose --env-file .env.production build api web
-docker compose --env-file .env.production up -d redis api web
+docker compose build api web
+docker compose up -d redis api web
 ```
 
 ## GitHub Actions secrets needed

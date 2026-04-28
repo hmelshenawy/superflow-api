@@ -1,7 +1,6 @@
 node_modules/
 dist/
-.env
-.env.production
+.env*
 *.log
 .git
 superflow-web/node_modules
