@@ -14,6 +14,8 @@ export class AuthorisationService {
     return crypto.createHash('sha256').update(raw).digest('hex');
   }
 
+  // Portal tokens are stored hashed for the same reason as refresh tokens:
+  // a leaked DB row should not grant direct customer portal access.
   private async getValidTokenByRaw(rawToken: string) {
     const token = await this.prisma.approval_tokens.findUnique({
       where: { token_hash: this.hashToken(rawToken) },
@@ -54,7 +56,8 @@ export class AuthorisationService {
     if (token.is_revoked) throw new BadRequestException('Approval link revoked');
     if (token.expires_at && token.expires_at < new Date()) throw new BadRequestException('Approval link expired');
 
-    // Generate API proxy URLs for all media files
+    // Generate API proxy URLs for all media files.
+    // The browser/customer must never receive an internal MinIO hostname.
     const rewriteMediaUrls = (files: any[]) => {
       for (const mf of files ?? []) {
         if (mf.s3_bucket && mf.s3_key && !mf.is_deleted) {
@@ -97,6 +100,8 @@ export class AuthorisationService {
     if (!job) throw new NotFoundException('Job not found');
     if (!job.estimate_lines.length) throw new BadRequestException('Job has no estimate lines to approve');
 
+    // The raw token is returned only once in the portal URL. After this point
+    // the backend works from the hash stored in approval_tokens.
     const raw = crypto.randomBytes(32).toString('hex');
     const hash = this.hashToken(raw);
 
@@ -114,6 +119,8 @@ export class AuthorisationService {
     const baseUrl = process.env.CUSTOMER_PORTAL_URL || 'http://127.0.0.1:3002';
     const portalUrl = `${baseUrl.replace(/\/$/, '')}/portal/${raw}`;
 
+    // Generating an approval link is also a business event: the workshop has
+    // effectively sent the estimate to the customer, so the job moves forward.
     if (job.status !== 'estimate_sent' && canTransition(job.status as any, 'estimate_sent')) {
       await this.prisma.$transaction([
         this.prisma.jobs.update({
@@ -214,7 +221,8 @@ export class AuthorisationService {
         ]),
     );
 
-    // Add hasActiveToken flag for smart polling
+    // The frontend polls with this flag instead of raw job status because a job
+    // can still be estimate_sent while the latest portal token is expired/used.
     const hasActiveToken = latestToken
       ? !latestToken.is_revoked && (!latestToken.expires_at || new Date(latestToken.expires_at) > new Date()) && !latestToken.used_at
       : false;
@@ -248,7 +256,9 @@ export class AuthorisationService {
       }).catch(() => {});
     }
 
-    // Build inspection findings for customer view
+    // Build inspection findings for customer view.
+    // Only abnormal findings are shown; normal/pass items are intentionally
+    // filtered out to keep the portal focused on actionable decisions.
     const inspectionFindings: any[] = [];
     if (token.jobs?.inspections) {
       const insp = token.jobs.inspections;
@@ -277,7 +287,11 @@ export class AuthorisationService {
     const severityOrder: Record<string, number> = { red: 0, amber: 1 };
     inspectionFindings.sort((a, b) => (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2));
 
-    // Group estimate lines for customer view
+    // Group estimate lines for customer view.
+    // Preferred grouping order is:
+    // 1) explicit custom quote groups
+    // 2) fallback grouping by inspection finding/response
+    // 3) ungrouped General / Other lines
     const lines = token.jobs?.estimate_lines || [];
     const grouped: any[] = [];
     const byGroup = new Map<string, any[]>();
@@ -368,6 +382,8 @@ export class AuthorisationService {
       }
     }
 
+    // Decision submission is transactional because three things must stay in
+    // sync: the per-line decisions, the token usage state, and the job status.
     const created = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const rows: any[] = [];
       for (const item of dto.decisions) {
@@ -384,6 +400,8 @@ export class AuthorisationService {
         rows.push(row);
 
         if (item.decision === 'declined' || item.decision === 'deferred') {
+          // Deferred-work rows are created only once per original job + line so
+          // repeated submissions/retries do not duplicate follow-up work.
           const existingDeferred = await tx.deferred_work.findFirst({
             where: {
               original_job_id: token.job_id,
@@ -413,6 +431,8 @@ export class AuthorisationService {
         data: { used_at: new Date(), ip_address: ip, user_agent: userAgent || null },
       });
 
+      // The customer has now responded to the estimate, so the job can move to
+      // approved when the workflow allows it.
       if (token.job_id && token.jobs?.status && token.jobs.status !== 'approved' && canTransition(token.jobs.status as any, 'approved')) {
         await tx.jobs.update({
           where: { id: token.job_id },

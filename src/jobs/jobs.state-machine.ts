@@ -21,6 +21,10 @@ const FLOW_ORDER: JobStatus[] = [
   'closed',
 ];
 
+// This file is the single source of truth for allowed job status moves.
+// Keep it intentionally small and explicit: operational rules should be easy
+// to audit here before any service updates or UI changes are made.
+
 // Practical workshop transitions:
 // - mostly forward-only
 // - small number of controlled backtracks where operations commonly bounce
@@ -36,6 +40,8 @@ const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   closed: [],
 };
 
+// Used by JobsService, approval flow, and any future UI validation.
+// Returning false for same-status transitions prevents noisy no-op history rows.
 export function canTransition(from: JobStatus, to: JobStatus): boolean {
   if (from === to) return false;
   return TRANSITIONS[from]?.includes(to) ?? false;

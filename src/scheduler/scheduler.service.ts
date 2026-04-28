@@ -9,7 +9,8 @@ export class SchedulerService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
-    // Catch-up: run archive once on startup so missed midnights don't leave jobs stuck
+    // Catch-up: cron-only scheduling is not enough in containerized deployments.
+    // If the app was down at midnight, startup should still reconcile closed jobs.
     this.logger.log('Running startup archive catch-up...');
     await this.archiveOldClosedJobs();
   }
@@ -17,6 +18,8 @@ export class SchedulerService implements OnModuleInit {
   @Cron('0 0 * * *') // midnight UTC daily
   async archiveOldClosedJobs() {
     try {
+      // Archive by status only. Closed jobs are intentionally removed from the
+      // active board immediately; debugging users can still query archived data.
       const result = await this.prisma.jobs.updateMany({
         where: {
           status: 'closed',

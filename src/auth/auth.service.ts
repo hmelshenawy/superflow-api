@@ -18,6 +18,9 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  // Access tokens are short-lived JWTs, but refresh tokens are treated like
+  // durable session secrets. We store only their hash so a DB leak does not
+  // expose reusable raw refresh tokens.
   async validateUser(email: string, password: string) {
     const user = await this.prisma.users.findUnique({ where: { email }, include: { roles: true } });
     if (!user || !user.is_active) return null;
@@ -38,6 +41,8 @@ export class AuthService {
       where: { user_id: user.id, OR: [{ revoked_at: { not: null } }, { expires_at: { lte: new Date() } }] },
     }).catch(() => {});
 
+    // The frontend expects role info to be present in the JWT payload because
+    // guards and navigation decisions are role-driven right after login.
     const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown' });
     const refreshToken = uuid();
     const refreshHash = this.hashRefreshToken(refreshToken);
@@ -67,6 +72,7 @@ export class AuthService {
     });
 
     // Backward compatibility for legacy bcrypt-hashed refresh tokens.
+    // Newer rows use direct SHA-256 lookup for O(1) fetch instead of scanning.
     if (!matchedToken) {
       const legacyTokens = await this.prisma.refresh_tokens.findMany({
         where: {
@@ -88,6 +94,8 @@ export class AuthService {
     if (matchedToken.revoked_at) throw new UnauthorizedException('Refresh token revoked');
     if (matchedToken.expires_at && matchedToken.expires_at <= new Date()) throw new UnauthorizedException('Refresh token expired');
 
+    // Refresh tokens are rotated on every use. Once one refresh succeeds, the
+    // previous token is revoked and a brand new refresh token is issued.
     await this.prisma.refresh_tokens.update({ where: { id: matchedToken.id }, data: { revoked_at: new Date() } });
 
     const user = await this.prisma.users.findUnique({ where: { id: matchedToken.user_id }, include: { roles: true } });
@@ -119,6 +127,8 @@ export class AuthService {
   }
 
   async logout(userId: string) {
+    // Current behavior is a full logout across all active sessions for the user,
+    // not just the device that initiated the request.
     await this.prisma.refresh_tokens.updateMany({
       where: { user_id: userId, revoked_at: null },
       data: { revoked_at: new Date() },
@@ -162,7 +172,9 @@ export class AuthService {
     const hashed = await bcrypt.hash(newPassword, 10);
     await this.prisma.users.update({ where: { id: userId }, data: { password_hash: hashed } });
 
-    // Revoke all other sessions (keep current one)
+    // Revoke all other sessions (keep current one).
+    // This reduces account takeover risk after a password change while avoiding
+    // the awkward UX of immediately kicking out the session that changed it.
     const currentSessions = await this.prisma.refresh_tokens.findMany({
       where: { user_id: userId, revoked_at: null, expires_at: { gt: new Date() } },
       orderBy: { created_at: 'desc' },
