@@ -12,9 +12,11 @@ export class InspectionsService {
 
   async create(jobId: string, templateId: string, technicianId: string) {
     const existing = await this.prisma.inspections.findUnique({ where: { job_id: jobId } });
+    // One inspection per job keeps the workflow simple: later steps (estimate,
+    // portal findings, advisor review) all assume a single active inspection.
     if (existing) return existing;
 
-    // Move job from booked → checking when inspection is created
+    // Move job from booked → checking when inspection is created.
     const job = await this.prisma.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'booked') {
       await this.prisma.jobs.update({
@@ -96,6 +98,8 @@ export class InspectionsService {
 
     const results = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];
+      // Responses are effectively upserted by (inspection_id, item_id). This
+      // lets the mobile/offline UI resend the same batch safely.
       for (const r of dto.responses) {
         const existing = await tx.inspection_responses.findFirst({
           where: { inspection_id: id, item_id: r.item_id },
@@ -134,6 +138,8 @@ export class InspectionsService {
     });
 
     if (dto.offline_draft !== undefined) {
+      // Offline draft is stored on the inspection row so the frontend can keep
+      // a device-friendly draft payload without inventing a separate draft table.
       await this.prisma.inspections.update({
         where: { id },
         data: { offline_draft: JSON.stringify(dto.offline_draft) },
@@ -170,6 +176,8 @@ export class InspectionsService {
     });
 
     if (job?.advisor_id) {
+      // Submitting an inspection is the handoff from technician work to advisor
+      // review, so the notification is part of the business workflow, not just UX.
       await this.prisma.notifications.create({
         data: {
           id: uuid(),
@@ -185,6 +193,7 @@ export class InspectionsService {
       }).catch(() => {});
     }
 
+    // Audit log keeps a durable trace of who finalized the inspection.
     await this.prisma.audit_logs.create({
       data: {
         id: uuid(),
@@ -215,6 +224,8 @@ export class InspectionsService {
       },
     });
 
+    // Reopen is intentionally audited because it unlocks a finalized record
+    // and can affect downstream estimate/customer-approval work.
     await this.prisma.audit_logs.create({
       data: {
         id: uuid(),

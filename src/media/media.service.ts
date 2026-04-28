@@ -14,6 +14,8 @@ export class MediaService {
   ) {}
 
   private async generateCleanFilename(jobId: string, ext: string): Promise<string> {
+    // Media filenames are normalized up front because original phone/browser
+    // filenames often contain characters that later break HTTP headers.
     const job = await this.prisma.jobs.findUnique({ where: { id: jobId }, select: { job_number: true } });
     const jobNum = (job?.job_number || jobId.slice(0, 8)).replace(/[^a-zA-Z0-9._-]/g, '_');
     const ts = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').replace(/\..+/, '');
@@ -23,6 +25,8 @@ export class MediaService {
 
   private async resolveInspectionResponseId(dto: PresignUploadDto) {
     if (dto.inspection_response_id) return dto.inspection_response_id;
+    // Some upload flows know only inspection + item, not the response row yet.
+    // In that case we create a placeholder response so media still has a stable link.
     if (!dto.inspection_id || !dto.item_id) return undefined;
 
     const existing = await this.prisma.inspection_responses.findFirst({
@@ -52,6 +56,8 @@ export class MediaService {
   }
 
   async presign(dto: PresignUploadDto, userId: string) {
+    // Presign flow creates the DB record before the binary upload completes.
+    // That keeps metadata and future confirmation tied to one stable media id.
     const bucket = process.env.S3_BUCKET || 'superflow-media';
     const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
@@ -115,6 +121,8 @@ export class MediaService {
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
     userId: string,
   ) {
+    // Direct upload is the simpler fallback path when the client cannot or
+    // should not upload straight to object storage.
     if (!file) throw new BadRequestException('File is required');
 
     const bucket = process.env.S3_BUCKET || 'superflow-media';
@@ -152,6 +160,8 @@ export class MediaService {
     });
 
     if (inspectionResponseId) {
+      // Response media_count is denormalized for quick UI rendering on inspection
+      // screens, so uploads/deletes must keep it in sync.
       await this.prisma.inspection_responses.update({
         where: { id: inspectionResponseId },
         data: { media_count: { increment: 1 } },
@@ -183,6 +193,8 @@ export class MediaService {
   }
 
   async getDownloadStream(id: string) {
+    // Stream-through download keeps storage private; callers do not need direct
+    // bucket credentials or publicly reachable MinIO endpoints.
     const file = await this.prisma.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');

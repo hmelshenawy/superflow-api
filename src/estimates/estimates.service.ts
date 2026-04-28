@@ -11,6 +11,8 @@ export class EstimatesService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateLineDto, userId: string) {
+    // The backend always recomputes money fields so the client cannot drift from
+    // server-side totals just by sending pre-calculated values.
     const qty = dto.quantity ?? 1;
     const unitPrice = dto.unit_price ?? 0;
     const discount = dto.discount_pct ?? 0;
@@ -40,6 +42,8 @@ export class EstimatesService {
   }
 
   async getDefaults() {
+    // Quote builder defaults come from admin-managed settings first, then fall
+    // back to active labour-rate data so the UI can still function with minimal setup.
     const [settings, labourRates] = await Promise.all([
       this.prisma.settings.findMany({
         where: { key: { in: ['default_tax_rate', 'tax_rate', 'currency'] } },
@@ -88,7 +92,8 @@ export class EstimatesService {
   async update(id: string, dto: UpdateLineDto, userId: string) {
     const existing = await this.findOne(id);
 
-    // Save snapshot to estimate_line_history before updating
+    // Save snapshot to estimate_line_history before updating.
+    // This is why old estimate rows cannot always be hard-deleted later.
     await this.prisma.estimate_line_history.create({
       data: { id: uuid(), line_id: id, snapshot: JSON.stringify(existing), changed_by: userId },
     });
@@ -170,6 +175,8 @@ export class EstimatesService {
       }
 
       const staleLines = existing.filter((line: (typeof existing)[number]) => !incomingIds.has(line.id));
+      // Preserved stale lines are moved after active lines so historical rows do
+      // not interfere with the visible quote ordering for the current job.
       let preservedSortOrder = lines.length;
 
       for (const stale of staleLines) {
@@ -182,6 +189,8 @@ export class EstimatesService {
         const hasReferences = approvalCount > 0 || deferredCount > 0 || historyCount > 0;
 
         if (hasReferences) {
+          // Referenced lines are detached instead of deleted so customer decisions,
+          // deferred-work links, and edit history never point at missing rows.
           await tx.estimate_lines.update({
             where: { id: stale.id },
             data: {
@@ -193,6 +202,8 @@ export class EstimatesService {
             },
           });
         } else {
+          // Truly orphaned lines can be deleted safely because nothing else in the
+          // system still depends on them.
           await tx.estimate_lines.delete({ where: { id: stale.id } });
         }
       }

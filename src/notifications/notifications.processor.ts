@@ -18,6 +18,8 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit() {
+    // DB rows are the durable source of truth; BullMQ is the delivery engine.
+    // On startup we recreate the worker and then requeue anything still marked queued.
     this.worker = new Worker(
       this.queueName,
       async (job: Job) => this.process(job),
@@ -36,6 +38,8 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
       const maxAttempts = job?.opts?.attempts || 1;
       const terminal = attemptsMade >= maxAttempts;
 
+      // Non-terminal failures are moved back to queued so the DB state matches
+      // the retry lifecycle instead of pretending the notification is permanently dead.
       await this.prisma.notifications.update({
         where: { id: notificationId },
         data: {
@@ -48,6 +52,8 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     });
 
     await this.notificationsService.requeuePendingDbNotifications();
+    // Poll-based requeue is a safety net for cases where the worker or queue was
+    // unavailable earlier but the DB still contains queued notifications.
     this.pollTimer = setInterval(() => {
       this.notificationsService.requeuePendingDbNotifications().catch(() => {});
     }, 5000);
@@ -73,6 +79,8 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     const webhook = this.getWebhook(notification.channel);
 
     if (!webhook) {
+      // No webhook configured is treated as an intentional no-op environment,
+      // not an operational failure. The row is marked sent via provider `noop`.
       await this.prisma.notifications.update({
         where: { id: notification.id },
         data: {
@@ -106,6 +114,8 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     }
 
     let providerMessageId: string | null = null;
+    // Providers return different response shapes, so we accept either `messageId`
+    // or `id` and fall back to the existing DB value when parsing is impossible.
     try {
       const json = JSON.parse(text || '{}');
       providerMessageId = json.messageId || json.id || notification.provider_message_id || null;
