@@ -10,12 +10,16 @@ Backend docs added for new developers:
 - `docs/backend-modules.md`
 - `docs/backend-request-flows.md`
 - `docs/backend-business-rules.md`
+- `docs/backend-entity-map.md`
+- `docs/backend-api-map.md`
 
 Recommended reading order:
 1. `docs/backend-overview.md`
 2. `docs/backend-modules.md`
 3. `docs/backend-request-flows.md`
 4. `docs/backend-business-rules.md`
+5. `docs/backend-entity-map.md`
+6. `docs/backend-api-map.md`
 
 ## Current deployment requirements
 
