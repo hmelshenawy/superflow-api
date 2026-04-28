@@ -16,12 +16,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setHydrated(true);
+
+    if (PUBLIC_ROUTES.includes(pathname)) {
+      setChecking(false);
+      return;
+    }
+
     if (Cookies.get("access_token")) {
       loadUser().finally(() => setChecking(false));
     } else {
       setChecking(false);
     }
-  }, [loadUser]);
+  }, [loadUser, pathname]);
 
   useEffect(() => {
     if (!hydrated || checking) return;
