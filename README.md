@@ -2,6 +2,21 @@
 
 SuperFlow is a workshop management system for service advisors.
 
+## Developer documentation
+
+Backend docs added for new developers:
+
+- `docs/backend-overview.md`
+- `docs/backend-modules.md`
+- `docs/backend-request-flows.md`
+- `docs/backend-business-rules.md`
+
+Recommended reading order:
+1. `docs/backend-overview.md`
+2. `docs/backend-modules.md`
+3. `docs/backend-request-flows.md`
+4. `docs/backend-business-rules.md`
+
 ## Current deployment requirements
 
 This project currently expects existing infrastructure on the VPS:
