@@ -35,10 +35,14 @@ export class CustomersService {
 
   async remove(id: string) {
     await this.findOne(id);
+    // Soft-delete: sets is_active = false so existing jobs and references
+    // still resolve, but the customer stops appearing in active lists.
     return this.prisma.customers.update({ where: { id }, data: { is_active: false } });
   }
 
   async getJobs(customerId: string, pagination: PaginationDto) {
+    // Shallow job history: only the job rows themselves plus vehicle info,
+    // not the full payload with estimates/inspections/tokens.
     const skip = (pagination.page - 1) * pagination.limit;
     const [items, total] = await Promise.all([
       this.prisma.jobs.findMany({
@@ -52,6 +56,7 @@ export class CustomersService {
   }
 
   async getDeferred(customerId: string, pagination: PaginationDto) {
+    // Deferred work tied to a customer, useful for the rebook flow.
     const skip = (pagination.page - 1) * pagination.limit;
     const [items, total] = await Promise.all([
       this.prisma.deferred_work.findMany({
@@ -66,6 +71,8 @@ export class CustomersService {
 
   async search(query: string) {
     const term = `%${query.trim().toLowerCase()}%`;
+    // Search uses raw SQL because Prisma does not support case-insensitive
+    // multi-field LIKE across related tables in a single query.
     const matches = await this.prisma.$queryRaw<Array<{ id: string }>>`
       SELECT c.id
       FROM customers c

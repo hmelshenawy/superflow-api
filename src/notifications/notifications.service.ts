@@ -17,6 +17,9 @@ export class NotificationsService {
     private renderer: RendererService,
     @Inject(REDIS_CONNECTION) private connection: IORedis,
   ) {
+    // BullMQ is optional: if the queue cannot be created (e.g. Redis unavailable),
+    // notifications stay in the DB as "queued" and are picked up by the polling
+    // mechanism in NotificationsProcessor.
     try {
       this.queue = new Queue(this.queueName, { connection: this.connection });
     } catch (error) {
@@ -54,6 +57,8 @@ export class NotificationsService {
   }
 
   async enqueueExisting(notificationId: string) {
+    // Only queue a notification that is still marked "queued" in the DB.
+    // If it was already sent or failed, re-queueing would duplicate work.
     if (!this.queue) return null;
 
     const notification = await this.prisma.notifications.findUnique({ where: { id: notificationId } });
@@ -81,6 +86,8 @@ export class NotificationsService {
   }
 
   async requeuePendingDbNotifications() {
+    // Startup / periodic safety net: scans the DB for any notifications still
+    // marked "queued" that are not currently in BullMQ, and re-adds them.
     const pending = await this.prisma.notifications.findMany({
       where: { status: 'queued' },
       orderBy: { queued_at: 'asc' },
@@ -97,6 +104,8 @@ export class NotificationsService {
   }
 
   async sendFromTemplate(templateName: string, recipient: string, variables: Record<string, any>, jobId?: string, customerId?: string) {
+    // Renders a named template (stored in DB) with the given variables, then
+    // enqueues the rendered notification for delivery.
     const rendered = await this.renderer.render(templateName, variables);
     if (!rendered) return null;
 

@@ -12,6 +12,8 @@ export class JobsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateJobDto, userId: string) {
+    // Job numbers are derived from a base-36 timestamp so they are short,
+    // unique, and human-readable without needing a separate sequence.
     const jobNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
     return this.prisma.jobs.create({
       data: {
@@ -33,7 +35,8 @@ export class JobsService {
     const skip = (pagination.page - 1) * pagination.limit;
     const where: any = {};
 
-    // By default, exclude archived jobs unless explicitly requested
+    // By default, exclude archived jobs unless explicitly requested.
+    // `archived=all` shows everything; `archived=true` shows only archived.
     const showArchived = (pagination as any).archived === 'true' || (pagination as any).archived === true;
     if (showArchived) {
       where.archived_at = { not: null };
@@ -67,6 +70,8 @@ export class JobsService {
       where.id = { in: matches.map((row: (typeof matches)[number]) => row.id) };
     }
 
+    // Role-based row filtering ensures service advisors only see their own
+    // jobs and technicians only see jobs assigned to them.
     if (role === 'service_advisor') where.advisor_id = userId;
     if (role === 'technician') where.technician_id = userId;
 
@@ -87,6 +92,8 @@ export class JobsService {
     ]);
     const data = items.map((item: (typeof items)[number]) => ({
       ...item,
+      // Rename Prisma relation aliases to simpler keys so the frontend does not
+      // need to know about Prisma naming conventions.
       customer: item.customers,
       vehicle: item.vehicles,
       advisor: item.users_jobs_advisor_idTousers,
@@ -142,18 +149,25 @@ export class JobsService {
     const transitionData: any = {
       status: dto.to_status as any,
     };
+    // Certain statuses carry timestamp semantics that downstream flows
+    // (invoicing, archiving) depend on, so they are set atomically here.
     if (dto.to_status === 'ready') transitionData.completed_at = new Date();
     if (dto.to_status === 'closed') transitionData.invoiced_at = new Date();
-    // If moving away from closed, clear invoiced_at and archived_at to prevent accidental archiving
+    // Moving away from closed clears invoiced_at and archived_at so a
+    // reopened job does not get accidentally re-archived by the scheduler.
     if (job.status === 'closed' && dto.to_status !== 'closed') {
       transitionData.invoiced_at = null;
       transitionData.archived_at = null;
     }
     // If moving away from ready back to earlier stage, clear completed_at
+    // If moving away from ready back to earlier stage, clear completed_at
+    // so the job does not appear as completed in reporting.
     if (job.status === 'ready' && dto.to_status !== 'ready' && dto.to_status !== 'closed') {
       transitionData.completed_at = null;
     }
 
+    // Status transition is written atomically alongside its history row
+    // so the trail never drifts from the actual transition.
     const [updated] = await this.prisma.$transaction([
       this.prisma.jobs.update({
         where: { id },
@@ -209,6 +223,9 @@ export class JobsService {
   }
 
   async archiveOldClosedJobs(): Promise<number> {
+    // This method is also called by the scheduler service for daily archive.
+    // The 24h guard here is intentionally stricter than the scheduler's
+    // catch-up which archives all closed+unarchived jobs regardless of age.
     const result = await this.prisma.jobs.updateMany({
       where: {
         status: 'closed',

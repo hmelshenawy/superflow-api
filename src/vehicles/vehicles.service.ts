@@ -15,6 +15,9 @@ export class VehiclesService {
   }
 
   async create(dto: CreateVehicleDto) {
+    // VIN deduplication: if a vehicle with the same VIN already exists, update
+    // it instead of creating a duplicate. This handles repeated intake flows
+    // where the same car comes back for a new job.
     const vin = this.cleanString(dto.vin)?.toUpperCase() ?? null;
     const plate = this.cleanString(dto.plate);
     const make = this.cleanString(dto.make);
@@ -25,6 +28,8 @@ export class VehiclesService {
     if (vin) {
       const existing = await this.prisma.vehicles.findUnique({ where: { vin } });
       if (existing) {
+        // Existing VIN found — merge incoming fields over the existing record
+        // so we never duplicate vehicles on repeated job creation.
         return this.prisma.vehicles.update({
           where: { id: existing.id },
           data: {
@@ -83,6 +88,8 @@ export class VehiclesService {
   }
 
   async findByVin(vin: string) {
+    // VIN must be exactly 17 characters — enforced here because the DB
+    // unique constraint only guarantees uniqueness, not format correctness.
     const normalizedVin = vin.trim().toUpperCase();
     if (normalizedVin.length !== 17) throw new BadRequestException('VIN must be exactly 17 characters');
 
@@ -91,6 +98,8 @@ export class VehiclesService {
       include: { customers: { select: { id: true, name: true, phone: true } } },
     });
 
+    // NHTSA VIN decode provides make/model/year pre-fill for new vehicles.
+    // Failure is non-blocking — the response just omits the decoded block.
     let decoded: any = null;
     try {
       const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${normalizedVin}?format=json`);

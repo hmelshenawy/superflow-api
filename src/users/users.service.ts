@@ -11,6 +11,8 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateUserDto) {
+    // Email uniqueness is checked up front so the user gets a clear message
+    // instead of a Prisma constraint error.
     const exists = await this.prisma.users.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email already exists');
 
@@ -59,6 +61,8 @@ export class UsersService {
 
   async remove(id: string) {
     await this.findOne(id);
+    // Soft-delete: deactivating a user keeps historical references (audit logs,
+    // job assignments) valid while blocking new logins.
     return this.prisma.users.update({ where: { id }, data: { is_active: false } });
   }
 }

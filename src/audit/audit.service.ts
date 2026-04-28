@@ -17,6 +17,8 @@ export class AuditService {
     ipAddress?: string | null;
     userAgent?: string | null;
   }) {
+    // Central audit entry point — all sensitive actions (status transitions,
+    // portal decisions, inspection submit/reopen) write through here.
     return this.prisma.audit_logs.create({
       data: {
         id: uuid(),

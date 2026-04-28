@@ -25,10 +25,14 @@ export class AdminService {
     return rows.map((row: (typeof rows)[number]) => ({
       ...row,
       parsed_value: this.parseSettingValue(row.value, row.value_type),
+      // Settings values are stored as strings in the DB; parseSettingValue
+      // converts them back to their original types based on value_type.
     }));
   }
 
   async updateSettings(body: any, userId: string) {
+    // Accepts either an array of {key, value, valueType} objects or a flat
+    // key-value map. Flat maps auto-detect the type from JS typeof.
     const settings = Array.isArray(body?.settings)
       ? body.settings
       : Object.entries(body || {}).map(([key, value]) => ({ key, value, valueType: typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : typeof value === 'object' ? 'json' : 'string' }));
@@ -276,7 +280,8 @@ export class AdminService {
   async deleteRole(id: string) {
     const role = await this.prisma.roles.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
-    // Check if any users still use this role
+    // Safety check: prevents deleting a role that still has users assigned,
+    // which would leave orphaned role_id references.
     const usersWithRole = await this.prisma.users.count({ where: { role_id: id } });
     if (usersWithRole > 0) throw new BadRequestException(`Cannot delete: ${usersWithRole} user(s) assigned to this role`);
     return this.prisma.roles.delete({ where: { id } });
@@ -363,7 +368,8 @@ export class AdminService {
   async deleteTemplate(id: string) {
     const template = await this.prisma.inspection_templates.findUnique({ where: { id } });
     if (!template) throw new NotFoundException('Template not found');
-    // Soft-delete by setting is_active = false
+    // Soft-delete by setting is_active = false so existing inspections
+    // that reference this template still resolve correctly.
     return this.prisma.inspection_templates.update({
       where: { id },
       data: { is_active: false },
@@ -403,7 +409,8 @@ export class AdminService {
   async deleteSection(sectionId: string) {
     const section = await this.prisma.inspection_sections.findUnique({ where: { id: sectionId } });
     if (!section) throw new NotFoundException('Section not found');
-    // Delete items first, then section
+    // Hard-delete: items are deleted first because they are structurally
+    // dependent on the section and have no independent lifecycle.
     await this.prisma.inspection_items.deleteMany({ where: { section_id: sectionId } });
     await this.prisma.inspection_sections.delete({ where: { id: sectionId } });
     return { deleted: true };

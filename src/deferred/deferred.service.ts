@@ -58,6 +58,9 @@ export class DeferredService {
   }
 
   async remindNow(id: string) {
+    // remindNow is triggered by staff action, not an automated cron.
+    // It creates a reminder row + notification row atomically so the delivery
+    // pipeline can pick it up.
     const item = await this.findOne(id);
     if (!item.customers) throw new BadRequestException('Deferred item has no customer');
 
@@ -105,6 +108,8 @@ export class DeferredService {
   }
 
   async book(id: string, advisorId?: string) {
+    // book() converts a deferred-work item into a fresh booked job, copying
+    // the estimate line across so the advisor has a starting quote.
     const item = await this.findOne(id);
     if (!item.customer_id || !item.vehicle_id) throw new BadRequestException('Deferred item missing customer or vehicle');
     if (item.booked_job_id) throw new BadRequestException('Deferred item already booked');
@@ -160,6 +165,8 @@ export class DeferredService {
   }
 
   async getDueReminders() {
+    // Returns deferred items where remind_after has passed, used by any
+    // future cron or polling mechanism for automated reminders.
     return this.prisma.deferred_work.findMany({
       where: { status: 'pending', remind_after: { lte: new Date() } },
       include: { customers: true, vehicles: true },
