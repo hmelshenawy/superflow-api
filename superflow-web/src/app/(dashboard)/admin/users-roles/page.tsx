@@ -54,8 +54,9 @@ export default function UsersRolesPage() {
       ]);
       setUsers(u.data.data ?? u.data.items ?? (u.data as unknown as User[]));
       setRoles(r.data);
-    } catch {
-      toast.error("Failed to load users");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Failed to load users";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -84,6 +85,10 @@ export default function UsersRolesPage() {
   };
 
   const saveUser = async () => {
+    if (!editingUser && !formPassword) {
+      toast.error("Password is required for new users");
+      return;
+    }
     try {
       if (editingUser) {
         await api.patch(`/users/${editingUser.id}`, {
@@ -106,8 +111,9 @@ export default function UsersRolesPage() {
       }
       setDialogOpen(false);
       fetchUsers();
-    } catch {
-      toast.error("Failed to save user");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || "Failed to save user";
+      toast.error(msg);
     }
   };
 
@@ -116,8 +122,9 @@ export default function UsersRolesPage() {
       await api.patch(`/users/${user.id}`, { is_active: !user.is_active });
       toast.success(user.is_active ? "User deactivated" : "User activated");
       fetchUsers();
-    } catch {
-      toast.error("Failed to toggle user status");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Failed to toggle user status";
+      toast.error(msg);
     }
   };
 
