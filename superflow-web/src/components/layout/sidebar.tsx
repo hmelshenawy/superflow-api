@@ -14,9 +14,11 @@ import {
   Shield,
   Users,
   Wrench,
+  BarChart3,
 } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/jobs", label: "Workshop Board", icon: LayoutGrid },
   { href: "/deferred", label: "Deferred Work", icon: Clock3 },
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users },
