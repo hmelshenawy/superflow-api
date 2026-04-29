@@ -14,11 +14,18 @@ export class VehiclesService {
     return cleaned ? cleaned : null;
   }
 
+  /** Normalize VIN: uppercase and trim to 17 chars (some DMS systems append an extra digit) */
+  private normalizeVin(value?: string | null): string | null {
+    const cleaned = this.cleanString(value)?.toUpperCase() ?? null;
+    if (!cleaned) return null;
+    return cleaned.length > 17 ? cleaned.substring(0, 17) : cleaned;
+  }
+
   async create(dto: CreateVehicleDto) {
     // VIN deduplication: if a vehicle with the same VIN already exists, update
     // it instead of creating a duplicate. This handles repeated intake flows
     // where the same car comes back for a new job.
-    const vin = this.cleanString(dto.vin)?.toUpperCase() ?? null;
+    const vin = this.normalizeVin(dto.vin);
     const plate = this.cleanString(dto.plate);
     const make = this.cleanString(dto.make);
     const model = this.cleanString(dto.model);
@@ -90,7 +97,7 @@ export class VehiclesService {
   async findByVin(vin: string) {
     // VIN must be exactly 17 characters — enforced here because the DB
     // unique constraint only guarantees uniqueness, not format correctness.
-    const normalizedVin = vin.trim().toUpperCase();
+    const normalizedVin = vin.trim().toUpperCase().substring(0, 17);
     if (normalizedVin.length !== 17) throw new BadRequestException('VIN must be exactly 17 characters');
 
     const existingVehicle = await this.prisma.vehicles.findUnique({
@@ -141,7 +148,7 @@ export class VehiclesService {
       where: { id },
       data: {
         ...dto,
-        vin: this.cleanString(dto.vin)?.toUpperCase() ?? null,
+        vin: this.normalizeVin(dto.vin),
         plate: this.cleanString(dto.plate),
         color: this.cleanString(dto.color),
         engine: this.cleanString(dto.engine),

@@ -43,6 +43,7 @@ export default function UsersRolesPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
   const [formRoleId, setFormRoleId] = useState("");
+  const [formEmployeeCode, setFormEmployeeCode] = useState("");
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -68,6 +69,7 @@ export default function UsersRolesPage() {
     setFormEmail("");
     setFormPassword("");
     setFormRoleId(roles[0]?.id ?? "");
+    setFormEmployeeCode("");
     setDialogOpen(true);
   };
 
@@ -77,6 +79,7 @@ export default function UsersRolesPage() {
     setFormEmail(user.email ?? "");
     setFormPassword("");
     setFormRoleId(user.role_id ?? "");
+    setFormEmployeeCode((user as any).employee_code ?? "");
     setDialogOpen(true);
   };
 
@@ -87,6 +90,7 @@ export default function UsersRolesPage() {
           name: formName,
           email: formEmail,
           role_id: formRoleId,
+          employee_code: formEmployeeCode,
           ...(formPassword ? { password: formPassword } : {}),
         });
         toast.success("User updated");
@@ -96,6 +100,7 @@ export default function UsersRolesPage() {
           email: formEmail,
           password: formPassword,
           role_id: formRoleId,
+          employee_code: formEmployeeCode,
         });
         toast.success("User created");
       }
@@ -136,6 +141,7 @@ export default function UsersRolesPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Staff ID</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last Login</TableHead>
@@ -152,6 +158,7 @@ export default function UsersRolesPage() {
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || "—"}</TableCell>
                   <TableCell>{u.email}</TableCell>
+                  <TableCell className="font-mono">{(u as any).employee_code || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{u.role?.name || u.role_id?.slice(0, 8) || "—"}</Badge>
                   </TableCell>
@@ -198,6 +205,10 @@ export default function UsersRolesPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">{editingUser ? "New Password" : "Password"}</label>
               <Input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder={editingUser ? "Leave blank to keep" : ""} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Staff ID</label>
+              <Input value={formEmployeeCode} onChange={(e) => setFormEmployeeCode(e.target.value)} placeholder="e.g. 4702" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Role</label>

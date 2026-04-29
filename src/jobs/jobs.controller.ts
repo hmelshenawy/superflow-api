@@ -74,4 +74,9 @@ export class JobsController {
   @Roles('admin')
   @ApiOperation({ summary: 'Delete a job (admin only)' })
   remove(@Param('id') id: string) { return this.service.remove(id); }
+
+  @Delete()
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Delete ALL jobs (bulk clear)' })
+  removeAll() { return this.service.removeAll(); }
 }

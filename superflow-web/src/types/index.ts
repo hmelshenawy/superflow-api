@@ -49,6 +49,7 @@ export interface Job {
   customer_id: string | null;
   vehicle_id: string | null;
   advisor_id: string | null;
+  owner_code: string | null;
   technician_id: string | null;
   status: JobStatus;
   customer_concern: string | null;

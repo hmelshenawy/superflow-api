@@ -18,6 +18,7 @@ import { AuditModule } from './audit/audit.module';
 import { AdminModule } from './admin/admin.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { InsightsModule } from './insights/insights.module';
+import { BookingImportModule } from './booking-import/booking-import.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { InsightsModule } from './insights/insights.module';
     AdminModule,
     SchedulerModule,
     InsightsModule,
+    BookingImportModule,
   ],
   providers: [
     {

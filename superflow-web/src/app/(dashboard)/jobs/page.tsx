@@ -529,7 +529,7 @@ export default function JobsPage() {
                               <div className="mt-auto grid grid-cols-2 gap-1 text-[11px]">
                                 <div className="rounded-lg bg-slate-50 px-1.5 py-1">
                                   <p className="text-[9px] uppercase tracking-wide text-slate-400">Advisor</p>
-                                  <p className="truncate font-medium text-slate-800">{job.advisor?.name || "—"}</p>
+                                  <p className="truncate font-medium text-slate-800">{job.advisor?.name || job.owner_code || "—"}</p>
                                 </div>
                                 <div className="rounded-lg bg-slate-50 px-1.5 py-1">
                                   <p className="text-[9px] uppercase tracking-wide text-slate-400">Est.</p>

@@ -15,6 +15,7 @@ import {
   Users,
   Wrench,
   BarChart3,
+  Upload,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users },
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench },
   { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList },
+  { href: "/admin/booking-import", label: "Booking Import", icon: Upload },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
