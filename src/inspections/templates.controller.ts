@@ -43,7 +43,7 @@ export class TemplatesController {
     body: {
       section_id: string;
       label: string;
-      input_type?: 'pass_fail' | 'yes_no' | 'ok_warn_fail' | 'number' | 'text' | 'toggle' | 'photo';
+      input_type?: 'pass_fail' | 'yes_no' | 'ok_warn_fail' | 'number' | 'odometer' | 'fuel_level' | 'text' | 'toggle' | 'photo';
       options?: any;
       unit?: string;
       requires_photo?: boolean;

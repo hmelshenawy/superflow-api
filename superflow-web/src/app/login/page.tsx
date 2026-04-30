@@ -32,8 +32,8 @@ export default function LoginPage() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
             <Wrench className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">SuperFlow</h1>
-          <p className="mt-1 text-sm text-slate-500">Workshop Management</p>
+          <h1 className="text-2xl font-bold text-slate-900">PrioraFlow</h1>
+          <p className="mt-1 text-sm text-slate-500">Clarity in every step</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border bg-white p-6 shadow-sm">

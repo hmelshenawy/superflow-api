@@ -42,6 +42,8 @@ const INPUT_TYPES = [
   { value: "yes_no", label: "Yes / No" },
   { value: "ok_warn_fail", label: "OK / Warn / Fail" },
   { value: "number", label: "Number" },
+  { value: "odometer", label: "Mileage / Odometer" },
+  { value: "fuel_level", label: "Fuel Level" },
   { value: "text", label: "Text" },
   { value: "toggle", label: "Toggle" },
   { value: "photo", label: "Photo Only" },
@@ -569,7 +571,7 @@ export default function TemplateEditorPage() {
                 <Input
                   value={itemUnit}
                   onChange={(e) => setItemUnit(e.target.value)}
-                  placeholder="e.g. mm, V, bar"
+                  placeholder={itemInputType === "odometer" ? "e.g. km" : itemInputType === "fuel_level" ? "e.g. tank" : "e.g. mm, V, bar"}
                 />
               </div>
               <div className="flex items-end gap-2">

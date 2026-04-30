@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SuperFlow — Workshop Management",
-  description: "Workshop management system for service advisors",
+  title: "PrioraFlow — Clarity in every step",
+  description: "Workshop operations platform for service advisors with clarity in every step.",
 };
 
 export default function RootLayout({

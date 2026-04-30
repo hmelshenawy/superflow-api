@@ -37,16 +37,22 @@ function optionsForInputType(inputType?: string) {
     case "yes_no":
     case "toggle":
       return ["yes", "no"];
+    case "fuel_level":
+      return ["E", "1/4", "1/2", "3/4", "F"];
     case "ok_warn_fail":
     default:
       return ["ok", "warn", "fail"];
   }
 }
 
+function isInformationalInputType(inputType?: string) {
+  return ["number", "text", "photo", "odometer", "fuel_level"].includes(inputType || "");
+}
+
 type TrafficLight = "green" | "amber" | "red" | "none";
 
-function resultToTrafficLight(value: string): TrafficLight {
-  if (!value) return "none";
+function resultToTrafficLight(value: string, inputType?: string): TrafficLight {
+  if (!value || isInformationalInputType(inputType)) return "none";
   const v = value.toLowerCase();
   if (["ok", "pass", "yes", "good"].includes(v)) return "green";
   if (["warn", "warning", "medium", "maybe"].includes(v)) return "amber";
@@ -319,7 +325,8 @@ export function InspectionWorkspace({
     for (const section of sections) {
       for (const item of section.inspection_items ?? []) {
         const v = responses[item.id]?.value;
-        const light = resultToTrafficLight(v || "");
+        if (isInformationalInputType(item.input_type)) continue;
+        const light = resultToTrafficLight(v || "", item.input_type);
         if (!v) unset++;
         else if (light === "green") green++;
         else if (light === "amber") amber++;
@@ -382,7 +389,7 @@ export function InspectionWorkspace({
                   media_files: [],
                   response_id: null,
                 };
-                const light = resultToTrafficLight(value.value);
+                const light = resultToTrafficLight(value.value, item.input_type);
                 const style = LIGHT_STYLES[light];
                 const LightIcon = style.icon;
                 const mediaFiles: MediaFile[] = value.media_files ?? [];
@@ -438,15 +445,23 @@ export function InspectionWorkspace({
                         <Label className="text-[10px] uppercase tracking-wide text-slate-500">
                           Result
                         </Label>
-                        {item.input_type === "number" ? (
-                          <Input
-                            type="number"
-                            className="h-8 w-24 rounded-lg border-slate-200 text-[13px]"
-                            value={value.value}
-                            onChange={(e) =>
-                              setItem(item.id, { value: e.target.value })
-                            }
-                          />
+                        {item.input_type === "number" || item.input_type === "odometer" ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              className="h-8 w-28 rounded-lg border-slate-200 text-[13px]"
+                              placeholder={item.input_type === "odometer" ? "Mileage" : undefined}
+                              value={value.value}
+                              onChange={(e) =>
+                                setItem(item.id, { value: e.target.value })
+                              }
+                            />
+                            {(item.unit || item.input_type === "odometer") && (
+                              <span className="text-[11px] font-medium text-slate-500">
+                                {item.unit || "km"}
+                              </span>
+                            )}
+                          </div>
                         ) : item.input_type === "text" ? (
                           <Input
                             className="h-8 w-40 rounded-lg border-slate-200 text-[13px]"
@@ -473,12 +488,12 @@ export function InspectionWorkspace({
                                       <span
                                         className={cn(
                                           "h-2 w-2 rounded-full",
-                                          resultToTrafficLight(opt) === "green"
+                                          resultToTrafficLight(opt, item.input_type) === "green"
                                             ? "bg-emerald-500"
-                                            : resultToTrafficLight(opt) ===
+                                            : resultToTrafficLight(opt, item.input_type) ===
                                               "amber"
                                             ? "bg-amber-500"
-                                            : resultToTrafficLight(opt) ===
+                                            : resultToTrafficLight(opt, item.input_type) ===
                                               "red"
                                             ? "bg-rose-500"
                                             : "bg-slate-300"

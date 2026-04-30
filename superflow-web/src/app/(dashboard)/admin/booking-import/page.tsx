@@ -234,7 +234,7 @@ export default function BookingImportPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Booking Import</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Upload your daily booking table and import it into SuperFlow
+            Upload your daily booking table and import it into PrioraFlow
           </p>
         </div>
         {(step === "mapping" || step === "result") && (
