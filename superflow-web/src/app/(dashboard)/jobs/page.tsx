@@ -261,6 +261,10 @@ function getPlate(job: Job) {
   return job.vehicle?.plate || "No plate";
 }
 
+function isWorkshopPhaseJob(job: Job) {
+  return ["in_progress", "waiting_parts", "quality_check", "ready"].includes(job.status);
+}
+
 function getPromisedLabel(value: string | null) {
   if (!value) return "No promise set";
   return new Intl.DateTimeFormat("en-GB", {
@@ -286,6 +290,222 @@ function getEstimateTotal(job: Job) {
     (sum, line) => sum + Number(line.line_total ?? 0),
     0,
   );
+}
+
+
+type NextActionOwner = "advisor" | "workshop" | "parts" | "customer";
+type NextActionUrgency = "low" | "normal" | "high" | "critical";
+
+type NextBestAction = {
+  title: string;
+  reason: string;
+  urgency: NextActionUrgency;
+  owner: NextActionOwner;
+  actionType: string;
+  score: number;
+  signals: string[];
+};
+
+function buildNextBestAction(job: Job, nowTs?: number | null): NextBestAction {
+  const now = nowTs ?? Date.now();
+  const promisedTs = job.promised_at ? new Date(job.promised_at).getTime() : null;
+  const hoursToPromise = promisedTs ? (promisedTs - now) / 36e5 : null;
+  const promiseOverdue = isOverdue(job, now);
+  const promiseDueSoon = hoursToPromise !== null && hoursToPromise <= 2 && !promiseOverdue;
+  const promiseDueToday = hoursToPromise !== null && hoursToPromise <= 6 && !promiseOverdue;
+  const idleHours = Math.max(0, (now - new Date(job.updated_at).getTime()) / 36e5);
+  const partsStatus = job.parts_status ?? "no_parts";
+  const sensitivity = job.customer_sensitivity ?? "normal";
+  const estimateTotal = getEstimateTotal(job);
+  const workshopStage = getWorkshopStage(job);
+
+  const signals = [
+    promiseOverdue ? "promise overdue" : null,
+    promiseDueSoon ? "promise due within 2h" : null,
+    promiseDueToday && !promiseDueSoon ? "promise due within 6h" : null,
+    job.is_customer_waiting ? "customer waiting" : null,
+    sensitivity !== "normal" ? `${CUSTOMER_SENSITIVITY_META[sensitivity]?.label ?? sensitivity} customer` : null,
+    idleHours >= 12 ? "idle 12h+" : idleHours >= 6 ? "idle 6h+" : null,
+    partsStatus !== "no_parts" ? `parts: ${partsStatus}` : null,
+    estimateTotal >= 10000 ? "high estimate value" : estimateTotal >= 5000 ? "medium estimate value" : null,
+  ].filter(Boolean) as string[];
+
+  const riskBoost =
+    (promiseOverdue ? 22 : promiseDueSoon ? 14 : promiseDueToday ? 7 : 0) +
+    (job.is_customer_waiting ? 10 : 0) +
+    (sensitivity === "angry" ? 8 : sensitivity === "vip" ? 6 : sensitivity === "comeback" ? 5 : 0) +
+    (idleHours >= 12 ? 8 : idleHours >= 6 ? 4 : 0) +
+    (partsStatus === "backorder" ? 10 : partsStatus === "waiting_warehouse" ? 7 : partsStatus === "order_parts" ? 5 : 0);
+
+  const urgencyFromScore = (score: number): NextActionUrgency => (
+    score >= 55 ? "critical" : score >= 38 ? "high" : score >= 22 ? "normal" : "low"
+  );
+
+  const makeAction = ({
+    title,
+    reason,
+    owner,
+    actionType,
+    baseScore,
+    extraSignals = [],
+  }: {
+    title: string;
+    reason: string;
+    owner: NextActionOwner;
+    actionType: string;
+    baseScore: number;
+    extraSignals?: string[];
+  }): NextBestAction => {
+    const score = Math.max(0, Math.min(100, Math.round(baseScore + riskBoost)));
+    const riskReason = signals.length ? ` Risk signals: ${signals.join(", ")}.` : "";
+    return {
+      title,
+      reason: `${reason}${riskReason}`,
+      urgency: urgencyFromScore(score),
+      owner,
+      actionType,
+      score,
+      signals: [...signals, ...extraSignals],
+    };
+  };
+
+  // Phase-first selector: job status decides the operational next step.
+  // Risk signals only raise urgency and explain why the step matters now.
+  if (job.status === "booked") {
+    return makeAction({
+      title: "Receive vehicle and start check-in",
+      reason: "Booking is still in reception phase. Receive the vehicle before it enters workshop flow.",
+      owner: "advisor",
+      actionType: "vehicle_check_in",
+      baseScore: 16,
+      extraSignals: ["booked/reception phase"],
+    });
+  }
+
+  if (job.status === "checking") {
+    return makeAction({
+      title: "Complete diagnosis and prepare estimate",
+      reason: "Vehicle is in checking/diagnosis. Confirm findings and prepare the estimate for customer decision.",
+      owner: "advisor",
+      actionType: "diagnosis_to_estimate",
+      baseScore: 24,
+      extraSignals: ["checking/diagnosis phase"],
+    });
+  }
+
+  if (job.status === "estimate_sent") {
+    return makeAction({
+      title: "Follow up customer decision",
+      reason: "Estimate has been sent. The vehicle cannot move forward until the customer approves, rejects, or asks a question.",
+      owner: "advisor",
+      actionType: "customer_decision_follow_up",
+      baseScore: 30,
+      extraSignals: ["waiting customer decision"],
+    });
+  }
+
+  if (job.status === "approved") {
+    return makeAction({
+      title: "Print job card and release to workshop",
+      reason: "Customer approval is received. The next operational step is to print/open the job card and hand it to workshop control.",
+      owner: "advisor",
+      actionType: "print_job_card_release_workshop",
+      baseScore: 26,
+      extraSignals: ["approved phase", "ready for workshop release"],
+    });
+  }
+
+  if (job.status === "waiting_parts") {
+    return makeAction({
+      title: "Check parts ETA and update plan",
+      reason: "Job is blocked by parts. Confirm ETA/status and update advisor, workshop, and customer plan if needed.",
+      owner: "parts",
+      actionType: "parts_eta_check",
+      baseScore: 28,
+      extraSignals: ["waiting parts phase"],
+    });
+  }
+
+  if (job.status === "in_progress") {
+    if (workshopStage === "waiting_technician" || !job.technician_id) {
+      return makeAction({
+        title: "Assign technician and start work",
+        reason: "Job is already in workshop phase but still needs a clear technician/workshop owner.",
+        owner: "workshop",
+        actionType: "assign_technician",
+        baseScore: 26,
+        extraSignals: ["workshop phase", "needs technician"],
+      });
+    }
+
+    if (workshopStage === "customer_approval") {
+      return makeAction({
+        title: "Resolve advisor / approval blocker",
+        reason: "Workshop progress is blocked by advisor/customer approval. Clear the decision before work continues.",
+        owner: "advisor",
+        actionType: "workshop_approval_blocker",
+        baseScore: 30,
+        extraSignals: ["workshop approval blocker"],
+      });
+    }
+
+    if (["order_parts", "waiting_warehouse", "backorder"].includes(partsStatus)) {
+      return makeAction({
+        title: "Check parts ETA and unblock technician",
+        reason: "Work is active but parts are blocking progress. Confirm ETA and update workshop plan.",
+        owner: "parts",
+        actionType: "parts_eta_check",
+        baseScore: 30,
+        extraSignals: ["parts blocking active work"],
+      });
+    }
+
+    return makeAction({
+      title: "Check technician progress",
+      reason: "Work is in progress. Confirm progress, blockers, and expected finish time.",
+      owner: "workshop",
+      actionType: "technician_progress_check",
+      baseScore: 22,
+      extraSignals: ["work in progress"],
+    });
+  }
+
+  if (job.status === "quality_check") {
+    return makeAction({
+      title: "Complete QC and prepare delivery",
+      reason: "Vehicle is near delivery. Finish quality check, confirm readiness, and prepare handover.",
+      owner: "workshop",
+      actionType: "qc_completion",
+      baseScore: 28,
+      extraSignals: ["QC / near delivery"],
+    });
+  }
+
+  if (job.status === "ready") {
+    return makeAction({
+      title: "Notify customer for collection",
+      reason: "Vehicle is ready. Contact the customer and arrange delivery/collection.",
+      owner: "advisor",
+      actionType: "ready_collection_notice",
+      baseScore: 24,
+      extraSignals: ["ready for delivery"],
+    });
+  }
+
+  return makeAction({
+    title: "Review job",
+    reason: "No specific phase action was detected. Review the job for normal follow-up.",
+    owner: "advisor",
+    actionType: "general_review",
+    baseScore: 5,
+  });
+}
+
+function getActionUrgencyClass(urgency: NextActionUrgency) {
+  if (urgency === "critical") return "bg-red-50 text-red-800 border-red-100";
+  if (urgency === "high") return "bg-amber-50 text-amber-800 border-amber-100";
+  if (urgency === "normal") return "bg-blue-50 text-blue-800 border-blue-100";
+  return "bg-slate-50 text-slate-700 border-slate-100";
 }
 
 function StatusPill({ status }: { status: JobStatus }) {
@@ -394,6 +614,7 @@ export default function JobsPage() {
   }, [jobs]);
 
   const activeJobs = useMemo(() => jobs.filter((job) => job.status !== "closed"), [jobs]);
+  const workshopJobs = useMemo(() => jobs.filter(isWorkshopPhaseJob), [jobs]);
 
   const enrichedJobs = useMemo(() => {
     const now = nowTs ?? Date.now();
@@ -413,10 +634,10 @@ export default function JobsPage() {
         else if (hoursToPromise !== null && hoursToPromise <= 2) { score += priorityWeights.promiseDue2h; reasons.push(`Promise risk: due ≤2h +${priorityWeights.promiseDue2h}`); }
         else if (hoursToPromise !== null && hoursToPromise <= 6) { score += priorityWeights.promiseDue6h; reasons.push(`Promise risk: due ≤6h +${priorityWeights.promiseDue6h}`); }
 
-        if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer pressure: waiting +${priorityWeights.customerWaiting}`); }
-        else if (customerSensitivity === "angry") { score += priorityWeights.customerAngry; reasons.push(`Customer pressure: angry +${priorityWeights.customerAngry}`); }
-        else if (customerSensitivity === "vip") { score += priorityWeights.customerVip; reasons.push(`Customer pressure: VIP +${priorityWeights.customerVip}`); }
-        else if (customerSensitivity === "comeback") { score += priorityWeights.customerComeback; reasons.push(`Customer pressure: comeback +${priorityWeights.customerComeback}`); }
+        if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer waiting +${priorityWeights.customerWaiting}`); }
+        if (customerSensitivity === "angry") { score += priorityWeights.customerAngry; reasons.push(`Customer sensitivity: angry +${priorityWeights.customerAngry}`); }
+        else if (customerSensitivity === "vip") { score += priorityWeights.customerVip; reasons.push(`Customer sensitivity: VIP +${priorityWeights.customerVip}`); }
+        else if (customerSensitivity === "comeback") { score += priorityWeights.customerComeback; reasons.push(`Customer sensitivity: comeback +${priorityWeights.customerComeback}`); }
 
         if (job.status === "estimate_sent") { score += priorityWeights.waitingCustomerDecision; reasons.push(`Customer decision: waiting +${priorityWeights.waitingCustomerDecision}`); }
 
@@ -435,28 +656,24 @@ export default function JobsPage() {
 
         const priorityScore = Math.min(100, score);
         const priorityLevel = priorityScore >= 85 ? "Critical" : priorityScore >= 65 ? "High" : priorityScore >= 40 ? "Normal" : "Low";
-        return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal };
+        const nextAction = buildNextBestAction(job, now);
+        return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal, nextAction };
       })
       .sort((a, b) => b.priorityScore - a.priorityScore);
   }, [activeJobs, nowTs, priorityWeights]);
 
-  const getNextAction = useCallback((job: Job) => {
-    if (isOverdue(job, nowTs)) return "Update customer and escalate delay";
-    if (job.status === "booked") return "Receive vehicle and start check-in";
-    if (job.status === "checking") return "Confirm diagnosis status";
-    if (job.status === "estimate_sent") return "Follow up customer approval";
-    if (job.status === "approved") return "Confirm parts and move to workshop";
-    if (job.status === "waiting_parts") return "Check parts ETA";
-    if (job.status === "in_progress") return "Check technician progress";
-    if (job.status === "quality_check") return "Push QC completion";
-    if (job.status === "ready") return "Notify customer for collection";
-    return "Review job";
-  }, [nowTs]);
+  const advisorActions = useMemo(() => (
+    [...enrichedJobs]
+      .sort((a, b) => {
+        if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+        return b.nextAction.score - a.nextAction.score;
+      })
+      .slice(0, 8)
+  ), [enrichedJobs]);
 
-  const advisorActions = useMemo(() => enrichedJobs.slice(0, 8).map((item) => ({
-    ...item,
-    action: getNextAction(item.job),
-  })), [enrichedJobs, getNextAction]);
+  const workshopEnrichedJobs = useMemo(() => (
+    enrichedJobs.filter((item) => isWorkshopPhaseJob(item.job))
+  ), [enrichedJobs]);
 
   const stats = useMemo(() => {
     const awaitingApproval = jobs.filter((job) => job.status === "estimate_sent").length;
@@ -586,7 +803,7 @@ export default function JobsPage() {
           </div>
           <div className="rounded-lg border border-red-200 bg-red-50 p-2.5">
             <p className="text-[10px] font-medium uppercase tracking-wide text-red-700">Overdue</p>
-            <p className="mt-0.5 text-xl font-semibold text-red-950">{stats.overdue}</p>
+            <p className="mt-0.5 text-xl font-semibold text-red-950">{workshopEnrichedJobs.filter((item) => isOverdue(item.job, nowTs)).length}</p>
           </div>
         </div>
       </div>
@@ -655,7 +872,7 @@ export default function JobsPage() {
                   <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">{stats.critical} critical</span>
                 </div>
                 <div className="mt-3 grid gap-2 md:grid-cols-2">
-                  {enrichedJobs.slice(0, 6).map(({ job, priorityScore, priorityLevel, reasons }) => (
+                  {enrichedJobs.slice(0, 6).map(({ job, priorityScore, priorityLevel, reasons, nextAction }) => (
                     <Link key={job.id} href={`/jobs/${job.id}`} className="rounded-xl border border-white bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -671,8 +888,9 @@ export default function JobsPage() {
                         <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
                         <span className="truncate">{priorityLevel}: {reasons.slice(0, 2).join(" + ") || "normal follow-up"}</span>
                       </div>
-                      <div className="mt-2 rounded-lg bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-800">
-                        Next: {getNextAction(job)}
+                      <div className={cn("mt-2 rounded-lg border px-2 py-1.5 text-xs font-semibold", getActionUrgencyClass(nextAction.urgency))}>
+                        Next: {nextAction.title}
+                        <span className="ml-1 font-normal opacity-80">({nextAction.owner})</span>
                       </div>
                     </Link>
                   ))}
@@ -714,13 +932,17 @@ export default function JobsPage() {
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
               </div>
               <div className="mt-3 space-y-2">
-                {advisorActions.map(({ job, action, priorityScore }, index) => (
+                {advisorActions.map(({ job, nextAction, priorityScore }, index) => (
                   <Link key={job.id} href={`/jobs/${job.id}`} className="block rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:border-blue-200 hover:bg-blue-50">
                     <div className="flex items-start gap-2">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{index + 1}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-950">{action}</p>
-                        <p className="truncate text-xs text-slate-500">{job.customer?.name || "Walk-in"} · {job.job_number || "Draft"}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="text-sm font-semibold text-slate-950">{nextAction.title}</p>
+                          <span className={cn("rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase", getActionUrgencyClass(nextAction.urgency))}>{nextAction.urgency}</span>
+                        </div>
+                        <p className="truncate text-xs text-slate-500">{job.customer?.name || "Walk-in"} · {job.job_number || "Draft"} · Owner: {nextAction.owner}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-500">{nextAction.reason}</p>
                       </div>
                       <span className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-700">{priorityScore}</span>
                     </div>
@@ -743,15 +965,15 @@ export default function JobsPage() {
                 <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
                   <div className="rounded-xl bg-white/10 px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wide text-slate-400">Blocked</p>
-                    <p className="text-xl font-semibold">{boardJobs.waiting_parts.length + boardJobs.estimate_sent.length}</p>
+                    <p className="text-xl font-semibold">{workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length}</p>
                   </div>
                   <div className="rounded-xl bg-white/10 px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wide text-slate-400">Idle +6h</p>
-                    <p className="text-xl font-semibold">{enrichedJobs.filter((item) => item.idleHours >= 6).length}</p>
+                    <p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => item.idleHours >= 6).length}</p>
                   </div>
                   <div className="rounded-xl bg-white/10 px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wide text-slate-400">At risk</p>
-                    <p className="text-xl font-semibold">{stats.overdue}</p>
+                    <p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => isOverdue(item.job, nowTs)).length}</p>
                   </div>
                 </div>
               </div>
@@ -759,10 +981,10 @@ export default function JobsPage() {
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {[
-                { label: "Waiting technician", value: jobs.filter((job) => getWorkshopStage(job) === "waiting_technician").length, hint: "Assign tech / controller", color: "border-slate-200 bg-white" },
-                { label: "Diagnosis active", value: jobs.filter((job) => getWorkshopStage(job) === "diagnosis").length, hint: "Check diagnosis ageing", color: "border-amber-200 bg-amber-50" },
-                { label: "Approval blocking", value: jobs.filter((job) => getWorkshopStage(job) === "customer_approval").length, hint: "Advisor/customer decision", color: "border-rose-200 bg-rose-50" },
-                { label: "Parts blocking", value: jobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length, hint: "Use Overall Waiting Parts", color: "border-purple-200 bg-purple-50" },
+                { label: "Waiting technician", value: workshopJobs.filter((job) => getWorkshopStage(job) === "waiting_technician").length, hint: "Assign tech / controller", color: "border-slate-200 bg-white" },
+                { label: "Diagnosis active", value: workshopJobs.filter((job) => getWorkshopStage(job) === "diagnosis").length, hint: "Check diagnosis ageing", color: "border-amber-200 bg-amber-50" },
+                { label: "Approval blocking", value: workshopJobs.filter((job) => getWorkshopStage(job) === "customer_approval").length, hint: "Advisor/customer decision", color: "border-rose-200 bg-rose-50" },
+                { label: "Parts blocking", value: workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length, hint: "Use Overall Waiting Parts", color: "border-purple-200 bg-purple-50" },
               ].map((item) => (
                 <div key={item.label} className={cn("rounded-2xl border p-3 shadow-sm", item.color)}>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
@@ -788,7 +1010,7 @@ export default function JobsPage() {
                   {WORKSHOP_STAGES.map((stageKey) => ({
                     key: stageKey,
                     ...WORKSHOP_STAGE_META[stageKey],
-                    jobs: jobs.filter((job) => getWorkshopStage(job) === stageKey),
+                    jobs: workshopJobs.filter((job) => getWorkshopStage(job) === stageKey),
                   })).map((stage) => (
                     <div key={stage.key} className={cn("flex h-[520px] w-[230px] shrink-0 flex-col rounded-[16px] border shadow-sm", stage.tone)}>
                       <div className="border-b border-black/5 px-3 py-2.5">
@@ -830,8 +1052,8 @@ export default function JobsPage() {
                                   <span className="truncate">Idle: {Math.round(item?.idleHours ?? 0)}h</span>
                                   <span className={cn("truncate font-semibold", overdue ? "text-red-700" : "text-slate-500")}>{overdue ? "Overdue" : job.promised_at ? getPromisedLabel(job.promised_at) : "No promise"}</span>
                                 </div>
-                                <div className="mt-2 rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
-                                  {stage.key === "waiting_technician" ? "Assign technician" : stage.key === "customer_approval" ? "Advisor / customer approval" : getNextAction(job)}
+                                <div className={cn("mt-2 rounded-lg border px-2 py-1 text-[11px] font-semibold", getActionUrgencyClass(item?.nextAction.urgency ?? "low"))}>
+                                  {stage.key === "waiting_technician" ? "Assign technician" : stage.key === "customer_approval" ? "Advisor / customer approval" : item?.nextAction.title ?? "Review job"}
                                 </div>
                               </Link>
                             );
@@ -848,26 +1070,26 @@ export default function JobsPage() {
               <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-orange-950"><TriangleAlert className="h-4 w-4" /> Stuck / idle vehicles</h3>
                 <div className="mt-3 space-y-2">
-                  {enrichedJobs.filter((item) => item.idleHours >= 6).slice(0, 6).map(({ job, idleHours }) => (
+                  {workshopEnrichedJobs.filter((item) => item.idleHours >= 6).slice(0, 6).map(({ job, idleHours }) => (
                     <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
                       <span className="truncate font-medium text-slate-900">{job.job_number || "Draft"}</span>
                       <span className="text-xs font-semibold text-orange-700">{Math.round(idleHours)}h idle</span>
                     </Link>
                   ))}
-                  {enrichedJobs.filter((item) => item.idleHours >= 6).length === 0 && <p className="text-xs text-orange-700">No stuck vehicles detected.</p>}
+                  {workshopEnrichedJobs.filter((item) => item.idleHours >= 6).length === 0 && <p className="text-xs text-orange-700">No stuck vehicles detected.</p>}
                 </div>
               </div>
 
               <div className="rounded-2xl border border-purple-200 bg-purple-50 p-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-purple-950"><Package className="h-4 w-4" /> Parts blockers</h3>
                 <div className="mt-3 space-y-2">
-                  {jobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).slice(0, 6).map((job) => (
+                  {workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).slice(0, 6).map((job) => (
                     <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
                       <span className="truncate font-medium text-slate-900">{job.job_number || "Draft"}</span>
                       <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", PARTS_STATUS_META[job.parts_status ?? "order_parts"]?.tone)}>{PARTS_STATUS_META[job.parts_status ?? "order_parts"]?.label}</span>
                     </Link>
                   ))}
-                  {jobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length === 0 && <p className="text-xs text-purple-700">No parts blockers.</p>}
+                  {workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length === 0 && <p className="text-xs text-purple-700">No parts blockers.</p>}
                 </div>
               </div>
 

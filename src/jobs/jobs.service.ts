@@ -139,6 +139,9 @@ export class JobsService {
       ...dto,
       promised_at: dto.promised_at ? new Date(dto.promised_at) : undefined,
     };
+    // Keep Workshop view stage movement aligned with the Overall board.
+    // If a workshop card is moved into QC, the Overall board must also show it in QC.
+    if (dto.workshop_stage === 'quality_check') data.status = 'quality_check';
     // Allow clearing optional fields by sending empty string → null
     if (data.advisor_id === '') data.advisor_id = null;
     if (data.technician_id === '') data.technician_id = null;

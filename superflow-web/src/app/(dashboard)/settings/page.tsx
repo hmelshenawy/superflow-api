@@ -62,7 +62,7 @@ const PRIORITY_MATRIX_GROUPS: Array<{ title: string; description: string; items:
     { key: "promiseDue2h", label: "Promise due within 2h", description: "Delivery promise is very close." },
     { key: "promiseDue6h", label: "Promise due within 6h", description: "Delivery promise is approaching today." },
   ]},
-  { title: "Customer Pressure", description: "Only one customer-pressure sub-item applies, with customer waiting taking priority.", items: [
+  { title: "Customer Pressure", description: "Customer waiting can stack with one sensitivity sub-item: angry, VIP, or comeback.", items: [
     { key: "customerWaiting", label: "Customer waiting", description: "Customer is waiting now / needs immediate care." },
     { key: "customerAngry", label: "Angry / complaint", description: "Escalation or complaint risk." },
     { key: "customerVip", label: "VIP customer", description: "High-care customer." },
@@ -548,7 +548,7 @@ function PriorityMatrixSection() {
   return (
     <SectionCard
       title="Priority Matrix"
-      description="Adjust how much each risk factor adds to the job priority score. Values are points, not percentages; they do not need to sum to 100. Each group applies only one matching sub-item."
+      description="Adjust how much each risk factor adds to the job priority score. Values are points, not percentages; they do not need to sum to 100. Most groups apply one matching sub-item; Customer waiting can stack with one sensitivity sub-item."
     >
       <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
         Recommended range: <strong>0–30</strong>. 0 disables an item. Final job score is capped at 100.

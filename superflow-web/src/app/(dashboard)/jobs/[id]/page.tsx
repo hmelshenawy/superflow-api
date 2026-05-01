@@ -499,31 +499,60 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-[0.8fr_1.25fr_1.35fr]">
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Customer & vehicle</p>
-            <div className="mt-2 space-y-1.5">
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                  <User className="h-3.5 w-3.5 text-slate-600" />
+        <div className="mt-6 grid gap-4 xl:grid-cols-[1.05fr_1.2fr_1.25fr]">
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer & vehicle</p>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">Context</span>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+                    <User className="h-4.5 w-4.5 text-blue-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer</p>
+                    <p className="text-base font-semibold text-slate-950">{job.customer?.name || "Walk-in"}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold text-slate-950">{job.customer?.name || "Walk-in"}</p>
-                  <p className="truncate text-[11px] text-slate-500">{job.customer?.phone || job.customer?.email || "No contact"}</p>
+                <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Phone</p>
+                    <p className="break-all font-mono text-[13px] font-semibold leading-5 text-slate-800">{job.customer?.phone || "No phone"}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Email</p>
+                    <p className="break-all font-mono text-[13px] font-semibold leading-5 text-slate-800">{job.customer?.email || "No email"}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                  <Car className="h-3.5 w-3.5 text-slate-600" />
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                    <Car className="h-4.5 w-4.5 text-slate-700" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Vehicle</p>
+                    <p className="truncate text-base font-semibold text-slate-950">{vehicle}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-slate-950">{vehicle}</p>
-                  <p className="truncate text-[11px] text-slate-500">{plate}{job.vehicle?.vin ? ` · VIN ${job.vehicle.vin}` : ""}</p>
+                <div className="grid gap-2 text-sm lg:grid-cols-[0.85fr_1.65fr]">
+                  <div className="rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Plate</p>
+                    <p className="whitespace-nowrap font-mono text-[13px] font-semibold leading-5 text-slate-800">{plate}</p>
+                  </div>
+                  <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">VIN</p>
+                    <p className="break-all font-mono text-[13px] font-semibold leading-5 text-slate-800">{job.vehicle?.vin || "No VIN"}</p>
+                  </div>
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Customer priority</p>
-                <div className="grid gap-2">
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Customer priority</p>
+                <div className="grid gap-3">
                 <button
                   type="button"
                   onClick={async () => {
@@ -540,12 +569,12 @@ export default function JobDetailPage() {
                   }}
                   disabled={savingCustomerPriority}
                   className={cn(
-                    "rounded-xl border px-3 py-2 text-left text-xs font-semibold transition",
+                    "rounded-xl border px-4 py-3 text-left text-sm font-semibold transition",
                     job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50",
                   )}
                 >
                   Customer waiting
-                  <span className="mt-0.5 block text-[11px] font-normal opacity-70">{job.is_customer_waiting ? "Yes — prioritize" : "No"}</span>
+                  <span className="mt-1 block text-xs font-normal opacity-70">{job.is_customer_waiting ? "Yes — prioritize" : "No"}</span>
                 </button>
 
                 <div>
