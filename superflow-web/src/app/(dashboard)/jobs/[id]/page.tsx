@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Job, JobAuthorisationStatus, JobStatus } from "@/types";
+import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -70,6 +70,41 @@ const ALL_STATUSES: JobStatus[] = [
   "ready",
   "closed",
 ];
+
+
+
+const CUSTOMER_SENSITIVITY_META: Record<CustomerSensitivity, { label: string; hint: string }> = {
+  normal: { label: "Normal", hint: "Standard priority" },
+  vip: { label: "VIP", hint: "High-care customer" },
+  angry: { label: "Angry", hint: "Complaint/escalation risk" },
+  comeback: { label: "Comeback", hint: "Repeat repair / comeback" },
+};
+
+const CUSTOMER_SENSITIVITIES = Object.keys(CUSTOMER_SENSITIVITY_META) as CustomerSensitivity[];
+
+const PARTS_STATUS_META: Record<PartsStatus, { label: string; hint: string }> = {
+  no_parts: { label: "No Parts", hint: "No parts blocker" },
+  order_parts: { label: "Order Parts", hint: "Parts required, not ordered yet" },
+  waiting_warehouse: { label: "Waiting Warehouse", hint: "Waiting issue/receive from warehouse" },
+  backorder: { label: "Backorder", hint: "Unavailable or no clear ETA" },
+  parts_ready: { label: "Parts Ready", hint: "Parts available, workshop can continue" },
+};
+
+const PARTS_STATUSES = Object.keys(PARTS_STATUS_META) as PartsStatus[];
+
+const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; hint: string }> = {
+  waiting_technician: { label: "Waiting to Start", hint: "Received car waiting for technician/bay to start" },
+  received: { label: "Waiting to Start", hint: "Received car waiting for technician/bay to start" },
+  diagnosis: { label: "Diagnosis", hint: "Inspection / diagnosis active" },
+  estimate_prep: { label: "Estimate Prep", hint: "Preparing quote" },
+  customer_approval: { label: "Advisor / Approval", hint: "Advisor follow-up and customer approval" },
+  work_in_progress: { label: "Work In Progress", hint: "Repair work active" },
+  final_test: { label: "Final Test", hint: "Final/road test" },
+  quality_check: { label: "Quality Check", hint: "QC before handover" },
+  ready_handover: { label: "Ready Handover", hint: "Ready for delivery" },
+};
+
+const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]).filter((stage) => !["received", "advisor_review", "parts_check"].includes(stage));
 
 function vehicleLabel(job: Job) {
   if (!job.vehicle) return "Vehicle pending";
@@ -139,6 +174,9 @@ export default function JobDetailPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [assigningAdvisor, setAssigningAdvisor] = useState(false);
   const [assigningTech, setAssigningTech] = useState(false);
+  const [savingWorkshopStage, setSavingWorkshopStage] = useState(false);
+  const [savingPartsStatus, setSavingPartsStatus] = useState(false);
+  const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);
 
   // Inline editing states
   const [editingConcern, setEditingConcern] = useState(false);
@@ -461,7 +499,7 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-[0.8fr_1.5fr_1fr]">
+        <div className="mt-6 grid gap-4 xl:grid-cols-[0.8fr_1.25fr_1.35fr]">
           <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Customer & vehicle</p>
             <div className="mt-2 space-y-1.5">
@@ -482,6 +520,68 @@ export default function JobDetailPage() {
                   <p className="truncate text-[13px] font-semibold text-slate-950">{vehicle}</p>
                   <p className="truncate text-[11px] text-slate-500">{plate}{job.vehicle?.vin ? ` · VIN ${job.vehicle.vin}` : ""}</p>
                 </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Customer priority</p>
+                <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSavingCustomerPriority(true);
+                    try {
+                      await api.patch(`/jobs/${job.id}`, { is_customer_waiting: !job.is_customer_waiting });
+                      await refreshJob();
+                      toast.success(!job.is_customer_waiting ? "Customer marked waiting" : "Customer waiting removed");
+                    } catch {
+                      toast.error("Failed to update customer waiting flag");
+                    } finally {
+                      setSavingCustomerPriority(false);
+                    }
+                  }}
+                  disabled={savingCustomerPriority}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-xs font-semibold transition",
+                    job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50",
+                  )}
+                >
+                  Customer waiting
+                  <span className="mt-0.5 block text-[11px] font-normal opacity-70">{job.is_customer_waiting ? "Yes — prioritize" : "No"}</span>
+                </button>
+
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Sensitivity</p>
+                  <Select
+                    value={job.customer_sensitivity ?? "normal"}
+                    onValueChange={async (value) => {
+                      const sensitivity = value as CustomerSensitivity;
+                      setSavingCustomerPriority(true);
+                      try {
+                        await api.patch(`/jobs/${job.id}`, { customer_sensitivity: sensitivity });
+                        await refreshJob();
+                        toast.success(`Sensitivity updated to ${CUSTOMER_SENSITIVITY_META[sensitivity].label}`);
+                      } catch {
+                        toast.error("Failed to update sensitivity");
+                      } finally {
+                        setSavingCustomerPriority(false);
+                      }
+                    }}
+                    disabled={savingCustomerPriority}
+                  >
+                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
+                      <SelectValue placeholder="Sensitivity">
+                        {CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="min-w-[280px]">
+                      {CUSTOMER_SENSITIVITIES.map((sensitivity) => (
+                        <SelectItem key={sensitivity} value={sensitivity}>
+                          {CUSTOMER_SENSITIVITY_META[sensitivity].label} — {CUSTOMER_SENSITIVITY_META[sensitivity].hint}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               </div>
             </div>
           </div>
@@ -633,10 +733,10 @@ export default function JobDetailPage() {
                   }}
                   disabled={assigningAdvisor}
                 >
-                  <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white">
+                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
                     <SelectValue placeholder="Unassigned">{advisorName(job.advisor_id)}</SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="min-w-[280px]">
                     <SelectItem value="unassigned">Unassigned</SelectItem>
                     {advisors.map((entry: any) => (
                       <SelectItem key={entry.id} value={entry.id}>
@@ -666,14 +766,82 @@ export default function JobDetailPage() {
                   }}
                   disabled={assigningTech}
                 >
-                  <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white">
+                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
                     <SelectValue placeholder="Unassigned">{techName(job.technician_id)}</SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="min-w-[280px]">
                     <SelectItem value="unassigned">Unassigned</SelectItem>
                     {technicians.map((entry: any) => (
                       <SelectItem key={entry.id} value={entry.id}>
                         {entry.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Workshop stage</p>
+                <Select
+                  value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"}
+                  onValueChange={async (value) => {
+                    const workshopStage = value as WorkshopStage;
+                    setSavingWorkshopStage(true);
+                    try {
+                      await api.patch(`/jobs/${job.id}`, { workshop_stage: workshopStage });
+                      await refreshJob();
+                      toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}`);
+                    } catch {
+                      toast.error("Failed to update workshop stage");
+                    } finally {
+                      setSavingWorkshopStage(false);
+                    }
+                  }}
+                  disabled={savingWorkshopStage}
+                >
+                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
+                    <SelectValue placeholder="Workshop stage">
+                      {WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[360px]">
+                    {WORKSHOP_STAGES.map((stage) => (
+                      <SelectItem key={stage} value={stage}>
+                        {WORKSHOP_STAGE_META[stage].label} — {WORKSHOP_STAGE_META[stage].hint}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Parts status</p>
+                <Select
+                  value={job.parts_status ?? "no_parts"}
+                  onValueChange={async (value) => {
+                    const partsStatus = value as PartsStatus;
+                    setSavingPartsStatus(true);
+                    try {
+                      await api.patch(`/jobs/${job.id}`, { parts_status: partsStatus });
+                      await refreshJob();
+                      toast.success(`Parts status updated to ${PARTS_STATUS_META[partsStatus].label}`);
+                    } catch {
+                      toast.error("Failed to update parts status");
+                    } finally {
+                      setSavingPartsStatus(false);
+                    }
+                  }}
+                  disabled={savingPartsStatus}
+                >
+                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
+                    <SelectValue placeholder="Parts status">
+                      {PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "Parts status"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[320px]">
+                    {PARTS_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {PARTS_STATUS_META[status].label} — {PARTS_STATUS_META[status].hint}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -723,6 +891,9 @@ export default function JobDetailPage() {
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
                 <StatCard label="Current status" value={STATUS_META[job.status].label} />
+                <StatCard label="Workshop stage" value={WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "—"} />
+                <StatCard label="Parts status" value={PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "—"} />
+                <StatCard label="Priority flags" value={`${job.is_customer_waiting ? "Waiting" : "Not waiting"} · ${CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}`} />
                 <StatCard label="Advisor" value={job.advisor?.name || "Unassigned"} />
                 <StatCard label="Technician" value={job.technician?.name || "Unassigned"} />
                 <StatCard label="Odometer" value={job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "—"} />

@@ -24,6 +24,10 @@ export class JobsService {
         advisor_id: dto.advisor_id || userId,
         owner_code: dto.owner_code || null,
         technician_id: dto.technician_id,
+        workshop_stage: null,
+        parts_status: 'no_parts',
+        is_customer_waiting: false,
+        customer_sensitivity: 'normal',
         customer_concern: dto.customer_concern,
         odometer_in: dto.odometer_in,
         promised_at: dto.promised_at ? new Date(dto.promised_at) : null,
@@ -152,6 +156,22 @@ export class JobsService {
     };
     // Certain statuses carry timestamp semantics that downstream flows
     // (invoicing, archiving) depend on, so they are set atomically here.
+    if (dto.to_status === 'booked') transitionData.workshop_stage = null;
+    if (dto.to_status === 'checking') transitionData.workshop_stage = null;
+    if (dto.to_status === 'estimate_sent') transitionData.workshop_stage = null;
+    if (dto.to_status === 'approved') transitionData.workshop_stage = null;
+    if (dto.to_status === 'waiting_parts') {
+      transitionData.workshop_stage = null;
+      if (!job.parts_status || job.parts_status === 'no_parts' || job.parts_status === 'parts_ready') transitionData.parts_status = 'order_parts';
+    }
+    if (dto.to_status === 'in_progress') {
+      transitionData.workshop_stage = 'waiting_technician';
+      if (job.parts_status === 'parts_ready') transitionData.parts_status = 'no_parts';
+    }
+    if (dto.to_status === 'quality_check') transitionData.workshop_stage = 'quality_check';
+    if (dto.to_status === 'ready') transitionData.workshop_stage = 'ready_handover';
+    if (dto.to_status === 'closed') transitionData.workshop_stage = null;
+
     if (dto.to_status === 'ready') transitionData.completed_at = new Date();
     if (dto.to_status === 'closed') transitionData.invoiced_at = new Date();
     // Moving away from closed clears invoiced_at and archived_at so a
@@ -188,14 +208,23 @@ export class JobsService {
     return updated;
   }
 
-  async assignTechnician(id: string, technicianId: string) {
-    await this.findOne(id);
+  async assignTechnician(id: string, technicianId: string | null) {
+    const job = await this.findOne(id);
+    if (!technicianId) {
+      return this.prisma.jobs.update({
+        where: { id },
+        data: { technician_id: null, workshop_stage: job.status === 'in_progress' ? 'waiting_technician' : job.workshop_stage },
+      });
+    }
     const technician = await this.prisma.users.findUnique({ where: { id: technicianId } });
     if (!technician || !technician.is_active) throw new BadRequestException('Technician not found or inactive');
 
     return this.prisma.jobs.update({
       where: { id },
-      data: { technician_id: technicianId },
+      data: {
+        technician_id: technicianId,
+        workshop_stage: job.workshop_stage,
+      },
     });
   }
 

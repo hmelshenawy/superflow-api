@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateJobDto {
@@ -9,4 +9,8 @@ export class UpdateJobDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() odometer_in?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() promised_at?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() dms_ro_number?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() workshop_stage?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() parts_status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() is_customer_waiting?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() customer_sensitivity?: string;
 }

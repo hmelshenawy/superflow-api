@@ -62,8 +62,8 @@ const TARGET_FIELDS = [
   { value: "customer_name", label: "Customer Name" },
   { value: "customer_email", label: "Customer Email" },
   { value: "customer_phone", label: "Customer Phone" },
-  { value: "vehicle_make", label: "Vehicle Make/Model" },
-  { value: "vehicle_model", label: "Vehicle Model (separate)" },
+  { value: "vehicle_make", label: "Vehicle Make (optional)" },
+  { value: "vehicle_model", label: "Vehicle Model / Description" },
   { value: "vehicle_plate", label: "Plate Number" },
   { value: "vehicle_vin", label: "Chassis/VIN" },
   { value: "job_number", label: "WIP/Job Number" },
@@ -86,7 +86,9 @@ function autoMap(headers: string[]): ColumnMapping[] {
     else if (h.includes("contact") || h.includes("phone")) target = "customer_phone";
     else if (h.includes("plate")) target = "vehicle_plate";
     else if (h.includes("chassis") || h.includes("vin")) target = "vehicle_vin";
-    else if (h.includes("make") || h.includes("model")) target = "vehicle_make";
+    else if (h.includes("make") && h.includes("model")) target = "vehicle_model";
+    else if (h.includes("model")) target = "vehicle_model";
+    else if (h.includes("make")) target = "vehicle_make";
     else if (h.includes("wip") && !h.includes("created")) target = "job_number";
     else if (h.includes("owner")) target = "advisor_id";
     else if (h.includes("operator") || h.includes("cr.operator")) target = "advisor_id";

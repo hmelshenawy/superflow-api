@@ -53,7 +53,7 @@ export class JobsController {
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Assign technician' })
   assign(@Param('id') id: string, @Body() dto: AssignTechnicianDto) {
-    return this.service.assignTechnician(id, dto.technician_id);
+    return this.service.assignTechnician(id, dto.technician_id ?? null);
   }
 
   @Patch(':id/archive')

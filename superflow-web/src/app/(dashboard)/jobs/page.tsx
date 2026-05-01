@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Job, JobStatus, PaginatedResponse } from "@/types";
+import type { Job, JobStatus, PaginatedResponse, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +26,7 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
+  CheckCircle2,
   Clock3,
   GripVertical,
   LayoutGrid,
@@ -34,9 +35,47 @@ import {
   RefreshCw,
   Search,
   TriangleAlert,
+  Package,
+  PhoneCall,
+  TimerReset,
+  UserRound,
   Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
+
+
+const DEFAULT_PRIORITY_WEIGHTS = {
+  promiseOverdue: 30,
+  promiseDue2h: 20,
+  promiseDue6h: 10,
+  customerWaiting: 22,
+  customerAngry: 18,
+  customerVip: 16,
+  customerComeback: 14,
+  waitingCustomerDecision: 20,
+  partsBackorder: 22,
+  partsWaitingWarehouse: 16,
+  partsNeedOrder: 12,
+  idle12h: 12,
+  idle6h: 6,
+  stageCheckingDiagnosis: 10,
+  stageQcNearDelivery: 10,
+  highEstimateValue: 8,
+  mediumEstimateValue: 4,
+};
+
+type PriorityWeights = typeof DEFAULT_PRIORITY_WEIGHTS;
+
+function normalizePriorityWeights(value: unknown): PriorityWeights {
+  const source = typeof value === "object" && value !== null ? value as Partial<Record<keyof PriorityWeights, unknown>> : {};
+  return Object.fromEntries(
+    Object.entries(DEFAULT_PRIORITY_WEIGHTS).map(([key, fallback]) => {
+      const raw = source[key as keyof PriorityWeights];
+      const parsed = typeof raw === "number" ? raw : Number(raw);
+      return [key, Number.isFinite(parsed) ? Math.max(0, Math.min(30, parsed)) : fallback];
+    }),
+  ) as PriorityWeights;
+}
 
 const STATUS_META: Record<
   JobStatus,
@@ -115,6 +154,102 @@ const BOARD_COLUMNS: JobStatus[] = [
   "closed",
 ];
 
+const OVERALL_PHASES: Array<{
+  label: string;
+  hint: string;
+  columns: JobStatus[];
+  className: string;
+}> = [
+  {
+    label: "Reception / Advisor",
+    hint: "Booking, checking, estimate, approval",
+    columns: ["booked", "checking", "estimate_sent", "approved"],
+    className: "border-blue-200 bg-blue-50 text-blue-900",
+  },
+  {
+    label: "Workshop",
+    hint: "Production, parts, quality control",
+    columns: ["in_progress", "waiting_parts", "quality_check"],
+    className: "border-orange-200 bg-orange-50 text-orange-900",
+  },
+  {
+    label: "Delivery",
+    hint: "Ready and closed",
+    columns: ["ready", "closed"],
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+];
+
+
+const OVERALL_COLUMN_TONE: Record<JobStatus, string> = {
+  booked: "border-blue-200 bg-blue-50/70",
+  checking: "border-blue-200 bg-blue-50/70",
+  estimate_sent: "border-blue-200 bg-blue-50/70",
+  approved: "border-blue-200 bg-blue-50/70",
+  in_progress: "border-orange-200 bg-orange-50/70",
+  waiting_parts: "border-orange-200 bg-orange-50/70",
+  quality_check: "border-orange-200 bg-orange-50/70",
+  ready: "border-emerald-200 bg-emerald-50/70",
+  closed: "border-emerald-200 bg-emerald-50/70",
+};
+
+const OVERALL_COLUMN_HEADER_TONE: Record<JobStatus, string> = {
+  booked: "border-blue-200 bg-blue-100/70",
+  checking: "border-blue-200 bg-blue-100/70",
+  estimate_sent: "border-blue-200 bg-blue-100/70",
+  approved: "border-blue-200 bg-blue-100/70",
+  in_progress: "border-orange-200 bg-orange-100/70",
+  waiting_parts: "border-orange-200 bg-orange-100/70",
+  quality_check: "border-orange-200 bg-orange-100/70",
+  ready: "border-emerald-200 bg-emerald-100/70",
+  closed: "border-emerald-200 bg-emerald-100/70",
+};
+
+
+const CUSTOMER_SENSITIVITY_META: Record<CustomerSensitivity, { label: string; score: number; tone: string }> = {
+  normal: { label: "Normal", score: 0, tone: "bg-slate-100 text-slate-700" },
+  vip: { label: "VIP", score: 20, tone: "bg-purple-100 text-purple-800" },
+  angry: { label: "Angry", score: 20, tone: "bg-red-100 text-red-800" },
+  comeback: { label: "Comeback", score: 15, tone: "bg-amber-100 text-amber-800" },
+};
+
+const PARTS_STATUS_META: Record<PartsStatus, { label: string; tone: string }> = {
+  no_parts: { label: "No Parts", tone: "bg-slate-100 text-slate-700" },
+  order_parts: { label: "Order Parts", tone: "bg-amber-100 text-amber-800" },
+  waiting_warehouse: { label: "Waiting Warehouse", tone: "bg-purple-100 text-purple-800" },
+  backorder: { label: "Backorder", tone: "bg-red-100 text-red-800" },
+  parts_ready: { label: "Parts Ready", tone: "bg-emerald-100 text-emerald-800" },
+};
+
+const WORKSHOP_STAGE_META: Record<
+  WorkshopStage,
+  { label: string; sub: string; tone: string }
+> = {
+  waiting_technician: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200 bg-orange-50" },
+  received: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200 bg-orange-50" },
+  diagnosis: { label: "Diagnosis", sub: "Inspection / diagnosis active", tone: "border-amber-200 bg-amber-50" },
+  estimate_prep: { label: "Estimate Prep", sub: "Technician/advisor quote prep", tone: "border-blue-200 bg-blue-50" },
+  customer_approval: { label: "Advisor / Approval", sub: "Advisor follow-up + customer approval", tone: "border-rose-200 bg-rose-50" },
+  work_in_progress: { label: "WIP", sub: "Work in progress", tone: "border-sky-200 bg-sky-50" },
+  final_test: { label: "Final Test", sub: "Road/final test", tone: "border-cyan-200 bg-cyan-50" },
+  quality_check: { label: "QC", sub: "Quality check", tone: "border-cyan-200 bg-cyan-50" },
+  ready_handover: { label: "Ready Handover", sub: "Ready for delivery", tone: "border-emerald-200 bg-emerald-50" },
+};
+
+const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]).filter((stage) => !["received", "advisor_review", "parts_check"].includes(stage));
+
+function getWorkshopStage(job: Job): WorkshopStage | null {
+  if (["booked", "checking", "estimate_sent", "approved", "closed"].includes(job.status)) return null;
+  if (job.workshop_stage === "received") return "waiting_technician";
+  if (String(job.workshop_stage) === "advisor_review") return "customer_approval";
+  if (job.workshop_stage && WORKSHOP_STAGE_META[job.workshop_stage]) return job.workshop_stage;
+  if (job.status === "waiting_parts") return null;
+  if (job.status === "in_progress") return "waiting_technician";
+  if (job.status === "quality_check") return "quality_check";
+  if (job.status === "ready") return "ready_handover";
+  return null;
+}
+
 function getVehicleLabel(job: Job) {
   if (!job.vehicle) return "Vehicle pending";
   return [job.vehicle.year, job.vehicle.make, job.vehicle.model]
@@ -175,13 +310,15 @@ export default function JobsPage() {
   const [limit] = useState(50);
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"board" | "list">("board");
+  const [dashboardView, setDashboardView] = useState<"overall" | "advisor" | "workshop">("overall");
+  const [overallView, setOverallView] = useState<"board" | "list">("board");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dropColumn, setDropColumn] = useState<JobStatus | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
+  const [priorityWeights, setPriorityWeights] = useState<PriorityWeights>(DEFAULT_PRIORITY_WEIGHTS);
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
 
@@ -219,6 +356,16 @@ export default function JobsPage() {
     fetchJobs();
   }, [fetchJobs, mounted]);
 
+  useEffect(() => {
+    if (!mounted) return;
+    api.get("/admin/settings")
+      .then(({ data }) => {
+        const setting = Array.isArray(data) ? data.find((item: any) => item.key === "priority_matrix_weights") : null;
+        if (setting?.parsed_value) setPriorityWeights(normalizePriorityWeights(setting.parsed_value));
+      })
+      .catch(() => setPriorityWeights(DEFAULT_PRIORITY_WEIGHTS));
+  }, [mounted]);
+
   /* ── Auto-poll jobs board when awaiting approval ────────── */
   useEffect(() => {
     const hasAwaiting = jobs.some((j) => j.status === 'estimate_sent');
@@ -246,13 +393,79 @@ export default function JobsPage() {
     return grouped;
   }, [jobs]);
 
+  const activeJobs = useMemo(() => jobs.filter((job) => job.status !== "closed"), [jobs]);
+
+  const enrichedJobs = useMemo(() => {
+    const now = nowTs ?? Date.now();
+    return activeJobs
+      .map((job) => {
+        const promisedTs = job.promised_at ? new Date(job.promised_at).getTime() : null;
+        const hoursToPromise = promisedTs ? (promisedTs - now) / 36e5 : null;
+        const idleHours = Math.max(0, (now - new Date(job.updated_at).getTime()) / 36e5);
+        const estimateTotal = getEstimateTotal(job);
+        let score = 10;
+        const reasons: string[] = [];
+
+        const partsStatus = job.parts_status ?? "no_parts";
+        const customerSensitivity = job.customer_sensitivity ?? "normal";
+
+        if (isOverdue(job, now)) { score += priorityWeights.promiseOverdue; reasons.push(`Promise risk: overdue +${priorityWeights.promiseOverdue}`); }
+        else if (hoursToPromise !== null && hoursToPromise <= 2) { score += priorityWeights.promiseDue2h; reasons.push(`Promise risk: due ≤2h +${priorityWeights.promiseDue2h}`); }
+        else if (hoursToPromise !== null && hoursToPromise <= 6) { score += priorityWeights.promiseDue6h; reasons.push(`Promise risk: due ≤6h +${priorityWeights.promiseDue6h}`); }
+
+        if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer pressure: waiting +${priorityWeights.customerWaiting}`); }
+        else if (customerSensitivity === "angry") { score += priorityWeights.customerAngry; reasons.push(`Customer pressure: angry +${priorityWeights.customerAngry}`); }
+        else if (customerSensitivity === "vip") { score += priorityWeights.customerVip; reasons.push(`Customer pressure: VIP +${priorityWeights.customerVip}`); }
+        else if (customerSensitivity === "comeback") { score += priorityWeights.customerComeback; reasons.push(`Customer pressure: comeback +${priorityWeights.customerComeback}`); }
+
+        if (job.status === "estimate_sent") { score += priorityWeights.waitingCustomerDecision; reasons.push(`Customer decision: waiting +${priorityWeights.waitingCustomerDecision}`); }
+
+        if (partsStatus === "backorder") { score += priorityWeights.partsBackorder; reasons.push(`Parts risk: backorder +${priorityWeights.partsBackorder}`); }
+        else if (partsStatus === "waiting_warehouse") { score += priorityWeights.partsWaitingWarehouse; reasons.push(`Parts risk: waiting warehouse +${priorityWeights.partsWaitingWarehouse}`); }
+        else if (partsStatus === "order_parts" || job.status === "waiting_parts") { score += priorityWeights.partsNeedOrder; reasons.push(`Parts risk: need order +${priorityWeights.partsNeedOrder}`); }
+
+        if (idleHours >= 12) { score += priorityWeights.idle12h; reasons.push(`Idle risk: 12h+ +${priorityWeights.idle12h}`); }
+        else if (idleHours >= 6) { score += priorityWeights.idle6h; reasons.push(`Idle risk: 6h+ +${priorityWeights.idle6h}`); }
+
+        if (job.status === "checking") { score += priorityWeights.stageCheckingDiagnosis; reasons.push(`Stage urgency: checking/diagnosis +${priorityWeights.stageCheckingDiagnosis}`); }
+        else if (job.status === "quality_check") { score += priorityWeights.stageQcNearDelivery; reasons.push(`Stage urgency: QC/near delivery +${priorityWeights.stageQcNearDelivery}`); }
+
+        if (estimateTotal >= 10000) { score += priorityWeights.highEstimateValue; reasons.push(`Value: high estimate +${priorityWeights.highEstimateValue}`); }
+        else if (estimateTotal >= 5000) { score += priorityWeights.mediumEstimateValue; reasons.push(`Value: medium estimate +${priorityWeights.mediumEstimateValue}`); }
+
+        const priorityScore = Math.min(100, score);
+        const priorityLevel = priorityScore >= 85 ? "Critical" : priorityScore >= 65 ? "High" : priorityScore >= 40 ? "Normal" : "Low";
+        return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal };
+      })
+      .sort((a, b) => b.priorityScore - a.priorityScore);
+  }, [activeJobs, nowTs, priorityWeights]);
+
+  const getNextAction = useCallback((job: Job) => {
+    if (isOverdue(job, nowTs)) return "Update customer and escalate delay";
+    if (job.status === "booked") return "Receive vehicle and start check-in";
+    if (job.status === "checking") return "Confirm diagnosis status";
+    if (job.status === "estimate_sent") return "Follow up customer approval";
+    if (job.status === "approved") return "Confirm parts and move to workshop";
+    if (job.status === "waiting_parts") return "Check parts ETA";
+    if (job.status === "in_progress") return "Check technician progress";
+    if (job.status === "quality_check") return "Push QC completion";
+    if (job.status === "ready") return "Notify customer for collection";
+    return "Review job";
+  }, [nowTs]);
+
+  const advisorActions = useMemo(() => enrichedJobs.slice(0, 8).map((item) => ({
+    ...item,
+    action: getNextAction(item.job),
+  })), [enrichedJobs, getNextAction]);
+
   const stats = useMemo(() => {
     const awaitingApproval = jobs.filter((job) => job.status === "estimate_sent").length;
     const inWorkshop = jobs.filter((job) => ["checking", "approved", "in_progress", "waiting_parts", "quality_check"].includes(job.status)).length;
     const overdue = jobs.filter((job) => isOverdue(job, nowTs)).length;
     const totalEstimate = jobs.reduce((sum, job) => sum + getEstimateTotal(job), 0);
-    return { awaitingApproval, inWorkshop, overdue, totalEstimate };
-  }, [jobs, nowTs]);
+    const critical = enrichedJobs.filter((item) => item.priorityScore >= 85).length;
+    return { awaitingApproval, inWorkshop, overdue, totalEstimate, critical };
+  }, [jobs, nowTs, enrichedJobs]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -297,36 +510,59 @@ export default function JobsPage() {
               Service operations
             </p>
             <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-950">
-              Workshop board
+              PrioraFlow command center
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
-              <button
-                type="button"
-                onClick={() => setView("board")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition",
-                  view === "board"
-                    ? "bg-white text-slate-950 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800",
-                )}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" /> Board
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("list")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition",
-                  view === "list"
-                    ? "bg-white text-slate-950 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800",
-                )}
-              >
-                <List className="h-3.5 w-3.5" /> List
-              </button>
+              {[
+                ["overall", "Overall"],
+                ["advisor", "Advisor"],
+                ["workshop", "Workshop"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setDashboardView(value as "overall" | "advisor" | "workshop")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition",
+                    dashboardView === value
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+            {dashboardView === "overall" && (
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setOverallView("board")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition",
+                    overallView === "board"
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800",
+                  )}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" /> Board
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverallView("list")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition",
+                    overallView === "list"
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800",
+                  )}
+                >
+                  <List className="h-3.5 w-3.5" /> List
+                </button>
+              </div>
+            )}
             <Link href="/jobs/new">
               <Button className="h-9 rounded-lg bg-slate-950 px-3 text-[13px] text-white hover:bg-slate-800">
                 <Plus className="mr-1.5 h-3.5 w-3.5" /> New job
@@ -407,8 +643,272 @@ export default function JobsPage() {
           </div>
         </div>
 
-        {view === "board" ? (
+        {dashboardView === "advisor" ? (
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Advisor cockpit</p>
+                    <h2 className="text-lg font-semibold text-slate-950">My urgent now</h2>
+                  </div>
+                  <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">{stats.critical} critical</span>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {enrichedJobs.slice(0, 6).map(({ job, priorityScore, priorityLevel, reasons }) => (
+                    <Link key={job.id} href={`/jobs/${job.id}`} className="rounded-xl border border-white bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{job.job_number || "Draft"}</p>
+                          <h3 className="truncate text-sm font-semibold text-slate-950">{job.customer?.name || "Walk-in"}</h3>
+                          <p className="truncate text-xs text-slate-500">{getVehicleLabel(job)} · {getPlate(job)}</p>
+                        </div>
+                        <span className={cn("rounded-full px-2 py-1 text-[11px] font-bold", priorityScore >= 85 ? "bg-red-100 text-red-800" : priorityScore >= 65 ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700")}>
+                          {priorityScore}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                        <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="truncate">{priorityLevel}: {reasons.slice(0, 2).join(" + ") || "normal follow-up"}</span>
+                      </div>
+                      <div className="mt-2 rounded-lg bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-800">
+                        Next: {getNextAction(job)}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-rose-950"><PhoneCall className="h-4 w-4" /> Pending approvals</h3>
+                  <div className="mt-3 space-y-2">
+                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (
+                      <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                        <span className="min-w-0 truncate font-medium text-slate-900">{job.customer?.name || "Walk-in"}</span>
+                        <span className="text-xs font-semibold text-rose-700">{getEstimateTotal(job).toFixed(0)} AED</span>
+                      </Link>
+                    ))}
+                    {jobs.filter((job) => job.status === "estimate_sent").length === 0 && <p className="text-xs text-rose-700">No approvals pending.</p>}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-red-950"><TimerReset className="h-4 w-4" /> Promised delivery risk</h3>
+                  <div className="mt-3 space-y-2">
+                    {enrichedJobs.filter(({ job, hoursToPromise }) => isOverdue(job, nowTs) || (hoursToPromise !== null && hoursToPromise <= 6)).slice(0, 5).map(({ job, hoursToPromise }) => (
+                      <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                        <span className="min-w-0 truncate font-medium text-slate-900">{job.job_number || "Draft"} · {STATUS_META[job.status].label}</span>
+                        <span className="shrink-0 text-xs font-semibold text-red-700">{isOverdue(job, nowTs) ? "Overdue" : `${Math.max(0, Math.round(hoursToPromise ?? 0))}h left`}</span>
+                      </Link>
+                    ))}
+                    {enrichedJobs.filter(({ job, hoursToPromise }) => isOverdue(job, nowTs) || (hoursToPromise !== null && hoursToPromise <= 6)).length === 0 && <p className="text-xs text-red-700">No delivery risks in this list.</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-950">Next best actions</h2>
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div className="mt-3 space-y-2">
+                {advisorActions.map(({ job, action, priorityScore }, index) => (
+                  <Link key={job.id} href={`/jobs/${job.id}`} className="block rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:border-blue-200 hover:bg-blue-50">
+                    <div className="flex items-start gap-2">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{index + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-950">{action}</p>
+                        <p className="truncate text-xs text-slate-500">{job.customer?.name || "Walk-in"} · {job.job_number || "Draft"}</p>
+                      </div>
+                      <span className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-700">{priorityScore}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : dashboardView === "workshop" ? (
+          <div className="mt-4 space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-950 p-4 text-white shadow-sm">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Workshop control</p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight">Vehicle flow by workshop state</h2>
+                  <p className="mt-1 max-w-3xl text-sm text-slate-400">
+                    Focused on production movement: received cars, technician assignment, diagnosis, approval, parts, work in progress, QC, and ready handover.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
+                  <div className="rounded-xl bg-white/10 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">Blocked</p>
+                    <p className="text-xl font-semibold">{boardJobs.waiting_parts.length + boardJobs.estimate_sent.length}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">Idle +6h</p>
+                    <p className="text-xl font-semibold">{enrichedJobs.filter((item) => item.idleHours >= 6).length}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/10 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">At risk</p>
+                    <p className="text-xl font-semibold">{stats.overdue}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                { label: "Waiting technician", value: jobs.filter((job) => getWorkshopStage(job) === "waiting_technician").length, hint: "Assign tech / controller", color: "border-slate-200 bg-white" },
+                { label: "Diagnosis active", value: jobs.filter((job) => getWorkshopStage(job) === "diagnosis").length, hint: "Check diagnosis ageing", color: "border-amber-200 bg-amber-50" },
+                { label: "Approval blocking", value: jobs.filter((job) => getWorkshopStage(job) === "customer_approval").length, hint: "Advisor/customer decision", color: "border-rose-200 bg-rose-50" },
+                { label: "Parts blocking", value: jobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length, hint: "Use Overall Waiting Parts", color: "border-purple-200 bg-purple-50" },
+              ].map((item) => (
+                <div key={item.label} className={cn("rounded-2xl border p-3 shadow-sm", item.color)}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
+                  <div className="mt-1 flex items-end justify-between gap-2">
+                    <p className="text-2xl font-semibold text-slate-950">{item.value}</p>
+                    <p className="text-right text-[11px] font-medium text-slate-500">{item.hint}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Live flow</p>
+                  <h2 className="text-lg font-semibold text-slate-950">Waiting to Start → Diagnosis → Estimate → Advisor / Approval → Parts → WIP → Final Test → QC → Ready</h2>
+                </div>
+                <Wrench className="h-5 w-5 text-slate-500" />
+              </div>
+
+              <div className="overflow-x-auto pb-2">
+                <div className="flex min-w-max gap-3">
+                  {WORKSHOP_STAGES.map((stageKey) => ({
+                    key: stageKey,
+                    ...WORKSHOP_STAGE_META[stageKey],
+                    jobs: jobs.filter((job) => getWorkshopStage(job) === stageKey),
+                  })).map((stage) => (
+                    <div key={stage.key} className={cn("flex h-[520px] w-[230px] shrink-0 flex-col rounded-[16px] border shadow-sm", stage.tone)}>
+                      <div className="border-b border-black/5 px-3 py-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-bold text-slate-950">{stage.label}</h3>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-500">{stage.sub}</p>
+                          </div>
+                          <span className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-700 shadow-sm">{stage.jobs.length}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 space-y-2 overflow-y-auto p-2.5">
+                        {stage.jobs.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-4 text-center text-xs text-slate-400">
+                            No vehicles
+                          </div>
+                        ) : (
+                          stage.jobs.map((job) => {
+                            const item = enrichedJobs.find((entry) => entry.job.id === job.id);
+                            const overdue = isOverdue(job, nowTs);
+                            return (
+                              <Link key={`${stage.key}-${job.id}`} href={`/jobs/${job.id}`} className="block rounded-xl border border-white bg-white p-2.5 text-xs shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate font-bold text-slate-950">{job.job_number || "Draft job"}</p>
+                                    <p className="truncate text-slate-500">{getVehicleLabel(job)}</p>
+                                  </div>
+                                  <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-bold", overdue ? "bg-red-100 text-red-700" : (item?.priorityScore ?? 0) >= 65 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600")}>{item?.priorityScore ?? 0}</span>
+                                </div>
+                                {job.parts_status && job.parts_status !== "no_parts" ? (
+                                  <div className={cn("mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold", PARTS_STATUS_META[job.parts_status]?.tone)}>
+                                    {PARTS_STATUS_META[job.parts_status]?.label}
+                                  </div>
+                                ) : null}
+                                <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-slate-500">
+                                  <span className="truncate">Advisor: {job.advisor?.name || "—"}</span>
+                                  <span className="truncate">Tech: {job.technician?.name || "—"}</span>
+                                  <span className="truncate">Idle: {Math.round(item?.idleHours ?? 0)}h</span>
+                                  <span className={cn("truncate font-semibold", overdue ? "text-red-700" : "text-slate-500")}>{overdue ? "Overdue" : job.promised_at ? getPromisedLabel(job.promised_at) : "No promise"}</span>
+                                </div>
+                                <div className="mt-2 rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700">
+                                  {stage.key === "waiting_technician" ? "Assign technician" : stage.key === "customer_approval" ? "Advisor / customer approval" : getNextAction(job)}
+                                </div>
+                              </Link>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-orange-950"><TriangleAlert className="h-4 w-4" /> Stuck / idle vehicles</h3>
+                <div className="mt-3 space-y-2">
+                  {enrichedJobs.filter((item) => item.idleHours >= 6).slice(0, 6).map(({ job, idleHours }) => (
+                    <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                      <span className="truncate font-medium text-slate-900">{job.job_number || "Draft"}</span>
+                      <span className="text-xs font-semibold text-orange-700">{Math.round(idleHours)}h idle</span>
+                    </Link>
+                  ))}
+                  {enrichedJobs.filter((item) => item.idleHours >= 6).length === 0 && <p className="text-xs text-orange-700">No stuck vehicles detected.</p>}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-purple-200 bg-purple-50 p-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-purple-950"><Package className="h-4 w-4" /> Parts blockers</h3>
+                <div className="mt-3 space-y-2">
+                  {jobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).slice(0, 6).map((job) => (
+                    <Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
+                      <span className="truncate font-medium text-slate-900">{job.job_number || "Draft"}</span>
+                      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", PARTS_STATUS_META[job.parts_status ?? "order_parts"]?.tone)}>{PARTS_STATUS_META[job.parts_status ?? "order_parts"]?.label}</span>
+                    </Link>
+                  ))}
+                  {jobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length === 0 && <p className="text-xs text-purple-700">No parts blockers.</p>}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-cyan-950"><CheckCircle2 className="h-4 w-4" /> QC & delivery handover</h3>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                    <p className="text-2xl font-semibold text-cyan-950">{boardJobs.quality_check.length}</p>
+                    <p className="text-[11px] font-medium text-cyan-700">in QC</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                    <p className="text-2xl font-semibold text-cyan-950">{boardJobs.ready.length}</p>
+                    <p className="text-[11px] font-medium text-cyan-700">ready</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : overallView === "board" ? (
           <div className="mt-4 overflow-x-auto pb-1">
+            <div className="mb-2 flex min-w-max gap-2.5">
+              {OVERALL_PHASES.map((phase) => {
+                const width = phase.columns.reduce((sum, column) => sum + (collapsedColumns.has(column) ? 44 : 200), 0) + Math.max(0, phase.columns.length - 1) * 10;
+                const count = phase.columns.reduce((sum, column) => sum + boardJobs[column].length, 0);
+                return (
+                  <div
+                    key={phase.label}
+                    style={{ width }}
+                    className={cn("rounded-xl border px-3 py-2 shadow-sm", phase.className)}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-bold uppercase tracking-[0.18em]">{phase.label}</p>
+                        <p className="truncate text-[11px] opacity-75">{phase.hint}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold shadow-sm">{count}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
             <div className="flex min-w-max gap-2.5">
               {BOARD_COLUMNS.map((column) => {
                 const columnJobs = boardJobs[column];
@@ -431,13 +931,14 @@ export default function JobsPage() {
                       await moveJobToStatus(jobId, column);
                     }}
                     className={cn(
-                      "flex shrink-0 flex-col rounded-[14px] border border-slate-200 bg-slate-50 transition-all duration-200",
+                      "flex shrink-0 flex-col rounded-[14px] border transition-all duration-200",
+                      OVERALL_COLUMN_TONE[column],
                       isCollapsed ? "w-[44px]" : "w-[200px]",
                       dropColumn === column && "border-slate-400 bg-slate-100",
                     )}
                   >
                     <div
-                      className="border-b border-slate-200 px-2.5 py-2 cursor-pointer select-none"
+                      className={cn("cursor-pointer select-none border-b px-2.5 py-2", OVERALL_COLUMN_HEADER_TONE[column])}
                       onClick={() => toggleColumn(column)}
                     >
                       <div className={cn("flex items-center gap-2", isCollapsed && "flex-col")}>
@@ -524,6 +1025,14 @@ export default function JobsPage() {
                                 <p className="line-clamp-2 text-[11px] leading-tight text-slate-500">
                                   {job.customer_concern || "No concern added"}
                                 </p>
+                                {(job.is_customer_waiting || (job.customer_sensitivity && job.customer_sensitivity !== "normal")) ? (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {job.is_customer_waiting ? <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700">Waiting</span> : null}
+                                    {job.customer_sensitivity && job.customer_sensitivity !== "normal" ? (
+                                      <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold", CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.tone)}>{CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.label}</span>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
 
                               <div className="mt-auto grid grid-cols-2 gap-1 text-[11px]">

@@ -33,6 +33,74 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+
+const DEFAULT_PRIORITY_WEIGHTS = {
+  promiseOverdue: 30,
+  promiseDue2h: 20,
+  promiseDue6h: 10,
+  customerWaiting: 22,
+  customerAngry: 18,
+  customerVip: 16,
+  customerComeback: 14,
+  waitingCustomerDecision: 20,
+  partsBackorder: 22,
+  partsWaitingWarehouse: 16,
+  partsNeedOrder: 12,
+  idle12h: 12,
+  idle6h: 6,
+  stageCheckingDiagnosis: 10,
+  stageQcNearDelivery: 10,
+  highEstimateValue: 8,
+  mediumEstimateValue: 4,
+};
+
+type PriorityWeights = typeof DEFAULT_PRIORITY_WEIGHTS;
+
+const PRIORITY_MATRIX_GROUPS: Array<{ title: string; description: string; items: Array<{ key: keyof PriorityWeights; label: string; description: string }> }> = [
+  { title: "Promise Risk", description: "Only one promise sub-item applies: overdue, due within 2h, or due within 6h.", items: [
+    { key: "promiseOverdue", label: "Promise overdue", description: "Promised delivery time already passed." },
+    { key: "promiseDue2h", label: "Promise due within 2h", description: "Delivery promise is very close." },
+    { key: "promiseDue6h", label: "Promise due within 6h", description: "Delivery promise is approaching today." },
+  ]},
+  { title: "Customer Pressure", description: "Only one customer-pressure sub-item applies, with customer waiting taking priority.", items: [
+    { key: "customerWaiting", label: "Customer waiting", description: "Customer is waiting now / needs immediate care." },
+    { key: "customerAngry", label: "Angry / complaint", description: "Escalation or complaint risk." },
+    { key: "customerVip", label: "VIP customer", description: "High-care customer." },
+    { key: "customerComeback", label: "Comeback", description: "Repeat repair / comeback case." },
+  ]},
+  { title: "Customer Decision", description: "Customer-side blocker that still affects flow and follow-up priority.", items: [
+    { key: "waitingCustomerDecision", label: "Waiting customer decision", description: "Estimate sent; progress blocked until customer replies." },
+  ]},
+  { title: "Parts Risk", description: "Only one parts sub-item applies: backorder, waiting warehouse, or need order.", items: [
+    { key: "partsBackorder", label: "Backorder", description: "Parts unavailable or no clear ETA." },
+    { key: "partsWaitingWarehouse", label: "Waiting warehouse", description: "Waiting to receive/issue parts from warehouse." },
+    { key: "partsNeedOrder", label: "Need order", description: "Parts required but not ordered yet / waiting parts status." },
+  ]},
+  { title: "Idle / Delay Risk", description: "Only one idle sub-item applies.", items: [
+    { key: "idle12h", label: "Idle more than 12h", description: "No recent movement for 12+ hours." },
+    { key: "idle6h", label: "Idle more than 6h", description: "No recent movement for 6+ hours." },
+  ]},
+  { title: "Stage Urgency", description: "Only one stage urgency sub-item applies.", items: [
+    { key: "stageCheckingDiagnosis", label: "Checking / diagnosis", description: "Active diagnosis/checking needs follow-up." },
+    { key: "stageQcNearDelivery", label: "QC / near delivery", description: "Near handover; push completion." },
+  ]},
+  { title: "Value Weight", description: "Only one value sub-item applies.", items: [
+    { key: "highEstimateValue", label: "High estimate value", description: "Estimate total is 10k+ AED." },
+    { key: "mediumEstimateValue", label: "Medium estimate value", description: "Estimate total is 5k+ AED." },
+  ]},
+];
+
+function normalizePriorityWeights(value: unknown): PriorityWeights {
+  const source = typeof value === "object" && value !== null ? value as Partial<Record<keyof PriorityWeights, unknown>> : {};
+  return Object.fromEntries(
+    Object.entries(DEFAULT_PRIORITY_WEIGHTS).map(([key, fallback]) => {
+      const raw = source[key as keyof PriorityWeights];
+      const parsed = typeof raw === "number" ? raw : Number(raw);
+      return [key, Number.isFinite(parsed) ? Math.max(0, Math.min(30, parsed)) : fallback];
+    }),
+  ) as PriorityWeights;
+}
+
 // ─── Types ────────────────────────────────────────────
 interface Session {
   id: string;
@@ -419,6 +487,112 @@ function WorkshopSection() {
   );
 }
 
+
+// ─── Priority Matrix Section ──────────────────────────
+function PriorityMatrixSection() {
+  const [weights, setWeights] = useState<PriorityWeights>(DEFAULT_PRIORITY_WEIGHTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api
+      .get("/admin/settings")
+      .then(({ data }) => {
+        const setting = Array.isArray(data) ? data.find((item: Setting) => item.key === "priority_matrix_weights") : null;
+        setWeights(normalizePriorityWeights(setting?.parsed_value));
+      })
+      .catch(() => toast.error("Failed to load priority matrix settings"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const setWeight = (key: keyof PriorityWeights, value: string) => {
+    const parsed = Number(value);
+    setWeights((prev) => ({
+      ...prev,
+      [key]: Number.isFinite(parsed) ? Math.max(0, Math.min(30, parsed)) : 0,
+    }));
+  };
+
+  const save = async (nextWeights = weights, message = "Priority matrix saved") => {
+    setSaving(true);
+    try {
+      await api.put("/admin/settings", {
+        settings: [{
+          key: "priority_matrix_weights",
+          value: nextWeights,
+          valueType: "json",
+          description: "Priority Matrix scoring weights. Values are additive points, not percentages. Each risk group applies only one matching sub-item.",
+        }],
+      });
+      setWeights(nextWeights);
+      toast.success(message);
+    } catch {
+      toast.error("Failed to save priority matrix");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetDefaults = () => save(DEFAULT_PRIORITY_WEIGHTS, "Priority matrix reset to defaults");
+
+  if (loading) {
+    return (
+      <SectionCard title="Priority Matrix">
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        </div>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard
+      title="Priority Matrix"
+      description="Adjust how much each risk factor adds to the job priority score. Values are points, not percentages; they do not need to sum to 100. Each group applies only one matching sub-item."
+    >
+      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+        Recommended range: <strong>0–30</strong>. 0 disables an item. Final job score is capped at 100.
+      </div>
+
+      <div className="space-y-5">
+        {PRIORITY_MATRIX_GROUPS.map((group) => (
+          <div key={group.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-3">
+              <h4 className="text-sm font-semibold text-slate-900">{group.title}</h4>
+              <p className="text-xs text-slate-500">{group.description}</p>
+            </div>
+            <div className="space-y-3">
+              {group.items.map((item) => (
+                <FieldRow key={item.key} label={item.label} sublabel={item.description}>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={30}
+                    step={1}
+                    value={weights[item.key]}
+                    onChange={(e) => setWeight(item.key, e.target.value)}
+                  />
+                </FieldRow>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Separator />
+      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
+        <Button variant="outline" onClick={resetDefaults} disabled={saving} size="sm">
+          Reset defaults
+        </Button>
+        <Button onClick={() => save()} disabled={saving} size="sm">
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Matrix
+        </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
 // ─── Notifications Section ────────────────────────────
 function NotificationsSection() {
   const [settings, setSettings] = useState<Setting[]>([]);
@@ -604,6 +778,10 @@ export default function SettingsPage() {
             <Settings2 className="mr-1.5 h-4 w-4" />
             Workshop
           </TabsTrigger>
+          <TabsTrigger value="priority">
+            <Settings2 className="mr-1.5 h-4 w-4" />
+            Priority Matrix
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="mr-1.5 h-4 w-4" />
             Notifications
@@ -622,6 +800,10 @@ export default function SettingsPage() {
 
         <TabsContent value="workshop" className="mt-6 space-y-6">
           <WorkshopSection />
+        </TabsContent>
+
+        <TabsContent value="priority" className="mt-6 space-y-6">
+          <PriorityMatrixSection />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6 space-y-6">

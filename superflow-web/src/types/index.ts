@@ -32,6 +32,27 @@ export interface LoginRequest {
 }
 
 // ─── Jobs ───────────────────────────────────────────────
+
+export type CustomerSensitivity = "normal" | "vip" | "angry" | "comeback";
+
+export type PartsStatus =
+  | "no_parts"
+  | "order_parts"
+  | "waiting_warehouse"
+  | "backorder"
+  | "parts_ready";
+
+export type WorkshopStage =
+  | "waiting_technician"
+  | "received"
+  | "diagnosis"
+  | "estimate_prep"
+  | "customer_approval"
+  | "work_in_progress"
+  | "final_test"
+  | "quality_check"
+  | "ready_handover";
+
 export type JobStatus =
   | "booked"
   | "checking"
@@ -52,6 +73,10 @@ export interface Job {
   owner_code: string | null;
   technician_id: string | null;
   status: JobStatus;
+  workshop_stage: WorkshopStage | null;
+  parts_status: PartsStatus | null;
+  is_customer_waiting: boolean | null;
+  customer_sensitivity: CustomerSensitivity | null;
   customer_concern: string | null;
   internal_notes: string | null;
   odometer_in: number | null;

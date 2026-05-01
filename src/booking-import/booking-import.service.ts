@@ -40,6 +40,26 @@ export interface ParseResult {
   totalRows: number;
 }
 
+function resolveImportedVehicleFields(row: BookingRow): { make: string | null; model: string } {
+  const rawMake = row.vehicle_make?.trim() || '';
+  const rawModel = row.vehicle_model?.trim() || '';
+
+  // PrioraFlow booking imports are Mercedes-only for now.
+  // If the sheet provides one combined vehicle description column,
+  // keep make blank and store the value as model to avoid duplication.
+  if (!rawModel) {
+    return {
+      make: null,
+      model: rawMake,
+    };
+  }
+
+  return {
+    make: rawMake || null,
+    model: rawModel,
+  };
+}
+
 @Injectable()
 export class BookingImportService {
   constructor(private prisma: PrismaService) {}
@@ -171,21 +191,34 @@ export class BookingImportService {
 
         // 2. Find or create vehicle
         let vehicle = await this.findVehicle(row, customer.id);
+        const vehicleFields = resolveImportedVehicleFields(row);
         if (!vehicle) {
           vehicle = await this.prisma.vehicles.create({
             data: {
               id: uuid(),
               customer_id: customer.id,
               vin: normalizeVin(row.vehicle_vin),
-              make: row.vehicle_make?.trim() || 'Mercedes-Benz',
-              model: row.vehicle_model?.trim() || row.vehicle_make?.trim() || '',
+              make: vehicleFields.make,
+              model: vehicleFields.model,
               plate: row.vehicle_plate?.trim() || null,
             },
           });
         } else {
           const updateData: any = { customer_id: customer.id };
-          if (row.vehicle_make?.trim() && !vehicle.make) updateData.make = row.vehicle_make.trim();
-          if (row.vehicle_model?.trim() && !vehicle.model) updateData.model = row.vehicle_model.trim();
+          const existingMake = vehicle.make?.trim() || '';
+          const existingModel = vehicle.model?.trim() || '';
+          const isLegacyDuplicatedVehicle = !!existingMake && existingMake === existingModel;
+
+          if (vehicleFields.make && !vehicle.make) updateData.make = vehicleFields.make;
+          if (vehicleFields.model && !vehicle.model) updateData.model = vehicleFields.model;
+
+          // Self-heal old Mercedes booking imports where one description value
+          // was saved into both make and model.
+          if (!vehicleFields.make && vehicleFields.model && isLegacyDuplicatedVehicle) {
+            updateData.make = null;
+            updateData.model = vehicleFields.model;
+          }
+
           if (row.vehicle_plate?.trim() && !vehicle.plate) updateData.plate = row.vehicle_plate.trim();
           if (row.vehicle_vin?.trim() && !vehicle.vin) updateData.vin = normalizeVin(row.vehicle_vin);
           if (Object.keys(updateData).length > 1) {

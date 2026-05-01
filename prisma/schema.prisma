@@ -330,6 +330,10 @@ model jobs {
   owner_code                                        String?                   @db.VarChar(20)
   technician_id                                     String?                   @db.Char(36)
   status                                            jobs_status               @default(booked)
+  workshop_stage                                    String?                   @default("waiting_technician") @db.VarChar(40)
+  parts_status                                      String?                   @default("no_parts") @db.VarChar(40)
+  is_customer_waiting                               Boolean?                  @default(false)
+  customer_sensitivity                              String?                   @default("normal") @db.VarChar(40)
   customer_concern                                  String?                   @db.Text
   internal_notes                                    String?                   @db.Text
   odometer_in                                       Int?                      @db.UnsignedInt
@@ -359,6 +363,10 @@ model jobs {
   @@index([created_at(sort: Desc)], map: "idx_jobs_created")
   @@index([customer_id], map: "idx_jobs_customer")
   @@index([status], map: "idx_jobs_status")
+  @@index([workshop_stage], map: "idx_jobs_workshop_stage")
+  @@index([parts_status], map: "idx_jobs_parts_status")
+  @@index([is_customer_waiting], map: "idx_jobs_customer_waiting")
+  @@index([customer_sensitivity], map: "idx_jobs_customer_sensitivity")
   @@index([technician_id], map: "idx_jobs_technician")
   @@index([vehicle_id], map: "idx_jobs_vehicle")
 }
@@ -594,6 +602,8 @@ enum inspection_items_input_type {
   text
   toggle
   photo
+  odometer
+  fuel_level
 }
 
 enum integration_events_direction {
