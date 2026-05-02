@@ -60,7 +60,7 @@ const STATUS_META: Record<
 };
 
 /** Overall statuses that belong to reception / service-advisor phase.
- *  Workshop stage & parts status are not applicable here — the car
+ *  Workshop stage & parts status are not applicable here - the car
  *  hasn't reached the workshop yet. */
 const RECEPTION_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved"];
 
@@ -119,7 +119,7 @@ function vehicleLabel(job: Job) {
 }
 
 function formatDate(value?: string | null, withTime = false) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
   return new Intl.DateTimeFormat("en-GB", {
     year: "numeric",
@@ -175,7 +175,23 @@ export default function JobDetailPage() {
   const [startingInspection, setStartingInspection] = useState(false);
   const [reopeningInspection, setReopeningInspection] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
-  const [nextStatus, setNextStatus] = useState<JobStatus | "">("");
+
+  /** Most logical next status in the forward flow */
+  const nextFlowStatus = useMemo(() => {
+    if (!job) return "";
+    const TRANSITIONS: Record<string, string[]> = {
+      booked: ["checking"],
+      checking: ["estimate_sent"],
+      estimate_sent: ["approved"],
+      approved: ["in_progress"],
+      in_progress: ["quality_check"],
+      waiting_parts: ["in_progress"],
+      quality_check: ["ready"],
+      ready: ["closed"],
+      closed: [],
+    };
+    return (TRANSITIONS[job.status]?.[0] ?? "") as JobStatus | "";
+  }, [job?.status]);
   const [users, setUsers] = useState<any[]>([]);
   const [assigningAdvisor, setAssigningAdvisor] = useState(false);
   const [assigningTech, setAssigningTech] = useState(false);
@@ -183,7 +199,7 @@ export default function JobDetailPage() {
   const [savingPartsStatus, setSavingPartsStatus] = useState(false);
   const [savingCustomerInformed, setSavingCustomerInformed] = useState(false);
 
-  /** True when the job is still in reception / advisor phase — workshop fields are irrelevant. */
+  /** True when the job is still in reception / advisor phase - workshop fields are irrelevant. */
   const isInReception = job ? RECEPTION_STATUSES.includes(job.status) : false;
   const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);
 
@@ -337,10 +353,6 @@ export default function JobDetailPage() {
     [job],
   );
 
-  useEffect(() => {
-    setNextStatus(availableStatuses[0] ?? "");
-  }, [availableStatuses]);
-
   const startInspection = async () => {
     if (!job) return;
     setStartingInspection(true);
@@ -377,20 +389,6 @@ export default function JobDetailPage() {
       toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to reopen inspection");
     } finally {
       setReopeningInspection(false);
-    }
-  };
-
-  const changeStatus = async () => {
-    if (!job || !nextStatus) return;
-    setChangingStatus(true);
-    try {
-      await api.patch(`/jobs/${job.id}/status`, { to_status: nextStatus });
-      await refreshJob();
-      toast.success(`Status changed to ${STATUS_META[nextStatus].label}`);
-    } catch {
-      toast.error("Failed to change status");
-    } finally {
-      setChangingStatus(false);
     }
   };
 
@@ -451,23 +449,47 @@ export default function JobDetailPage() {
           <div className="flex flex-col gap-3 xl:items-end">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={job.status} />
-              <Select value={nextStatus} onValueChange={(value) => setNextStatus((value as JobStatus) ?? "")}>
+              <Select value={job.status} onValueChange={async (value) => {
+                const to = value as JobStatus;
+                if (to === job.status) return;
+                setChangingStatus(true);
+                try {
+                  await api.patch(`/jobs/${job.id}/status`, { to_status: to });
+                  await refreshJob();
+                  toast.success(`Status changed to ${STATUS_META[to].label}`);
+                } catch {
+                  toast.error("Failed to change status");
+                } finally {
+                  setChangingStatus(false);
+                }
+              }} disabled={changingStatus}>
                 <SelectTrigger className="h-11 w-[220px] rounded-xl border-slate-200">
-                  <SelectValue placeholder="Change status">
-                    {nextStatus ? STATUS_META[nextStatus].label : "Change status"}
-                  </SelectValue>
+                  <SelectValue placeholder="Change status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableStatuses.map((status) => (
-                    <SelectItem key={status} value={status}>
+                  {ALL_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status} disabled={status === job.status ? false : !availableStatuses.includes(status)}>
                       {STATUS_META[status].label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button className="h-11 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" onClick={changeStatus} disabled={!nextStatus || changingStatus}>
-                {changingStatus ? "Updating..." : "Update status"}
-              </Button>
+              {nextFlowStatus && (
+                <Button className="h-11 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" onClick={async () => {
+                  setChangingStatus(true);
+                  try {
+                    await api.patch(`/jobs/${job.id}/status`, { to_status: nextFlowStatus });
+                    await refreshJob();
+                    toast.success(`Status changed to ${STATUS_META[nextFlowStatus].label}`);
+                  } catch {
+                    toast.error("Failed to change status");
+                  } finally {
+                    setChangingStatus(false);
+                  }
+                }} disabled={changingStatus}>
+                  {changingStatus ? "Moving…" : `Next → ${STATUS_META[nextFlowStatus].label}`}
+                </Button>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : null}
@@ -583,7 +605,7 @@ export default function JobDetailPage() {
                   )}
                 >
                   Customer waiting
-                  <span className="mt-1 block text-xs font-normal opacity-70">{job.is_customer_waiting ? "Yes — prioritize" : "No"}</span>
+                  <span className="mt-1 block text-xs font-normal opacity-70">{job.is_customer_waiting ? "Yes - prioritize" : "No"}</span>
                 </button>
 
                 <div>
@@ -613,7 +635,7 @@ export default function JobDetailPage() {
                     <SelectContent className="min-w-[280px]">
                       {CUSTOMER_SENSITIVITIES.map((sensitivity) => (
                         <SelectItem key={sensitivity} value={sensitivity}>
-                          {CUSTOMER_SENSITIVITY_META[sensitivity].label} — {CUSTOMER_SENSITIVITY_META[sensitivity].hint}
+                          {CUSTOMER_SENSITIVITY_META[sensitivity].label} - {CUSTOMER_SENSITIVITY_META[sensitivity].hint}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -821,7 +843,7 @@ export default function JobDetailPage() {
               <div>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   Workshop stage
-                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available in {STATUS_META[job.status].label} phase</span>}
+                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available in {STATUS_META[job.status].label} phase</span>}
                 </p>
                 <Select
                   value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"}
@@ -831,9 +853,9 @@ export default function JobDetailPage() {
                     try {
                       await api.patch(`/jobs/${job.id}`, { workshop_stage: workshopStage });
                       await refreshJob();
-                      const syncMsg = workshopStage === 'work_in_progress' ? ' — Overall moved to In Progress'
-                        : workshopStage === 'quality_check' ? ' — Overall moved to Quality Check'
-                        : workshopStage === 'ready_handover' ? ' — Overall moved to Ready'
+                      const syncMsg = workshopStage === 'work_in_progress' ? ' - Overall moved to In Progress'
+                        : workshopStage === 'quality_check' ? ' - Overall moved to Quality Check'
+                        : workshopStage === 'ready_handover' ? ' - Overall moved to Ready'
                         : '';
                       toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
                     } catch {
@@ -852,7 +874,7 @@ export default function JobDetailPage() {
                   <SelectContent className="min-w-[360px]">
                     {WORKSHOP_STAGES.map((stage) => (
                       <SelectItem key={stage} value={stage}>
-                        {WORKSHOP_STAGE_META[stage].label} — {WORKSHOP_STAGE_META[stage].hint}
+                        {WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -862,7 +884,7 @@ export default function JobDetailPage() {
               <div>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   Parts status
-                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available in {STATUS_META[job.status].label} phase</span>}
+                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available in {STATUS_META[job.status].label} phase</span>}
                 </p>
                 <Select
                   value={job.parts_status ?? "no_parts"}
@@ -892,14 +914,14 @@ export default function JobDetailPage() {
                   <SelectContent className="min-w-[320px]">
                     {PARTS_STATUSES.map((status) => (
                       <SelectItem key={status} value={status}>
-                        {PARTS_STATUS_META[status].label} — {PARTS_STATUS_META[status].hint}
+                        {PARTS_STATUS_META[status].label} - {PARTS_STATUS_META[status].hint}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Customer Informed button — only visible when job is Ready for Delivery */}
+              {/* Customer Informed button - only visible when job is Ready for Delivery */}
               {job.status === "ready" && (
                 <div>
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Customer notification</p>
@@ -911,7 +933,7 @@ export default function JobDetailPage() {
                       try {
                         await api.patch(`/jobs/${job.id}`, { customer_informed: true });
                         await refreshJob();
-                        toast.success("Customer informed — urgency factors cleared from priority");
+                        toast.success("Customer informed - urgency factors cleared from priority");
                       } catch {
                         toast.error("Failed to update");
                       } finally {
@@ -925,7 +947,7 @@ export default function JobDetailPage() {
                         : "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
                     )}
                   >
-                    {savingCustomerInformed ? "Updating…" : job.customer_informed ? "✓ Customer Informed" : "🔔 Customer Informed"}
+                    {savingCustomerInformed ? "Updating..." : job.customer_informed ? "✓ Customer Informed" : "🔔 Customer Informed"}
                   </button>
                 </div>
               )}
@@ -976,12 +998,12 @@ export default function JobDetailPage() {
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
                 <StatCard label="Current status" value={STATUS_META[job.status].label} />
-                <StatCard label="Workshop stage" value={WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "—"} />
-                <StatCard label="Parts status" value={PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "—"} />
+                <StatCard label="Workshop stage" value={WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "-"} />
+                <StatCard label="Parts status" value={PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "-"} />
                 <StatCard label="Priority flags" value={`${job.is_customer_waiting ? "Waiting" : "Not waiting"} · ${CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}`} />
                 <StatCard label="Advisor" value={job.advisor?.name || "Unassigned"} />
                 <StatCard label="Technician" value={job.technician?.name || "Unassigned"} />
-                <StatCard label="Odometer" value={job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "—"} />
+                <StatCard label="Odometer" value={job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"} />
                 <StatCard label="Media evidence" value={`${mediaCount}`} hint="photos, videos, documents" />
                 <StatCard label="Estimate lines" value={`${estimateCount}`} hint="editable commercial items" />
               </CardContent>
