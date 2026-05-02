@@ -1002,7 +1002,7 @@ export default function JobDetailPage() {
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
                 <StatCard label="Current status" value={STATUS_META[job.status].label} />
-                <StatCard label="Workshop stage" value={WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "-"} />
+                <StatCard label="Workshop stage" value={isWorkshopStageDisabled ? "—" : WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "-"} />
                 <StatCard label="Parts status" value={PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "-"} />
                 <StatCard label="Priority flags" value={`${job.is_customer_waiting ? "Waiting" : "Not waiting"} · ${CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}`} />
                 <StatCard label="Advisor" value={job.advisor?.name || "Unassigned"} />
