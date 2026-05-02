@@ -662,8 +662,9 @@ export default function JobsPage() {
         }
 
         if (!informedReady) {
-          if (idleHours >= 12) { score += priorityWeights.idle12h; reasons.push(`Idle risk: 12h+ +${priorityWeights.idle12h}`); }
-          else if (idleHours >= 6) { score += priorityWeights.idle6h; reasons.push(`Idle risk: 6h+ +${priorityWeights.idle6h}`); }
+          // Idle risk: only applies to active jobs, not booked appointments waiting to start
+          if (job.status !== 'booked' && idleHours >= 12) { score += priorityWeights.idle12h; reasons.push(`Idle risk: 12h+ +${priorityWeights.idle12h}`); }
+          else if (job.status !== 'booked' && idleHours >= 6) { score += priorityWeights.idle6h; reasons.push(`Idle risk: 6h+ +${priorityWeights.idle6h}`); }
         }
 
         if (!informedReady) {
