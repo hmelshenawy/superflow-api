@@ -4,6 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RunImportDto, SaveTemplateDto } from './dto/booking-import.dto';
 import * as XLSX from 'xlsx';
 
+/** Header-like customer names that should be skipped during import */
+const HEADER_LIKE_NAMES = new Set([
+  'customer name', 'customer', 'name', 'customer_name', 'customername',
+  'client name', 'client', 'contact name', 'contact',
+]);
+
 /** Normalize VIN: uppercase, trim, cut to 17 chars (DMS may append extra digit) */
 function normalizeVin(v?: string | null): string | null {
   const c = v?.trim().toUpperCase() ?? null;
@@ -172,6 +178,13 @@ export class BookingImportService {
         const row = this.mapRow(rawRow, mappings);
 
         if (!row.customer_name?.trim()) {
+          result.skipped++;
+          continue;
+        }
+
+        // Skip header-like rows (e.g. "Customer name", "Name", etc.)
+        const nameLower = row.customer_name.trim().toLowerCase();
+        if (HEADER_LIKE_NAMES.has(nameLower)) {
           result.skipped++;
           continue;
         }
