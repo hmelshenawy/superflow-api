@@ -59,10 +59,13 @@ const STATUS_META: Record<
   closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-slate-200 text-slate-700" },
 };
 
-/** Overall statuses that belong to reception / service-advisor phase.
- *  Workshop stage & parts status are not applicable here - the car
- *  hasn't reached the workshop yet. */
-const RECEPTION_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved"];
+/** Overall statuses where workshop stage is not applicable.
+ *  Reception: car hasn't reached the workshop yet.
+ *  Waiting Parts: car is out of workshop awaiting parts, not in active workshop flow. */
+const WORKSHOP_STAGE_DISABLED_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved", "waiting_parts"];
+
+/** Statuses where parts status dropdown should be disabled (not in workshop/parts flow yet). */
+const PARTS_STATUS_DISABLED_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved"];
 
 const ALL_STATUSES: JobStatus[] = [
   "booked",
@@ -200,7 +203,8 @@ export default function JobDetailPage() {
   const [savingCustomerInformed, setSavingCustomerInformed] = useState(false);
 
   /** True when the job is still in reception / advisor phase - workshop fields are irrelevant. */
-  const isInReception = job ? RECEPTION_STATUSES.includes(job.status) : false;
+  const isWorkshopStageDisabled = job ? WORKSHOP_STAGE_DISABLED_STATUSES.includes(job.status) : false;
+  const isPartsStatusDisabled = job ? PARTS_STATUS_DISABLED_STATUSES.includes(job.status) : false;
   const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);
 
   // Inline editing states
@@ -487,7 +491,7 @@ export default function JobDetailPage() {
                     setChangingStatus(false);
                   }
                 }} disabled={changingStatus}>
-                  {changingStatus ? "Moving…" : `Next → ${STATUS_META[nextFlowStatus].label}`}
+                  {changingStatus ? "Moving..." : `Next → ${STATUS_META[nextFlowStatus].label}`}
                 </Button>
               )}
             </div>
@@ -843,7 +847,7 @@ export default function JobDetailPage() {
               <div>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   Workshop stage
-                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available in {STATUS_META[job.status].label} phase</span>}
+                  {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available{job.status === 'waiting_parts' ? ': car is waiting for parts' : ` in ${STATUS_META[job.status].label} phase`}</span>}
                 </p>
                 <Select
                   value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"}
@@ -864,7 +868,7 @@ export default function JobDetailPage() {
                       setSavingWorkshopStage(false);
                     }
                   }}
-                  disabled={savingWorkshopStage || isInReception}
+                  disabled={savingWorkshopStage || isWorkshopStageDisabled}
                 >
                   <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
                     <SelectValue placeholder="Workshop stage">
@@ -884,7 +888,7 @@ export default function JobDetailPage() {
               <div>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   Parts status
-                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available in {STATUS_META[job.status].label} phase</span>}
+                  {isPartsStatusDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available in {STATUS_META[job.status].label} phase</span>}
                 </p>
                 <Select
                   value={job.parts_status ?? "no_parts"}
@@ -904,7 +908,7 @@ export default function JobDetailPage() {
                       setSavingPartsStatus(false);
                     }
                   }}
-                  disabled={savingPartsStatus || isInReception}
+                  disabled={savingPartsStatus || isPartsStatusDisabled}
                 >
                   <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
                     <SelectValue placeholder="Parts status">
