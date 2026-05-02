@@ -38,6 +38,7 @@ const DEFAULT_PRIORITY_WEIGHTS = {
   promiseOverdue: 30,
   promiseDue2h: 20,
   promiseDue6h: 10,
+  noPromiseDate: 5,
   customerWaiting: 22,
   customerAngry: 18,
   customerVip: 16,
@@ -62,6 +63,7 @@ const PRIORITY_MATRIX_GROUPS: Array<{ title: string; description: string; items:
     { key: "promiseOverdue", label: "Promise overdue", description: "Promised delivery time already passed." },
     { key: "promiseDue2h", label: "Promise due within 2h", description: "Delivery promise is very close." },
     { key: "promiseDue6h", label: "Promise due within 6h", description: "Delivery promise is approaching today." },
+    { key: "noPromiseDate", label: "No promised date", description: "Active job with no promised delivery date set — nudges advisor to add one." },
   ]},
   { title: "Customer Pressure", description: "Customer waiting can stack with one sensitivity sub-item: angry, VIP, or comeback.", items: [
     { key: "customerWaiting", label: "Customer waiting", description: "Customer is waiting now / needs immediate care." },

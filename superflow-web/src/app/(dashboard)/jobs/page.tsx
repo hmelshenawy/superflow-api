@@ -48,6 +48,7 @@ const DEFAULT_PRIORITY_WEIGHTS = {
   promiseOverdue: 30,
   promiseDue2h: 20,
   promiseDue6h: 10,
+  noPromiseDate: 5,
   customerWaiting: 22,
   customerAngry: 18,
   customerVip: 16,
@@ -642,6 +643,8 @@ export default function JobsPage() {
           if (isOverdue(job, now)) { score += priorityWeights.promiseOverdue; reasons.push(`Promise risk: overdue +${priorityWeights.promiseOverdue}`); }
           else if (hoursToPromise !== null && hoursToPromise <= 2) { score += priorityWeights.promiseDue2h; reasons.push(`Promise risk: due ≤2h +${priorityWeights.promiseDue2h}`); }
           else if (hoursToPromise !== null && hoursToPromise <= 6) { score += priorityWeights.promiseDue6h; reasons.push(`Promise risk: due ≤6h +${priorityWeights.promiseDue6h}`); }
+          // Active job with no promised date — nudges advisor to set one
+          if (!promisedTs && job.status !== 'booked' && job.status !== 'closed') { score += priorityWeights.noPromiseDate; reasons.push(`No promised date set +${priorityWeights.noPromiseDate}`); }
 
           if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer waiting +${priorityWeights.customerWaiting}`); }
         }

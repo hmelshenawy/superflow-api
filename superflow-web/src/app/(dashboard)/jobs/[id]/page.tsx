@@ -937,6 +937,9 @@ export default function JobDetailPage() {
                   </span>
                   <span className="font-medium text-slate-900">{formatDate(job.promised_at, true)}</span>
                 </div>
+                {!job.promised_at && job.status !== 'booked' && job.status !== 'closed' && (
+                  <p className="mt-1 text-[10px] text-amber-600">💡 Setting a promised date removes +5 from priority</p>
+                )}
                 <div className="mt-3 flex items-center justify-between">
                   <span className="inline-flex items-center gap-2">
                     <Send className="h-4 w-4 text-slate-400" /> Approval status
