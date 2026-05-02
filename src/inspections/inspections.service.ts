@@ -96,6 +96,18 @@ export class InspectionsService {
       throw new BadRequestException('Inspection is locked and can no longer be edited');
     }
 
+    // Look up odometer item IDs from this inspection's template so we can sync the value to the job
+    const odometerItems = inspection.template_id
+      ? await this.prisma.inspection_items.findMany({
+          where: {
+            input_type: 'odometer',
+            inspection_sections: { template_id: inspection.template_id },
+          },
+          select: { id: true },
+        })
+      : [];
+    const odometerItemIds = new Set(odometerItems.map(i => i.id));
+
     const results = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];
       // Responses are effectively upserted by (inspection_id, item_id). This
@@ -136,6 +148,20 @@ export class InspectionsService {
       }
       return saved;
     });
+
+    // Sync odometer value from inspection responses to the job's odometer_in field
+    if (odometerItemIds.size > 0 && inspection.job_id) {
+      const odometerResponse = dto.responses.find(r => odometerItemIds.has(r.item_id) && r.value);
+      if (odometerResponse) {
+        const odometerValue = parseInt(String(odometerResponse.value), 10);
+        if (!isNaN(odometerValue) && odometerValue > 0) {
+          await this.prisma.jobs.update({
+            where: { id: inspection.job_id },
+            data: { odometer_in: odometerValue },
+          });
+        }
+      }
+    }
 
     if (dto.offline_draft !== undefined) {
       // Offline draft is stored on the inspection row so the frontend can keep
