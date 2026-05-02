@@ -142,6 +142,15 @@ export class JobsService {
     // Keep Workshop view stage movement aligned with the Overall board.
     // If a workshop card is moved into QC, the Overall board must also show it in QC.
     if (dto.workshop_stage === 'quality_check') data.status = 'quality_check';
+    // Workshop → WIP: car is actively being worked on
+    if (dto.workshop_stage === 'work_in_progress') data.status = 'in_progress';
+    // Workshop → Ready Handover: car is ready for delivery
+    if (dto.workshop_stage === 'ready_handover') data.status = 'ready';
+    // When parts arrive (parts_ready), put the car back into the workshop
+    // queue so it can be picked up by a technician again.
+    if (dto.parts_status === 'parts_ready') {
+      data.workshop_stage = 'waiting_technician';
+    }
     // Allow clearing optional fields by sending empty string → null
     if (data.advisor_id === '') data.advisor_id = null;
     if (data.technician_id === '') data.technician_id = null;

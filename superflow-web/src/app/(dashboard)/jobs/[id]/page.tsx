@@ -59,6 +59,11 @@ const STATUS_META: Record<
   closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-slate-200 text-slate-700" },
 };
 
+/** Overall statuses that belong to reception / service-advisor phase.
+ *  Workshop stage & parts status are not applicable here — the car
+ *  hasn't reached the workshop yet. */
+const RECEPTION_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved"];
+
 const ALL_STATUSES: JobStatus[] = [
   "booked",
   "checking",
@@ -176,6 +181,9 @@ export default function JobDetailPage() {
   const [assigningTech, setAssigningTech] = useState(false);
   const [savingWorkshopStage, setSavingWorkshopStage] = useState(false);
   const [savingPartsStatus, setSavingPartsStatus] = useState(false);
+
+  /** True when the job is still in reception / advisor phase — workshop fields are irrelevant. */
+  const isInReception = job ? RECEPTION_STATUSES.includes(job.status) : false;
   const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);
 
   // Inline editing states
@@ -810,7 +818,10 @@ export default function JobDetailPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Workshop stage</p>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Workshop stage
+                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available in {STATUS_META[job.status].label} phase</span>}
+                </p>
                 <Select
                   value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"}
                   onValueChange={async (value) => {
@@ -819,14 +830,18 @@ export default function JobDetailPage() {
                     try {
                       await api.patch(`/jobs/${job.id}`, { workshop_stage: workshopStage });
                       await refreshJob();
-                      toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}`);
+                      const syncMsg = workshopStage === 'work_in_progress' ? ' — Overall moved to In Progress'
+                        : workshopStage === 'quality_check' ? ' — Overall moved to Quality Check'
+                        : workshopStage === 'ready_handover' ? ' — Overall moved to Ready'
+                        : '';
+                      toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
                     } catch {
                       toast.error("Failed to update workshop stage");
                     } finally {
                       setSavingWorkshopStage(false);
                     }
                   }}
-                  disabled={savingWorkshopStage}
+                  disabled={savingWorkshopStage || isInReception}
                 >
                   <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
                     <SelectValue placeholder="Workshop stage">
@@ -844,7 +859,10 @@ export default function JobDetailPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Parts status</p>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Parts status
+                  {isInReception && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available in {STATUS_META[job.status].label} phase</span>}
+                </p>
                 <Select
                   value={job.parts_status ?? "no_parts"}
                   onValueChange={async (value) => {
@@ -853,14 +871,17 @@ export default function JobDetailPage() {
                     try {
                       await api.patch(`/jobs/${job.id}`, { parts_status: partsStatus });
                       await refreshJob();
-                      toast.success(`Parts status updated to ${PARTS_STATUS_META[partsStatus].label}`);
+                      const msg = partsStatus === 'parts_ready'
+                        ? `Parts status → Parts Ready. Workshop stage reset to Waiting to Start.`
+                        : `Parts status updated to ${PARTS_STATUS_META[partsStatus].label}`;
+                      toast.success(msg);
                     } catch {
                       toast.error("Failed to update parts status");
                     } finally {
                       setSavingPartsStatus(false);
                     }
                   }}
-                  disabled={savingPartsStatus}
+                  disabled={savingPartsStatus || isInReception}
                 >
                   <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
                     <SelectValue placeholder="Parts status">
