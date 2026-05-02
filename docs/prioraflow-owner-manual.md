@@ -1,8 +1,8 @@
 # PrioraFlow — Owner Manual
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** May 2026  
-**For:** Workshop owners, service advisors, managers, and prospective buyers
+**For:** Service center owners, general managers, and operations leadership
 
 ---
 
@@ -36,53 +36,75 @@
 
 ## 1. What Is PrioraFlow?
 
-PrioraFlow is an **AI-powered flow-control cockpit for service advisors** in automotive workshops.
+PrioraFlow is an **AI-powered flow-control system for the entire service center** — reception, workshop, parts, and delivery.
 
-It is not a generic task manager. It is not a simple job tracker. PrioraFlow answers one critical question every workshop faces daily:
+It is not a generic task manager. It is not a simple job tracker. PrioraFlow answers the critical question every service center faces daily:
 
-> **Which vehicle needs attention right now — and what should the advisor do about it?**
+> **Which vehicle needs attention right now — and what should be done about it?**
+
+The system gives **management full visibility** over every job, every stage, and every delay. It turns reactive workshop operations into a proactive, priority-driven flow.
 
 ### The Problem It Solves
 
-In a busy workshop, a service advisor might manage 15–25 vehicles simultaneously. Without a smart system:
+In a busy service center, managers oversee 15–50+ vehicles across reception, workshop, and delivery. Without a smart system:
 
 - Promised delivery times get missed
 - Customers sit waiting without updates
 - Parts delays go unnoticed
 - High-value or VIP customers don't get prioritized
 - Vehicles sit idle because nobody noticed they were stuck
+- Workshop capacity is underutilized
+- Management has no real-time visibility into what's happening
 
-PrioraFlow solves this by giving every job a **live priority score**, explaining **why** it's urgent, and telling the advisor **exactly what to do next**.
+PrioraFlow solves this by giving every job a **live priority score**, explaining **why** it's urgent, telling the team **exactly what to do next**, and giving **management a clear dashboard** of the entire operation.
+
+### Management Value
+
+PrioraFlow gives owners and managers what they've never had before:
+
+- **Real-time visibility** — See every job, every delay, every risk in one place. No more walking the floor.
+- **Priority-driven operations** — The system tells the team what to focus on, based on data, not gut feeling.
+- **Revenue capture** — Deferred work tracking means no lost revenue. Customer approval flow means no ambiguity.
+- **Accountability** — Every status change is logged. Every action has an owner. Every delay is visible.
+- **Scalability** — Works with 5 jobs or 500. The priority engine and next actions scale with the operation.
 
 ### Key Differentiators
 
 | Feature | Traditional Workshop Software | PrioraFlow |
 |---|---|---|
 | Priority scoring | None — all jobs equal | Live 0–100 score, auto-updated |
-| What to do next | Advisor must figure it out | Next Best Action for every job |
+| What to do next | Each person figures it out | Next Best Action for every job |
 | Customer follow-up | Manual tracking | Auto-flagged when waiting or overdue |
 | Promised date risk | Manual mental note | Auto-calculated, flagged before it's late |
 | Workshop ↔ Overall sync | Manual dual entry | Auto-synced, impossible to break |
 | Parts delay visibility | Separate system | Integrated into priority score |
 | Customer Informed flow | Sticky notes, WhatsApp groups | One-click with priority adjustment |
+| Management visibility | Walk the floor or ask | Real-time board with priority, risk, and actions |
 
 ---
 
 ## 2. Who Is It For?
 
-### Primary Users
+### Primary Decision Makers
 
-- **Service Advisors** — The main user. Sees their jobs, priorities, next actions, and customer follow-ups.
-- **Workshop Managers / Controllers** — Oversee all jobs, workshop flow, and delivery risk.
+- **Service Center Owners** — Full visibility into every job, every delay, every missed promise. ROI-driven oversight.
+- **General Managers / Operations Managers** — Real-time dashboard of the entire service center: reception, workshop, and delivery.
+- **Workshop Controllers** — See the full workshop flow, identify bottlenecks, allocate resources.
+
+### Active Users
+
+- **Service Advisors** — Manage their jobs, priorities, next actions, and customer follow-ups.
 - **Technicians** — Receive assignments, complete inspections, report progress.
+- **Parts Coordinators** — Track parts status, update ETAs, unblock workshop.
 - **Administrators** — Configure the system, manage users, and customize priority weights.
 
-### Ideal Workshop Profiles
+### Ideal Service Center Profiles
 
 - Premium and luxury automotive brands (Mercedes-Benz, BMW, Audi, etc.)
-- Workshops with 10+ active repair orders per advisor
-- Operations where missed promised dates cost real money
+- Service centers with 10+ active repair orders per advisor
+- Operations where missed promised dates cost real money and customer retention
 - Teams that want data-driven decisions, not guesswork
+- Management that needs real-time visibility, not just end-of-day reports
 
 ---
 
@@ -108,11 +130,13 @@ As an admin, configure these before your team starts using the system:
 
 | Screen | What It Shows |
 |---|---|
-| Job Board | All active jobs as a Kanban board, sorted by priority |
+| Job Board | All active jobs across the entire service center, sorted by priority |
 | Job Detail | Full information for one job: status, priority, estimate, inspection, actions |
 | Priority Snapshot | Top urgent jobs + next actions sidebar |
 | Settings | System configuration, priority weights, users, labour rates |
 | Admin | Dashboard stats, booking import, template management |
+
+**Management sees everything.** Advisors see their own jobs. Technicians see their assignments. This role-based visibility gives owners the full picture while keeping each team member focused on their work.
 
 ---
 
@@ -322,11 +346,11 @@ Booked appointments are excluded from idle risk scoring. A booked car that hasn'
 
 ## 7. Next Best Actions
 
-Every active job has a **Next Best Action** — the system tells the advisor exactly what to do.
+Every active job has a **Next Best Action** — the system tells the responsible person exactly what to do. This eliminates the "walk the floor and ask" approach and gives management confidence that nothing falls through the cracks.
 
 ### How It Works
 
-The action is determined by the job's current status and phase. Risk signals (promise overdue, customer waiting, VIP, etc.) increase the action's urgency and explain *why* it matters now.
+The action is determined by the job's current status and phase. Risk signals (promise overdue, customer waiting, VIP, etc.) increase the action's urgency and explain *why* it matters now. **Management can see the full action queue across all advisors**, not just per-person.
 
 ### Actions by Status
 
@@ -505,7 +529,7 @@ The priority drops because the car is handled and the customer knows. But perman
 
 ## 11. The Job Board
 
-The Job Board is the main screen — a Kanban-style view of all active jobs organized by status.
+The Job Board is the main screen — a Kanban-style view of all active jobs across the entire service center, organized by status. **This is management's real-time visibility tool**: see the whole operation at a glance, identify bottlenecks, and know exactly where attention is needed.
 
 ### Board Layout
 
@@ -686,6 +710,8 @@ All financial totals are calculated on the **backend** — the frontend cannot o
 
 ### Customer Approval Flow
 
+The customer approval flow is a key differentiator for management: no more verbal approvals, no more "I think they said yes." Every decision is tracked, timestamped, and auditable.
+
 1. Advisor creates the estimate
 2. Advisor clicks **"Send Approval"** — system generates a unique approval link
 3. Link is sent to the customer (via WhatsApp, SMS, or email)
@@ -776,6 +802,8 @@ Customer-facing media (photos, inspection findings) is served through an API pro
 
 When a customer declines or defers an estimate line, the system creates a **Deferred Work** record. This is work that was recommended but not approved.
 
+**For management, this is captured revenue.** Deferred work represents jobs the customer didn't approve today — but might approve next visit, next month, or when reminded. Without tracking it, this revenue simply disappears.
+
 ### What You Can Do with Deferred Work
 
 | Action | What Happens |
@@ -784,9 +812,9 @@ When a customer declines or defers an estimate line, the system creates a **Defe
 | **Book into New Job** | Create a new job from the deferred work |
 | **Close / Expire** | Mark the deferred work as no longer relevant |
 
-### Why It Matters
+### Why It Matters for Revenue
 
-Deferred work is **revenue you haven't captured yet**. The system keeps it visible so you can follow up when the timing is right — next service visit, seasonal promotion, etc.
+Deferred work is **revenue you haven't captured yet**. The system keeps it visible so the team can follow up when the timing is right — next service visit, seasonal promotion, etc. Management can track the total deferred value and measure follow-up conversion over time.
 
 ---
 
