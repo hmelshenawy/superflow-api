@@ -11,6 +11,7 @@ export class UpdateJobDto {
   @ApiPropertyOptional() @IsOptional() @IsString() dms_ro_number?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() workshop_stage?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() parts_status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() customer_informed?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_customer_waiting?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() customer_sensitivity?: string;
 }

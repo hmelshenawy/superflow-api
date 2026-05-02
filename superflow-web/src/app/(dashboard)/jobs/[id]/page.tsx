@@ -181,6 +181,7 @@ export default function JobDetailPage() {
   const [assigningTech, setAssigningTech] = useState(false);
   const [savingWorkshopStage, setSavingWorkshopStage] = useState(false);
   const [savingPartsStatus, setSavingPartsStatus] = useState(false);
+  const [savingCustomerInformed, setSavingCustomerInformed] = useState(false);
 
   /** True when the job is still in reception / advisor phase — workshop fields are irrelevant. */
   const isInReception = job ? RECEPTION_STATUSES.includes(job.status) : false;
@@ -897,6 +898,37 @@ export default function JobDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Customer Informed button — only visible when job is Ready for Delivery */}
+              {job.status === "ready" && (
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Customer notification</p>
+                  <button
+                    type="button"
+                    disabled={savingCustomerInformed || !!job.customer_informed}
+                    onClick={async () => {
+                      setSavingCustomerInformed(true);
+                      try {
+                        await api.patch(`/jobs/${job.id}`, { customer_informed: true });
+                        await refreshJob();
+                        toast.success("Customer informed — urgency factors cleared from priority");
+                      } catch {
+                        toast.error("Failed to update");
+                      } finally {
+                        setSavingCustomerInformed(false);
+                      }
+                    }}
+                    className={cn(
+                      "flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors",
+                      job.customer_informed
+                        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                    )}
+                  >
+                    {savingCustomerInformed ? "Updating…" : job.customer_informed ? "✓ Customer Informed" : "🔔 Customer Informed"}
+                  </button>
+                </div>
+              )}
 
               <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
                 <div className="flex items-center justify-between">

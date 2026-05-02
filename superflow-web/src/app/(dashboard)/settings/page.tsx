@@ -50,6 +50,7 @@ const DEFAULT_PRIORITY_WEIGHTS = {
   idle6h: 6,
   stageCheckingDiagnosis: 10,
   stageQcNearDelivery: 10,
+  readyToInform: 20,
   highEstimateValue: 8,
   mediumEstimateValue: 4,
 };
@@ -83,6 +84,9 @@ const PRIORITY_MATRIX_GROUPS: Array<{ title: string; description: string; items:
   { title: "Stage Urgency", description: "Only one stage urgency sub-item applies.", items: [
     { key: "stageCheckingDiagnosis", label: "Checking / diagnosis", description: "Active diagnosis/checking needs follow-up." },
     { key: "stageQcNearDelivery", label: "QC / near delivery", description: "Near handover; push completion." },
+  ]},
+  { title: "Ready to Inform", description: "Car is ready but customer not yet informed.", items: [
+    { key: "readyToInform", label: "Ready to inform customer", description: "Car is ready for delivery — advisor must inform the customer." },
   ]},
   { title: "Value Weight", description: "Only one value sub-item applies.", items: [
     { key: "highEstimateValue", label: "High estimate value", description: "Estimate total is 10k+ AED." },

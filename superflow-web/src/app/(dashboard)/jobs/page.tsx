@@ -60,6 +60,7 @@ const DEFAULT_PRIORITY_WEIGHTS = {
   idle6h: 6,
   stageCheckingDiagnosis: 10,
   stageQcNearDelivery: 10,
+  readyToInform: 20,
   highEstimateValue: 8,
   mediumEstimateValue: 4,
 };
@@ -629,28 +630,51 @@ export default function JobsPage() {
 
         const partsStatus = job.parts_status ?? "no_parts";
         const customerSensitivity = job.customer_sensitivity ?? "normal";
+        const isReady = job.status === "ready";
+        const isCustomerInformed = !!job.customer_informed;
 
-        if (isOverdue(job, now)) { score += priorityWeights.promiseOverdue; reasons.push(`Promise risk: overdue +${priorityWeights.promiseOverdue}`); }
-        else if (hoursToPromise !== null && hoursToPromise <= 2) { score += priorityWeights.promiseDue2h; reasons.push(`Promise risk: due ≤2h +${priorityWeights.promiseDue2h}`); }
-        else if (hoursToPromise !== null && hoursToPromise <= 6) { score += priorityWeights.promiseDue6h; reasons.push(`Promise risk: due ≤6h +${priorityWeights.promiseDue6h}`); }
+        // When car is Ready and customer is informed, urgency factors that were
+        // about "getting the car ready" or "informing the customer" are zeroed.
+        // Only permanent facts (sensitivity, estimate value) remain.
+        const informedReady = isReady && isCustomerInformed;
 
-        if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer waiting +${priorityWeights.customerWaiting}`); }
+        if (!informedReady) {
+          if (isOverdue(job, now)) { score += priorityWeights.promiseOverdue; reasons.push(`Promise risk: overdue +${priorityWeights.promiseOverdue}`); }
+          else if (hoursToPromise !== null && hoursToPromise <= 2) { score += priorityWeights.promiseDue2h; reasons.push(`Promise risk: due ≤2h +${priorityWeights.promiseDue2h}`); }
+          else if (hoursToPromise !== null && hoursToPromise <= 6) { score += priorityWeights.promiseDue6h; reasons.push(`Promise risk: due ≤6h +${priorityWeights.promiseDue6h}`); }
+
+          if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer waiting +${priorityWeights.customerWaiting}`); }
+        }
+
+        // Permanent facts — always apply regardless of informed status
         if (customerSensitivity === "angry") { score += priorityWeights.customerAngry; reasons.push(`Customer sensitivity: angry +${priorityWeights.customerAngry}`); }
         else if (customerSensitivity === "vip") { score += priorityWeights.customerVip; reasons.push(`Customer sensitivity: VIP +${priorityWeights.customerVip}`); }
         else if (customerSensitivity === "comeback") { score += priorityWeights.customerComeback; reasons.push(`Customer sensitivity: comeback +${priorityWeights.customerComeback}`); }
 
-        if (job.status === "estimate_sent") { score += priorityWeights.waitingCustomerDecision; reasons.push(`Customer decision: waiting +${priorityWeights.waitingCustomerDecision}`); }
+        if (!informedReady) {
+          if (job.status === "estimate_sent") { score += priorityWeights.waitingCustomerDecision; reasons.push(`Customer decision: waiting +${priorityWeights.waitingCustomerDecision}`); }
+        }
 
-        if (partsStatus === "backorder") { score += priorityWeights.partsBackorder; reasons.push(`Parts risk: backorder +${priorityWeights.partsBackorder}`); }
-        else if (partsStatus === "waiting_warehouse") { score += priorityWeights.partsWaitingWarehouse; reasons.push(`Parts risk: waiting warehouse +${priorityWeights.partsWaitingWarehouse}`); }
-        else if (partsStatus === "order_parts" || job.status === "waiting_parts") { score += priorityWeights.partsNeedOrder; reasons.push(`Parts risk: need order +${priorityWeights.partsNeedOrder}`); }
+        if (!informedReady) {
+          if (partsStatus === "backorder") { score += priorityWeights.partsBackorder; reasons.push(`Parts risk: backorder +${priorityWeights.partsBackorder}`); }
+          else if (partsStatus === "waiting_warehouse") { score += priorityWeights.partsWaitingWarehouse; reasons.push(`Parts risk: waiting warehouse +${priorityWeights.partsWaitingWarehouse}`); }
+          else if (partsStatus === "order_parts" || job.status === "waiting_parts") { score += priorityWeights.partsNeedOrder; reasons.push(`Parts risk: need order +${priorityWeights.partsNeedOrder}`); }
+        }
 
-        if (idleHours >= 12) { score += priorityWeights.idle12h; reasons.push(`Idle risk: 12h+ +${priorityWeights.idle12h}`); }
-        else if (idleHours >= 6) { score += priorityWeights.idle6h; reasons.push(`Idle risk: 6h+ +${priorityWeights.idle6h}`); }
+        if (!informedReady) {
+          if (idleHours >= 12) { score += priorityWeights.idle12h; reasons.push(`Idle risk: 12h+ +${priorityWeights.idle12h}`); }
+          else if (idleHours >= 6) { score += priorityWeights.idle6h; reasons.push(`Idle risk: 6h+ +${priorityWeights.idle6h}`); }
+        }
 
-        if (job.status === "checking") { score += priorityWeights.stageCheckingDiagnosis; reasons.push(`Stage urgency: checking/diagnosis +${priorityWeights.stageCheckingDiagnosis}`); }
-        else if (job.status === "quality_check") { score += priorityWeights.stageQcNearDelivery; reasons.push(`Stage urgency: QC/near delivery +${priorityWeights.stageQcNearDelivery}`); }
+        if (!informedReady) {
+          if (job.status === "checking") { score += priorityWeights.stageCheckingDiagnosis; reasons.push(`Stage urgency: checking/diagnosis +${priorityWeights.stageCheckingDiagnosis}`); }
+          else if (job.status === "quality_check") { score += priorityWeights.stageQcNearDelivery; reasons.push(`Stage urgency: QC/near delivery +${priorityWeights.stageQcNearDelivery}`); }
+        }
 
+        // Ready for delivery but customer not yet informed → urgency to inform
+        if (isReady && !isCustomerInformed) { score += priorityWeights.readyToInform; reasons.push(`Ready to inform customer +${priorityWeights.readyToInform}`); }
+
+        // Permanent facts
         if (estimateTotal >= 10000) { score += priorityWeights.highEstimateValue; reasons.push(`Value: high estimate +${priorityWeights.highEstimateValue}`); }
         else if (estimateTotal >= 5000) { score += priorityWeights.mediumEstimateValue; reasons.push(`Value: medium estimate +${priorityWeights.mediumEstimateValue}`); }
 
@@ -1255,6 +1279,23 @@ export default function JobsPage() {
                                     ) : null}
                                   </div>
                                 ) : null}
+                                {job.status === "ready" && (
+                                  job.customer_informed ? (
+                                    <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">✓ Informed</div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          await api.patch(`/jobs/${job.id}`, { customer_informed: true });
+                                          fetchJobs();
+                                        } catch {}
+                                      }}
+                                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800 hover:bg-amber-100"
+                                    >🔔 Inform</button>
+                                  )
+                                )}
                               </div>
 
                               <div className="mt-auto grid grid-cols-2 gap-1 text-[11px]">

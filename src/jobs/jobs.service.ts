@@ -151,6 +151,20 @@ export class JobsService {
     if (dto.parts_status === 'parts_ready') {
       data.workshop_stage = 'waiting_technician';
     }
+    // When advisor marks customer as informed on a Ready job,
+    // the urgency factors (promise risk, customer waiting, stage urgency)
+    // are zeroed in the priority calc on the frontend. On the backend we
+    // record the flag so the frontend can apply the logic.
+    // Additionally: if job was ready and customer is informed, no need to
+    // keep is_customer_waiting flagged.
+    if (dto.customer_informed === true && (data.status === 'ready' || data.status === undefined)) {
+      // Look up current status if not already changed in this update
+      const job = await this.findOne(id);
+      const effectiveStatus = data.status || job.status;
+      if (effectiveStatus === 'ready' || effectiveStatus === 'quality_check') {
+        data.is_customer_waiting = false;
+      }
+    }
     // Allow clearing optional fields by sending empty string → null
     if (data.advisor_id === '') data.advisor_id = null;
     if (data.technician_id === '') data.technician_id = null;

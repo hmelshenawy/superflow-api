@@ -75,6 +75,7 @@ export interface Job {
   status: JobStatus;
   workshop_stage: WorkshopStage | null;
   parts_status: PartsStatus | null;
+  customer_informed: boolean | null;
   is_customer_waiting: boolean | null;
   customer_sensitivity: CustomerSensitivity | null;
   customer_concern: string | null;

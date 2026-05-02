@@ -332,6 +332,7 @@ model jobs {
   status                                            jobs_status               @default(booked)
   workshop_stage                                    String?                   @default("waiting_technician") @db.VarChar(40)
   parts_status                                      String?                   @default("no_parts") @db.VarChar(40)
+  customer_informed                                 Boolean?                  @default(false)
   is_customer_waiting                               Boolean?                  @default(false)
   customer_sensitivity                              String?                   @default("normal") @db.VarChar(40)
   customer_concern                                  String?                   @db.Text
