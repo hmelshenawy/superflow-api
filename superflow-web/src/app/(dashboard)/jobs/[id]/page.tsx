@@ -50,7 +50,7 @@ const STATUS_META: Record<
     badge: string;
   }
 > = {
-  booked: { label: "Booked", dot: "bg-slate-400", badge: "bg-slate-100 text-slate-700" },
+  booked: { label: "Booked", dot: "bg-slate-400", badge: "bg-muted text-foreground/80" },
   checking: { label: "Checking", dot: "bg-amber-500", badge: "bg-amber-100 text-amber-900" },
   estimate_sent: { label: "Estimate Sent", dot: "bg-rose-500", badge: "bg-rose-100 text-rose-800" },
   approved: { label: "Approved", dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-800" },
@@ -58,7 +58,7 @@ const STATUS_META: Record<
   waiting_parts: { label: "Waiting Parts", dot: "bg-purple-500", badge: "bg-purple-100 text-purple-800" },
   quality_check: { label: "Quality Check", dot: "bg-cyan-500", badge: "bg-cyan-100 text-cyan-800" },
   ready: { label: "Ready", dot: "bg-teal-500", badge: "bg-teal-100 text-teal-800" },
-  closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-slate-200 text-slate-700" },
+  closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-slate-200 text-foreground/80" },
 };
 
 /** Overall statuses where workshop stage is not applicable.
@@ -150,10 +150,10 @@ function estimateTotal(job: Job) {
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-slate-950">{value}</p>
-      {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
+    <div className="rounded-2xl border border-border bg-muted p-4">
+      <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-foreground">{value}</p>
+      {hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -399,7 +399,7 @@ export default function JobDetailPage() {
   };
 
   if (loading) {
-    return <div className="py-20 text-center text-slate-400">Loading...</div>;
+    return <div className="py-20 text-center text-muted-foreground">Loading...</div>;
   }
 
   if (!job) {
@@ -428,8 +428,8 @@ export default function JobDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100">
-        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-5 text-white lg:p-6">
+      <div className="overflow-hidden rounded-[30px] border border-border bg-card shadow-sm ring-1 ring-border">
+        <div className="border-b border-border bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-5 text-white lg:p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="flex min-w-0 items-start gap-3">
               <Button
@@ -478,7 +478,7 @@ export default function JobDetailPage() {
                     setChangingStatus(false);
                   }
                 }} disabled={changingStatus}>
-                  <SelectTrigger className="h-11 flex-1 rounded-xl border-white/15 bg-white text-slate-900 xl:w-[210px]">
+                  <SelectTrigger className="h-11 flex-1 rounded-xl border-white/15 bg-card text-foreground xl:w-[210px]">
                     <span>{STATUS_META[job.status].label}</span>
                   </SelectTrigger>
                   <SelectContent>
@@ -536,7 +536,7 @@ export default function JobDetailPage() {
                         complete
                           ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
                           : current
-                            ? "border-white bg-white text-slate-950 shadow-sm"
+                            ? "border-border bg-card text-foreground shadow-sm"
                             : "border-white/10 bg-white/5 text-slate-300",
                       )}
                     >
@@ -551,7 +551,7 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 bg-slate-50/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
+        <div className="grid gap-5 bg-muted/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
               <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
@@ -560,20 +560,20 @@ export default function JobDetailPage() {
               <StatCard label="Approval" value={approvalStatusLabel} />
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-blue-600" />
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Work focus</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Work focus</p>
               </div>
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <div className="rounded-2xl border border-border bg-muted/80 p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Customer concern</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Customer concern</p>
                     {editingConcern ? null : (
                       <button
                         onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
                         aria-label="Edit customer concern"
-                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -581,25 +581,25 @@ export default function JobDetailPage() {
                   </div>
                   {editingConcern ? (
                     <div className="mt-2 space-y-2">
-                      <Textarea className="min-h-[110px] rounded-lg border-slate-200 text-sm" placeholder="Describe the customer's concern..." value={draftConcern} onChange={(e) => setDraftConcern(e.target.value)} />
+                      <Textarea className="min-h-[110px] rounded-lg border-border text-sm" placeholder="Describe the customer's concern..." value={draftConcern} onChange={(e) => setDraftConcern(e.target.value)} />
                       <div className="flex gap-2">
                         <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveConcern} disabled={savingConcern}><Save className="mr-1 h-3 w-3" /> {savingConcern ? "Saving..." : "Save"}</Button>
                         <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingConcern(false)} disabled={savingConcern}><X className="mr-1 h-3 w-3" /> Cancel</Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950" onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}>
+                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-foreground/80 hover:cursor-pointer hover:text-foreground" onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}>
                       {job.customer_concern || "Click to add a customer concern."}
                     </p>
                   )}
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                <div className="rounded-2xl border border-border bg-muted/80 p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Internal notes</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Internal notes</p>
                     {editingNotes ? null : (
                       <button
                         onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -607,14 +607,14 @@ export default function JobDetailPage() {
                   </div>
                   {editingNotes ? (
                     <div className="mt-2 space-y-2">
-                      <Textarea className="min-h-[110px] rounded-lg border-slate-200 text-sm" placeholder="Internal notes visible to the team..." value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
+                      <Textarea className="min-h-[110px] rounded-lg border-border text-sm" placeholder="Internal notes visible to the team..." value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
                       <div className="flex gap-2">
                         <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveNotes} disabled={savingNotes}><Save className="mr-1 h-3 w-3" /> {savingNotes ? "Saving..." : "Save"}</Button>
                         <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingNotes(false)} disabled={savingNotes}><X className="mr-1 h-3 w-3" /> Cancel</Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950" onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}>
+                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-foreground/80 hover:cursor-pointer hover:text-foreground" onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}>
                       {job.internal_notes || "Click to add internal notes."}
                     </p>
                   )}
@@ -623,10 +623,10 @@ export default function JobDetailPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <Button variant="outline" className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
+              <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
                 <ClipboardList className="mr-2 h-4 w-4" /> Inspection
               </Button>
-              <Button variant="outline" className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm" onClick={() => router.push(`/jobs/${job.id}#media`)}>
+              <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#media`)}>
                 <ImageIcon className="mr-2 h-4 w-4" /> Media
               </Button>
               {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-12 rounded-2xl">Approval link</Button>}
@@ -634,11 +634,11 @@ export default function JobDetailPage() {
           </div>
 
           <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Assignment & control</p>
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Assignment & control</p>
               <div className="mt-4 space-y-4">
                 <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Service advisor</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Service advisor</p>
                   <Select value={job.advisor_id ?? "unassigned"} onValueChange={async (value) => {
                     const advisorId = value === "unassigned" ? undefined : value;
                     setAssigningAdvisor(true);
@@ -648,7 +648,7 @@ export default function JobDetailPage() {
                       toast.success(advisorId ? "Advisor assigned" : "Advisor removed");
                     } catch { toast.error("Failed to update advisor"); } finally { setAssigningAdvisor(false); }
                   }} disabled={assigningAdvisor}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Unassigned">{advisorName(job.advisor_id)}</SelectValue></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Unassigned">{advisorName(job.advisor_id)}</SelectValue></SelectTrigger>
                     <SelectContent className="min-w-[280px]">
                       <SelectItem value="unassigned">Unassigned</SelectItem>
                       {advisors.map((entry: any) => (<SelectItem key={entry.id} value={entry.id}>{entry.name}</SelectItem>))}
@@ -657,7 +657,7 @@ export default function JobDetailPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Technician</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Technician</p>
                   <Select value={job.technician_id ?? "unassigned"} onValueChange={async (value) => {
                     const technicianId = value === "unassigned" ? null : value;
                     setAssigningTech(true);
@@ -667,7 +667,7 @@ export default function JobDetailPage() {
                       toast.success(technicianId ? "Technician assigned" : "Technician removed");
                     } catch { toast.error("Failed to update technician"); } finally { setAssigningTech(false); }
                   }} disabled={assigningTech}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Unassigned">{techName(job.technician_id)}</SelectValue></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Unassigned">{techName(job.technician_id)}</SelectValue></SelectTrigger>
                     <SelectContent className="min-w-[280px]">
                       <SelectItem value="unassigned">Unassigned</SelectItem>
                       {technicians.map((entry: any) => (<SelectItem key={entry.id} value={entry.id}>{entry.name}</SelectItem>))}
@@ -676,7 +676,7 @@ export default function JobDetailPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Workshop stage {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available</span>}</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Workshop stage {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-muted-foreground">— not available</span>}</p>
                   <Select value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"} onValueChange={async (value) => {
                     const workshopStage = value as WorkshopStage;
                     setSavingWorkshopStage(true);
@@ -687,13 +687,13 @@ export default function JobDetailPage() {
                       toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
                     } catch { toast.error("Failed to update workshop stage"); } finally { setSavingWorkshopStage(false); }
                   }} disabled={savingWorkshopStage || isWorkshopStageDisabled}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
                     <SelectContent className="min-w-[360px]">{WORKSHOP_STAGES.map((stage) => (<SelectItem key={stage} value={stage}>{WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Parts status {isPartsStatusDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available</span>}</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Parts status {isPartsStatusDisabled && <span className="ml-1 text-[10px] normal-case text-muted-foreground">- not available</span>}</p>
                   <Select value={job.parts_status ?? "no_parts"} onValueChange={async (value) => {
                     const partsStatus = value as PartsStatus;
                     setSavingPartsStatus(true);
@@ -704,31 +704,31 @@ export default function JobDetailPage() {
                       toast.success(msg);
                     } catch { toast.error("Failed to update parts status"); } finally { setSavingPartsStatus(false); }
                   }} disabled={savingPartsStatus || isPartsStatusDisabled}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Parts status">{PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "Parts status"}</SelectValue></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Parts status">{PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "Parts status"}</SelectValue></SelectTrigger>
                     <SelectContent className="min-w-[320px]">{PARTS_STATUSES.map((status) => (<SelectItem key={status} value={status}>{PARTS_STATUS_META[status].label} - {PARTS_STATUS_META[status].hint}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-2xl border border-border bg-muted p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="inline-flex items-center gap-2 text-sm text-slate-600"><Clock3 className="h-4 w-4 text-slate-400" /> Promised time</span>
-                    {editingPromise ? null : (<button onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }} aria-label="Edit promised time" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Pencil className="h-3.5 w-3.5" /></button>)}
+                    <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4 text-muted-foreground" /> Promised time</span>
+                    {editingPromise ? null : (<button onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }} aria-label="Edit promised time" className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>)}
                   </div>
                   {editingPromise ? (
                     <div className="mt-2 space-y-2">
-                      <Input type="datetime-local" className="h-9 rounded-lg border-slate-200 bg-white text-sm" value={draftPromise} onChange={(e) => setDraftPromise(e.target.value)} />
+                      <Input type="datetime-local" className="h-9 rounded-lg border-border bg-card text-sm" value={draftPromise} onChange={(e) => setDraftPromise(e.target.value)} />
                       <div className="flex gap-2">
                         <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={savePromise} disabled={savingPromise}><Save className="mr-1 h-3 w-3" /> {savingPromise ? "Saving..." : "Save"}</Button>
                         <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingPromise(false)} disabled={savingPromise}><X className="mr-1 h-3 w-3" /> Cancel</Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-2 text-xl font-bold text-slate-950">{formatDate(job.promised_at, true)}</p>
+                    <p className="mt-2 text-xl font-bold text-foreground">{formatDate(job.promised_at, true)}</p>
                   )}
                   {!job.promised_at && job.status !== 'booked' && job.status !== 'closed' && <p className="mt-1 text-[10px] text-amber-600">Setting a promised date removes +5 from priority</p>}
-                  <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm">
-                    <span className="inline-flex items-center gap-2 text-slate-600"><Send className="h-4 w-4 text-slate-400" /> Approval</span>
-                    <span className="font-semibold text-slate-900">{approvalStatusLabel}</span>
+                  <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
+                    <span className="inline-flex items-center gap-2 text-muted-foreground"><Send className="h-4 w-4 text-muted-foreground" /> Approval</span>
+                    <span className="font-semibold text-foreground">{approvalStatusLabel}</span>
                   </div>
                 </div>
               </div>
@@ -738,7 +738,7 @@ export default function JobDetailPage() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="h-auto flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2">
+        <TabsList className="h-auto flex-wrap gap-2 rounded-2xl border border-border bg-card p-2">
           <TabsTrigger value="overview" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <FileText className="mr-2 h-4 w-4" /> Overview
           </TabsTrigger>
@@ -758,12 +758,12 @@ export default function JobDetailPage() {
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-            <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
-              <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-white to-blue-50/60">
+            <Card className="overflow-hidden rounded-2xl border-border shadow-sm">
+              <CardHeader className="border-b border-border bg-gradient-to-r from-card to-blue-500/50/5">
                 <CardTitle className="text-lg">Recommended next move</CardTitle>
-                <p className="text-sm text-slate-500">A clean action brief without repeating the full job record above.</p>
+                <p className="text-sm text-muted-foreground">A clean action brief without repeating the full job record above.</p>
               </CardHeader>
-              <CardContent className="space-y-4 p-5 text-sm text-slate-700">
+              <CardContent className="space-y-4 p-5 text-sm text-foreground/80">
                 <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 leading-6">
                   {job.status === "booked" && <p>Move the job into checking and assign the technician so the inspection can start.</p>}
                   {job.status === "checking" && <p>Complete the inspection and convert findings into estimate lines for advisor review.</p>}
@@ -776,26 +776,26 @@ export default function JobDetailPage() {
                   {job.status === "closed" && <p>This job is complete. Use it as a clean historical record.</p>}
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Commercial readiness</p>
-                    <p className="mt-2 text-lg font-bold text-slate-950">{estimateCount} lines</p>
-                    <p className="mt-1 text-xs text-slate-500">AED {total.toFixed(2)} quote total</p>
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Commercial readiness</p>
+                    <p className="mt-2 text-lg font-bold text-foreground">{estimateCount} lines</p>
+                    <p className="mt-1 text-xs text-muted-foreground">AED {total.toFixed(2)} quote total</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Evidence readiness</p>
-                    <p className="mt-2 text-lg font-bold text-slate-950">{mediaCount} files</p>
-                    <p className="mt-1 text-xs text-slate-500">Inspection: {String(inspectionState).replaceAll("_", " ")}</p>
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Evidence readiness</p>
+                    <p className="mt-2 text-lg font-bold text-foreground">{mediaCount} files</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Inspection: {String(inspectionState).replaceAll("_", " ")}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Customer state</p>
-                    <p className="mt-2 text-lg font-bold text-slate-950">{job.is_customer_waiting ? "Waiting" : "Normal"}</p>
-                    <p className="mt-1 text-xs text-slate-500">{CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}</p>
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Customer state</p>
+                    <p className="mt-2 text-lg font-bold text-foreground">{job.is_customer_waiting ? "Waiting" : "Normal"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <Card className="rounded-2xl border-border shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg">Quick actions</CardTitle>
               </CardHeader>
@@ -813,59 +813,59 @@ export default function JobDetailPage() {
         </TabsContent>
         <TabsContent value="customer" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="border-b border-border bg-gradient-to-br from-muted to-blue-500/50/5 p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Customer details</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Customer details</p>
                   <User className="h-4 w-4 text-blue-600" />
                 </div>
               </div>
               <div className="divide-y divide-slate-100 px-5 py-1.5">
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Name</p>
-                  <p className="text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.name || "Walk-in"}</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Name</p>
+                  <p className="text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.name || "Walk-in"}</p>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Phone</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.phone || "No phone"}</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Phone</p>
+                  <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.phone || "No phone"}</p>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Email</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.email || "No email"}</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Email</p>
+                  <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.email || "No email"}</p>
                 </div>
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="border-b border-border bg-gradient-to-br from-muted to-blue-500/50/5 p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Vehicle & priority</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Vehicle & priority</p>
                   <Car className="h-4 w-4 text-blue-600" />
                 </div>
               </div>
               <div className="divide-y divide-slate-100 px-5 py-1.5">
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">VIN</p>
-                  <p className="break-all text-right font-mono text-sm font-semibold leading-5 text-slate-800">{job.vehicle?.vin || "No VIN"}</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">VIN</p>
+                  <p className="break-all text-right font-mono text-sm font-semibold leading-5 text-foreground">{job.vehicle?.vin || "No VIN"}</p>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-center gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Odometer</p>
-                  <p className="text-right text-sm font-semibold leading-5 text-slate-900">{job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"}</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Odometer</p>
+                  <p className="text-right text-sm font-semibold leading-5 text-foreground">{job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"}</p>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-center gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Waiting</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Waiting</p>
                   <p className="text-right">
                     <button type="button" onClick={async () => {
                       setSavingCustomerPriority(true);
                       try { await api.patch(`/jobs/${job.id}`, { is_customer_waiting: !job.is_customer_waiting }); await refreshJob(); toast.success(!job.is_customer_waiting ? "Customer marked waiting" : "Customer waiting removed"); }
                       catch { toast.error("Failed to update customer waiting flag"); } finally { setSavingCustomerPriority(false); }
-                    }} disabled={savingCustomerPriority} className={cn("rounded-lg border px-3 py-1 text-xs font-semibold transition", job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50")}>
+                    }} disabled={savingCustomerPriority} className={cn("rounded-lg border px-3 py-1 text-xs font-semibold transition", job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-border bg-card text-muted-foreground hover:border-red-200 hover:bg-red-50")}>
                       {job.is_customer_waiting ? "Yes — prioritize" : "No"}
                     </button>
                   </p>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-center gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Sensitivity</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Sensitivity</p>
                   <div className="flex justify-end">
                     <Select value={job.customer_sensitivity ?? "normal"} onValueChange={async (value) => {
                       const sensitivity = value as CustomerSensitivity;
@@ -873,7 +873,7 @@ export default function JobDetailPage() {
                       try { await api.patch(`/jobs/${job.id}`, { customer_sensitivity: sensitivity }); await refreshJob(); toast.success(`Sensitivity updated to ${CUSTOMER_SENSITIVITY_META[sensitivity].label}`); }
                       catch { toast.error("Failed to update sensitivity"); } finally { setSavingCustomerPriority(false); }
                     }} disabled={savingCustomerPriority}>
-                      <SelectTrigger className="h-9 w-[180px] rounded-lg border-slate-200 bg-white text-xs"><SelectValue placeholder="Sensitivity" /></SelectTrigger>
+                      <SelectTrigger className="h-9 w-[180px] rounded-lg border-border bg-card text-xs"><SelectValue placeholder="Sensitivity" /></SelectTrigger>
                       <SelectContent className="min-w-[240px]">{CUSTOMER_SENSITIVITIES.map((s) => (<SelectItem key={s} value={s}>{CUSTOMER_SENSITIVITY_META[s].label} - {CUSTOMER_SENSITIVITY_META[s].hint}</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
@@ -885,23 +885,23 @@ export default function JobDetailPage() {
 
 
         <TabsContent value="estimate" className="space-y-4">
-          <Card className="rounded-2xl border-slate-200 shadow-sm">
+          <Card className="rounded-2xl border-border shadow-sm">
             <CardHeader className="gap-4">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <CardTitle className="text-lg">Quote builder & authorization</CardTitle>
-                  <p className="mt-1 text-sm text-slate-500">Parts, labour, totals, and customer approval in one workspace.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Parts, labour, totals, and customer approval in one workspace.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Quote total</p>
-                    <p className="mt-2 text-xl font-semibold text-slate-950">AED {total.toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-slate-500">Live total from estimate lines</p>
+                  <div className="rounded-2xl border border-border bg-muted p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Quote total</p>
+                    <p className="mt-2 text-xl font-semibold text-foreground">AED {total.toFixed(2)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Live total from estimate lines</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Authorization</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-950">{approvalStatusLabel}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                  <div className="rounded-2xl border border-border bg-muted p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Authorization</p>
+                    <p className="mt-2 text-sm font-semibold text-foreground">{approvalStatusLabel}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {approvalCounts
                         ? `${approvalCounts.approved} approved · ${approvalCounts.declined} rejected · ${approvalCounts.deferred} deferred · ${approvalCounts.pending} pending`
                         : `${estimateCount} line item${estimateCount === 1 ? "" : "s"}`}
@@ -910,8 +910,8 @@ export default function JobDetailPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-sm text-slate-600">
+              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted p-4 lg:flex-row lg:items-center lg:justify-between">
+                <p className="text-sm text-muted-foreground">
                   Send the customer approval link once the quote and media evidence are ready.
                 </p>
                 <div className="w-full lg:w-auto">
@@ -920,11 +920,11 @@ export default function JobDetailPage() {
               </div>
 
               {authStatus ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
                   <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <p className="font-semibold text-slate-900">Customer approval feedback</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="font-semibold text-foreground">Customer approval feedback</p>
+                      <p className="text-xs text-muted-foreground">
                         {latestApprovalToken?.used_at
                           ? `Customer submitted a response on ${formatDate(latestApprovalToken.used_at, true)}.`
                           : latestApprovalToken?.first_opened_at
@@ -939,7 +939,7 @@ export default function JobDetailPage() {
                         <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-800">Approved: {approvalCounts.approved}</span>
                         <span className="rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-800">Rejected: {approvalCounts.declined}</span>
                         <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">Deferred: {approvalCounts.deferred}</span>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">Pending: {approvalCounts.pending}</span>
+                        <span className="rounded-full bg-muted px-3 py-1 font-semibold text-foreground/80">Pending: {approvalCounts.pending}</span>
                       </div>
                     ) : null}
                   </div>
@@ -954,12 +954,12 @@ export default function JobDetailPage() {
 
         <TabsContent value="inspection" className="space-y-4" id="inspection">
           {inspectionDetail ? (
-            <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <Card className="rounded-2xl border-border shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-lg">Inspection workspace</CardTitle>
                   {inspectionLocked ? (
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       This inspection is locked. Re-open it to continue editing.
                     </p>
                   ) : null}
@@ -981,11 +981,11 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <Card className="rounded-2xl border-border shadow-sm">
               <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                 <div>
-                  <p className="text-lg font-semibold text-slate-950">No inspection started yet</p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="text-lg font-semibold text-foreground">No inspection started yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Start an inspection to capture technician findings, urgency, notes, and evidence.
                   </p>
                 </div>
@@ -999,11 +999,11 @@ export default function JobDetailPage() {
 
 
         <TabsContent value="media" className="space-y-4" id="media">
-          <Card className="rounded-2xl border-slate-200 shadow-sm">
+          <Card className="rounded-2xl border-border shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle className="text-lg">Media evidence</CardTitle>
-                <p className="mt-1 text-sm text-slate-500">Attach photos, videos, or documents that support the quote and inspection.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Attach photos, videos, or documents that support the quote and inspection.</p>
               </div>
               <MediaUploader jobId={job.id} onUploaded={refreshJob} />
             </CardHeader>
@@ -1015,7 +1015,7 @@ export default function JobDetailPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-[20px] border border-dashed border-slate-200 bg-slate-50 py-14 text-center text-slate-400">
+                <div className="rounded-[20px] border border-dashed border-border bg-muted py-14 text-center text-muted-foreground">
                   No media files yet. Upload evidence to strengthen customer approval.
                 </div>
               )}

@@ -297,7 +297,7 @@ export default function TemplateEditorPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-400">
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
         Loading template…
       </div>
     );
@@ -305,7 +305,7 @@ export default function TemplateEditorPage() {
 
   if (!template) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-400">
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
         Template not found
       </div>
     );
@@ -361,12 +361,12 @@ export default function TemplateEditorPage() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{template.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{template.name}</h1>
               <Badge variant={template.is_active ? "default" : "secondary"}>
                 {template.is_active ? "Active" : "Inactive"}
               </Badge>
               {template.is_default && <Badge variant="secondary">Default</Badge>}
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-muted-foreground">
                 {template.vehicle_type || "All vehicles"} · {sections.length} sections · {sections.reduce((sum, s) => sum + s.inspection_items.length, 0)} items
               </span>
               <Button variant="ghost" size="icon" onClick={() => setEditingHeader(true)}>
@@ -399,15 +399,15 @@ export default function TemplateEditorPage() {
             <div key={section.id} className="border rounded-lg">
               {/* Section header */}
               <div
-                className="flex items-center gap-2 p-3 cursor-pointer hover:bg-slate-50"
+                className="flex items-center gap-2 p-3 cursor-pointer hover:bg-muted"
                 onClick={() => toggleSection(section.id)}
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-                <span className="font-semibold text-slate-800 flex-1"
+                <span className="font-semibold text-foreground flex-1"
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     const newName = prompt("Section name:", section.name);
@@ -416,7 +416,7 @@ export default function TemplateEditorPage() {
                 >
                   {section.name}
                 </span>
-                <span className="text-xs text-slate-400">{items.length} items</span>
+                <span className="text-xs text-muted-foreground">{items.length} items</span>
                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-7 w-7"
                     onClick={() => moveSection(sections, sIdx, "up")}
@@ -447,24 +447,24 @@ export default function TemplateEditorPage() {
               {isExpanded && (
                 <div className="border-t">
                   {items.length === 0 ? (
-                    <div className="p-3 text-sm text-slate-400 text-center">
+                    <div className="p-3 text-sm text-muted-foreground text-center">
                       No items yet — click + to add
                     </div>
                   ) : (
                     items.map((item, iIdx) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-slate-50 text-sm"
+                        className="flex items-center gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-muted text-sm"
                       >
-                        <span className="text-xs text-slate-400 w-5 text-right">
+                        <span className="text-xs text-muted-foreground w-5 text-right">
                           {iIdx + 1}.
                         </span>
-                        <span className="flex-1 text-slate-700">{item.label}</span>
+                        <span className="flex-1 text-foreground/80">{item.label}</span>
                         <Badge variant="outline" className="text-xs">
                           {INPUT_TYPES.find((t) => t.value === item.input_type)?.label || item.input_type}
                         </Badge>
                         {item.unit && (
-                          <span className="text-xs text-slate-400">({item.unit})</span>
+                          <span className="text-xs text-muted-foreground">({item.unit})</span>
                         )}
                         {item.requires_photo && (
                           <Camera className="h-3 w-3 text-blue-500" />

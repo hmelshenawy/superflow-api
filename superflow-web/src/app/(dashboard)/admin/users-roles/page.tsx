@@ -158,7 +158,7 @@ export default function UsersRolesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-slate-400">Loading…</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Loading…</TableCell>
               </TableRow>
             ) : (
               users.map((u) => (

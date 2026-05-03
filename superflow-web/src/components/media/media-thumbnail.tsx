@@ -86,9 +86,9 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
   const isVideo = file.file_type === "video";
 
   return (
-    <div className="group relative overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 transition-shadow hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-[20px] border border-border bg-slate-50 transition-shadow hover:shadow-md">
       {/* Preview area */}
-      <div className="flex h-36 items-center justify-center bg-white relative">
+      <div className="flex h-36 items-center justify-center bg-card relative">
         {isPhoto && previewUrl ? (
           <img
             src={previewUrl}
@@ -107,7 +107,7 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             onClick={handleView}
-            className="rounded-full bg-white p-2 text-slate-800 shadow hover:bg-slate-100"
+            className="rounded-full bg-card p-2 text-foreground shadow hover:bg-muted"
             title="Open file"
           >
             <Eye className="h-4 w-4" />
@@ -115,7 +115,7 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="rounded-full bg-white p-2 text-red-600 shadow hover:bg-red-50 disabled:opacity-50"
+            className="rounded-full bg-card p-2 text-red-600 shadow hover:bg-red-50 disabled:opacity-50"
             title="Delete file"
           >
             <Trash2 className="h-4 w-4" />
@@ -124,11 +124,11 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
       </div>
 
       {/* Info area */}
-      <div className="border-t border-slate-200 px-3 py-2">
-        <p className="truncate text-sm font-medium text-slate-800">
+      <div className="border-t border-border px-3 py-2">
+        <p className="truncate text-sm font-medium text-foreground">
           {file.original_filename || file.id}
         </p>
-        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <span className="uppercase tracking-wide">{file.file_type || "file"}</span>
           {file.size_bytes ? <span>· {formatSize(file.size_bytes)}</span> : null}
         </div>

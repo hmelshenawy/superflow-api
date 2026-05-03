@@ -270,7 +270,7 @@ export default function BookingImportPage() {
                     ? "bg-blue-100 text-blue-700 font-medium"
                     : done
                     ? "bg-green-50 text-green-600"
-                    : "text-slate-400"
+                    : "text-muted-foreground"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -289,7 +289,7 @@ export default function BookingImportPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="border-2 border-dashed rounded-lg p-8 text-center">
-              <Upload className="mx-auto h-10 w-10 text-slate-400 mb-3" />
+              <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground mb-2">
                 Drop an Excel or CSV file here, or click to browse
               </p>
@@ -362,7 +362,7 @@ export default function BookingImportPage() {
                     <TableHead className="w-1/4">Maps To</TableHead>
                     {parsed.preview.length > 0 &&
                       parsed.preview.slice(0, 3).map((_, pi) => (
-                        <TableHead key={pi} className="text-xs text-slate-400">
+                        <TableHead key={pi} className="text-xs text-muted-foreground">
                           Preview {pi + 1}
                         </TableHead>
                       ))}

@@ -18,7 +18,7 @@ export default function DashboardLoading() {
       {/* Stat cards skeleton */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div key={i} className="rounded-2xl border border-border bg-card p-4">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="mt-2 h-7 w-28" />
           </div>
@@ -26,8 +26,8 @@ export default function DashboardLoading() {
       </div>
 
       {/* Table skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 p-4">
+      <div className="rounded-2xl border border-border bg-card">
+        <div className="border-b border-border p-4">
           <Skeleton className="h-5 w-32" />
         </div>
         {Array.from({ length: 5 }).map((_, i) => (

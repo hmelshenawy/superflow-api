@@ -90,7 +90,7 @@ function resultToSeverity(value?: string | null, urgency?: string | null): Conce
 function severityMeta(severity: ConcernSeverity) {
   if (severity === "red") return { tone: "border-rose-200 bg-rose-50", badge: "bg-rose-100 text-rose-700", icon: <XCircle className="h-3.5 w-3.5" />, label: "Red" };
   if (severity === "amber") return { tone: "border-amber-200 bg-amber-50", badge: "bg-amber-100 text-amber-800", icon: <AlertTriangle className="h-3.5 w-3.5" />, label: "Yellow" };
-  return { tone: "border-slate-200 bg-slate-50", badge: "bg-slate-100 text-slate-700", icon: null, label: "General" };
+  return { tone: "border-border bg-slate-50", badge: "bg-muted text-foreground/80", icon: null, label: "General" };
 }
 
 function summarizeGroupDecision(lines: EstimateLine[], decisionByLine: Record<string, JobAuthorisationDecision>): GroupDecisionSummary | null {
@@ -332,8 +332,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
             : groupDecision?.decision === "deferred"
               ? "bg-amber-100 text-amber-800"
               : groupDecision?.decision === "pending"
-                ? "bg-slate-100 text-slate-700"
-                : "bg-slate-200 text-slate-700";
+                ? "bg-muted text-foreground/80"
+                : "bg-slate-200 text-foreground/80";
         const groupDecisionLabel = groupDecision?.decision === "approved"
           ? "Approved"
           : groupDecision?.decision === "declined"
@@ -352,12 +352,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
             <div className="cursor-pointer select-none" onClick={() => { if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); }}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  {isCollapsed ? <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />}
+                  {isCollapsed ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
                   {isCustom ? (
                     editingGroupTitle === group.quoteGroupId ? (
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <Input
-                          className="h-8 w-[200px] bg-white font-semibold text-sm"
+                          className="h-8 w-[200px] bg-card font-semibold text-sm"
                           value={draftGroupTitle}
                           onChange={(e) => setDraftGroupTitle(e.target.value)}
                           autoFocus
@@ -370,12 +370,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                         <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingGroupTitle(null)}>Cancel</Button>
                       </div>
                     ) : (
-                      <h3 className="cursor-pointer rounded px-1 text-sm font-semibold text-slate-950 hover:bg-slate-100" onClick={(e) => { e.stopPropagation(); setDraftGroupTitle(group.title); setEditingGroupTitle(group.quoteGroupId); }}>
+                      <h3 className="cursor-pointer rounded px-1 text-sm font-semibold text-foreground hover:bg-muted" onClick={(e) => { e.stopPropagation(); setDraftGroupTitle(group.title); setEditingGroupTitle(group.quoteGroupId); }}>
                         {group.title}
                       </h3>
                     )
                   ) : (
-                    <h3 className="text-sm font-semibold text-slate-950">{group.title}</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
                   )}
                   <Badge className={meta.badge}>
                     <span className="mr-1 inline-flex">{meta.icon}</span>
@@ -384,8 +384,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {groupDecisionLabel ? <Badge className={groupDecisionTone}>{groupDecisionLabel}</Badge> : null}
-                  <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
-                    Total: <span className="font-semibold text-slate-950">{defaults.currency} {groupTotal.toFixed(2)}</span>
+                  <div className="rounded-xl bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
+                    Total: <span className="font-semibold text-foreground">{defaults.currency} {groupTotal.toFixed(2)}</span>
                   </div>
                   {!isCollapsed && (
                   <>
@@ -411,9 +411,9 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   )}
                 </div>
               </div>
-              {(group.detail && !isCustom) ? <p className="mt-1.5 text-xs text-slate-500">{group.detail}</p> : null}
+              {(group.detail && !isCustom) ? <p className="mt-1.5 text-xs text-muted-foreground">{group.detail}</p> : null}
               {groupDecision ? (
-                <div className="mt-2 text-xs text-slate-600">
+                <div className="mt-2 text-xs text-muted-foreground">
                   {groupDecision.decidedAt ? <span>Reply: {new Date(groupDecision.decidedAt).toLocaleString("en-GB")}</span> : null}
                   {groupDecision.comment ? <p className="mt-1">Comment: {groupDecision.comment}</p> : null}
                 </div>
@@ -424,7 +424,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
             {!isCollapsed && (
             <div className="mt-4 space-y-3">
               {group.lines.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm text-slate-500">
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm text-muted-foreground">
                   No parts or labour added yet.
                 </div>
               ) : (
@@ -433,10 +433,10 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   return (order[a.type] ?? 3) - (order[b.type] ?? 3);
                 }).map((line) => {
                   return (
-                  <div key={line.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div key={line.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
                     <div className="grid gap-3 xl:grid-cols-[110px_minmax(240px,1fr)_72px_170px_72px_72px_130px_44px]">
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Type</p>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Type</p>
                         <Select value={line.type} onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}>
                           <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -447,15 +447,15 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                         </Select>
                       </div>
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Description</p>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Description</p>
                         <Input className="h-9" value={line.description ?? ""} onChange={(e) => updateLine(line.id, { description: e.target.value })} placeholder="Description" />
                       </div>
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Qty</p>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Qty</p>
                         <Input className="h-9 text-right" type="number" min={0} step={0.5} value={line.quantity ?? 1} onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })} />
                       </div>
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Unit price</p>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Unit price</p>
                         {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
                           <Select value={getMatchedLabourRateId(line)} onValueChange={(v) => { if (v === "custom") return; const m = defaults.labour_rates?.find((r) => r.id === v); if (!m) return; updateLine(line.id, { unit_price: Number(m.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); }}>
                             <SelectTrigger className="h-9 text-xs"><SelectValue>{getLabourRateLabel(line)}</SelectValue></SelectTrigger>
@@ -469,16 +469,16 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                         )}
                       </div>
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Disc %</p>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Disc %</p>
                         <Input className="h-9 text-right" type="number" min={0} max={100} value={line.discount_pct ?? 0} onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })} />
                       </div>
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Tax %</p>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Tax %</p>
                         <Input className="h-9 text-right" type="number" min={0} max={100} value={line.tax_rate_pct ?? defaults.default_tax_rate} onChange={(e) => updateLine(line.id, { tax_rate_pct: parseFloat(e.target.value) || 0 })} />
                       </div>
                       <div>
-                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">Line total</p>
-                        <div className="flex h-9 items-center justify-end rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900">
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Line total</p>
+                        <div className="flex h-9 items-center justify-end rounded-lg border border-border bg-slate-50 px-3 text-sm font-semibold text-foreground">
                           {defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}
                         </div>
                       </div>
@@ -498,16 +498,16 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         );
       })}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm text-slate-500">Checklist concerns are auto-grouped above. Add custom groups for things like customer requests.</p>
+          <p className="text-sm text-muted-foreground">Checklist concerns are auto-grouped above. Add custom groups for things like customer requests.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={createCustomGroup}>
             <Plus className="mr-1 h-4 w-4" /> New group
           </Button>
-          <p className="ml-2 text-sm text-slate-500">
-            Total: <span className="text-lg font-bold text-slate-900">{defaults.currency} {total.toFixed(2)}</span>
+          <p className="ml-2 text-sm text-muted-foreground">
+            Total: <span className="text-lg font-bold text-foreground">{defaults.currency} {total.toFixed(2)}</span>
           </p>
           <Button onClick={save} disabled={saving}>
             {saving ? "Saving…" : "Save Estimate"}

@@ -131,13 +131,13 @@ export default function DeferredWorkPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-slate-400">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-slate-400">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No deferred work items
                 </TableCell>
               </TableRow>

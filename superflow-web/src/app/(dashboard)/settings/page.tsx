@@ -166,9 +166,9 @@ function FieldRow({
   return (
     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <Label className="text-sm font-medium text-slate-700">{label}</Label>
+        <Label className="text-sm font-medium text-foreground/80">{label}</Label>
         {sublabel && (
-          <p className="text-xs text-slate-400">{sublabel}</p>
+          <p className="text-xs text-muted-foreground">{sublabel}</p>
         )}
       </div>
       <div className="w-full sm:w-64">{children}</div>
@@ -209,7 +209,7 @@ function ProfileSection() {
     return (
       <SectionCard title="Profile">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </SectionCard>
     );
@@ -323,7 +323,7 @@ function SessionsSection() {
     <SectionCard title="Active Sessions" description="Devices where you're logged in. Revoke any you don't recognize.">
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : sessions.length === 0 ? (
         <p className="text-sm text-muted-foreground">No active sessions.</p>
@@ -335,7 +335,7 @@ function SessionsSection() {
               className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3"
             >
               <div className="flex items-center gap-3">
-                <Monitor className="h-5 w-5 text-slate-400" />
+                <Monitor className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     {i === 0 ? "Current session" : `Session ${sessions.length - i}`}
@@ -444,7 +444,7 @@ function WorkshopSection() {
     return (
       <SectionCard title="Workshop Settings">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </SectionCard>
     );
@@ -545,7 +545,7 @@ function PriorityMatrixSection() {
     return (
       <SectionCard title="Priority Matrix">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </SectionCard>
     );
@@ -652,7 +652,7 @@ function NotificationsSection() {
     return (
       <SectionCard title="Notifications">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </SectionCard>
     );
@@ -721,7 +721,7 @@ function IntegrationsSection() {
     return (
       <SectionCard title="Integrations">
         <div className="flex justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </SectionCard>
     );

@@ -95,8 +95,8 @@ export default function NewJobPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">New Job</h1>
-          <p className="text-sm text-slate-500">Create a new workshop job card</p>
+          <h1 className="text-2xl font-bold text-foreground">New Job</h1>
+          <p className="text-sm text-muted-foreground">Create a new workshop job card</p>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ export default function NewJobPage() {
           <form className="space-y-6" onSubmit={submit}>
             {/* Customer */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-700">Customer</h3>
+              <h3 className="text-sm font-semibold text-foreground/80">Customer</h3>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-1">
                   <Label htmlFor="customerName">Name *</Label>
@@ -143,7 +143,7 @@ export default function NewJobPage() {
 
             {/* Vehicle */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-700">Vehicle</h3>
+              <h3 className="text-sm font-semibold text-foreground/80">Vehicle</h3>
               <div className="grid gap-4 md:grid-cols-5">
                 <div className="space-y-1">
                   <Label htmlFor="vehicleMake">Make *</Label>
@@ -197,7 +197,7 @@ export default function NewJobPage() {
 
             {/* Job Info */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-700">Job Info</h3>
+              <h3 className="text-sm font-semibold text-foreground/80">Job Info</h3>
               <div className="space-y-2">
                 <Label htmlFor="concern">Customer Concern</Label>
                 <Textarea

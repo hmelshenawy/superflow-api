@@ -134,7 +134,7 @@ function StatCard({
   sub?: string;
 }) {
   const tones: Record<string, string> = {
-    slate: "border-slate-200 bg-muted",
+    slate: "border-border bg-muted",
     blue: "border-blue-200 bg-blue-50",
     amber: "border-amber-200 bg-amber-50",
     rose: "border-rose-200 bg-rose-50",
@@ -200,7 +200,7 @@ export default function InsightsPage() {
   if (loading && !data) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -251,7 +251,7 @@ export default function InsightsPage() {
         <button
           onClick={fetchDashboard}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[13px] font-medium text-slate-700 shadow-sm transition hover:bg-muted"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[13px] font-medium text-foreground/80 shadow-sm transition hover:bg-muted"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           Refresh
@@ -387,7 +387,7 @@ export default function InsightsPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 No approval data yet
               </div>
             )}
@@ -417,7 +417,7 @@ export default function InsightsPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 No inspection data yet
               </div>
             )}
@@ -451,7 +451,7 @@ export default function InsightsPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                 No deferred work
               </div>
             )}

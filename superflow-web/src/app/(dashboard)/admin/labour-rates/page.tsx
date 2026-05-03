@@ -127,7 +127,7 @@ export default function LabourRatesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-slate-400">Loading…</TableCell>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Loading…</TableCell>
               </TableRow>
             ) : (
               rates.map((r) => (
