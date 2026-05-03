@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
@@ -47,9 +47,23 @@ function isAdmin(user: { role?: { name?: string | null } | null; role_id?: strin
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sidebar-collapsed") === "true";
+  });
+  const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const admin = isAdmin(user);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  }, []);
 
   const filteredItems = NAV_ITEMS.filter((item) => !item.adminOnly || admin);
 
@@ -152,7 +166,7 @@ export function Sidebar() {
       </div>
 
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={toggleCollapsed}
         className="hidden lg:flex items-center justify-center border-t border-slate-800 py-2.5 text-slate-400 transition hover:bg-slate-900 hover:text-white"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
