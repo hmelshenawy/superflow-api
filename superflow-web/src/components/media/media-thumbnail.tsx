@@ -96,11 +96,11 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
             className="h-full w-full object-cover"
           />
         ) : isPhoto ? (
-          <ImageIcon className="h-10 w-10 text-slate-300 animate-pulse" />
+          <ImageIcon className="h-10 w-10 text-muted-foreground/60 animate-pulse" />
         ) : isVideo ? (
-          <Film className="h-10 w-10 text-slate-300" />
+          <Film className="h-10 w-10 text-muted-foreground/60" />
         ) : (
-          <FileText className="h-10 w-10 text-slate-300" />
+          <FileText className="h-10 w-10 text-muted-foreground/60" />
         )}
 
         {/* Hover overlay */}

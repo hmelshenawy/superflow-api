@@ -81,14 +81,14 @@ const LIGHT_STYLES: Record<TrafficLight, { bg: string; border: string; dot: stri
   },
   none: {
     bg: "bg-slate-50",
-    border: "border-slate-200",
+    border: "border-border",
     dot: "bg-slate-300",
     icon: MinusCircle,
   },
 };
 
 const URGENCY_STYLES: Record<string, { chip: string; label: string }> = {
-  none: { chip: "bg-slate-100 text-slate-600", label: "None" },
+  none: { chip: "bg-muted text-slate-600", label: "None" },
   low: { chip: "bg-sky-100 text-sky-700", label: "Low" },
   medium: { chip: "bg-amber-100 text-amber-800", label: "Medium" },
   high: { chip: "bg-orange-100 text-orange-800", label: "High" },
@@ -340,7 +340,7 @@ export function InspectionWorkspace({
   return (
     <div className="space-y-4">
       {/* ── summary bar ── */}
-      <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Overview
         </span>
@@ -355,7 +355,7 @@ export function InspectionWorkspace({
             <XCircle className="h-3 w-3" /> {summary.red}
           </span>
           {summary.unset > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-slate-600">
               <MinusCircle className="h-3 w-3" /> {summary.unset}
             </span>
           )}
@@ -370,9 +370,9 @@ export function InspectionWorkspace({
         sections.map((section: any) => (
           <div
             key={section.id}
-            className="rounded-[18px] border border-slate-200 bg-white"
+            className="rounded-[18px] border border-border bg-card"
           >
-            <div className="border-b border-slate-100 px-4 py-3">
+            <div className="border-b border-border px-4 py-3">
               <h3 className="text-[13px] font-semibold text-slate-900">
                 {section.icon ? `${section.icon} ` : ""}
                 {section.name}
@@ -412,7 +412,7 @@ export function InspectionWorkspace({
                           light === "green" && "text-emerald-500",
                           light === "amber" && "text-amber-500",
                           light === "red" && "text-rose-500",
-                          light === "none" && "text-slate-300"
+                          light === "none" && "text-muted-foreground/60"
                         )}
                       />
                       <div className="min-w-0 flex-1">
@@ -430,7 +430,7 @@ export function InspectionWorkspace({
                           className={cn(
                             "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                             URGENCY_STYLES[value.urgency]?.chip ??
-                              "bg-slate-100 text-slate-600"
+                              "bg-muted text-slate-600"
                           )}
                         >
                           {URGENCY_STYLES[value.urgency]?.label ?? value.urgency}
@@ -449,7 +449,7 @@ export function InspectionWorkspace({
                           <div className="flex items-center gap-2">
                             <Input
                               type="number"
-                              className="h-8 w-28 rounded-lg border-slate-200 text-[13px]"
+                              className="h-8 w-28 rounded-lg border-border text-[13px]"
                               placeholder={item.input_type === "odometer" ? "Mileage" : undefined}
                               value={value.value}
                               onChange={(e) =>
@@ -464,7 +464,7 @@ export function InspectionWorkspace({
                           </div>
                         ) : item.input_type === "text" ? (
                           <Input
-                            className="h-8 w-40 rounded-lg border-slate-200 text-[13px]"
+                            className="h-8 w-40 rounded-lg border-border text-[13px]"
                             value={value.value}
                             onChange={(e) =>
                               setItem(item.id, { value: e.target.value })
@@ -477,7 +477,7 @@ export function InspectionWorkspace({
                               setItem(item.id, { value: v ?? "" })
                             }
                           >
-                            <SelectTrigger className="h-8 w-28 rounded-lg border-slate-200 text-[13px]">
+                            <SelectTrigger className="h-8 w-28 rounded-lg border-border text-[13px]">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -521,7 +521,7 @@ export function InspectionWorkspace({
                             setItem(item.id, { urgency: v ?? "none" })
                           }
                         >
-                          <SelectTrigger className="h-8 w-24 rounded-lg border-slate-200 text-[13px]">
+                          <SelectTrigger className="h-8 w-24 rounded-lg border-border text-[13px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -563,7 +563,7 @@ export function InspectionWorkspace({
                             }
                             disabled={uploadingFor === item.id}
                             className={cn(
-                              "inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[13px] font-medium text-slate-700 transition hover:bg-slate-50",
+                              "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[13px] font-medium text-foreground/80 transition hover:bg-muted",
                               uploadingFor === item.id &&
                                 "pointer-events-none opacity-60"
                             )}
@@ -599,7 +599,7 @@ export function InspectionWorkspace({
                         {mediaFiles.map((mf: MediaFile) => (
                           <div
                             key={mf.id}
-                            className="group relative h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+                            className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted"
                           >
                             {mf.file_type === "video" ? (
                               <div className="flex h-full w-full items-center justify-center bg-slate-200">
@@ -633,7 +633,7 @@ export function InspectionWorkspace({
                     <div className="mt-2 pl-6">
                       <Textarea
                         rows={1}
-                        className="rounded-lg border-slate-200 text-[13px] placeholder:text-slate-300"
+                        className="rounded-lg border-border text-[13px] placeholder:text-muted-foreground/60"
                         value={value.tech_notes}
                         onChange={(e) =>
                           setItem(item.id, { tech_notes: e.target.value })

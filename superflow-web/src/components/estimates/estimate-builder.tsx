@@ -424,7 +424,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
             {!isCollapsed && (
             <div className="mt-4 space-y-3">
               {group.lines.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-4 py-5 text-sm text-muted-foreground">
+                <div className="rounded-xl border border-dashed border-border bg-white/70 px-4 py-5 text-sm text-muted-foreground">
                   No parts or labour added yet.
                 </div>
               ) : (
