@@ -88,9 +88,9 @@ function resultToSeverity(value?: string | null, urgency?: string | null): Conce
 }
 
 function severityMeta(severity: ConcernSeverity) {
-  if (severity === "red") return { tone: "border-rose-200 bg-rose-50", badge: "bg-rose-100 text-rose-700", icon: <XCircle className="h-3.5 w-3.5" />, label: "Red" };
-  if (severity === "amber") return { tone: "border-amber-200 bg-amber-50", badge: "bg-amber-100 text-amber-800", icon: <AlertTriangle className="h-3.5 w-3.5" />, label: "Yellow" };
-  return { tone: "border-border bg-slate-50", badge: "bg-muted text-foreground/80", icon: null, label: "General" };
+  if (severity === "red") return { tone: "border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40", badge: "bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-200", icon: <XCircle className="h-3.5 w-3.5" />, label: "Red" };
+  if (severity === "amber") return { tone: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40", badge: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200", icon: <AlertTriangle className="h-3.5 w-3.5" />, label: "Yellow" };
+  return { tone: "border-border bg-muted", badge: "bg-muted text-foreground/80", icon: null, label: "General" };
 }
 
 function summarizeGroupDecision(lines: EstimateLine[], decisionByLine: Record<string, JobAuthorisationDecision>): GroupDecisionSummary | null {
@@ -326,14 +326,14 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         const isCollapsed = collapsedGroups.has(group.key);
         const groupDecision = summarizeGroupDecision(group.lines, decisionByLine);
         const groupDecisionTone = groupDecision?.decision === "approved"
-          ? "bg-emerald-100 text-emerald-800"
+          ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200"
           : groupDecision?.decision === "declined"
-            ? "bg-rose-100 text-rose-800"
+            ? "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200"
             : groupDecision?.decision === "deferred"
-              ? "bg-amber-100 text-amber-800"
+              ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200"
               : groupDecision?.decision === "pending"
                 ? "bg-muted text-foreground/80"
-                : "bg-slate-200 text-foreground/80";
+                : "bg-muted text-foreground/80";
         const groupDecisionLabel = groupDecision?.decision === "approved"
           ? "Approved"
           : groupDecision?.decision === "declined"
@@ -478,7 +478,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                       </div>
                       <div>
                         <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Line total</p>
-                        <div className="flex h-9 items-center justify-end rounded-lg border border-border bg-slate-50 px-3 text-sm font-semibold text-foreground">
+                        <div className="flex h-9 items-center justify-end rounded-lg border border-border bg-muted px-3 text-sm font-semibold text-foreground">
                           {defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}
                         </div>
                       </div>

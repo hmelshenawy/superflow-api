@@ -62,37 +62,37 @@ function resultToTrafficLight(value: string, inputType?: string): TrafficLight {
 
 const LIGHT_STYLES: Record<TrafficLight, { bg: string; border: string; dot: string; icon: typeof CheckCircle2 }> = {
   green: {
-    bg: "bg-emerald-50",
-    border: "border-emerald-300",
+    bg: "bg-emerald-50 dark:bg-emerald-950/40",
+    border: "border-emerald-300 dark:border-emerald-700",
     dot: "bg-emerald-500",
     icon: CheckCircle2,
   },
   amber: {
-    bg: "bg-amber-50",
-    border: "border-amber-300",
+    bg: "bg-amber-50 dark:bg-amber-950/40",
+    border: "border-amber-300 dark:border-amber-700",
     dot: "bg-amber-500",
     icon: AlertTriangle,
   },
   red: {
-    bg: "bg-rose-50",
-    border: "border-rose-300",
+    bg: "bg-rose-50 dark:bg-rose-950/40",
+    border: "border-rose-300 dark:border-rose-700",
     dot: "bg-rose-500",
     icon: XCircle,
   },
   none: {
-    bg: "bg-slate-50",
+    bg: "bg-muted",
     border: "border-border",
-    dot: "bg-slate-300",
+    dot: "bg-slate-400 dark:bg-slate-500",
     icon: MinusCircle,
   },
 };
 
 const URGENCY_STYLES: Record<string, { chip: string; label: string }> = {
-  none: { chip: "bg-muted text-slate-600", label: "None" },
-  low: { chip: "bg-sky-100 text-sky-700", label: "Low" },
-  medium: { chip: "bg-amber-100 text-amber-800", label: "Medium" },
-  high: { chip: "bg-orange-100 text-orange-800", label: "High" },
-  critical: { chip: "bg-rose-100 text-rose-800", label: "Critical" },
+  none: { chip: "bg-muted text-muted-foreground", label: "None" },
+  low: { chip: "bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-200", label: "Low" },
+  medium: { chip: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200", label: "Medium" },
+  high: { chip: "bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200", label: "High" },
+  critical: { chip: "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200", label: "Critical" },
 };
 
 /* ── media file type ── */
@@ -341,7 +341,7 @@ export function InspectionWorkspace({
     <div className="space-y-4">
       {/* ── summary bar ── */}
       <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           Overview
         </span>
         <div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ export function InspectionWorkspace({
       </div>
 
       {sections.length === 0 ? (
-        <div className="py-12 text-center text-slate-400">
+        <div className="py-12 text-center text-muted-foreground">
           Inspection template has no items yet
         </div>
       ) : (
@@ -373,7 +373,7 @@ export function InspectionWorkspace({
             className="rounded-[18px] border border-border bg-card"
           >
             <div className="border-b border-border px-4 py-3">
-              <h3 className="text-[13px] font-semibold text-slate-900">
+              <h3 className="text-[13px] font-semibold text-foreground">
                 {section.icon ? `${section.icon} ` : ""}
                 {section.name}
               </h3>
@@ -416,11 +416,11 @@ export function InspectionWorkspace({
                         )}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-slate-900">
+                        <p className="text-[13px] font-medium text-foreground">
                           {item.label}
                         </p>
                         {item.help_text && (
-                          <p className="mt-0.5 text-[11px] text-slate-500">
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
                             {item.help_text}
                           </p>
                         )}
@@ -442,7 +442,7 @@ export function InspectionWorkspace({
                     <div className="mt-2 flex flex-wrap items-end gap-2.5 pl-6">
                       {/* result */}
                       <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wide text-slate-500">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Result
                         </Label>
                         {item.input_type === "number" || item.input_type === "odometer" ? (
@@ -457,7 +457,7 @@ export function InspectionWorkspace({
                               }
                             />
                             {(item.unit || item.input_type === "odometer") && (
-                              <span className="text-[11px] font-medium text-slate-500">
+                              <span className="text-[11px] font-medium text-muted-foreground">
                                 {item.unit || "km"}
                               </span>
                             )}
@@ -496,7 +496,7 @@ export function InspectionWorkspace({
                                             : resultToTrafficLight(opt, item.input_type) ===
                                               "red"
                                             ? "bg-rose-500"
-                                            : "bg-slate-300"
+                                            : "bg-muted-foreground"
                                         )}
                                       />
                                       {opt.charAt(0).toUpperCase() +
@@ -512,7 +512,7 @@ export function InspectionWorkspace({
 
                       {/* urgency */}
                       <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wide text-slate-500">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Urgency
                         </Label>
                         <Select
@@ -539,7 +539,7 @@ export function InspectionWorkspace({
                                       "h-2 w-2 rounded-full",
                                       URGENCY_STYLES[opt]
                                         ? URGENCY_STYLES[opt].chip.split(" ")[0]
-                                        : "bg-slate-200"
+                                        : "bg-muted"
                                     )}
                                   />
                                   {URGENCY_STYLES[opt]?.label ?? opt}
@@ -552,7 +552,7 @@ export function InspectionWorkspace({
 
                       {/* media upload */}
                       <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wide text-slate-500">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           Media
                         </Label>
                         <div className="flex items-center gap-1.5">
@@ -603,8 +603,8 @@ export function InspectionWorkspace({
                             className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted"
                           >
                             {mf.file_type === "video" ? (
-                              <div className="flex h-full w-full items-center justify-center bg-slate-200">
-                                <FileText className="h-4 w-4 text-slate-500" />
+                              <div className="flex h-full w-full items-center justify-center bg-muted">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
                               </div>
                             ) : previewUrls[mf.id] ? (
                               <img
@@ -613,8 +613,8 @@ export function InspectionWorkspace({
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-slate-200">
-                                <Camera className="h-4 w-4 text-slate-400" />
+                              <div className="flex h-full w-full items-center justify-center bg-muted">
+                                <Camera className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
                             <button
@@ -654,7 +654,7 @@ export function InspectionWorkspace({
 
       <div className="space-y-3">
         {isLocked && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
             This inspection is already submitted and locked.
           </div>
         )}
