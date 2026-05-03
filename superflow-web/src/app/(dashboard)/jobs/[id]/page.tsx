@@ -764,7 +764,7 @@ export default function JobDetailPage() {
                 <p className="text-sm text-muted-foreground">A clean action brief without repeating the full job record above.</p>
               </CardHeader>
               <CardContent className="space-y-4 p-5 text-sm text-foreground/80">
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 leading-6">
+                <div className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/30 p-4 leading-6">
                   {job.status === "booked" && <p>Move the job into checking and assign the technician so the inspection can start.</p>}
                   {job.status === "checking" && <p>Complete the inspection and convert findings into estimate lines for advisor review.</p>}
                   {job.status === "estimate_sent" && <p>Follow up with the customer, confirm they saw the media evidence, and push toward approval.</p>}

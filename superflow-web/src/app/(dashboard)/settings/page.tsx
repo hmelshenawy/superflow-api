@@ -556,7 +556,7 @@ function PriorityMatrixSection() {
       title="Priority Matrix"
       description="Adjust how much each risk factor adds to the job priority score. Values are points, not percentages; they do not need to sum to 100. Most groups apply one matching sub-item; Customer waiting can stack with one sensitivity sub-item."
     >
-      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+      <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 text-sm text-blue-900 dark:text-blue-200">
         Recommended range: <strong>0–30</strong>. 0 disables an item. Final job score is capped at 100.
       </div>
 

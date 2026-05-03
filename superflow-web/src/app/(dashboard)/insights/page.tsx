@@ -486,25 +486,25 @@ export default function InsightsPage() {
       <div className="rounded-2xl border border-border bg-card p-5">
         <h3 className="text-sm font-semibold text-foreground">Last 7 Days Activity</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-center">
-            <TrendingUp className="mx-auto h-5 w-5 text-blue-600" />
-            <p className="mt-1 text-2xl font-bold text-blue-950">{data.recentActivity.last7Days.jobsCreated}</p>
-            <p className="text-[11px] text-blue-600">Jobs Created</p>
+          <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
+            <TrendingUp className="mx-auto h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <p className="mt-1 text-2xl font-bold text-blue-950 dark:text-blue-200">{data.recentActivity.last7Days.jobsCreated}</p>
+            <p className="text-[11px] text-blue-600 dark:text-blue-400">Jobs Created</p>
           </div>
-          <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-center">
-            <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" />
-            <p className="mt-1 text-2xl font-bold text-emerald-950">{data.recentActivity.last7Days.jobsClosed}</p>
-            <p className="text-[11px] text-emerald-600">Jobs Closed</p>
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+            <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <p className="mt-1 text-2xl font-bold text-emerald-950 dark:text-emerald-200">{data.recentActivity.last7Days.jobsClosed}</p>
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Jobs Closed</p>
           </div>
-          <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-center">
-            <ClipboardCheck className="mx-auto h-5 w-5 text-amber-600" />
-            <p className="mt-1 text-2xl font-bold text-amber-950">{data.recentActivity.last7Days.inspectionsSubmitted}</p>
-            <p className="text-[11px] text-amber-600">Inspections Submitted</p>
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-center">
+            <ClipboardCheck className="mx-auto h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <p className="mt-1 text-2xl font-bold text-amber-950 dark:text-amber-200">{data.recentActivity.last7Days.inspectionsSubmitted}</p>
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">Inspections Submitted</p>
           </div>
-          <div className="rounded-lg border border-rose-100 bg-rose-50 p-3 text-center">
-            <Send className="mx-auto h-5 w-5 text-rose-600" />
-            <p className="mt-1 text-2xl font-bold text-rose-950">{data.recentActivity.last7Days.approvalsSent}</p>
-            <p className="text-[11px] text-rose-600">Approvals Sent</p>
+          <div className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-center">
+            <Send className="mx-auto h-5 w-5 text-rose-600 dark:text-rose-400" />
+            <p className="mt-1 text-2xl font-bold text-rose-950 dark:text-rose-200">{data.recentActivity.last7Days.approvalsSent}</p>
+            <p className="text-[11px] text-rose-600 dark:text-rose-400">Approvals Sent</p>
           </div>
         </div>
       </div>
