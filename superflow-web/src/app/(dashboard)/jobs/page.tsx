@@ -207,6 +207,30 @@ const OVERALL_COLUMN_HEADER_TONE: Record<JobStatus, string> = {
   closed: "border-emerald-200 bg-emerald-100/70",
 };
 
+const BOARD_COLUMN_WIDTH = 248;
+const BOARD_COLUMN_COLLAPSED_WIDTH = 46;
+const BOARD_COLUMN_GAP = 12;
+
+const BOARD_CARD_ACCENT: Record<JobStatus, string> = {
+  booked: "border-l-slate-300",
+  checking: "border-l-amber-400",
+  estimate_sent: "border-l-rose-400",
+  approved: "border-l-emerald-400",
+  in_progress: "border-l-blue-400",
+  waiting_parts: "border-l-purple-400",
+  quality_check: "border-l-cyan-400",
+  ready: "border-l-teal-400",
+  closed: "border-l-slate-400",
+};
+
+function getPriorityTone(score?: number) {
+  if (!score && score !== 0) return "bg-slate-100 text-slate-600 ring-slate-200";
+  if (score >= 85) return "bg-red-100 text-red-800 ring-red-200";
+  if (score >= 65) return "bg-amber-100 text-amber-800 ring-amber-200";
+  if (score >= 40) return "bg-blue-100 text-blue-800 ring-blue-200";
+  return "bg-slate-100 text-slate-700 ring-slate-200";
+}
+
 
 const CUSTOMER_SENSITIVITY_META: Record<CustomerSensitivity, { label: string; score: number; tone: string }> = {
   normal: { label: "Normal", score: 0, tone: "bg-slate-100 text-slate-700" },
@@ -227,15 +251,39 @@ const WORKSHOP_STAGE_META: Record<
   WorkshopStage,
   { label: string; sub: string; tone: string }
 > = {
-  waiting_technician: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200 bg-orange-50" },
-  received: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200 bg-orange-50" },
-  diagnosis: { label: "Diagnosis", sub: "Inspection / diagnosis active", tone: "border-amber-200 bg-amber-50" },
-  estimate_prep: { label: "Estimate Prep", sub: "Technician/advisor quote prep", tone: "border-blue-200 bg-blue-50" },
-  customer_approval: { label: "Advisor / Approval", sub: "Advisor follow-up + customer approval", tone: "border-rose-200 bg-rose-50" },
-  work_in_progress: { label: "WIP", sub: "Work in progress", tone: "border-sky-200 bg-sky-50" },
-  final_test: { label: "Final Test", sub: "Road/final test", tone: "border-cyan-200 bg-cyan-50" },
-  quality_check: { label: "QC", sub: "Quality check", tone: "border-cyan-200 bg-cyan-50" },
-  ready_handover: { label: "Ready Handover", sub: "Ready for delivery", tone: "border-emerald-200 bg-emerald-50" },
+  waiting_technician: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 bg-orange-50/35" },
+  received: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 bg-orange-50/35" },
+  diagnosis: { label: "Diagnosis", sub: "Inspection / diagnosis active", tone: "border-amber-200/70 bg-amber-50/35" },
+  estimate_prep: { label: "Estimate Prep", sub: "Technician/advisor quote prep", tone: "border-blue-200/70 bg-blue-50/35" },
+  customer_approval: { label: "Advisor / Approval", sub: "Advisor follow-up + customer approval", tone: "border-rose-200/70 bg-rose-50/35" },
+  work_in_progress: { label: "WIP", sub: "Work in progress", tone: "border-sky-200/70 bg-sky-50/35" },
+  final_test: { label: "Final Test", sub: "Road/final test", tone: "border-cyan-200/70 bg-cyan-50/35" },
+  quality_check: { label: "QC", sub: "Quality check", tone: "border-violet-200/70 bg-violet-50/35" },
+  ready_handover: { label: "Ready Handover", sub: "Ready for delivery", tone: "border-emerald-200/70 bg-emerald-50/35" },
+};
+
+const WORKSHOP_STAGE_ACCENT: Record<WorkshopStage, string> = {
+  waiting_technician: "border-l-orange-400",
+  received: "border-l-orange-400",
+  diagnosis: "border-l-amber-400",
+  estimate_prep: "border-l-blue-400",
+  customer_approval: "border-l-rose-400",
+  work_in_progress: "border-l-sky-400",
+  final_test: "border-l-cyan-400",
+  quality_check: "border-l-violet-400",
+  ready_handover: "border-l-emerald-400",
+};
+
+const WORKSHOP_STAGE_HEADER_TONE: Record<WorkshopStage, string> = {
+  waiting_technician: "bg-orange-50/60",
+  received: "bg-orange-50/60",
+  diagnosis: "bg-amber-50/60",
+  estimate_prep: "bg-blue-50/60",
+  customer_approval: "bg-rose-50/60",
+  work_in_progress: "bg-sky-50/60",
+  final_test: "bg-cyan-50/60",
+  quality_check: "bg-violet-50/60",
+  ready_handover: "bg-emerald-50/60",
 };
 
 const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]).filter((stage) => !["received", "advisor_review", "parts_check"].includes(stage));
@@ -538,10 +586,12 @@ export default function JobsPage() {
   const [mounted, setMounted] = useState(false);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dropColumn, setDropColumn] = useState<JobStatus | null>(null);
+  const [dropWorkshopStage, setDropWorkshopStage] = useState<WorkshopStage | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const [priorityWeights, setPriorityWeights] = useState<PriorityWeights>(DEFAULT_PRIORITY_WEIGHTS);
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
+  const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopStage>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
 
   const toggleColumn = useCallback((column: JobStatus) => {
@@ -550,6 +600,16 @@ export default function JobsPage() {
       if (next.has(column)) next.delete(column);
       else next.add(column);
       localStorage.setItem("superflow-collapsed-columns", JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const toggleWorkshopStage = useCallback((stage: WorkshopStage) => {
+    setCollapsedWorkshopStages((prev) => {
+      const next = new Set(prev);
+      if (next.has(stage)) next.delete(stage);
+      else next.add(stage);
+      localStorage.setItem("superflow-collapsed-workshop-stages", JSON.stringify([...next]));
       return next;
     });
   }, []);
@@ -571,6 +631,9 @@ export default function JobsPage() {
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setOverallView("list");
+    }
   }, []);
 
   useEffect(() => {
@@ -606,6 +669,13 @@ export default function JobsPage() {
       setCollapsedColumns(saved ? new Set(JSON.parse(saved) as JobStatus[]) : new Set());
     } catch {
       setCollapsedColumns(new Set());
+    }
+
+    try {
+      const savedWorkshopStages = localStorage.getItem("superflow-collapsed-workshop-stages");
+      setCollapsedWorkshopStages(savedWorkshopStages ? new Set(JSON.parse(savedWorkshopStages) as WorkshopStage[]) : new Set());
+    } catch {
+      setCollapsedWorkshopStages(new Set());
     }
   }, []);
 
@@ -699,6 +769,8 @@ export default function JobsPage() {
       .slice(0, 8)
   ), [enrichedJobs]);
 
+  const priorityByJobId = useMemo(() => new Map(enrichedJobs.map((item) => [item.job.id, item])), [enrichedJobs]);
+
   const workshopEnrichedJobs = useMemo(() => (
     enrichedJobs.filter((item) => isWorkshopPhaseJob(item.job))
   ), [enrichedJobs]);
@@ -741,6 +813,38 @@ export default function JobsPage() {
     } catch {
       setJobs(previousJobs);
       toast.error("Failed to update job status");
+    } finally {
+      setUpdatingJobId(null);
+    }
+  };
+
+  const moveJobToWorkshopStage = async (jobId: string, nextStage: WorkshopStage) => {
+    const currentJob = jobs.find((job) => job.id === jobId);
+    const currentStage = currentJob ? getWorkshopStage(currentJob) : null;
+    if (!currentJob || currentStage === nextStage) return;
+
+    const nextStatus: JobStatus = nextStage === "quality_check"
+      ? "quality_check"
+      : nextStage === "ready_handover"
+        ? "ready"
+        : "in_progress";
+    const previousJobs = jobs;
+    const optimisticJobs = jobs.map((job) =>
+      job.id === jobId ? { ...job, status: nextStatus, workshop_stage: nextStage } : job,
+    );
+
+    setJobs(optimisticJobs);
+    setUpdatingJobId(jobId);
+    setDraggedJobId(null);
+    setDropWorkshopStage(null);
+
+    try {
+      await api.patch(`/jobs/${jobId}`, { workshop_stage: nextStage });
+      toast.success(`${currentJob.job_number || "Job"} moved to ${WORKSHOP_STAGE_META[nextStage].label}`);
+      await fetchJobs();
+    } catch {
+      setJobs(previousJobs);
+      toast.error("Failed to update workshop stage");
     } finally {
       setUpdatingJobId(null);
     }
@@ -1039,18 +1143,51 @@ export default function JobsPage() {
                     key: stageKey,
                     ...WORKSHOP_STAGE_META[stageKey],
                     jobs: workshopJobs.filter((job) => getWorkshopStage(job) === stageKey),
-                  })).map((stage) => (
-                    <div key={stage.key} className={cn("flex h-[520px] w-[230px] shrink-0 flex-col rounded-[16px] border shadow-sm", stage.tone)}>
-                      <div className="border-b border-black/5 px-3 py-2.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-bold text-slate-950">{stage.label}</h3>
-                            <p className="mt-0.5 truncate text-[11px] text-slate-500">{stage.sub}</p>
-                          </div>
+                  })).map((stage) => {
+                    const isCollapsed = collapsedWorkshopStages.has(stage.key);
+                    return (
+                    <div
+                      key={stage.key}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        if (draggedJobId) setDropWorkshopStage(stage.key);
+                      }}
+                      onDragLeave={() => setDropWorkshopStage(null)}
+                      onDrop={async (event) => {
+                        event.preventDefault();
+                        const jobId = event.dataTransfer.getData("text/plain") || draggedJobId;
+                        if (!jobId) return;
+                        await moveJobToWorkshopStage(jobId, stage.key);
+                      }}
+                      className={cn(
+                        "flex h-[520px] shrink-0 flex-col rounded-[16px] border shadow-sm ring-1 ring-slate-100/70 transition-all",
+                        stage.tone,
+                        isCollapsed ? "w-[46px]" : "w-[230px]",
+                        dropWorkshopStage === stage.key && "border-blue-400 bg-blue-50/50 ring-2 ring-blue-200",
+                      )}
+                    >
+                      <div
+                        className={cn("cursor-pointer select-none border-b border-white/70 px-3 py-2.5", WORKSHOP_STAGE_HEADER_TONE[stage.key])}
+                        onClick={() => toggleWorkshopStage(stage.key)}
+                      >
+                        <div className={cn("flex items-start justify-between gap-2", isCollapsed && "flex-col items-center")}> 
+                          {isCollapsed ? (
+                            <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3 shrink-0 text-slate-400" />
+                          )}
+                          <span className={cn("h-2 w-2 rounded-full shrink-0", WORKSHOP_STAGE_ACCENT[stage.key].replace("border-l-", "bg-"))} />
+                          {!isCollapsed && (
+                            <div className="min-w-0 flex-1">
+                              <h3 className="truncate text-sm font-bold text-slate-950">{stage.label}</h3>
+                              <p className="mt-0.5 truncate text-[11px] text-slate-500">{stage.sub}</p>
+                            </div>
+                          )}
                           <span className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-slate-700 shadow-sm">{stage.jobs.length}</span>
                         </div>
                       </div>
 
+                      {!isCollapsed && (
                       <div className="flex-1 space-y-2 overflow-y-auto p-2.5">
                         {stage.jobs.length === 0 ? (
                           <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 p-4 text-center text-xs text-slate-400">
@@ -1061,11 +1198,43 @@ export default function JobsPage() {
                             const item = enrichedJobs.find((entry) => entry.job.id === job.id);
                             const overdue = isOverdue(job, nowTs);
                             return (
-                              <Link key={`${stage.key}-${job.id}`} href={`/jobs/${job.id}`} className="block rounded-xl border border-white bg-white p-2.5 text-xs shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
+                              <Link
+                                key={`${stage.key}-${job.id}`}
+                                href={`/jobs/${job.id}`}
+                                draggable
+                                onDragStart={(event) => {
+                                  setDraggedJobId(job.id);
+                                  event.dataTransfer.setData("text/plain", job.id);
+                                  event.dataTransfer.effectAllowed = "move";
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedJobId(null);
+                                  setDropWorkshopStage(null);
+                                }}
+                                className={cn(
+                                  "block rounded-xl border border-l-4 border-white bg-white p-2.5 text-xs shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md",
+                                  WORKSHOP_STAGE_ACCENT[stage.key],
+                                  overdue && "border-l-red-500 bg-red-50/40",
+                                  draggedJobId === job.id && "opacity-60",
+                                  updatingJobId === job.id && "ring-2 ring-slate-300",
+                                )}
+                              >
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="truncate font-bold text-slate-950">{job.job_number || "Draft job"}</p>
-                                    <p className="truncate text-slate-500">{getVehicleLabel(job)}</p>
+                                  <div className="flex min-w-0 items-start gap-1.5">
+                                    <span
+                                      className="mt-0.5 shrink-0 rounded-md border border-slate-200 bg-slate-50 p-1 text-slate-400 cursor-grab"
+                                      title="Drag to move"
+                                      onClick={(event) => event.preventDefault()}
+                                    >
+                                      <GripVertical className="h-3 w-3" />
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="inline-flex max-w-full rounded-md border border-blue-200 bg-blue-50/80 px-2 py-0.5 text-[13px] font-black leading-none tracking-[0.08em] text-blue-950 shadow-sm">
+                                        <span className="truncate tabular-nums">#{job.job_number || "Draft"}</span>
+                                      </p>
+                                      <p className="mt-1 truncate text-[11px] font-medium text-slate-500">{getVehicleLabel(job)}</p>
+                                      <p className="mt-0.5 truncate text-[12px] font-black tracking-[0.12em] text-slate-950 tabular-nums">{getPlate(job)}</p>
+                                    </div>
                                   </div>
                                   <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-bold", overdue ? "bg-red-100 text-red-700" : (item?.priorityScore ?? 0) >= 65 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600")}>{item?.priorityScore ?? 0}</span>
                                 </div>
@@ -1088,8 +1257,10 @@ export default function JobsPage() {
                           })
                         )}
                       </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1137,16 +1308,16 @@ export default function JobsPage() {
             </div>
           </div>
         ) : overallView === "board" ? (
-          <div className="mt-4 overflow-x-auto pb-1">
-            <div className="mb-2 flex min-w-max gap-2.5">
+          <div className="mt-4 overflow-x-auto pb-2">
+            <div className="mb-3 flex min-w-max gap-3">
               {OVERALL_PHASES.map((phase) => {
-                const width = phase.columns.reduce((sum, column) => sum + (collapsedColumns.has(column) ? 44 : 200), 0) + Math.max(0, phase.columns.length - 1) * 10;
+                const width = phase.columns.reduce((sum, column) => sum + (collapsedColumns.has(column) ? BOARD_COLUMN_COLLAPSED_WIDTH : BOARD_COLUMN_WIDTH), 0) + Math.max(0, phase.columns.length - 1) * BOARD_COLUMN_GAP;
                 const count = phase.columns.reduce((sum, column) => sum + boardJobs[column].length, 0);
                 return (
                   <div
                     key={phase.label}
                     style={{ width }}
-                    className={cn("rounded-xl border px-3 py-2 shadow-sm", phase.className)}
+                    className={cn("rounded-2xl border px-3.5 py-2.5 shadow-sm ring-1 ring-white/60", phase.className)}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
@@ -1159,7 +1330,7 @@ export default function JobsPage() {
                 );
               })}
             </div>
-            <div className="flex min-w-max gap-2.5">
+            <div className="flex min-w-max gap-3">
               {BOARD_COLUMNS.map((column) => {
                 const columnJobs = boardJobs[column];
                 const isCollapsed = collapsedColumns.has(column);
@@ -1181,14 +1352,14 @@ export default function JobsPage() {
                       await moveJobToStatus(jobId, column);
                     }}
                     className={cn(
-                      "flex shrink-0 flex-col rounded-[14px] border transition-all duration-200",
+                      "flex shrink-0 flex-col rounded-[18px] border shadow-sm transition-all duration-200",
                       OVERALL_COLUMN_TONE[column],
-                      isCollapsed ? "w-[44px]" : "w-[200px]",
+                      isCollapsed ? "w-[46px]" : "w-[248px]",
                       dropColumn === column && "border-slate-400 bg-slate-100",
                     )}
                   >
                     <div
-                      className={cn("cursor-pointer select-none border-b px-2.5 py-2", OVERALL_COLUMN_HEADER_TONE[column])}
+                      className={cn("cursor-pointer select-none border-b px-3 py-2.5", OVERALL_COLUMN_HEADER_TONE[column])}
                       onClick={() => toggleColumn(column)}
                     >
                       <div className={cn("flex items-center gap-2", isCollapsed && "flex-col")}>
@@ -1210,7 +1381,7 @@ export default function JobsPage() {
                     </div>
 
                     {!isCollapsed && (
-                    <div className="flex flex-1 flex-col gap-1.5 p-2 overflow-y-auto">
+                    <div className="flex flex-1 flex-col gap-2 p-2.5 overflow-y-auto">
                       {loading ? (
                         <div className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-xs text-slate-400">
                           Loading jobs...
@@ -1223,6 +1394,12 @@ export default function JobsPage() {
                         columnJobs.map((job) => {
                           const estimateTotal = getEstimateTotal(job);
                           const overdue = isOverdue(job, nowTs);
+                          const priority = priorityByJobId.get(job.id);
+                          const partsStatus = job.parts_status ?? "no_parts";
+                          const hasPartsSignal = partsStatus !== "no_parts" || job.status === "waiting_parts";
+                          const promiseLabel = job.promised_at
+                            ? new Intl.DateTimeFormat("en-GB", { month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at))
+                            : "No promise";
                           return (
                             <Link
                               key={job.id}
@@ -1238,90 +1415,105 @@ export default function JobsPage() {
                                 setDropColumn(null);
                               }}
                               className={cn(
-                                "group flex h-[160px] flex-col rounded-[12px] border border-slate-200 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
+                                "group flex min-h-[172px] flex-col rounded-2xl border border-l-4 border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg",
+                                BOARD_CARD_ACCENT[job.status],
+                                overdue && "border-l-red-500 bg-red-50/40",
+                                job.is_customer_waiting && !overdue && "border-l-red-400",
                                 draggedJobId === job.id && "opacity-60",
                                 updatingJobId === job.id && "ring-2 ring-slate-300",
                               )}
                             >
-                              <div className="flex items-center justify-between gap-1">
+                              <div className="flex items-start justify-between gap-2">
                                 <div className="flex min-w-0 items-center gap-1.5">
                                   <span
-                                    className="shrink-0 rounded border border-slate-200 bg-slate-50 p-0.5 text-slate-400 cursor-grab"
+                                    className="shrink-0 rounded-md border border-slate-200 bg-slate-50 p-1 text-slate-400 cursor-grab"
                                     title="Drag to move"
                                     onClick={(event) => event.preventDefault()}
                                   >
                                     <GripVertical className="h-3 w-3" />
                                   </span>
-                                  <p className="truncate text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                                    {job.job_number || "Draft"}
-                                  </p>
-                                </div>
-                                {overdue ? (
-                                  <span className="shrink-0 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                                    Overdue
-                                  </span>
-                                ) : (
-                                  <StatusPill status={job.status} />
-                                )}
-                              </div>
-
-                              <h3 className="mt-0.5 truncate text-[13px] font-semibold text-slate-950">
-                                {job.customer?.name || "Walk-in"}
-                              </h3>
-
-                              <div className="mt-1 min-h-0 flex-1 space-y-0.5">
-                                <p className="truncate text-[12px] font-medium text-slate-800">{getVehicleLabel(job)}</p>
-                                <p className="truncate text-[11px] text-slate-500">{getPlate(job)}</p>
-                                <p className="line-clamp-2 text-[11px] leading-tight text-slate-500">
-                                  {job.customer_concern || "No concern added"}
-                                </p>
-                                {(job.is_customer_waiting || (job.customer_sensitivity && job.customer_sensitivity !== "normal")) ? (
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    {job.is_customer_waiting ? <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700">Waiting</span> : null}
-                                    {job.customer_sensitivity && job.customer_sensitivity !== "normal" ? (
-                                      <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-bold", CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.tone)}>{CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.label}</span>
+                                  <div className="min-w-0">
+                                    <p className="inline-flex max-w-full rounded-md border border-blue-200 bg-blue-50/80 px-2 py-0.5 text-[13px] font-black leading-none tracking-[0.08em] text-blue-950 shadow-sm">
+                                      <span className="truncate tabular-nums">#{job.job_number || "Draft"}</span>
+                                    </p>
+                                    {overdue ? (
+                                      <span className="mt-0.5 inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700">
+                                        Overdue
+                                      </span>
                                     ) : null}
                                   </div>
+                                </div>
+                                <span className={cn("shrink-0 rounded-full px-2 py-1 text-[11px] font-black tabular-nums ring-1", getPriorityTone(priority?.priorityScore))}>
+                                  {priority?.priorityScore ?? "—"}
+                                </span>
+                              </div>
+
+                              <div className="mt-2 min-w-0">
+                                <h3 className="truncate text-[14px] font-bold leading-tight text-slate-950">
+                                  {job.customer?.name || "Walk-in"}
+                                </h3>
+                                <div className="mt-1 rounded-xl bg-slate-50 px-2.5 py-1.5 ring-1 ring-slate-100">
+                                  <p className="truncate text-[11px] font-medium text-slate-500">{getVehicleLabel(job)}</p>
+                                  <p className="mt-0.5 truncate text-[12px] font-black tracking-[0.12em] text-slate-950 tabular-nums">{getPlate(job)}</p>
+                                </div>
+                              </div>
+
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {job.is_customer_waiting ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[9px] font-bold text-red-700">Waiting customer</span> : null}
+                                {job.customer_sensitivity && job.customer_sensitivity !== "normal" ? (
+                                  <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold", CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.tone)}>{CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.label}</span>
+                                ) : null}
+                                {hasPartsSignal ? (
+                                  <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold", PARTS_STATUS_META[partsStatus]?.tone ?? "bg-purple-100 text-purple-800")}>
+                                    {PARTS_STATUS_META[partsStatus]?.label ?? "Parts"}
+                                  </span>
                                 ) : null}
                                 {job.status === "ready" && (
                                   job.customer_informed ? (
-                                    <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">✓ Informed</div>
+                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">✓ Informed</span>
                                   ) : (
                                     <button
                                       type="button"
                                       onClick={async (e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
                                         try {
                                           await api.patch(`/jobs/${job.id}`, { customer_informed: true });
                                           fetchJobs();
                                         } catch {}
                                       }}
-                                      className="mt-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800 hover:bg-amber-100"
+                                      className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-800 hover:bg-amber-100"
                                     >🔔 Inform</button>
                                   )
                                 )}
                               </div>
 
-                              <div className="mt-auto grid grid-cols-2 gap-1 text-[11px]">
-                                <div className="rounded-lg bg-slate-50 px-1.5 py-1">
-                                  <p className="text-[9px] uppercase tracking-wide text-slate-400">Advisor</p>
-                                  <p className="truncate font-medium text-slate-800">{job.advisor?.name || job.owner_code || "—"}</p>
+                              {priority?.nextAction?.title ? (
+                                <div className={cn("mt-2 rounded-xl border px-2 py-1.5 text-[11px] font-semibold leading-snug", getActionUrgencyClass(priority.nextAction.urgency))}>
+                                  <span className="opacity-70">Next:</span> {priority.nextAction.title}
                                 </div>
-                                <div className="rounded-lg bg-slate-50 px-1.5 py-1">
+                              ) : job.customer_concern ? (
+                                <p className="mt-2 line-clamp-2 text-[11px] leading-tight text-slate-500">{job.customer_concern}</p>
+                              ) : null}
+
+                              <div className="mt-auto grid grid-cols-[1fr_auto] items-end gap-2 pt-2 text-[11px]">
+                                <div className="min-w-0 rounded-xl bg-slate-50 px-2 py-1.5 ring-1 ring-slate-100">
+                                  <p className="text-[9px] uppercase tracking-wide text-slate-400">Advisor</p>
+                                  <p className="truncate font-semibold text-slate-800">{job.advisor?.name || job.owner_code || "—"}</p>
+                                </div>
+                                <div className="text-right">
                                   <p className="text-[9px] uppercase tracking-wide text-slate-400">Est.</p>
-                                  <p className="truncate font-medium text-slate-800">
-                                    {estimateTotal > 0 ? estimateTotal.toFixed(0) : "—"}
-                                  </p>
+                                  <p className="font-bold text-slate-900">{estimateTotal > 0 ? `${estimateTotal.toFixed(0)}` : "—"}</p>
                                 </div>
                               </div>
 
-                              <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
-                                <div className="flex min-w-0 items-center gap-1">
+                              <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                                <div className={cn("flex min-w-0 items-center gap-1 rounded-full px-2 py-1", overdue ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600")}>
                                   <Clock3 className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">{job.promised_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "—"}</span>
+                                  <span className="truncate font-semibold">{promiseLabel}</span>
                                 </div>
-                                <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-slate-900 group-hover:text-blue-700">
-                                  {updatingJobId === job.id ? "..." : "Open"}
+                                <span className="inline-flex shrink-0 items-center gap-0.5 font-bold text-slate-900 group-hover:text-blue-700">
+                                  {updatingJobId === job.id ? "Moving..." : "Details"}
                                   <ArrowRight className="h-3 w-3" />
                                 </span>
                               </div>

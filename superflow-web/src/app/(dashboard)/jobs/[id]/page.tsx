@@ -149,7 +149,7 @@ function estimateTotal(job: Job) {
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">{label}</p>
       <p className="mt-2 text-xl font-semibold text-slate-950">{value}</p>
       {hint ? <p className="mt-1 text-sm text-slate-500">{hint}</p> : null}
     </div>
@@ -426,551 +426,389 @@ export default function JobDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex items-start gap-3">
-            <Button
-              variant="outline"
-              size="icon"
-              className="mt-1 h-10 w-10 rounded-xl"
-              onClick={() => router.push("/jobs")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                360 job workspace
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-                {job.job_number || "New Job"}
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Created {formatDate(job.created_at)} • Last updated {formatDate(job.updated_at, true)}
-              </p>
+      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100">
+        <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-5 text-white lg:p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="mt-1 h-10 w-10 shrink-0 rounded-xl border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                onClick={() => router.push("/jobs")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-blue-100/70">Premium job workspace</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <h1 className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-3xl font-black tracking-tight text-white shadow-inner">
+                    #{job.job_number || "New"}
+                  </h1>
+                  <div className="min-w-0">
+                    <p className="truncate text-xl font-semibold tracking-tight text-white">{vehicle}</p>
+                    <p className="mt-1 text-sm text-slate-300">Created {formatDate(job.created_at)} • Updated {formatDate(job.updated_at, true)}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="rounded-2xl border border-blue-300/30 bg-blue-400/15 px-4 py-2 font-mono text-lg font-black tracking-[0.18em] text-blue-50 shadow-sm">
+                    {plate}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200">
+                    {job.customer?.name || "Walk-in"}
+                  </span>
+                  {job.is_customer_waiting ? (
+                    <span className="rounded-full border border-red-300/30 bg-red-400/15 px-3 py-1.5 text-xs font-bold text-red-100">Customer waiting</span>
+                  ) : null}
+                  {(job.customer_sensitivity ?? "normal") !== "normal" ? (
+                    <span className="rounded-full border border-amber-300/30 bg-amber-400/15 px-3 py-1.5 text-xs font-bold text-amber-100">
+                      {CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-3 xl:items-end">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={job.status} />
-              <Select value={job.status} onValueChange={async (value) => {
-                const to = value as JobStatus;
-                if (to === job.status) return;
-                setChangingStatus(true);
-                try {
-                  await api.patch(`/jobs/${job.id}/status`, { to_status: to });
-                  await refreshJob();
-                  toast.success(`Status changed to ${STATUS_META[to].label}`);
-                } catch {
-                  toast.error("Failed to change status");
-                } finally {
-                  setChangingStatus(false);
-                }
-              }} disabled={changingStatus}>
-                <SelectTrigger className="h-11 w-[220px] rounded-xl border-slate-200">
-                  <SelectValue placeholder="Change status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status} disabled={status === job.status ? false : !availableStatuses.includes(status)}>
-                      {STATUS_META[status].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {nextFlowStatus && (
-                <Button className="h-11 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" onClick={async () => {
+            <div className="rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur xl:min-w-[430px]">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={job.status} />
+                <Select value={job.status} onValueChange={async (value) => {
+                  const to = value as JobStatus;
+                  if (to === job.status) return;
                   setChangingStatus(true);
                   try {
-                    await api.patch(`/jobs/${job.id}/status`, { to_status: nextFlowStatus });
+                    await api.patch(`/jobs/${job.id}/status`, { to_status: to });
                     await refreshJob();
-                    toast.success(`Status changed to ${STATUS_META[nextFlowStatus].label}`);
+                    toast.success(`Status changed to ${STATUS_META[to].label}`);
                   } catch {
                     toast.error("Failed to change status");
                   } finally {
                     setChangingStatus(false);
                   }
                 }} disabled={changingStatus}>
-                  {changingStatus ? "Moving..." : `Next → ${STATUS_META[nextFlowStatus].label}`}
-                </Button>
-              )}
+                  <SelectTrigger className="h-11 flex-1 rounded-xl border-white/15 bg-white text-slate-900 xl:w-[210px]">
+                    <span>{STATUS_META[job.status].label}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status} disabled={status === job.status ? false : !availableStatuses.includes(status)}>
+                        {STATUS_META[status].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {nextFlowStatus && (
+                  <Button className="h-11 rounded-xl bg-blue-500 px-4 text-white shadow-sm hover:bg-blue-400" onClick={async () => {
+                    setChangingStatus(true);
+                    try {
+                      await api.patch(`/jobs/${job.id}/status`, { to_status: nextFlowStatus });
+                      await refreshJob();
+                      toast.success(`Status changed to ${STATUS_META[nextFlowStatus].label}`);
+                    } catch {
+                      toast.error("Failed to change status");
+                    } finally {
+                      setChangingStatus(false);
+                    }
+                  }} disabled={changingStatus}>
+                    {changingStatus ? "Moving..." : `Next → ${STATUS_META[nextFlowStatus].label}`}
+                  </Button>
+                )}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <div className="rounded-2xl bg-white/10 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-300">Advisor</p>
+                  <p className="truncate text-sm font-semibold text-white">{job.advisor?.name || "Unassigned"}</p>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-300">Technician</p>
+                  <p className="truncate text-sm font-semibold text-white">{job.technician?.name || "Unassigned"}</p>
+                </div>
+                <div className="rounded-2xl bg-white/10 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-[0.15em] text-slate-300">Promise</p>
+                  <p className="truncate text-sm font-semibold text-white">{formatDate(job.promised_at, true)}</p>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : null}
-              <Button variant="outline" className="h-11 rounded-xl" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
+          </div>
+
+          <div className="mt-6 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-max items-center gap-1.5">
+              {ALL_STATUSES.map((status, index) => {
+                const complete = index < currentStep;
+                const current = index === currentStep;
+                return (
+                  <div key={status} className="flex items-center gap-1.5">
+                    <div
+                      className={cn(
+                        "inline-flex min-w-[118px] items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold",
+                        complete
+                          ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
+                          : current
+                            ? "border-white bg-white text-slate-950 shadow-sm"
+                            : "border-white/10 bg-white/5 text-slate-300",
+                      )}
+                    >
+                      {complete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className={cn("h-1.5 w-1.5 rounded-full", current ? STATUS_META[status].dot : "bg-white/35")} />}
+                      {STATUS_META[status].label}
+                    </div>
+                    {index < ALL_STATUSES.length - 1 ? <div className="h-px w-4 bg-white/15" /> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-5 bg-slate-50/70 p-5 lg:p-6 xl:grid-cols-[0.95fr_1.35fr_0.95fr]">
+          <div className="flex min-h-0 flex-col gap-4">
+            <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Customer identity</p>
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <p className="mt-4 text-base font-semibold leading-6 tracking-tight text-slate-950">{job.customer?.name || "Walk-in"}</p>
+              </div>
+              <div className="divide-y divide-slate-100 px-5 py-1.5">
+                <div className="grid grid-cols-[76px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Phone</p>
+                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.phone || "No phone"}</p>
+                </div>
+                <div className="grid grid-cols-[76px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Email</p>
+                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.email || "No email"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Vehicle identity</p>
+                  <Car className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="mt-4 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold leading-6 tracking-tight text-slate-950">{vehicle}</p>
+                    <p className="mt-1 text-[11px] font-medium text-slate-500">Primary vehicle record</p>
+                  </div>
+                  <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5">
+                    <p className="font-mono text-sm font-semibold tracking-[0.12em] text-slate-900">{plate}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="divide-y divide-slate-100 px-5 py-1.5">
+                <div className="grid grid-cols-[76px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">VIN</p>
+                  <p className="break-all text-right font-mono text-sm font-semibold leading-5 text-slate-800">{job.vehicle?.vin || "No VIN"}</p>
+                </div>
+                <div className="grid grid-cols-[76px_1fr] items-center gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Odometer</p>
+                  <p className="text-right text-sm font-semibold leading-5 text-slate-900">{job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+              <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
+              <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
+              <StatCard label="Media" value={`${mediaCount}`} hint="files" />
+              <StatCard label="Approval" value={approvalStatusLabel} />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-blue-600" />
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Work focus</p>
+              </div>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Customer concern</p>
+                    {editingConcern ? null : (
+                      <button
+                        onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {editingConcern ? (
+                    <div className="mt-2 space-y-2">
+                      <Textarea className="min-h-[110px] rounded-lg border-slate-200 text-sm" placeholder="Describe the customer's concern..." value={draftConcern} onChange={(e) => setDraftConcern(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveConcern} disabled={savingConcern}><Save className="mr-1 h-3 w-3" /> {savingConcern ? "Saving..." : "Save"}</Button>
+                        <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingConcern(false)} disabled={savingConcern}><X className="mr-1 h-3 w-3" /> Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950" onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}>
+                      {job.customer_concern || "Click to add a customer concern."}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Internal notes</p>
+                    {editingNotes ? null : (
+                      <button
+                        onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  {editingNotes ? (
+                    <div className="mt-2 space-y-2">
+                      <Textarea className="min-h-[110px] rounded-lg border-slate-200 text-sm" placeholder="Internal notes visible to the team..." value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveNotes} disabled={savingNotes}><Save className="mr-1 h-3 w-3" /> {savingNotes ? "Saving..." : "Save"}</Button>
+                        <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingNotes(false)} disabled={savingNotes}><X className="mr-1 h-3 w-3" /> Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950" onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}>
+                      {job.internal_notes || "Click to add internal notes."}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Button variant="outline" className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
                 <ClipboardList className="mr-2 h-4 w-4" /> Inspection
               </Button>
-              <Button variant="outline" className="h-11 rounded-xl" onClick={() => router.push(`/jobs/${job.id}#media`)}>
+              <Button variant="outline" className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm" onClick={() => router.push(`/jobs/${job.id}#media`)}>
                 <ImageIcon className="mr-2 h-4 w-4" /> Media
               </Button>
+              {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-12 rounded-2xl">Approval link</Button>}
             </div>
           </div>
-        </div>
 
-        <div className="mt-6 overflow-x-auto pb-1">
-          <div className="flex min-w-max items-center gap-2">
-            {ALL_STATUSES.map((status, index) => {
-              const complete = index < currentStep;
-              const current = index === currentStep;
-              return (
-                <div key={status} className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "inline-flex min-w-[146px] items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium",
-                      complete
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : current
-                          ? "border-slate-950 bg-slate-950 text-white"
-                          : "border-slate-200 bg-slate-50 text-slate-500",
-                    )}
-                  >
-                    {complete ? <CheckCircle2 className="h-4 w-4" /> : <span className={cn("h-2 w-2 rounded-full", STATUS_META[status].dot)} />}
-                    {STATUS_META[status].label}
-                  </div>
-                  {index < ALL_STATUSES.length - 1 ? <div className="h-px w-6 bg-slate-200" /> : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 xl:grid-cols-[1.05fr_1.2fr_1.25fr]">
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Customer & vehicle</p>
-              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">Context</span>
-            </div>
-            <div className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                    <User className="h-4.5 w-4.5 text-blue-700" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Customer</p>
-                    <p className="text-base font-semibold text-slate-950">{job.customer?.name || "Walk-in"}</p>
-                  </div>
-                </div>
-                <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Phone</p>
-                    <p className="break-all font-mono text-[13px] font-semibold leading-5 text-slate-800">{job.customer?.phone || "No phone"}</p>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Email</p>
-                    <p className="break-all font-mono text-[13px] font-semibold leading-5 text-slate-800">{job.customer?.email || "No email"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                    <Car className="h-4.5 w-4.5 text-slate-700" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Vehicle</p>
-                    <p className="truncate text-base font-semibold text-slate-950">{vehicle}</p>
-                  </div>
-                </div>
-                <div className="grid gap-2 text-sm lg:grid-cols-[0.85fr_1.65fr]">
-                  <div className="rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Plate</p>
-                    <p className="whitespace-nowrap font-mono text-[13px] font-semibold leading-5 text-slate-800">{plate}</p>
-                  </div>
-                  <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">VIN</p>
-                    <p className="break-all font-mono text-[13px] font-semibold leading-5 text-slate-800">{job.vehicle?.vin || "No VIN"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Customer priority</p>
-                <div className="grid gap-3">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setSavingCustomerPriority(true);
-                    try {
-                      await api.patch(`/jobs/${job.id}`, { is_customer_waiting: !job.is_customer_waiting });
-                      await refreshJob();
-                      toast.success(!job.is_customer_waiting ? "Customer marked waiting" : "Customer waiting removed");
-                    } catch {
-                      toast.error("Failed to update customer waiting flag");
-                    } finally {
-                      setSavingCustomerPriority(false);
-                    }
-                  }}
-                  disabled={savingCustomerPriority}
-                  className={cn(
-                    "rounded-xl border px-4 py-3 text-left text-sm font-semibold transition",
-                    job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50",
-                  )}
-                >
-                  Customer waiting
-                  <span className="mt-1 block text-xs font-normal opacity-70">{job.is_customer_waiting ? "Yes - prioritize" : "No"}</span>
-                </button>
-
+          <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Assignment & control</p>
+              <div className="mt-4 space-y-4">
                 <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Sensitivity</p>
-                  <Select
-                    value={job.customer_sensitivity ?? "normal"}
-                    onValueChange={async (value) => {
-                      const sensitivity = value as CustomerSensitivity;
-                      setSavingCustomerPriority(true);
-                      try {
-                        await api.patch(`/jobs/${job.id}`, { customer_sensitivity: sensitivity });
-                        await refreshJob();
-                        toast.success(`Sensitivity updated to ${CUSTOMER_SENSITIVITY_META[sensitivity].label}`);
-                      } catch {
-                        toast.error("Failed to update sensitivity");
-                      } finally {
-                        setSavingCustomerPriority(false);
-                      }
-                    }}
-                    disabled={savingCustomerPriority}
-                  >
-                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
-                      <SelectValue placeholder="Sensitivity">
-                        {CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[280px]">
-                      {CUSTOMER_SENSITIVITIES.map((sensitivity) => (
-                        <SelectItem key={sensitivity} value={sensitivity}>
-                          {CUSTOMER_SENSITIVITY_META[sensitivity].label} - {CUSTOMER_SENSITIVITY_META[sensitivity].hint}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-slate-500" />
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Job summary</p>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Promised time</p>
-                  {editingPromise ? null : (
-                    <button
-                      onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }}
-                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                {editingPromise ? (
-                  <div className="mt-2 space-y-2">
-                    <Input
-                      type="datetime-local"
-                      className="h-9 rounded-lg border-slate-200 text-sm"
-                      value={draftPromise}
-                      onChange={(e) => setDraftPromise(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={savePromise} disabled={savingPromise}>
-                        <Save className="mr-1 h-3 w-3" /> {savingPromise ? "Saving..." : "Save"}
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingPromise(false)} disabled={savingPromise}>
-                        <X className="mr-1 h-3 w-3" /> Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xl font-semibold text-slate-950">{formatDate(job.promised_at, true)}</p>
-                )}
-              </div>
-              <StatCard label="Estimate total" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} line items`} />
-              <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
-              <StatCard label="Media" value={`${mediaCount} file${mediaCount === 1 ? "" : "s"}`} />
-            </div>
-
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Customer concern</p>
-                  {editingConcern ? null : (
-                    <button
-                      onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
-                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                {editingConcern ? (
-                  <div className="mt-2 space-y-2">
-                    <Textarea
-                      className="min-h-[80px] rounded-lg border-slate-200 text-sm"
-                      placeholder="Describe the customer's concern..."
-                      value={draftConcern}
-                      onChange={(e) => setDraftConcern(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveConcern} disabled={savingConcern}>
-                        <Save className="mr-1 h-3 w-3" /> {savingConcern ? "Saving..." : "Save"}
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingConcern(false)} disabled={savingConcern}>
-                        <X className="mr-1 h-3 w-3" /> Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p
-                    className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950"
-                    onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
-                  >
-                    {job.customer_concern || "Click to add a customer concern."}
-                  </p>
-                )}
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Internal notes</p>
-                  {editingNotes ? null : (
-                    <button
-                      onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}
-                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                {editingNotes ? (
-                  <div className="mt-2 space-y-2">
-                    <Textarea
-                      className="min-h-[80px] rounded-lg border-slate-200 text-sm"
-                      placeholder="Internal notes visible to the team..."
-                      value={draftNotes}
-                      onChange={(e) => setDraftNotes(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={saveNotes} disabled={savingNotes}>
-                        <Save className="mr-1 h-3 w-3" /> {savingNotes ? "Saving..." : "Save"}
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingNotes(false)} disabled={savingNotes}>
-                        <X className="mr-1 h-3 w-3" /> Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p
-                    className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 hover:cursor-pointer hover:text-slate-950"
-                    onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}
-                  >
-                    {job.internal_notes || "Click to add internal notes."}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Assignment & control</p>
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Service advisor</p>
-                <Select
-                  value={job.advisor_id ?? "unassigned"}
-                  onValueChange={async (value) => {
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Service advisor</p>
+                  <Select value={job.advisor_id ?? "unassigned"} onValueChange={async (value) => {
                     const advisorId = value === "unassigned" ? undefined : value;
                     setAssigningAdvisor(true);
                     try {
                       await api.patch(`/jobs/${job.id}`, advisorId ? { advisor_id: advisorId } : { advisor_id: "" });
                       await refreshJob();
                       toast.success(advisorId ? "Advisor assigned" : "Advisor removed");
-                    } catch {
-                      toast.error("Failed to update advisor");
-                    } finally {
-                      setAssigningAdvisor(false);
-                    }
-                  }}
-                  disabled={assigningAdvisor}
-                >
-                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
-                    <SelectValue placeholder="Unassigned">{advisorName(job.advisor_id)}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[280px]">
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {advisors.map((entry: any) => (
-                      <SelectItem key={entry.id} value={entry.id}>
-                        {entry.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    } catch { toast.error("Failed to update advisor"); } finally { setAssigningAdvisor(false); }
+                  }} disabled={assigningAdvisor}>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Unassigned">{advisorName(job.advisor_id)}</SelectValue></SelectTrigger>
+                    <SelectContent className="min-w-[280px]">
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {advisors.map((entry: any) => (<SelectItem key={entry.id} value={entry.id}>{entry.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Technician</p>
-                <Select
-                  value={job.technician_id ?? "unassigned"}
-                  onValueChange={async (value) => {
+                <div>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Technician</p>
+                  <Select value={job.technician_id ?? "unassigned"} onValueChange={async (value) => {
                     const technicianId = value === "unassigned" ? null : value;
                     setAssigningTech(true);
                     try {
                       await api.post(`/jobs/${job.id}/assign`, { technician_id: technicianId });
                       await refreshJob();
                       toast.success(technicianId ? "Technician assigned" : "Technician removed");
-                    } catch {
-                      toast.error("Failed to update technician");
-                    } finally {
-                      setAssigningTech(false);
-                    }
-                  }}
-                  disabled={assigningTech}
-                >
-                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
-                    <SelectValue placeholder="Unassigned">{techName(job.technician_id)}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[280px]">
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {technicians.map((entry: any) => (
-                      <SelectItem key={entry.id} value={entry.id}>
-                        {entry.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    } catch { toast.error("Failed to update technician"); } finally { setAssigningTech(false); }
+                  }} disabled={assigningTech}>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Unassigned">{techName(job.technician_id)}</SelectValue></SelectTrigger>
+                    <SelectContent className="min-w-[280px]">
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {technicians.map((entry: any) => (<SelectItem key={entry.id} value={entry.id}>{entry.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Workshop stage
-                  {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available{job.status === 'waiting_parts' ? ': car is waiting for parts' : ` in ${STATUS_META[job.status].label} phase`}</span>}
-                </p>
-                <Select
-                  value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"}
-                  onValueChange={async (value) => {
+                <div>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Workshop stage {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">— not available</span>}</p>
+                  <Select value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"} onValueChange={async (value) => {
                     const workshopStage = value as WorkshopStage;
                     setSavingWorkshopStage(true);
                     try {
                       await api.patch(`/jobs/${job.id}`, { workshop_stage: workshopStage });
                       await refreshJob();
-                      const syncMsg = workshopStage === 'work_in_progress' ? ' - Overall moved to In Progress'
-                        : workshopStage === 'quality_check' ? ' - Overall moved to Quality Check'
-                        : workshopStage === 'ready_handover' ? ' - Overall moved to Ready'
-                        : '';
+                      const syncMsg = workshopStage === 'work_in_progress' ? ' - Overall moved to In Progress' : workshopStage === 'quality_check' ? ' - Overall moved to Quality Check' : workshopStage === 'ready_handover' ? ' - Overall moved to Ready' : '';
                       toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
-                    } catch {
-                      toast.error("Failed to update workshop stage");
-                    } finally {
-                      setSavingWorkshopStage(false);
-                    }
-                  }}
-                  disabled={savingWorkshopStage || isWorkshopStageDisabled}
-                >
-                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
-                    <SelectValue placeholder="Workshop stage">
-                      {WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[360px]">
-                    {WORKSHOP_STAGES.map((stage) => (
-                      <SelectItem key={stage} value={stage}>
-                        {WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    } catch { toast.error("Failed to update workshop stage"); } finally { setSavingWorkshopStage(false); }
+                  }} disabled={savingWorkshopStage || isWorkshopStageDisabled}>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
+                    <SelectContent className="min-w-[360px]">{WORKSHOP_STAGES.map((stage) => (<SelectItem key={stage} value={stage}>{WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Parts status
-                  {isPartsStatusDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available in {STATUS_META[job.status].label} phase</span>}
-                </p>
-                <Select
-                  value={job.parts_status ?? "no_parts"}
-                  onValueChange={async (value) => {
+                <div>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Parts status {isPartsStatusDisabled && <span className="ml-1 text-[10px] normal-case text-slate-400">- not available</span>}</p>
+                  <Select value={job.parts_status ?? "no_parts"} onValueChange={async (value) => {
                     const partsStatus = value as PartsStatus;
                     setSavingPartsStatus(true);
                     try {
                       await api.patch(`/jobs/${job.id}`, { parts_status: partsStatus });
                       await refreshJob();
-                      const msg = partsStatus === 'parts_ready'
-                        ? `Parts status → Parts Ready. Workshop stage reset to Waiting to Start.`
-                        : `Parts status updated to ${PARTS_STATUS_META[partsStatus].label}`;
+                      const msg = partsStatus === 'parts_ready' ? `Parts status → Parts Ready. Workshop stage reset to Waiting to Start.` : `Parts status updated to ${PARTS_STATUS_META[partsStatus].label}`;
                       toast.success(msg);
-                    } catch {
-                      toast.error("Failed to update parts status");
-                    } finally {
-                      setSavingPartsStatus(false);
-                    }
-                  }}
-                  disabled={savingPartsStatus || isPartsStatusDisabled}
-                >
-                  <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white">
-                    <SelectValue placeholder="Parts status">
-                      {PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "Parts status"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[320px]">
-                    {PARTS_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {PARTS_STATUS_META[status].label} - {PARTS_STATUS_META[status].hint}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    } catch { toast.error("Failed to update parts status"); } finally { setSavingPartsStatus(false); }
+                  }} disabled={savingPartsStatus || isPartsStatusDisabled}>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"><SelectValue placeholder="Parts status">{PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "Parts status"}</SelectValue></SelectTrigger>
+                    <SelectContent className="min-w-[320px]">{PARTS_STATUSES.map((status) => (<SelectItem key={status} value={status}>{PARTS_STATUS_META[status].label} - {PARTS_STATUS_META[status].hint}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
 
-              {/* Customer Informed button - only visible when job is Ready for Delivery */}
-              {job.status === "ready" && (
-                <div>
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Customer notification</p>
-                  <button
-                    type="button"
-                    disabled={savingCustomerInformed || !!job.customer_informed}
-                    onClick={async () => {
-                      setSavingCustomerInformed(true);
-                      try {
-                        await api.patch(`/jobs/${job.id}`, { customer_informed: true });
-                        await refreshJob();
-                        toast.success("Customer informed - urgency factors cleared from priority");
-                      } catch {
-                        toast.error("Failed to update");
-                      } finally {
-                        setSavingCustomerInformed(false);
-                      }
-                    }}
-                    className={cn(
-                      "flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors",
-                      job.customer_informed
-                        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                    )}
-                  >
-                    {savingCustomerInformed ? "Updating..." : job.customer_informed ? "✓ Customer Informed" : "🔔 Customer Informed"}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="inline-flex items-center gap-2 text-sm text-slate-600"><Clock3 className="h-4 w-4 text-slate-400" /> Promised time</span>
+                    {editingPromise ? null : (<button onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Pencil className="h-3.5 w-3.5" /></button>)}
+                  </div>
+                  {editingPromise ? (
+                    <div className="mt-2 space-y-2">
+                      <Input type="datetime-local" className="h-9 rounded-lg border-slate-200 bg-white text-sm" value={draftPromise} onChange={(e) => setDraftPromise(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={savePromise} disabled={savingPromise}><Save className="mr-1 h-3 w-3" /> {savingPromise ? "Saving..." : "Save"}</Button>
+                        <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingPromise(false)} disabled={savingPromise}><X className="mr-1 h-3 w-3" /> Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xl font-bold text-slate-950">{formatDate(job.promised_at, true)}</p>
+                  )}
+                  {!job.promised_at && job.status !== 'booked' && job.status !== 'closed' && <p className="mt-1 text-[10px] text-amber-600">Setting a promised date removes +5 from priority</p>}
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm">
+                    <span className="inline-flex items-center gap-2 text-slate-600"><Send className="h-4 w-4 text-slate-400" /> Approval</span>
+                    <span className="font-semibold text-slate-900">{approvalStatusLabel}</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Customer priority</p>
+                  <button type="button" onClick={async () => {
+                    setSavingCustomerPriority(true);
+                    try { await api.patch(`/jobs/${job.id}`, { is_customer_waiting: !job.is_customer_waiting }); await refreshJob(); toast.success(!job.is_customer_waiting ? "Customer marked waiting" : "Customer waiting removed"); }
+                    catch { toast.error("Failed to update customer waiting flag"); } finally { setSavingCustomerPriority(false); }
+                  }} disabled={savingCustomerPriority} className={cn("w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition", job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50")}>
+                    Customer waiting <span className="mt-1 block text-xs font-normal opacity-70">{job.is_customer_waiting ? "Yes - prioritize" : "No"}</span>
                   </button>
-                </div>
-              )}
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2">
-                    <Clock3 className="h-4 w-4 text-slate-400" /> Promised
-                  </span>
-                  <span className="font-medium text-slate-900">{formatDate(job.promised_at, true)}</span>
-                </div>
-                {!job.promised_at && job.status !== 'booked' && job.status !== 'closed' && (
-                  <p className="mt-1 text-[10px] text-amber-600">💡 Setting a promised date removes +5 from priority</p>
-                )}
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="inline-flex items-center gap-2">
-                    <Send className="h-4 w-4 text-slate-400" /> Approval status
-                  </span>
-                  <span className="font-medium text-slate-900">{approvalStatusLabel}</span>
+                  <div className="mt-3">
+                    <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Sensitivity</p>
+                    <Select value={job.customer_sensitivity ?? "normal"} onValueChange={async (value) => {
+                      const sensitivity = value as CustomerSensitivity;
+                      setSavingCustomerPriority(true);
+                      try { await api.patch(`/jobs/${job.id}`, { customer_sensitivity: sensitivity }); await refreshJob(); toast.success(`Sensitivity updated to ${CUSTOMER_SENSITIVITY_META[sensitivity].label}`); }
+                      catch { toast.error("Failed to update sensitivity"); } finally { setSavingCustomerPriority(false); }
+                    }} disabled={savingCustomerPriority}>
+                      <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white"><SelectValue placeholder="Sensitivity">{CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}</SelectValue></SelectTrigger>
+                      <SelectContent className="min-w-[280px]">{CUSTOMER_SENSITIVITIES.map((sensitivity) => (<SelectItem key={sensitivity} value={sensitivity}>{CUSTOMER_SENSITIVITY_META[sensitivity].label} - {CUSTOMER_SENSITIVITY_META[sensitivity].hint}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -995,45 +833,63 @@ export default function JobDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="rounded-[24px] border-slate-200 shadow-sm lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg">Operational snapshot</CardTitle>
+          <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+            <Card className="overflow-hidden rounded-2xl border-slate-200 shadow-sm">
+              <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-white to-blue-50/60">
+                <CardTitle className="text-lg">Recommended next move</CardTitle>
+                <p className="text-sm text-slate-500">A clean action brief without repeating the full job record above.</p>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3">
-                <StatCard label="Current status" value={STATUS_META[job.status].label} />
-                <StatCard label="Workshop stage" value={isWorkshopStageDisabled ? "—" : WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "-"} />
-                <StatCard label="Parts status" value={PARTS_STATUS_META[(job.parts_status ?? "no_parts") as PartsStatus]?.label ?? "-"} />
-                <StatCard label="Priority flags" value={`${job.is_customer_waiting ? "Waiting" : "Not waiting"} · ${CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}`} />
-                <StatCard label="Advisor" value={job.advisor?.name || "Unassigned"} />
-                <StatCard label="Technician" value={job.technician?.name || "Unassigned"} />
-                <StatCard label="Odometer" value={job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"} />
-                <StatCard label="Media evidence" value={`${mediaCount}`} hint="photos, videos, documents" />
-                <StatCard label="Estimate lines" value={`${estimateCount}`} hint="editable commercial items" />
+              <CardContent className="space-y-4 p-5 text-sm text-slate-700">
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 leading-6">
+                  {job.status === "booked" && <p>Move the job into checking and assign the technician so the inspection can start.</p>}
+                  {job.status === "checking" && <p>Complete the inspection and convert findings into estimate lines for advisor review.</p>}
+                  {job.status === "estimate_sent" && <p>Follow up with the customer, confirm they saw the media evidence, and push toward approval.</p>}
+                  {job.status === "approved" && <p>Start workshop execution and keep ETA visible to avoid delays.</p>}
+                  {job.status === "in_progress" && <p>Track progress, parts, and blockers closely to protect promised time.</p>}
+                  {job.status === "waiting_parts" && <p>Update the customer, chase procurement, and keep the board honest about waiting time.</p>}
+                  {job.status === "quality_check" && <p>Finish QC fast, validate media if needed, and prepare customer-ready completion messaging.</p>}
+                  {job.status === "ready" && <p>Move to invoicing and collection steps so finished work does not sit idle.</p>}
+                  {job.status === "closed" && <p>This job is complete. Use it as a clean historical record.</p>}
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Commercial readiness</p>
+                    <p className="mt-2 text-lg font-bold text-slate-950">{estimateCount} lines</p>
+                    <p className="mt-1 text-xs text-slate-500">AED {total.toFixed(2)} quote total</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Evidence readiness</p>
+                    <p className="mt-2 text-lg font-bold text-slate-950">{mediaCount} files</p>
+                    <p className="mt-1 text-xs text-slate-500">Inspection: {String(inspectionState).replaceAll("_", " ")}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Customer state</p>
+                    <p className="mt-2 text-lg font-bold text-slate-950">{job.is_customer_waiting ? "Waiting" : "Normal"}</p>
+                    <p className="mt-1 text-xs text-slate-500">{CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-[24px] border-slate-200 shadow-sm">
+            <Card className="rounded-2xl border-slate-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Recommended next move</CardTitle>
+                <CardTitle className="text-lg">Quick actions</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-600">
-                {job.status === "booked" && <p>Move the job into checking and assign the technician so the inspection can start.</p>}
-                {job.status === "checking" && <p>Complete the inspection and convert findings into estimate lines for advisor review.</p>}
-                {job.status === "estimate_sent" && <p>Follow up with the customer, confirm they saw the media evidence, and push toward approval.</p>}
-                {job.status === "approved" && <p>Start workshop execution and keep ETA visible to avoid delays.</p>}
-                {job.status === "in_progress" && <p>Track progress, parts, and blockers closely to protect promised time.</p>}
-                {job.status === "waiting_parts" && <p>Update the customer, chase procurement, and keep the board honest about waiting time.</p>}
-                {job.status === "quality_check" && <p>Finish QC fast, validate media if needed, and prepare customer-ready completion messaging.</p>}
-                {job.status === "ready" && <p>Move to invoicing and collection steps so finished work does not sit idle.</p>}
-                {job.status === "closed" && <p>This job is complete. Use it as a clean historical record.</p>}
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
+                  <ClipboardList className="mr-2 h-4 w-4" /> Open inspection workspace
+                </Button>
+                <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={() => router.push(`/jobs/${job.id}#media`)}>
+                  <ImageIcon className="mr-2 h-4 w-4" /> Open media evidence
+                </Button>
+                {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-11 w-full rounded-xl">Add quote lines before approval</Button>}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="estimate" className="space-y-4">
-          <Card className="rounded-[24px] border-slate-200 shadow-sm">
+          <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader className="gap-4">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
@@ -1042,12 +898,12 @@ export default function JobDetailPage() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Quote total</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Quote total</p>
                     <p className="mt-2 text-xl font-semibold text-slate-950">AED {total.toFixed(2)}</p>
                     <p className="mt-1 text-xs text-slate-500">Live total from estimate lines</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Authorization</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Authorization</p>
                     <p className="mt-2 text-sm font-semibold text-slate-950">{approvalStatusLabel}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       {approvalCounts
@@ -1102,7 +958,7 @@ export default function JobDetailPage() {
 
         <TabsContent value="inspection" className="space-y-4" id="inspection">
           {inspectionDetail ? (
-            <Card className="rounded-[24px] border-slate-200 shadow-sm">
+            <Card className="rounded-2xl border-slate-200 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-lg">Inspection workspace</CardTitle>
@@ -1129,7 +985,7 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="rounded-[24px] border-slate-200 shadow-sm">
+            <Card className="rounded-2xl border-slate-200 shadow-sm">
               <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
                 <div>
                   <p className="text-lg font-semibold text-slate-950">No inspection started yet</p>
@@ -1146,7 +1002,7 @@ export default function JobDetailPage() {
         </TabsContent>
 
         <TabsContent value="media" className="space-y-4" id="media">
-          <Card className="rounded-[24px] border-slate-200 shadow-sm">
+          <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle className="text-lg">Media evidence</CardTitle>
