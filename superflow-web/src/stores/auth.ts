@@ -28,8 +28,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       const refreshToken = data.refresh_token ?? data.refreshToken;
       if (!accessToken || !refreshToken) throw new Error("Missing auth tokens");
       // Access token: 8h (0.33 days) to match JWT expiry; Refresh token: 30 days
-      Cookies.set("access_token", accessToken, { expires: 0.33, path: "/", sameSite: "lax" });
-      Cookies.set("refresh_token", refreshToken, { expires: 30, path: "/", sameSite: "lax" });
+      Cookies.set("access_token", accessToken, { expires: 0.33, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
+      Cookies.set("refresh_token", refreshToken, { expires: 30, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
       const { data: me } = await api.get<User>("/auth/me");
       set({ user: me, isAuthenticated: true, isLoading: false });
     } catch (err) {

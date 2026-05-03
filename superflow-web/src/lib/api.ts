@@ -33,8 +33,8 @@ api.interceptors.response.use(
           });
           // Access token: 8h (0.33 days) to match JWT expiry
           // Refresh token: 30 days
-          Cookies.set("access_token", data.accessToken, { expires: 0.33, path: "/", sameSite: "lax" });
-          Cookies.set("refresh_token", data.refreshToken, { expires: 30, path: "/", sameSite: "lax" });
+          Cookies.set("access_token", data.accessToken, { expires: 0.33, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
+          Cookies.set("refresh_token", data.refreshToken, { expires: 30, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
           original.headers.Authorization = `Bearer ${data.accessToken}`;
           return api(original);
         } catch {
