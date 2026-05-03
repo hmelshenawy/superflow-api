@@ -449,20 +449,10 @@ export default function JobDetailPage() {
                     <p className="mt-1 text-sm text-slate-300">Created {formatDate(job.created_at)} • Updated {formatDate(job.updated_at, true)}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <span className="rounded-2xl border border-blue-300/30 bg-blue-400/15 px-4 py-2 font-mono text-lg font-black tracking-[0.18em] text-blue-50 shadow-sm">
-                    {plate}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200">
-                    {job.customer?.name || "Walk-in"}
-                  </span>
-                  {job.is_customer_waiting ? (
-                    <span className="rounded-full border border-red-300/30 bg-red-400/15 px-3 py-1.5 text-xs font-bold text-red-100">Customer waiting</span>
-                  ) : null}
-                  {(job.customer_sensitivity ?? "normal") !== "normal" ? (
-                    <span className="rounded-full border border-amber-300/30 bg-amber-400/15 px-3 py-1.5 text-xs font-bold text-amber-100">
-                      {CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label}
-                    </span>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-semibold text-blue-100">
+                  <span className="font-mono tracking-wider">{plate}</span>
+                  {job.vehicle?.vin ? (
+                    <span className="font-mono tracking-wider">{job.vehicle.vin}</span>
                   ) : null}
                 </div>
               </div>
@@ -558,57 +548,7 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 bg-slate-50/70 p-5 lg:p-6 xl:grid-cols-[0.95fr_1.35fr_0.95fr]">
-          <div className="flex min-h-0 flex-col gap-4">
-            <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Customer identity</p>
-                  <User className="h-4 w-4 text-blue-600" />
-                </div>
-                <p className="mt-4 text-base font-semibold leading-6 tracking-tight text-slate-950">{job.customer?.name || "Walk-in"}</p>
-              </div>
-              <div className="divide-y divide-slate-100 px-5 py-1.5">
-                <div className="grid grid-cols-[76px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Phone</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.phone || "No phone"}</p>
-                </div>
-                <div className="grid grid-cols-[76px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Email</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.email || "No email"}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Vehicle identity</p>
-                  <Car className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="mt-4 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-semibold leading-6 tracking-tight text-slate-950">{vehicle}</p>
-                    <p className="mt-1 text-[11px] font-medium text-slate-500">Primary vehicle record</p>
-                  </div>
-                  <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5">
-                    <p className="font-mono text-sm font-semibold tracking-[0.12em] text-slate-900">{plate}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="divide-y divide-slate-100 px-5 py-1.5">
-                <div className="grid grid-cols-[76px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">VIN</p>
-                  <p className="break-all text-right font-mono text-sm font-semibold leading-5 text-slate-800">{job.vehicle?.vin || "No VIN"}</p>
-                </div>
-                <div className="grid grid-cols-[76px_1fr] items-center gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Odometer</p>
-                  <p className="text-right text-sm font-semibold leading-5 text-slate-900">{job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="grid gap-5 bg-slate-50/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
               <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
@@ -787,29 +727,6 @@ export default function JobDetailPage() {
                     <span className="font-semibold text-slate-900">{approvalStatusLabel}</span>
                   </div>
                 </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Customer priority</p>
-                  <button type="button" onClick={async () => {
-                    setSavingCustomerPriority(true);
-                    try { await api.patch(`/jobs/${job.id}`, { is_customer_waiting: !job.is_customer_waiting }); await refreshJob(); toast.success(!job.is_customer_waiting ? "Customer marked waiting" : "Customer waiting removed"); }
-                    catch { toast.error("Failed to update customer waiting flag"); } finally { setSavingCustomerPriority(false); }
-                  }} disabled={savingCustomerPriority} className={cn("w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition", job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50")}>
-                    Customer waiting <span className="mt-1 block text-xs font-normal opacity-70">{job.is_customer_waiting ? "Yes - prioritize" : "No"}</span>
-                  </button>
-                  <div className="mt-3">
-                    <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-slate-500">Sensitivity</p>
-                    <Select value={job.customer_sensitivity ?? "normal"} onValueChange={async (value) => {
-                      const sensitivity = value as CustomerSensitivity;
-                      setSavingCustomerPriority(true);
-                      try { await api.patch(`/jobs/${job.id}`, { customer_sensitivity: sensitivity }); await refreshJob(); toast.success(`Sensitivity updated to ${CUSTOMER_SENSITIVITY_META[sensitivity].label}`); }
-                      catch { toast.error("Failed to update sensitivity"); } finally { setSavingCustomerPriority(false); }
-                    }} disabled={savingCustomerPriority}>
-                      <SelectTrigger className="h-11 w-full rounded-xl border-slate-200 bg-white"><SelectValue placeholder="Sensitivity">{CUSTOMER_SENSITIVITY_META[(job.customer_sensitivity ?? "normal") as CustomerSensitivity]?.label ?? "Normal"}</SelectValue></SelectTrigger>
-                      <SelectContent className="min-w-[280px]">{CUSTOMER_SENSITIVITIES.map((sensitivity) => (<SelectItem key={sensitivity} value={sensitivity}>{CUSTOMER_SENSITIVITY_META[sensitivity].label} - {CUSTOMER_SENSITIVITY_META[sensitivity].hint}</SelectItem>))}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -820,6 +737,9 @@ export default function JobDetailPage() {
         <TabsList className="h-auto flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2">
           <TabsTrigger value="overview" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <FileText className="mr-2 h-4 w-4" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="customer" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <User className="mr-2 h-4 w-4" /> Customer
           </TabsTrigger>
           <TabsTrigger value="estimate" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <Wrench className="mr-2 h-4 w-4" /> Quote & authorization
@@ -887,6 +807,78 @@ export default function JobDetailPage() {
             </Card>
           </div>
         </TabsContent>
+        <TabsContent value="customer" className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Customer details</p>
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+              </div>
+              <div className="divide-y divide-slate-100 px-5 py-1.5">
+                <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Name</p>
+                  <p className="text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.name || "Walk-in"}</p>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Phone</p>
+                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.phone || "No phone"}</p>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Email</p>
+                  <p className="break-all text-right text-sm font-semibold leading-5 text-slate-800">{job.customer?.email || "No email"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/50 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500">Vehicle & priority</p>
+                  <Car className="h-4 w-4 text-blue-600" />
+                </div>
+              </div>
+              <div className="divide-y divide-slate-100 px-5 py-1.5">
+                <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">VIN</p>
+                  <p className="break-all text-right font-mono text-sm font-semibold leading-5 text-slate-800">{job.vehicle?.vin || "No VIN"}</p>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-center gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Odometer</p>
+                  <p className="text-right text-sm font-semibold leading-5 text-slate-900">{job.odometer_in ? `${new Intl.NumberFormat("en-GB").format(Number(job.odometer_in))} km` : "-"}</p>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-center gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Waiting</p>
+                  <p className="text-right">
+                    <button type="button" onClick={async () => {
+                      setSavingCustomerPriority(true);
+                      try { await api.patch(`/jobs/${job.id}`, { is_customer_waiting: !job.is_customer_waiting }); await refreshJob(); toast.success(!job.is_customer_waiting ? "Customer marked waiting" : "Customer waiting removed"); }
+                      catch { toast.error("Failed to update customer waiting flag"); } finally { setSavingCustomerPriority(false); }
+                    }} disabled={savingCustomerPriority} className={cn("rounded-lg border px-3 py-1 text-xs font-semibold transition", job.is_customer_waiting ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:bg-red-50")}>
+                      {job.is_customer_waiting ? "Yes — prioritize" : "No"}
+                    </button>
+                  </p>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-center gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-slate-400">Sensitivity</p>
+                  <div className="flex justify-end">
+                    <Select value={job.customer_sensitivity ?? "normal"} onValueChange={async (value) => {
+                      const sensitivity = value as CustomerSensitivity;
+                      setSavingCustomerPriority(true);
+                      try { await api.patch(`/jobs/${job.id}`, { customer_sensitivity: sensitivity }); await refreshJob(); toast.success(`Sensitivity updated to ${CUSTOMER_SENSITIVITY_META[sensitivity].label}`); }
+                      catch { toast.error("Failed to update sensitivity"); } finally { setSavingCustomerPriority(false); }
+                    }} disabled={savingCustomerPriority}>
+                      <SelectTrigger className="h-9 w-[180px] rounded-lg border-slate-200 bg-white text-xs"><SelectValue placeholder="Sensitivity" /></SelectTrigger>
+                      <SelectContent className="min-w-[240px]">{CUSTOMER_SENSITIVITIES.map((s) => (<SelectItem key={s} value={s}>{CUSTOMER_SENSITIVITY_META[s].label} - {CUSTOMER_SENSITIVITY_META[s].hint}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
 
         <TabsContent value="estimate" className="space-y-4">
           <Card className="rounded-2xl border-slate-200 shadow-sm">
@@ -1000,6 +992,7 @@ export default function JobDetailPage() {
             </Card>
           )}
         </TabsContent>
+
 
         <TabsContent value="media" className="space-y-4" id="media">
           <Card className="rounded-2xl border-slate-200 shadow-sm">
