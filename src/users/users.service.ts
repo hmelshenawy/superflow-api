@@ -57,7 +57,12 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto) {
     await this.findOne(id);
-    return this.prisma.users.update({ where: { id }, data: dto });
+    const data: any = { ...dto };
+    if (dto.password) {
+      data.password_hash = await bcrypt.hash(dto.password, 10);
+      delete data.password;
+    }
+    return this.prisma.users.update({ where: { id }, data });
   }
 
   async remove(id: string) {
@@ -65,5 +70,13 @@ export class UsersService {
     // Soft-delete: deactivating a user keeps historical references (audit logs,
     // job assignments) valid while blocking new logins.
     return this.prisma.users.update({ where: { id }, data: { is_active: false } });
+  }
+
+  async resetPassword(id: string, newPassword: string) {
+    const user = await this.prisma.users.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+    const hash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.users.update({ where: { id }, data: { password_hash: hash } });
+    return { id: user.id, name: user.name, email: user.email, message: 'Password reset successfully' };
   }
 }

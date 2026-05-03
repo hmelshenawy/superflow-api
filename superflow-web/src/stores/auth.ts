@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { data } = await api.post<AuthTokens>("/auth/login", { email, password });
       const accessToken = data.access_token ?? data.accessToken;
-      const refreshToken = data.access_token ?? data.refreshToken;
+      const refreshToken = data.refresh_token ?? data.refreshToken;
       if (!accessToken || !refreshToken) throw new Error("Missing auth tokens");
       // Access token: 8h (0.33 days) to match JWT expiry; Refresh token: 30 days
       Cookies.set("access_token", accessToken, { expires: 0.33, path: "/", sameSite: "lax" });

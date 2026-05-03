@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -47,6 +48,13 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.service.update(id, dto);
+  }
+
+  @Post(':id/reset-password')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Admin reset a user\'s password' })
+  resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
+    return this.service.resetPassword(id, dto.newPassword);
   }
 
   @Delete(':id')
