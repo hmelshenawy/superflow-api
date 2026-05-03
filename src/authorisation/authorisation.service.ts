@@ -247,7 +247,10 @@ export class AuthorisationService {
   }
 
   async loadPortal(rawToken: string) {
-    const token = await this.getValidTokenByRaw(rawToken);
+    const [token, currencyRow] = await Promise.all([
+      this.getValidTokenByRaw(rawToken),
+      this.prisma.settings.findUnique({ where: { key: 'currency' } }).catch(() => null),
+    ]);
 
     if (!token.first_opened_at) {
       await this.prisma.approval_tokens.update({
@@ -366,6 +369,7 @@ export class AuthorisationService {
       grouped_estimate: grouped,
       grand_total: lines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
       existing_decisions: token.authorisation_decisions,
+      currency: currencyRow?.value || 'AED',
     };
   }
 

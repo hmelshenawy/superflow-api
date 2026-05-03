@@ -74,6 +74,7 @@ interface PortalData {
   grouped_estimate: QuoteGroup[];
   grand_total: number;
   existing_decisions: ExistingDecision[];
+  currency: string;
 }
 
 /* ── Helpers ────────────────────────────────────────── */
@@ -201,7 +202,7 @@ export default function PortalPage() {
       </div>
     );
 
-  const { job, findings, grouped_estimate, grand_total } = data;
+  const { job, findings, grouped_estimate, grand_total, currency } = data;
   const isExpired = data.token.expires_at && new Date(data.token.expires_at) < new Date();
   const approvedTotal = grouped_estimate.reduce((sum, group) => {
     return decisions[group.key]?.decision === "approved" ? sum + Number(group.total || 0) : sum;
@@ -356,7 +357,7 @@ export default function PortalPage() {
                     </button>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className="shrink-0 font-semibold text-slate-800">
-                        AED {group.total.toFixed(2)}
+                        {currency} {group.total.toFixed(2)}
                       </span>
                       <button
                         onClick={() => setDecision(group.key, "approved")}
@@ -454,11 +455,11 @@ export default function PortalPage() {
                                   </div>
                                   <div className="mt-1.5 flex gap-4 text-xs text-slate-500">
                                     <span>Qty: {Number(line.quantity)}</span>
-                                    <span>Unit: AED {Number(line.unit_price).toFixed(2)}</span>
+                                    <span>Unit: {currency} {Number(line.unit_price).toFixed(2)}</span>
                                     {Number(line.discount_pct) > 0 && <span>Disc: {Number(line.discount_pct)}%</span>}
                                   </div>
                                 </div>
-                                <span className="shrink-0 font-semibold text-slate-800">AED {Number(line.line_total).toFixed(2)}</span>
+                                <span className="shrink-0 font-semibold text-slate-800">{currency} {Number(line.line_total).toFixed(2)}</span>
                               </div>
                             </div>
                           );
@@ -496,11 +497,11 @@ export default function PortalPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <p className="text-sm text-slate-500">Total Estimate</p>
-                <p className="text-3xl font-bold text-slate-900">AED {grand_total.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-slate-900">{currency} {grand_total.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">Approved Total</p>
-                <p className="text-3xl font-bold text-emerald-700">AED {approvedTotal.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-emerald-700">{currency} {approvedTotal.toFixed(2)}</p>
               </div>
             </div>
             <button

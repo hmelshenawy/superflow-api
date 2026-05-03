@@ -23,12 +23,17 @@ export default function LabourRatesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
   const [formRate, setFormRate] = useState("");
+  const [currency, setCurrency] = useState("AED");
 
   const fetchRates = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get<LabourRate[]>("/admin/labour-rates");
-      setRates(data);
+      const [ratesRes, defaultsRes] = await Promise.all([
+        api.get<LabourRate[]>("/admin/labour-rates"),
+        api.get<{ currency: string }>("/estimates/defaults").catch(() => ({ data: { currency: "AED" } })),
+      ]);
+      setRates(ratesRes.data);
+      setCurrency(defaultsRes.data.currency || "AED");
     } catch {
       toast.error("Failed to load labour rates");
     } finally {
@@ -40,7 +45,7 @@ export default function LabourRatesPage() {
 
   const save = async (id: string | null) => {
     try {
-      const payload = { name: formName, rate_per_hour: parseFloat(formRate) || 0, currency: "AED" };
+      const payload = { name: formName, rate_per_hour: parseFloat(formRate) || 0, currency };
       if (id) {
         await api.patch(`/admin/labour-rates/${id}`, payload);
         toast.success("Rate updated");
@@ -98,7 +103,7 @@ export default function LabourRatesPage() {
             <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Standard Labour" />
           </div>
           <div className="w-40 space-y-1">
-            <label className="text-sm font-medium">Rate/hr (AED)</label>
+            <label className="text-sm font-medium">Rate/hr ({currency})</label>
             <Input type="number" value={formRate} onChange={(e) => setFormRate(e.target.value)} />
           </div>
           <Button onClick={() => save(editingId === "new" ? null : editingId)}>
@@ -128,8 +133,8 @@ export default function LabourRatesPage() {
               rates.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.name}</TableCell>
-                  <TableCell>AED {Number(r.rate_per_hour).toFixed(2)}</TableCell>
-                  <TableCell>{r.currency || "AED"}</TableCell>
+                  <TableCell>{currency} {Number(r.rate_per_hour).toFixed(2)}</TableCell>
+                  <TableCell>{r.currency || currency}</TableCell>
                   <TableCell>
                     <Badge variant={r.is_active ? "default" : "secondary"}>
                       {r.is_active ? "Active" : "Inactive"}
