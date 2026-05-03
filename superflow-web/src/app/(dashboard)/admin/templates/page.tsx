@@ -105,9 +105,9 @@ export default function TemplatesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Inspection Templates</h1>
+        <h1 className="text-2xl font-bold text-foreground">Inspection Templates</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchTemplates}>
+          <Button variant="outline" size="icon" onClick={fetchTemplates} aria-label="Refresh templates">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={() => setCreateDialog(true)}>
@@ -116,15 +116,15 @@ export default function TemplatesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Vehicle Type</TableHead>
-              <TableHead>Default</TableHead>
+              <TableHead className="hidden sm:table-cell">Default</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead className="hidden md:table-cell">Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -145,7 +145,7 @@ export default function TemplatesPage() {
               templates.map((t) => (
                 <TableRow
                   key={t.id}
-                  className="cursor-pointer hover:bg-slate-50"
+                  className="cursor-pointer hover:bg-muted"
                   onClick={() => router.push(`/admin/templates/${t.id}`)}
                 >
                   <TableCell className="font-medium">{t.name}</TableCell>
@@ -158,7 +158,7 @@ export default function TemplatesPage() {
                       {t.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                     {new Intl.DateTimeFormat("en-GB", {
                       year: "numeric",
                       month: "short",

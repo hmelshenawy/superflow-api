@@ -134,7 +134,7 @@ function StatCard({
   sub?: string;
 }) {
   const tones: Record<string, string> = {
-    slate: "border-slate-200 bg-slate-50",
+    slate: "border-slate-200 bg-muted",
     blue: "border-blue-200 bg-blue-50",
     amber: "border-amber-200 bg-amber-50",
     rose: "border-rose-200 bg-rose-50",
@@ -143,7 +143,7 @@ function StatCard({
     purple: "border-purple-200 bg-purple-50",
   };
   const iconTones: Record<string, string> = {
-    slate: "text-slate-600",
+    slate: "text-muted-foreground",
     blue: "text-blue-600",
     amber: "text-amber-600",
     rose: "text-rose-600",
@@ -155,11 +155,11 @@ function StatCard({
   return (
     <div className={`rounded-xl border p-4 ${tones[tone]}`}>
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
         <Icon className={`h-4 w-4 ${iconTones[tone]}`} />
       </div>
-      <p className="mt-1 text-2xl font-bold text-slate-950">{value}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-slate-500">{sub}</p>}
+      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -167,8 +167,8 @@ function StatCard({
 // ─── Chart Card ────────────────────────────────────────
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       <div className="mt-4">{children}</div>
     </div>
   );
@@ -241,17 +241,17 @@ export default function InsightsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Analytics
           </p>
-          <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-slate-950">
+          <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground">
             Workshop Insights
           </h1>
         </div>
         <button
           onClick={fetchDashboard}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[13px] font-medium text-slate-700 shadow-sm transition hover:bg-muted"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
           Refresh
@@ -483,8 +483,8 @@ export default function InsightsPage() {
       </ChartCard>
 
       {/* ── Recent activity row ────────────────────────── */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h3 className="text-sm font-semibold text-slate-900">Last 7 Days Activity</h3>
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <h3 className="text-sm font-semibold text-foreground">Last 7 Days Activity</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-center">
             <TrendingUp className="mx-auto h-5 w-5 text-blue-600" />

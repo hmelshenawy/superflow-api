@@ -144,10 +144,10 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
       {description && (
-        <p className="mt-1 text-sm text-slate-500">{description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       )}
       <div className="mt-4 space-y-4">{children}</div>
     </div>
@@ -326,21 +326,21 @@ function SessionsSection() {
           <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-slate-500">No active sessions.</p>
+        <p className="text-sm text-muted-foreground">No active sessions.</p>
       ) : (
         <div className="space-y-3">
           {sessions.map((session, i) => (
             <div
               key={session.id}
-              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+              className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3"
             >
               <div className="flex items-center gap-3">
                 <Monitor className="h-5 w-5 text-slate-400" />
                 <div>
-                  <p className="text-sm font-medium text-slate-800">
+                  <p className="text-sm font-medium text-foreground">
                     {i === 0 ? "Current session" : `Session ${sessions.length - i}`}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Created: {new Date(session.created_at).toLocaleString()} · Expires:{" "}
                     {new Date(session.expires_at).toLocaleDateString()}
                   </p>
@@ -562,10 +562,10 @@ function PriorityMatrixSection() {
 
       <div className="space-y-5">
         {PRIORITY_MATRIX_GROUPS.map((group) => (
-          <div key={group.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div key={group.title} className="rounded-2xl border border-border bg-muted p-4">
             <div className="mb-3">
-              <h4 className="text-sm font-semibold text-slate-900">{group.title}</h4>
-              <p className="text-xs text-slate-500">{group.description}</p>
+              <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>
+              <p className="text-xs text-muted-foreground">{group.description}</p>
             </div>
             <div className="space-y-3">
               {group.items.map((item) => (
@@ -730,7 +730,7 @@ function IntegrationsSection() {
   if (integrations.length === 0) {
     return (
       <SectionCard title="Integrations" description="Connect external systems via webhooks.">
-        <p className="text-sm text-slate-500">No integrations configured yet. Add them via the admin API or database.</p>
+        <p className="text-sm text-muted-foreground">No integrations configured yet. Add them via the admin API or database.</p>
       </SectionCard>
     );
   }
@@ -739,10 +739,10 @@ function IntegrationsSection() {
     <SectionCard title="Integrations" description="Connected external systems.">
       <div className="space-y-3">
         {integrations.map((integ) => (
-          <div key={integ.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <div key={integ.id} className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-slate-800">{integ.name}</p>
-              <p className="text-xs text-slate-500">{integ.type}{integ.last_tested_at ? ` · Last tested: ${new Date(integ.last_tested_at).toLocaleDateString()}` : ""}</p>
+              <p className="text-sm font-medium text-foreground">{integ.name}</p>
+              <p className="text-xs text-muted-foreground">{integ.type}{integ.last_tested_at ? ` · Last tested: ${new Date(integ.last_tested_at).toLocaleDateString()}` : ""}</p>
             </div>
             <div className="flex items-center gap-2">
               {testResult[integ.name] && (
@@ -768,8 +768,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Manage your account, workshop configuration, and integrations.
         </p>
       </div>

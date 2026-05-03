@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EstimateBuilder } from "@/components/estimates/estimate-builder";
+import dynamic from "next/dynamic";
+
+const EstimateBuilder = dynamic(() => import("@/components/estimates/estimate-builder").then((m) => ({ default: m.EstimateBuilder })), { ssr: false });
+const InspectionWorkspace = dynamic(() => import("@/components/inspections/inspection-workspace").then((m) => ({ default: m.InspectionWorkspace })), { ssr: false });
 import { SendApprovalButton } from "@/components/estimates/send-approval-button";
-import { InspectionWorkspace } from "@/components/inspections/inspection-workspace";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
 import {
@@ -433,6 +435,7 @@ export default function JobDetailPage() {
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Back to jobs"
                 className="mt-1 h-10 w-10 shrink-0 rounded-xl border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                 onClick={() => router.push("/jobs")}
               >
@@ -569,6 +572,7 @@ export default function JobDetailPage() {
                     {editingConcern ? null : (
                       <button
                         onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}
+                        aria-label="Edit customer concern"
                         className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -708,7 +712,7 @@ export default function JobDetailPage() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2 text-sm text-slate-600"><Clock3 className="h-4 w-4 text-slate-400" /> Promised time</span>
-                    {editingPromise ? null : (<button onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Pencil className="h-3.5 w-3.5" /></button>)}
+                    {editingPromise ? null : (<button onClick={() => { setDraftPromise(job.promised_at ? new Date(job.promised_at).toISOString().slice(0, 16) : ""); setEditingPromise(true); }} aria-label="Edit promised time" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><Pencil className="h-3.5 w-3.5" /></button>)}
                   </div>
                   {editingPromise ? (
                     <div className="mt-2 space-y-2">

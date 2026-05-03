@@ -234,8 +234,8 @@ export default function BookingImportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Booking Import</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Booking Import</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Upload your daily booking table and import it into PrioraFlow
           </p>
         </div>
@@ -290,7 +290,7 @@ export default function BookingImportPage() {
           <CardContent className="space-y-4">
             <div className="border-2 border-dashed rounded-lg p-8 text-center">
               <Upload className="mx-auto h-10 w-10 text-slate-400 mb-3" />
-              <p className="text-sm text-slate-600 mb-2">
+              <p className="text-sm text-muted-foreground mb-2">
                 Drop an Excel or CSV file here, or click to browse
               </p>
               <Input
@@ -301,7 +301,7 @@ export default function BookingImportPage() {
               />
             </div>
             {file && (
-              <div className="flex items-center justify-between bg-slate-50 rounded p-3">
+              <div className="flex items-center justify-between bg-muted rounded p-3">
                 <span className="text-sm font-medium">{file.name}</span>
                 <Button onClick={handleFileUpload} disabled={parsing}>
                   {parsing ? "Parsing…" : "Parse & Continue"}
@@ -325,7 +325,7 @@ export default function BookingImportPage() {
             {/* Template apply */}
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                <label className="text-xs font-medium text-slate-500 mb-1 block">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
                   Apply Saved Template
                 </label>
                 <Button
@@ -354,7 +354,7 @@ export default function BookingImportPage() {
             </div>
 
             {/* Mapping table */}
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -390,7 +390,7 @@ export default function BookingImportPage() {
                         </Select>
                       </TableCell>
                       {parsed.preview.map((row, pi) => (
-                        <TableCell key={pi} className="text-xs text-slate-500 truncate max-w-[150px]">
+                        <TableCell key={pi} className="text-xs text-muted-foreground truncate max-w-[150px]">
                           {row[header] || "—"}
                         </TableCell>
                       ))}
@@ -451,7 +451,7 @@ export default function BookingImportPage() {
             </div>
 
             {result.errors.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-lg overflow-x-auto">
                 <div className="bg-red-50 px-4 py-2 text-sm font-medium text-red-700">
                   Errors
                 </div>

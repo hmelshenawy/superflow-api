@@ -72,7 +72,7 @@ export function SendApprovalButton({ jobId, onSent }: Props) {
             value={portalUrl}
             className="flex-1 bg-transparent text-xs text-emerald-800 outline-none"
           />
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyLink}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={copyLink} aria-label="Copy approval link">
             {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
           </Button>
         </div>

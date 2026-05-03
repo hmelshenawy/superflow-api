@@ -22,6 +22,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutGrid; adminOnly?: boolean }[] = [
   { href: "/insights", label: "Insights", icon: BarChart3 },
@@ -155,16 +156,20 @@ export function Sidebar() {
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
+
+      <div className="hidden lg:flex items-center justify-center border-t border-slate-800 py-2.5">
+        <ThemeToggle />
+      </div>
     </>
   );
 
   return (
     <>
       {/* Mobile header bar */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-2 lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background px-3 py-2 lg:hidden">
         <button
           onClick={() => setMobileOpen(true)}
-          className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+          className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted"
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
@@ -173,7 +178,10 @@ export function Sidebar() {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/15 ring-1 ring-blue-500/30">
             <Wrench className="h-3.5 w-3.5 text-blue-400" />
           </div>
-          <span className="text-sm font-semibold text-slate-900">PrioraFlow</span>
+          <span className="text-sm font-semibold text-foreground">PrioraFlow</span>
+        </div>
+        <div className="ml-auto">
+          <ThemeToggle />
         </div>
       </div>
 

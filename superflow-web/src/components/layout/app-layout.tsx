@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden bg-slate-100">
+      <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar />
         <main className="flex flex-1 flex-col overflow-y-auto">
           <div className="min-h-full p-3 lg:p-4">{children}</div>

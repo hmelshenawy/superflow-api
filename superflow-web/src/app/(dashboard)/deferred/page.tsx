@@ -44,15 +44,20 @@ export default function DeferredWorkPage() {
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [currency, setCurrency] = useState("AED");
 
   const fetchItems = async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = {};
       if (status !== "all") params.status = status;
-      const { data } = await api.get<PaginatedResponse<DeferredWork>>("/deferred", { params });
-      setItems(data.data ?? data.items ?? []);
-      setTotal(data.total);
+      const [res, defaultsRes] = await Promise.all([
+        api.get<PaginatedResponse<DeferredWork>>("/deferred", { params }),
+        api.get<{ currency: string }>("/estimates/defaults").catch(() => ({ data: { currency: "AED" } })),
+      ]);
+      setItems(res.data.data ?? res.data.items ?? []);
+      setTotal(res.data.total);
+      setCurrency(defaultsRes.data.currency || "AED");
     } catch {
       toast.error("Failed to load deferred work");
     } finally {
@@ -86,10 +91,10 @@ export default function DeferredWorkPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Deferred Work</h1>
-          <p className="text-sm text-slate-500">{total} items</p>
+          <h1 className="text-2xl font-bold text-foreground">Deferred Work</h1>
+          <p className="text-sm text-muted-foreground">{total} items</p>
         </div>
-        <Button variant="outline" size="icon" onClick={fetchItems}>
+        <Button variant="outline" size="icon" onClick={fetchItems} aria-label="Refresh deferred items">
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
@@ -110,16 +115,16 @@ export default function DeferredWorkPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Vehicle</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Urgency</TableHead>
-              <TableHead>Est. Value</TableHead>
-              <TableHead>Remind After</TableHead>
+              <TableHead className="hidden sm:table-cell">Urgency</TableHead>
+              <TableHead className="hidden sm:table-cell">Est. Value</TableHead>
+              <TableHead className="hidden md:table-cell">Remind After</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -156,7 +161,7 @@ export default function DeferredWorkPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {item.estimated_value ? `AED ${Number(item.estimated_value).toFixed(2)}` : "—"}
+                    {item.estimated_value ? `${currency} ${Number(item.estimated_value).toFixed(2)}` : "—"}
                   </TableCell>
                   <TableCell>
                     {item.remind_after

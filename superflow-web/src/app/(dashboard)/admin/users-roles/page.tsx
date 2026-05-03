@@ -131,9 +131,9 @@ export default function UsersRolesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Users & Roles</h1>
+        <h1 className="text-2xl font-bold text-foreground">Users & Roles</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchUsers}>
+          <Button variant="outline" size="icon" onClick={fetchUsers} aria-label="Refresh users">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={openCreate}>
@@ -142,16 +142,16 @@ export default function UsersRolesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Staff ID</TableHead>
+              <TableHead className="hidden sm:table-cell">Staff ID</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Last Login</TableHead>
+              <TableHead className="hidden md:table-cell">Last Login</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -165,7 +165,7 @@ export default function UsersRolesPage() {
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || "—"}</TableCell>
                   <TableCell>{u.email}</TableCell>
-                  <TableCell className="font-mono">{(u as any).employee_code || "—"}</TableCell>
+                  <TableCell className="hidden sm:table-cell font-mono">{(u as any).employee_code || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{u.role?.name || u.role_id?.slice(0, 8) || "—"}</Badge>
                   </TableCell>
@@ -174,15 +174,15 @@ export default function UsersRolesPage() {
                       {u.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-500">
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                     {u.last_login_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(u.last_login_at)) : "Never"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)} aria-label="Edit user">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => toggleActive(u)}>
+                      <Button variant="ghost" size="icon" onClick={() => toggleActive(u)} aria-label="Toggle user active">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

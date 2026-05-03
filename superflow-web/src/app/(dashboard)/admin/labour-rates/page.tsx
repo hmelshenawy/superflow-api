@@ -85,9 +85,9 @@ export default function LabourRatesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Labour Rates</h1>
+        <h1 className="text-2xl font-bold text-foreground">Labour Rates</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchRates}>
+          <Button variant="outline" size="icon" onClick={fetchRates} aria-label="Refresh rates">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={startCreate}>
@@ -113,7 +113,7 @@ export default function LabourRatesPage() {
         </div>
       )}
 
-      <div className="rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -142,10 +142,10 @@ export default function LabourRatesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => startEdit(r)}>
+                      <Button variant="ghost" size="icon" onClick={() => startEdit(r)} aria-label="Edit rate">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(r.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => remove(r.id)} aria-label="Delete rate">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

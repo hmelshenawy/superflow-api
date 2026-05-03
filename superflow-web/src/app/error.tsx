@@ -18,8 +18,8 @@ export default function Error({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-center">
       <AlertTriangle className="h-12 w-12 text-rose-400" />
-      <h1 className="text-xl font-bold text-slate-900">Something went wrong</h1>
-      <p className="max-w-md text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-foreground">Something went wrong</h1>
+      <p className="max-w-md text-sm text-muted-foreground">
         An unexpected error occurred. Please try again or contact support if the problem persists.
       </p>
       <Button onClick={reset} variant="outline">

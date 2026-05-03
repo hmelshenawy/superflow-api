@@ -10,7 +10,7 @@ const PUBLIC_ROUTES = ["/login"];
 
 function LoadingShell() {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-100">
+    <div className="flex h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/15 ring-1 ring-blue-500/30">
           <Wrench className="h-5 w-5 animate-pulse text-blue-400" />

@@ -619,6 +619,7 @@ export function InspectionWorkspace({
                             <button
                               type="button"
                               onClick={() => removeMedia(mf.id, item.id)}
+                              aria-label="Remove media"
                               className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white opacity-0 group-hover:opacity-100 transition"
                             >
                               <X className="h-2.5 w-2.5" />
