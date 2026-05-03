@@ -18,6 +18,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
 
   login: async (email, password) => {
+    // Clear any stale tokens before login
+    Cookies.remove("access_token", { path: "/" });
+    Cookies.remove("refresh_token", { path: "/" });
     set({ isLoading: true });
     try {
       const { data } = await api.post<AuthTokens>("/auth/login", { email, password });

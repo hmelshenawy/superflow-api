@@ -21,7 +21,9 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    // Don't try to refresh on auth endpoints (login/refresh) or non-401 errors
+    const isAuthEndpoint = original.url?.includes('/auth/login') || original.url?.includes('/auth/refresh');
+    if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       const refreshToken = Cookies.get("refresh_token");
       if (refreshToken) {
@@ -43,6 +45,7 @@ api.interceptors.response.use(
         }
       } else {
         // No refresh token — redirect to login
+        Cookies.remove("access_token", { path: "/" });
         window.location.href = "/login";
       }
     }
