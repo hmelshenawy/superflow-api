@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import api from "@/lib/api";
 import {
   BarChart3,
@@ -135,21 +136,21 @@ function StatCard({
 }) {
   const tones: Record<string, string> = {
     slate: "border-border bg-muted",
-    blue: "border-blue-200 bg-blue-50",
-    amber: "border-amber-200 bg-amber-50",
-    rose: "border-rose-200 bg-rose-50",
-    emerald: "border-emerald-200 bg-emerald-50",
-    red: "border-red-200 bg-red-50",
-    purple: "border-purple-200 bg-purple-50",
+    blue: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40",
+    amber: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40",
+    rose: "border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40",
+    emerald: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40",
+    red: "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40",
+    purple: "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40",
   };
   const iconTones: Record<string, string> = {
     slate: "text-muted-foreground",
-    blue: "text-blue-600",
-    amber: "text-amber-600",
-    rose: "text-rose-600",
-    emerald: "text-emerald-600",
-    red: "text-red-600",
-    purple: "text-purple-600",
+    blue: "text-blue-600 dark:text-blue-400",
+    amber: "text-amber-600 dark:text-amber-400",
+    rose: "text-rose-600 dark:text-rose-400",
+    emerald: "text-emerald-600 dark:text-emerald-400",
+    red: "text-red-600 dark:text-red-400",
+    purple: "text-purple-600 dark:text-purple-400",
   };
 
   return (
@@ -176,6 +177,8 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 
 // ─── Main Page ────────────────────────────────────────
 export default function InsightsPage() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -318,14 +321,15 @@ export default function InsightsPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.jobsByStatus} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
                 <XAxis
                   dataKey="status"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }}
                   tickFormatter={(v) => STATUS_LABELS[v] || v}
                 />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }} allowDecimals={false} />
                 <Tooltip
+                  contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }}
                   formatter={(value: any) => [value, "Jobs"]}
                   labelFormatter={(label) => STATUS_LABELS[label] || label}
                 />
@@ -344,15 +348,15 @@ export default function InsightsPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data.jobsOverTime} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: isDark ? "#94a3b8" : "#334155" }}
                   tickFormatter={(v) => v.slice(5)}
                 />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Legend />
+                <YAxis tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
+                <Legend wrapperStyle={{ color: isDark ? "#94a3b8" : undefined }} />
                 <Area type="monotone" dataKey="created" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} name="Created" />
                 <Area type="monotone" dataKey="closed" stroke="#10b981" fill="#10b981" fillOpacity={0.15} name="Closed" />
               </AreaChart>
@@ -378,12 +382,13 @@ export default function InsightsPage() {
                     paddingAngle={3}
                     dataKey="value"
                     label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={{ stroke: isDark ? "#64748b" : undefined }}
                   >
                     {approvalPieData.map((_, index) => (
                       <Cell key={index} fill={PIE_COLORS[index] || "#94a3b8"} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -409,11 +414,12 @@ export default function InsightsPage() {
                     paddingAngle={3}
                     dataKey="value"
                     label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={{ stroke: isDark ? "#64748b" : undefined }}
                   >
                     <Cell fill="#10b981" />
                     <Cell fill="#f59e0b" />
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -442,12 +448,13 @@ export default function InsightsPage() {
                     paddingAngle={3}
                     dataKey="value"
                     label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={{ stroke: isDark ? "#64748b" : undefined }}
                   >
                     {data.deferredByStatus.map((entry, index) => (
                       <Cell key={index} fill={DEFERRED_COLORS[entry.status] || "#94a3b8"} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -467,11 +474,11 @@ export default function InsightsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="status"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }}
                 tickFormatter={(v) => STATUS_LABELS[v] || v}
               />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
-              <Tooltip formatter={(value: any) => fmtAED(Number(value))} />
+              <YAxis tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }} tickFormatter={(v) => fmt(v)} />
+              <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} formatter={(value: any) => fmtAED(Number(value))} />
               <Bar dataKey="total" name="Line Total" radius={[4, 4, 0, 0]}>
                 {data.revenue.byStatus.map((entry, index) => (
                   <Cell key={index} fill={STATUS_COLORS[entry.status] || "#94a3b8"} />
