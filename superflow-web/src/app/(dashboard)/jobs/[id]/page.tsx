@@ -51,14 +51,14 @@ const STATUS_META: Record<
   }
 > = {
   booked: { label: "Booked", dot: "bg-slate-400", badge: "bg-muted text-foreground/80" },
-  checking: { label: "Checking", dot: "bg-amber-500", badge: "bg-amber-100 text-amber-900" },
-  estimate_sent: { label: "Estimate Sent", dot: "bg-rose-500", badge: "bg-rose-100 text-rose-800" },
-  approved: { label: "Approved", dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-800" },
-  in_progress: { label: "In Progress", dot: "bg-blue-500", badge: "bg-blue-100 text-blue-800" },
-  waiting_parts: { label: "Waiting Parts", dot: "bg-purple-500", badge: "bg-purple-100 text-purple-800" },
-  quality_check: { label: "Quality Check", dot: "bg-cyan-500", badge: "bg-cyan-100 text-cyan-800" },
-  ready: { label: "Ready", dot: "bg-teal-500", badge: "bg-teal-100 text-teal-800" },
-  closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-slate-200 text-foreground/80" },
+  checking: { label: "Checking", dot: "bg-amber-500", badge: "bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200" },
+  estimate_sent: { label: "Estimate Sent", dot: "bg-rose-500", badge: "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200" },
+  approved: { label: "Approved", dot: "bg-emerald-500", badge: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200" },
+  in_progress: { label: "In Progress", dot: "bg-blue-500", badge: "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200" },
+  waiting_parts: { label: "Waiting Parts", dot: "bg-purple-500", badge: "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200" },
+  quality_check: { label: "Quality Check", dot: "bg-cyan-500", badge: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200" },
+  ready: { label: "Ready", dot: "bg-teal-500", badge: "bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200" },
+  closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-muted text-foreground/80" },
 };
 
 /** Overall statuses where workshop stage is not applicable.
