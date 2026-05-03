@@ -345,17 +345,17 @@ export function InspectionWorkspace({
           Overview
         </span>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
             <CheckCircle2 className="h-3 w-3" /> {summary.green}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
             <AlertTriangle className="h-3 w-3" /> {summary.amber}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 dark:bg-rose-900/50 px-2 py-0.5 text-[11px] font-semibold text-rose-800 dark:text-rose-200">
             <XCircle className="h-3 w-3" /> {summary.red}
           </span>
           {summary.unset > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
               <MinusCircle className="h-3 w-3" /> {summary.unset}
             </span>
           )}
@@ -430,7 +430,7 @@ export function InspectionWorkspace({
                           className={cn(
                             "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                             URGENCY_STYLES[value.urgency]?.chip ??
-                              "bg-muted text-slate-600"
+                              "bg-muted text-muted-foreground"
                           )}
                         >
                           {URGENCY_STYLES[value.urgency]?.label ?? value.urgency}
@@ -477,7 +477,7 @@ export function InspectionWorkspace({
                               setItem(item.id, { value: v ?? "" })
                             }
                           >
-                            <SelectTrigger className="h-8 w-28 rounded-lg border-border text-[13px]">
+                            <SelectTrigger className="h-8 w-28 rounded-lg border-border text-[13px]" aria-label="Result">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -521,7 +521,7 @@ export function InspectionWorkspace({
                             setItem(item.id, { urgency: v ?? "none" })
                           }
                         >
-                          <SelectTrigger className="h-8 w-24 rounded-lg border-border text-[13px]">
+                          <SelectTrigger className="h-8 w-24 rounded-lg border-border text-[13px]" aria-label="Urgency">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -558,6 +558,7 @@ export function InspectionWorkspace({
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
+                            aria-label="Add media"
                             onClick={() =>
                               fileInputRefs.current[item.id]?.click()
                             }
@@ -633,6 +634,7 @@ export function InspectionWorkspace({
                     <div className="mt-2 pl-6">
                       <Textarea
                         rows={1}
+                        aria-label="Technician notes"
                         className="rounded-lg border-border text-[13px] placeholder:text-muted-foreground/60"
                         value={value.tech_notes}
                         onChange={(e) =>

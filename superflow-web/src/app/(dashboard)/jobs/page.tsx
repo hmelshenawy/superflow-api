@@ -54,7 +54,7 @@ import { toast } from "sonner";
 function StatusPill({ status }: { status: JobStatus }) {
   const meta = STATUS_META[status];
   return (
-    <span className={cn("inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold", meta.tone)}>
+    <span aria-label={meta.label} className={cn("inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold", meta.tone)}>
       <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
       {meta.label}
     </span>
@@ -271,7 +271,7 @@ export default function JobsPage() {
           <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search jobs, customers, vehicles..." className="h-9 rounded-lg border-border bg-card pl-8 text-[13px]" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              <Input placeholder="Search jobs, customers, vehicles..." aria-label="Search jobs" className="h-9 rounded-lg border-border bg-card pl-8 text-[13px]" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </div>
             <Select value={status} onValueChange={(value) => { setStatus(value ?? "all"); setPage(1); }}>
               <SelectTrigger className="h-9 w-full rounded-lg border-border text-[13px] md:w-44"><SelectValue placeholder="All statuses" /></SelectTrigger>
@@ -358,7 +358,7 @@ export default function JobsPage() {
                     return (
                       <div key={stage.key} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropWorkshopStage(stage.key); }} onDragLeave={() => setDropWorkshopStage(null)} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; if (!jobId) return; await moveJobToWorkshopStage(jobId, stage.key); }}
                         className={cn("flex h-[520px] shrink-0 flex-col rounded-[16px] border shadow-sm ring-1 ring-border/70 transition-all", stage.tone, isCollapsed ? "w-[46px]" : "w-[230px]", dropWorkshopStage === stage.key && "border-blue-400 bg-blue-50/50 ring-2 ring-blue-200")}>
-                        <div className={cn("cursor-pointer select-none border-b border-border/70 px-3 py-2.5", WORKSHOP_STAGE_HEADER_TONE[stage.key])} onClick={() => toggleWorkshopStage(stage.key)}>
+                        <div className={cn("cursor-pointer select-none border-b border-border/70 px-3 py-2.5", WORKSHOP_STAGE_HEADER_TONE[stage.key])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleWorkshopStage(stage.key); } }} onClick={() => toggleWorkshopStage(stage.key)}>
                           <div className={cn("flex items-start justify-between gap-2", isCollapsed && "flex-col items-center")}>
                             {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
                             <span className={cn("h-2 w-2 rounded-full shrink-0", WORKSHOP_STAGE_ACCENT[stage.key].replace("border-l-", "bg-"))} />
@@ -414,7 +414,7 @@ export default function JobsPage() {
                 return (
                   <div key={column} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropColumn(column); }} onDragLeave={() => { if (dropColumn === column) setDropColumn(null); }} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; setDropColumn(null); if (!jobId) return; await moveJobToStatus(jobId, column); }}
                     className={cn("flex shrink-0 flex-col rounded-[18px] border shadow-sm transition-all duration-200", OVERALL_COLUMN_TONE[column], isCollapsed ? "w-[46px]" : "w-[248px]", dropColumn === column && "border-slate-400 dark:border-slate-600 bg-muted")}>
-                    <div className={cn("cursor-pointer select-none border-b px-3 py-2.5", OVERALL_COLUMN_HEADER_TONE[column])} onClick={() => toggleColumn(column)}>
+                    <div className={cn("cursor-pointer select-none border-b px-3 py-2.5", OVERALL_COLUMN_HEADER_TONE[column])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleColumn(column); } }} onClick={() => toggleColumn(column)}>
                       <div className={cn("flex items-center gap-2", isCollapsed && "flex-col")}>
                         {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
                         <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_META[column].dot)} />

@@ -115,6 +115,7 @@ export function Sidebar() {
             <button
               onClick={logout}
               className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+              aria-label="Sign out"
               title="Sign out"
             >
               <LogOut className="h-4 w-4" />
@@ -140,6 +141,7 @@ export function Sidebar() {
               <button
                 onClick={logout}
                 className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-slate-300 hover:bg-slate-800 hover:text-white"
+                aria-label="Sign out"
                 title="Sign out"
               >
                 <LogOut className="h-3 w-3" /> Sign out
@@ -152,6 +154,7 @@ export function Sidebar() {
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="hidden lg:flex items-center justify-center border-t border-slate-800 py-2.5 text-slate-400 transition hover:bg-slate-900 hover:text-white"
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -188,7 +191,7 @@ export function Sidebar() {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-0 bg-black/50" role="presentation" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex h-full w-64 flex-col bg-slate-950 text-slate-100 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
               <div className="flex items-center gap-2.5">

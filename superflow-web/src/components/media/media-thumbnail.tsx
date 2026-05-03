@@ -108,7 +108,7 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
           <button
             onClick={handleView}
             className="rounded-full bg-card p-2 text-foreground shadow hover:bg-muted"
-            title="Open file"
+            aria-label="Open file" title="Open file"
           >
             <Eye className="h-4 w-4" />
           </button>
@@ -116,6 +116,7 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
             onClick={handleDelete}
             disabled={deleting}
             className="rounded-full bg-card p-2 text-red-600 shadow hover:bg-red-50 disabled:opacity-50"
+            aria-label="Delete file"
             title="Delete file"
           >
             <Trash2 className="h-4 w-4" />

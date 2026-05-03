@@ -349,7 +349,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         return (
           <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone}`}>
             {/* Header — always visible */}
-            <div className="cursor-pointer select-none" onClick={() => { if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); }}>
+            <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); } }} className="cursor-pointer select-none" onClick={() => { if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); }}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {isCollapsed ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
@@ -399,11 +399,11 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                       <Plus className="mr-1 h-4 w-4" /> Sublet
                     </Button>
                     {isCustom ? (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteCustomGroup(group.quoteGroupId as string); }}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" aria-label="Delete group" onClick={(e) => { e.stopPropagation(); deleteCustomGroup(group.quoteGroupId as string); }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     ) : group.key === "general" ? (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); setLines((prev) => prev.filter((l) => l.inspection_response_id || l.quote_group_id)); }}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" aria-label="Clear group" onClick={(e) => { e.stopPropagation(); setLines((prev) => prev.filter((l) => l.inspection_response_id || l.quote_group_id)); }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     ) : null}
@@ -483,7 +483,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                         </div>
                       </div>
                       <div className="flex items-end justify-end">
-                        <Button variant="ghost" size="icon" className="h-9 w-9 text-red-400 hover:text-red-600" onClick={() => removeLine(line.id)}>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-red-400 hover:text-red-600" aria-label="Remove line" onClick={() => removeLine(line.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

@@ -161,7 +161,7 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
 function StatusBadge({ status }: { status: JobStatus }) {
   const meta = STATUS_META[status];
   return (
-    <span className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold", meta.badge)}>
+    <span aria-label={meta.label} className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold", meta.badge)}>
       <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
       {meta.label}
     </span>
@@ -588,7 +588,7 @@ export default function JobDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-foreground/80 hover:cursor-pointer hover:text-foreground" onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}>
+                    <p role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDraftConcern(job.customer_concern || ""); setEditingConcern(true); } }} className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-foreground/80 hover:cursor-pointer hover:text-foreground" onClick={() => { setDraftConcern(job.customer_concern || ""); setEditingConcern(true); }}>
                       {job.customer_concern || "Click to add a customer concern."}
                     </p>
                   )}
@@ -614,7 +614,7 @@ export default function JobDetailPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-foreground/80 hover:cursor-pointer hover:text-foreground" onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}>
+                    <p role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDraftNotes(job.internal_notes || ""); setEditingNotes(true); } }} className="mt-2 min-h-[88px] whitespace-pre-wrap text-sm leading-6 text-foreground/80 hover:cursor-pointer hover:text-foreground" onClick={() => { setDraftNotes(job.internal_notes || ""); setEditingNotes(true); }}>
                       {job.internal_notes || "Click to add internal notes."}
                     </p>
                   )}
@@ -716,7 +716,7 @@ export default function JobDetailPage() {
                   </div>
                   {editingPromise ? (
                     <div className="mt-2 space-y-2">
-                      <Input type="datetime-local" className="h-9 rounded-lg border-border bg-card text-sm" value={draftPromise} onChange={(e) => setDraftPromise(e.target.value)} />
+                      <Input type="datetime-local" aria-label="Promised date and time" className="h-9 rounded-lg border-border bg-card text-sm" value={draftPromise} onChange={(e) => setDraftPromise(e.target.value)} />
                       <div className="flex gap-2">
                         <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={savePromise} disabled={savingPromise}><Save className="mr-1 h-3 w-3" /> {savingPromise ? "Saving..." : "Save"}</Button>
                         <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingPromise(false)} disabled={savingPromise}><X className="mr-1 h-3 w-3" /> Cancel</Button>
@@ -936,9 +936,9 @@ export default function JobDetailPage() {
                     </div>
                     {approvalCounts ? (
                       <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-800">Approved: {approvalCounts.approved}</span>
-                        <span className="rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-800">Rejected: {approvalCounts.declined}</span>
-                        <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-800">Deferred: {approvalCounts.deferred}</span>
+                        <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-3 py-1 font-semibold text-emerald-800 dark:text-emerald-200">Approved: {approvalCounts.approved}</span>
+                        <span className="rounded-full bg-rose-100 dark:bg-rose-900/50 px-3 py-1 font-semibold text-rose-800 dark:text-rose-200">Rejected: {approvalCounts.declined}</span>
+                        <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-3 py-1 font-semibold text-amber-800 dark:text-amber-200">Deferred: {approvalCounts.deferred}</span>
                         <span className="rounded-full bg-muted px-3 py-1 font-semibold text-foreground/80">Pending: {approvalCounts.pending}</span>
                       </div>
                     ) : null}

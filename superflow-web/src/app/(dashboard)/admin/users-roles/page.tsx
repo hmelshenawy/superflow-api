@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -203,19 +204,19 @@ export default function UsersRolesPage() {
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Name</label>
-              <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
+              <Input value={formName} onChange={(e) => setFormName(e.target.value)} aria-label="Name" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Email</label>
-              <Input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} />
+              <Input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} aria-label="Email" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">{editingUser ? "New Password" : "Password"}</label>
-              <Input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder={editingUser ? "Leave blank to keep" : ""} />
+              <Input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} placeholder={editingUser ? "Leave blank to keep" : ""} aria-label="Password" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Staff ID</label>
-              <Input value={formEmployeeCode} onChange={(e) => setFormEmployeeCode(e.target.value)} placeholder="e.g. 4702" />
+              <Input value={formEmployeeCode} onChange={(e) => setFormEmployeeCode(e.target.value)} placeholder="e.g. 4702" aria-label="Staff ID" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Role</label>

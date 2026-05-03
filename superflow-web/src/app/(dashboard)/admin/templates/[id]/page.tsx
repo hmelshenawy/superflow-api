@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   ArrowLeft,
@@ -317,7 +318,7 @@ export default function TemplateEditorPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/admin/templates")}>
+        <Button variant="ghost" size="icon" aria-label="Back to templates" onClick={() => router.push("/admin/templates")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -369,7 +370,7 @@ export default function TemplateEditorPage() {
               <span className="text-sm text-muted-foreground">
                 {template.vehicle_type || "All vehicles"} · {sections.length} sections · {sections.reduce((sum, s) => sum + s.inspection_items.length, 0)} items
               </span>
-              <Button variant="ghost" size="icon" onClick={() => setEditingHeader(true)}>
+              <Button variant="ghost" size="icon" aria-label="Edit template header" onClick={() => setEditingHeader(true)}>
                 <Pencil className="h-4 w-4" />
               </Button>
             </div>

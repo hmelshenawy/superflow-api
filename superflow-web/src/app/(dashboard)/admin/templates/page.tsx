@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -175,7 +176,7 @@ export default function TemplatesPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => toggleActive(t)}>
+                      <Button variant="ghost" size="icon" aria-label="Toggle template" onClick={() => toggleActive(t)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
