@@ -47,26 +47,29 @@ function isAdmin(user: { role?: { name?: string | null } | null; role_id?: strin
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    // Auto-collapse on smaller desktop screens
-    if (window.innerWidth < 1280) return true;
-    // Auto-collapse on smaller desktop screens
-    if (window.innerWidth < 1280) return true;
-    return localStorage.getItem("sidebar-collapsed") === "true";
-  });
+  const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const admin = isAdmin(user);
 
-  useEffect(() => { setMounted(true); }, []);
+  // Initialize collapsed state based on screen size after mount
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      setCollapsed(saved === "true");
+    } else {
+      setCollapsed(window.innerWidth < 1280);
+    }
+    setMounted(true);
+  }, []);
 
-  // Auto-collapse/expand on resize across 1280px boundary
+  // Auto-collapse when resizing below 1280px
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth < 1280) setCollapsed(true);
+      if (window.innerWidth < 1280) {
+        setCollapsed(true);
+      }
     };
-    onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);

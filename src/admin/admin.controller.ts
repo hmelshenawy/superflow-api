@@ -18,7 +18,7 @@ export class AdminController {
 
   // ─── Settings ──────────────────────────────────────────
   @Get('settings')
-  @Roles('admin', 'manager')
+  @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'All settings' })
   getSettings() { return this.service.getSettings(); }
 
