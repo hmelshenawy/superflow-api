@@ -316,7 +316,7 @@ export class AuthorisationService {
       gLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
       grouped.push({
         key: gid,
-        title: gLines[0]?.quote_groups?.title || gLines[0]?.quote_group_title || finding?.label || 'Quote items',
+        title: gLines[0]?.quote_groups?.title || finding?.label || 'Quote items',
         severity: finding?.severity || null,
         finding: finding || null,
         isCustom: Boolean(gLines[0]?.quote_group_id),

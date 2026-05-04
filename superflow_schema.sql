@@ -329,7 +329,6 @@ CREATE TABLE `estimate_lines` (
   `job_id` CHAR(36) DEFAULT NULL,
   `inspection_response_id` CHAR(36) DEFAULT NULL,
   `quote_group_id` CHAR(36) DEFAULT NULL,
-  `quote_group_title` VARCHAR(120) DEFAULT NULL,
   `type` ENUM('labour','part','sublet') NOT NULL,
   `description` TEXT DEFAULT NULL,
   `part_number` VARCHAR(60) DEFAULT NULL,

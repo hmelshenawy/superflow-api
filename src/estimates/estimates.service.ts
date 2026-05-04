@@ -23,11 +23,7 @@ export class EstimatesService {
     // Ensure quote group exists before referencing it
     if (dto.quote_group_id) {
       const group = await this.prisma.quote_groups.findUnique({ where: { id: dto.quote_group_id } });
-      if (!group && dto.job_id) {
-        await this.prisma.quote_groups.create({
-          data: { id: dto.quote_group_id, job_id: dto.job_id, title: dto.quote_group_title || 'New group' },
-        });
-      }
+      if (!group) throw new NotFoundException('Quote group not found');
     }
 
     return this.prisma.estimate_lines.create({
@@ -38,7 +34,6 @@ export class EstimatesService {
         tax_amount: taxAmount, is_recommended: dto.is_recommended ?? false,
         inspection_response_id: dto.inspection_response_id,
         quote_group_id: dto.quote_group_id,
-        quote_group_title: dto.quote_group_title,
         added_by: userId,
       },
     });
@@ -149,7 +144,7 @@ export class EstimatesService {
         if (!existingGroup) {
           const representativeLine = lines.find((l) => l.quote_group_id === gid);
           await tx.quote_groups.create({
-            data: { id: gid, job_id: jobId, title: representativeLine?.quote_group_title || 'New group', sort_order: 0 },
+            data: { id: gid, job_id: jobId, title: 'New group', sort_order: 0 },
           });
         }
       }
@@ -179,7 +174,6 @@ export class EstimatesService {
           added_by: userId,
           inspection_response_id: l.inspection_response_id || null,
           quote_group_id: l.quote_group_id || null,
-          quote_group_title: l.quote_group_title || null,
         };
 
         if (l.id && existingIds.has(l.id)) {
@@ -220,7 +214,6 @@ export class EstimatesService {
               job_id: null,
               inspection_response_id: null,
               quote_group_id: null,
-              quote_group_title: null,
               sort_order: preservedSortOrder++,
             },
           });
@@ -258,7 +251,7 @@ export class EstimatesService {
     // Nullify quote_group_id on all lines in this group (detaches, does not delete lines)
     await this.prisma.estimate_lines.updateMany({
       where: { quote_group_id: groupId },
-      data: { quote_group_id: null, quote_group_title: null },
+      data: { quote_group_id: null },
     });
     return this.prisma.quote_groups.delete({ where: { id: groupId } });
   }

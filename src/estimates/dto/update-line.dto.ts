@@ -10,5 +10,4 @@ export class UpdateLineDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() tax_rate_pct?: number;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_recommended?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() quote_group_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() quote_group_title?: string;
 }
