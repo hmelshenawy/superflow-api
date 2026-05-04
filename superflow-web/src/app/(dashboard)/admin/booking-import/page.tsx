@@ -113,6 +113,7 @@ export default function BookingImportPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [clearing, setClearing] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
 
   // ─── Step 1: Upload & Parse ──────────────────────────
 
@@ -186,6 +187,21 @@ export default function BookingImportPage() {
       const { data } = await api.get<Template[]>("/booking-import/templates");
       setTemplates(data);
     } catch { /* ignore */ }
+  };
+
+  const deleteTemplate = async (templateId: string, templateName: string) => {
+    if (!confirm(`Delete template "${templateName}"? This cannot be undone.`)) return;
+    setDeletingTemplateId(templateId);
+    try {
+      await api.delete(`/booking-import/templates/${templateId}`);
+      toast.success(`Template "${templateName}" deleted`);
+      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
+      if (selectedTemplateId === templateId) setSelectedTemplateId("");
+    } catch {
+      toast.error("Failed to delete template");
+    } finally {
+      setDeletingTemplateId(null);
+    }
   };
 
   // ─── Step 3: Run Import ──────────────────────────────
@@ -322,35 +338,51 @@ export default function BookingImportPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Template apply */}
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  Apply Saved Template
-                </label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadTemplates}
-                  className="mb-1"
-                >
-                  Load Templates
-                </Button>
-                {templates.length > 0 && (
-                  <Select value={selectedTemplateId} onValueChange={(v) => v && applyTemplate(v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a template…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+            {/* Template section */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Saved Templates
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadTemplates}
+              >
+                Load Templates
+              </Button>
+              {templates.length > 0 && (
+                <div className="space-y-1.5 mt-2">
+                  {templates.map((t) => (
+                    <div
+                      key={t.id}
+                      className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors ${
+                        selectedTemplateId === t.id
+                          ? "border-blue-300 bg-blue-50 dark:border-blue-800/40 dark:bg-blue-950/30"
+                          : "border-border bg-card hover:bg-muted"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 text-left text-sm font-medium truncate"
+                        onClick={() => applyTemplate(t.id)}
+                        title={`Apply template: ${t.name}`}
+                      >
+                        {t.name}
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-500"
+                        onClick={() => deleteTemplate(t.id, t.name)}
+                        disabled={deletingTemplateId === t.id}
+                        title="Delete template"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Mapping table */}
