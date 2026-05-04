@@ -142,20 +142,144 @@ As an admin, configure these before your team starts using the system:
 
 ## 4. User Roles & Permissions
 
-| Role | Can See | Can Do |
+PrioraFlow uses **role-based access control**. Each user account is assigned one role. The role controls what screens the user can access and what backend actions they are allowed to perform.
+
+### Available Roles
+
+| Role | Purpose | Current Permission Keys |
 |---|---|---|
-| **Admin** | Everything | Full system access: settings, users, templates, all jobs |
-| **Manager** | All jobs | View and manage all jobs, configure settings |
-| **Service Advisor** | Their assigned jobs | Create jobs, update status, send estimates, inform customers |
-| **Technician** | Jobs assigned to them | Complete inspections, update workshop stage, upload media |
+| **Admin** | Full owner/system administrator access | `*` |
+| **Manager** | Operational management access | `jobs:read`, `jobs:write`, `customers:read`, `estimates:read`, `estimates:write`, `reports:read`, `settings:read`, `settings:write` |
+| **Service Advisor** | Advisor workflow: customers, jobs, estimates, inspections | `jobs:read`, `jobs:write`, `customers:read`, `customers:write`, `estimates:read`, `estimates:write`, `inspections:read`, `inspections:write` |
+| **Receptionist** | Front-desk booking/customer creation | `customers:read`, `customers:write`, `jobs:read`, `jobs:write` |
+| **Technician** | Inspection/workshop execution | `inspections:read`, `inspections:write`, `jobs:read`, `media:write` |
+
+> Important: in the current backend, route-level access is mainly enforced by **role name** (`admin`, `manager`, `service_advisor`, etc.). The permission-key list is stored for configuration/future UI logic and should still be kept accurate when creating custom roles.
+
+### Admin Permissions
+
+Admin is the owner-level role. Admin can:
+
+- See all jobs, users, roles, settings, templates, labour rates, integrations, reports, and audit-sensitive configuration.
+- Create, update, deactivate, and reset passwords for users.
+- Create, update, and delete roles.
+- Create/update/delete labour rates.
+- Create/update/delete inspection templates, sections, and items.
+- Update system settings, priority weights, and integrations.
+- Access all jobs regardless of advisor or technician assignment.
+- Archive/unarchive where supported by the workflow.
+
+Admin-only backend actions include:
+
+| Area | Admin-only Examples |
+|---|---|
+| Users | Delete/deactivate users, reset user passwords |
+| Roles | Create/update/delete roles |
+| Labour Rates | Delete labour rates |
+| Templates | Delete templates |
+| System | Full access to all protected settings and configuration |
+
+### Service Advisor Permissions
+
+Service Advisor is the daily front-line role. A service advisor can:
+
+- View job board data relevant to their advisor workflow.
+- Create and update jobs.
+- Move jobs through advisor-owned statuses such as Booked, Checking, Estimate Sent, Approved, and Closed when valid.
+- Mark a booked customer as **Arrived**. This moves the job from `booked` to `checking` and records `arrived_at`.
+- Mark a booked job as **No Show** when valid. The Kanban board safely handles `no_show` jobs even though there is no visible No Show column.
+- Create/update customers.
+- Read/write estimates.
+- Read/write inspections where the advisor workflow requires it.
+- Upload/read job media when the route allows it.
+
+A service advisor cannot normally:
+
+- Manage users or reset passwords.
+- Create, update, or delete roles.
+- Delete templates or labour rates.
+- Change protected system settings.
+- Access admin-only configuration screens unless explicitly allowed by the backend route.
+
+### Manager Permissions
+
+Manager is between Admin and Service Advisor. Manager can generally:
+
+- See all jobs.
+- Manage operational settings.
+- View reports and dashboard stats.
+- Manage labour rates and templates where the backend allows manager access.
+- Create and update users, but not perform admin-only destructive actions such as deleting roles or resetting passwords unless explicitly granted.
+
+### Receptionist Permissions
+
+Receptionist is for front-desk intake. Receptionist can generally:
+
+- Create and update customers.
+- Create and update bookings/jobs.
+- View jobs needed for booking/reception work.
+
+Receptionist should not manage settings, roles, templates, labour rates, or password resets.
+
+### Technician Permissions
+
+Technician is for workshop execution. Technician can generally:
+
+- View assigned jobs/workshop tasks.
+- Read and complete inspections.
+- Upload media/photos.
+- Update workshop-related progress where the route allows it.
+
+Technician should not manage customers, estimates, settings, roles, users, or admin configuration.
 
 ### Role-Based Job Visibility
 
-- Advisors see **only their own jobs** by default
-- Technicians see **only jobs they're assigned to**
-- Managers and admins see **all jobs**
+- Advisors see **only their own jobs** by default.
+- Technicians see **only jobs assigned to them**.
+- Managers and admins see **all jobs**.
+- Archived jobs are hidden from the active board unless the Archive filter is enabled.
+- `no_show` is intentionally not a Kanban column; the board skips statuses that are not visible columns so the board remains stable.
 
----
+### Creating a New Role
+
+Only an **Admin** can create a role.
+
+Recommended process:
+
+1. Go to **Admin → Users & Roles**.
+2. Open the **Roles** section.
+3. Click **Create Role**.
+4. Enter:
+   - **Name**: use a stable lowercase name such as `parts_coordinator` or `workshop_controller`.
+   - **Description**: short business explanation.
+   - **Permissions**: JSON/list of permission keys. Example: `["jobs:read", "jobs:write", "customers:read"]`.
+5. Save the role.
+6. Assign the role to users from the user management screen.
+
+Backend API reference:
+
+| Action | Endpoint | Required Role |
+|---|---|---|
+| List roles | `GET /api/admin/roles` | Admin or Manager |
+| Create role | `POST /api/admin/roles` | Admin |
+| Update role | `PATCH /api/admin/roles/:id` | Admin |
+| Delete role | `DELETE /api/admin/roles/:id` | Admin |
+
+Example create-role payload:
+
+```json
+{
+  "name": "parts_coordinator",
+  "description": "Parts team member who can read jobs and update parts workflow",
+  "permissions": ["jobs:read", "jobs:write", "customers:read"]
+}
+```
+
+Safety rules:
+
+- Do not delete a role while users are assigned to it; the backend blocks this.
+- Avoid renaming core roles (`admin`, `manager`, `service_advisor`, `technician`, `receptionist`) unless the backend guards are also reviewed.
+- If a new role must access protected screens, confirm the backend route allows that role name.
 
 ## 5. The Job Lifecycle
 
@@ -216,7 +340,7 @@ Every vehicle that enters the workshop follows a structured lifecycle. The syste
 
 | From | Can Move To |
 |---|---|
-| Booked | Checking, Closed |
+| Booked | Checking, Closed, No Show |
 | Checking | Estimate Sent, Approved, In Progress, Closed |
 | Estimate Sent | Checking, Approved, Closed |
 | Approved | Estimate Sent, In Progress, Closed |
@@ -225,6 +349,7 @@ Every vehicle that enters the workshop follows a structured lifecycle. The syste
 | Quality Check | In Progress, Ready |
 | Ready | Quality Check, Closed |
 | Closed | *(terminal — no transitions out)* |
+| No Show | *(terminal — no transitions out)* |
 
 ### Three Operational Phases
 
@@ -240,9 +365,13 @@ The system automatically handles these when status changes:
 
 | Action | What Happens |
 |---|---|
+| Move from **Booked** to **Checking** / click **Arrived** | `arrived_at` timestamp is set |
+| Move from **Booked** to **No Show** | Job status becomes `no_show`; Workshop Stage is cleared; job is not shown in visible Kanban columns |
+| End-of-day no-show cron | At 9:00 PM Dubai, remaining `booked` jobs with empty `arrived_at` are marked `no_show` |
 | Move to **Ready** | `completed_at` timestamp is set |
 | Move to **Closed** | `invoiced_at` timestamp is set |
 | Move **away from Closed** | `invoiced_at` and `archived_at` are cleared |
+| Move back to **Booked** | `arrived_at` is cleared |
 | Move **away from Ready** (backwards) | `completed_at` is cleared |
 | Move to **Waiting Parts** | Workshop Stage is cleared; Parts Status auto-sets to "Order Parts" |
 | Parts Status → **Parts Ready** | Workshop Stage auto-sets to "Waiting to Start" |
