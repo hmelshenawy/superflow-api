@@ -59,7 +59,7 @@ export class EstimatesController {
   @Post('groups')
   @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'Create a quote group' })
-  createGroup(@Body() dto: CreateGroupDto) { return this.service.createGroup(dto.job_id, dto.title); }
+  createGroup(@Body() dto: CreateGroupDto) { return this.service.createGroup(dto.job_id, dto.title ?? 'New group'); }
 
   @Patch('groups/:id')
   @Roles('admin', 'manager', 'service_advisor')
