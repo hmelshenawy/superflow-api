@@ -47,18 +47,16 @@ function isAdmin(user: { role?: { name?: string | null } | null; role_id?: strin
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const admin = isAdmin(user);
 
-  // Initialize collapsed state based on screen size after mount
+  // Initialize from localStorage after hydration
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved !== null) {
       setCollapsed(saved === "true");
-    } else {
-      setCollapsed(window.innerWidth < 1280);
     }
     setMounted(true);
   }, []);
@@ -68,6 +66,7 @@ export function Sidebar() {
     const onResize = () => {
       if (window.innerWidth < 1280) {
         setCollapsed(true);
+        localStorage.setItem("sidebar-collapsed", "true");
       }
     };
     window.addEventListener("resize", onResize);
@@ -286,11 +285,11 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — starts collapsed, user can toggle */}
       <aside
         className={cn(
           "hidden h-screen shrink-0 flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-all duration-200 lg:flex",
-          collapsed ? "w-16" : "w-56"
+          collapsed ? "w-[60px]" : "w-52"
         )}
       >
         {navContent(collapsed)}
