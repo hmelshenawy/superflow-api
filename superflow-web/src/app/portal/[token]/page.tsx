@@ -80,17 +80,17 @@ interface PortalData {
 /* ── Helpers ────────────────────────────────────────── */
 const TYPE_LABEL: Record<string, string> = { labour: "Labour", part: "Parts", sublet: "Sublet" };
 const TYPE_STYLE: Record<string, string> = {
-  labour: "bg-blue-50 text-blue-700 border-blue-200",
-  part: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  sublet: "bg-purple-50 text-purple-700 border-purple-200",
+  labour: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40",
+  part: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40",
+  sublet: "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40",
 };
 const SEVERITY_STYLE: Record<string, string> = {
-  red: "bg-rose-50 border-rose-200",
-  amber: "bg-amber-50 border-amber-200",
+  red: "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/40",
+  amber: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40",
 };
 const SEVERITY_BADGE: Record<string, string> = {
-  red: "bg-rose-100 text-rose-700",
-  amber: "bg-amber-100 text-amber-800",
+  red: "bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300",
+  amber: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300",
 };
 
 /* ── Component ──────────────────────────────────────── */
@@ -219,7 +219,7 @@ export default function PortalPage() {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
         {/* ── Header ──────────────────────────────── */}
         <div className="mb-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -228,7 +228,7 @@ export default function PortalPage() {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Service Estimate</p>
               <h1 className="mt-1 text-2xl font-bold text-foreground">{job.job_number}</h1>
             </div>
-            <Shield className="h-5 w-5 text-slate-300" />
+            <Shield className="h-5 w-5 text-muted-foreground" />
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -257,7 +257,7 @@ export default function PortalPage() {
           </div>
 
           {job.customer_concern && (
-            <div className="mt-4 flex items-start gap-3 rounded-xl bg-background p-3">
+            <div className="mt-4 flex items-start gap-3 rounded-xl bg-muted p-3">
               <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Customer Concern</p>
@@ -267,7 +267,7 @@ export default function PortalPage() {
           )}
 
           {isExpired && (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="mt-4 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
               This link has expired. Please contact your service advisor for a new one.
             </div>
           )}
@@ -341,10 +341,10 @@ export default function PortalPage() {
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                             groupDecision.decision === "approved"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
                               : groupDecision.decision === "declined"
-                                ? "bg-rose-100 text-rose-700"
-                                : "bg-amber-100 text-amber-800"
+                                ? "bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300"
+                                : "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300"
                           }`}
                         >
                           {groupDecision.decision === "approved"
@@ -363,8 +363,8 @@ export default function PortalPage() {
                         onClick={() => setDecision(group.key, "approved")}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                           groupDecision?.decision === "approved"
-                            ? "bg-emerald-100 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300"
-                            : "border-border text-muted-foreground hover:border-emerald-300 hover:text-emerald-700"
+                            ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/40 ring-1 ring-emerald-300 dark:ring-emerald-700/40"
+                            : "border-border text-muted-foreground hover:border-emerald-300 dark:hover:border-emerald-700/40 hover:text-emerald-700 dark:hover:text-emerald-300"
                         }`}
                       >
                         <CheckCircle className="h-3.5 w-3.5" /> Approve
@@ -373,8 +373,8 @@ export default function PortalPage() {
                         onClick={() => setDecision(group.key, "declined")}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                           groupDecision?.decision === "declined"
-                            ? "bg-rose-100 text-rose-800 border-rose-300 ring-1 ring-rose-300"
-                            : "border-border text-muted-foreground hover:border-rose-300 hover:text-rose-700"
+                            ? "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700/40 ring-1 ring-rose-300 dark:ring-rose-700/40"
+                            : "border-border text-muted-foreground hover:border-rose-300 dark:hover:border-rose-700/40 hover:text-rose-700 dark:hover:text-rose-300"
                         }`}
                       >
                         <XCircle className="h-3.5 w-3.5" /> Reject
@@ -405,14 +405,14 @@ export default function PortalPage() {
                             const active = groupDecision?.decision === dec;
                             const styles = {
                               approved: active
-                                ? "bg-emerald-100 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300"
-                                : "border-border text-muted-foreground hover:border-emerald-300 hover:text-emerald-700",
+                                ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/40 ring-1 ring-emerald-300 dark:ring-emerald-700/40"
+                                : "border-border text-muted-foreground hover:border-emerald-300 dark:hover:border-emerald-700/40 hover:text-emerald-700 dark:hover:text-emerald-300",
                               declined: active
-                                ? "bg-rose-100 text-rose-800 border-rose-300 ring-1 ring-rose-300"
-                                : "border-border text-muted-foreground hover:border-rose-300 hover:text-rose-700",
+                                ? "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700/40 ring-1 ring-rose-300 dark:ring-rose-700/40"
+                                : "border-border text-muted-foreground hover:border-rose-300 dark:hover:border-rose-700/40 hover:text-rose-700 dark:hover:text-rose-300",
                               deferred: active
-                                ? "bg-amber-100 text-amber-800 border-amber-300 ring-1 ring-amber-300"
-                                : "border-border text-muted-foreground hover:border-amber-300 hover:text-amber-700",
+                                ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700/40 ring-1 ring-amber-300 dark:ring-amber-700/40"
+                                : "border-border text-muted-foreground hover:border-amber-300 dark:hover:border-amber-700/40 hover:text-amber-700 dark:hover:text-amber-300",
                             };
                             const icons = {
                               approved: <CheckCircle className="h-3.5 w-3.5" />,
@@ -437,7 +437,7 @@ export default function PortalPage() {
                             placeholder="Add a comment (optional)…"
                             value={groupDecision?.comment || ""}
                             onChange={(e) => setComment(group.key, e.target.value)}
-                            className="mt-2 w-full rounded-lg border border-border px-3 py-1.5 text-sm text-foreground/80 placeholder:text-muted-foreground focus:border-slate-400 focus:outline-none"
+                            className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-slate-400 dark:focus:border-slate-600 focus:outline-none"
                           />
                         )}
                       </div>
@@ -448,7 +448,7 @@ export default function PortalPage() {
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
-                                    <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase ${TYPE_STYLE[line.type] || "bg-background text-muted-foreground border-border"}`}>
+                                    <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase ${TYPE_STYLE[line.type] || "bg-muted text-muted-foreground border-border"}`}>
                                       {TYPE_LABEL[line.type] || line.type}
                                     </span>
                                     <span className="text-sm font-medium text-foreground">{line.description || "—"}</span>
@@ -492,7 +492,7 @@ export default function PortalPage() {
         )}
 
         {/* ── Grand Total + Submit ─────────────────── */}
-        <div className="sticky bottom-0 -mx-4 border-t border-border bg-white/90 px-4 py-4 backdrop-blur sm:-mx-0 sm:rounded-2xl sm:border sm:shadow-lg">
+        <div className="sticky bottom-0 -mx-4 border-t border-border bg-white/90 dark:bg-slate-900/90 px-4 py-4 backdrop-blur sm:-mx-0 sm:rounded-2xl sm:border sm:shadow-lg">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -501,13 +501,13 @@ export default function PortalPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Approved Total</p>
-                <p className="text-3xl font-bold text-emerald-700">{currency} {approvedTotal.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">{currency} {approvedTotal.toFixed(2)}</p>
               </div>
             </div>
             <button
               onClick={submit}
               disabled={!allDecided || submitting || isExpired || !!data.token.used_at}
-              className="rounded-xl bg-slate-900 px-8 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-slate-900 dark:bg-slate-100 px-8 py-3 text-sm font-semibold text-white dark:text-slate-900 shadow-lg transition hover:bg-slate-800 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {data.token.used_at
                 ? "Already Submitted"
