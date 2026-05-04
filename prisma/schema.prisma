@@ -86,6 +86,7 @@ model customers {
   @@index([dms_customer_id], map: "idx_customers_dms")
   @@index([email], map: "idx_customers_email")
   @@index([phone], map: "idx_customers_phone")
+  @@index([name], map: "idx_customers_name")
 }
 
 model deferred_work {
@@ -116,6 +117,7 @@ model deferred_work {
   @@index([vehicle_id], map: "fk_dw_vehicle")
   @@index([customer_id], map: "idx_dw_customer")
   @@index([status, remind_after], map: "idx_dw_status_remind")
+  @@index([remind_after], map: "idx_dw_remind_after")
 }
 
 model deferred_work_reminders {
@@ -371,6 +373,7 @@ model jobs {
   @@index([customer_sensitivity], map: "idx_jobs_customer_sensitivity")
   @@index([technician_id], map: "idx_jobs_technician")
   @@index([vehicle_id], map: "idx_jobs_vehicle")
+  @@index([archived_at], map: "idx_jobs_archived_at")
 }
 
 model labour_rates {

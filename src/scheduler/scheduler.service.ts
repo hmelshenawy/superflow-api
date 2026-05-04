@@ -62,4 +62,46 @@ export class SchedulerService implements OnModuleInit {
       this.logger.error('Failed to mark booked jobs as no_show', error);
     }
   }
+
+  // Purge expired/revoked refresh tokens older than 30 days
+  @Cron('0 3 * * *') // 03:00 UTC daily
+  async cleanupRefreshTokens() {
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+
+      const result = await this.prisma.refresh_tokens.deleteMany({
+        where: {
+          expires_at: { lt: cutoff },
+        },
+      });
+
+      if (result.count > 0) {
+        this.logger.log(`Purged ${result.count} expired refresh token(s) older than 30 days`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to cleanup refresh tokens', error);
+    }
+  }
+
+  // Purge audit logs older than 90 days
+  @Cron('0 4 * * 0') // 04:00 UTC every Sunday
+  async cleanupAuditLogs() {
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 90);
+
+      const result = await this.prisma.audit_logs.deleteMany({
+        where: {
+          created_at: { lt: cutoff },
+        },
+      });
+
+      if (result.count > 0) {
+        this.logger.log(`Purged ${result.count} audit log(s) older than 90 days`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to cleanup audit logs', error);
+    }
+  }
 }

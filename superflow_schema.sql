@@ -1,9 +1,9 @@
 -- ============================================================
 -- SuperFlow App — Full Database Schema
--- Generated: 2026-04-19
+-- Regenerated: 2026-05-04 (from live MariaDB)
 -- Database: superflow_app
--- Engine: MariaDB 11.4+ / MySQL 8+
--- Charset: utf8mb4
+-- Engine: MariaDB 11.4+ / InnoDB
+-- Charset: utf8mb4 / Collation: utf8mb4_general_ci
 -- Tables: 28
 -- ============================================================
 
@@ -33,6 +33,7 @@ CREATE TABLE `users` (
   `email` VARCHAR(255) DEFAULT NULL,
   `password_hash` VARCHAR(255) DEFAULT NULL,
   `is_active` TINYINT(1) DEFAULT 1,
+  `employee_code` VARCHAR(20) DEFAULT NULL,
   `avatar_url` VARCHAR(500) DEFAULT NULL,
   `last_login_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -79,7 +80,8 @@ CREATE TABLE `customers` (
   PRIMARY KEY (`id`),
   KEY `idx_customers_email` (`email`),
   KEY `idx_customers_phone` (`phone`),
-  KEY `idx_customers_dms` (`dms_customer_id`)
+  KEY `idx_customers_dms` (`dms_customer_id`),
+  KEY `idx_customers_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `vehicles` (
@@ -116,14 +118,23 @@ CREATE TABLE `jobs` (
   `vehicle_id` CHAR(36) DEFAULT NULL,
   `advisor_id` CHAR(36) DEFAULT NULL,
   `technician_id` CHAR(36) DEFAULT NULL,
-  `status` ENUM('open','in_progress','waiting_parts','completed','closed','invoiced') NOT NULL DEFAULT 'open',
+  `owner_code` VARCHAR(20) DEFAULT NULL,
+  `status` ENUM('booked','checking','estimate_sent','approved','in_progress','waiting_parts','quality_check','ready','closed','no_show') NOT NULL DEFAULT 'booked',
+  `workshop_stage` VARCHAR(40) DEFAULT 'waiting_technician',
+  `parts_status` VARCHAR(40) DEFAULT 'no_parts',
+  `customer_informed` TINYINT(1) DEFAULT 0,
+  `is_customer_waiting` TINYINT(1) DEFAULT 0,
+  `customer_sensitivity` VARCHAR(40) DEFAULT 'normal',
   `customer_concern` TEXT DEFAULT NULL,
   `internal_notes` TEXT DEFAULT NULL,
   `odometer_in` INT UNSIGNED DEFAULT NULL,
   `promised_at` DATETIME DEFAULT NULL,
+  `arrived_at` DATETIME DEFAULT NULL,
   `dms_ro_number` VARCHAR(60) DEFAULT NULL,
   `dms_synced_at` DATETIME DEFAULT NULL,
   `completed_at` DATETIME DEFAULT NULL,
+  `invoiced_at` DATETIME DEFAULT NULL,
+  `archived_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -134,6 +145,12 @@ CREATE TABLE `jobs` (
   KEY `idx_jobs_technician` (`technician_id`),
   KEY `idx_jobs_status` (`status`),
   KEY `idx_jobs_created` (`created_at` DESC),
+  KEY `idx_jobs_workshop_stage` (`workshop_stage`),
+  KEY `idx_jobs_parts_status` (`parts_status`),
+  KEY `idx_jobs_customer_waiting` (`is_customer_waiting`),
+  KEY `idx_jobs_customer_sensitivity` (`customer_sensitivity`),
+  KEY `idx_jobs_arrived_at` (`arrived_at`),
+  KEY `idx_jobs_archived_at` (`archived_at`),
   CONSTRAINT `fk_jobs_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `fk_jobs_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`),
   CONSTRAINT `fk_jobs_advisor` FOREIGN KEY (`advisor_id`) REFERENCES `users` (`id`),
@@ -211,7 +228,7 @@ CREATE TABLE `inspection_items` (
   `id` CHAR(36) NOT NULL,
   `section_id` CHAR(36) DEFAULT NULL,
   `label` VARCHAR(180) DEFAULT NULL,
-  `input_type` ENUM('pass_fail','yes_no','ok_warn_fail','number','text','toggle','photo') DEFAULT 'pass_fail',
+  `input_type` ENUM('pass_fail','yes_no','ok_warn_fail','number','text','toggle','photo','odometer','fuel_level') DEFAULT 'pass_fail',
   `options` JSON DEFAULT NULL,
   `unit` VARCHAR(20) DEFAULT NULL,
   `requires_photo` TINYINT(1) DEFAULT 0,
@@ -299,6 +316,8 @@ CREATE TABLE `estimate_lines` (
   `id` CHAR(36) NOT NULL,
   `job_id` CHAR(36) DEFAULT NULL,
   `inspection_response_id` CHAR(36) DEFAULT NULL,
+  `quote_group_id` CHAR(36) DEFAULT NULL,
+  `quote_group_title` VARCHAR(120) DEFAULT NULL,
   `type` ENUM('labour','part','sublet') NOT NULL,
   `description` TEXT DEFAULT NULL,
   `part_number` VARCHAR(60) DEFAULT NULL,
@@ -317,6 +336,7 @@ CREATE TABLE `estimate_lines` (
   KEY `idx_el_job` (`job_id`),
   KEY `idx_el_type` (`type`),
   KEY `idx_el_recommended` (`is_recommended`),
+  KEY `idx_el_quote_group` (`quote_group_id`),
   CONSTRAINT `fk_el_job` FOREIGN KEY (`job_id`) REFERENCES `jobs` (`id`),
   CONSTRAINT `fk_el_response` FOREIGN KEY (`inspection_response_id`) REFERENCES `inspection_responses` (`id`),
   CONSTRAINT `fk_el_added_by` FOREIGN KEY (`added_by`) REFERENCES `users` (`id`)
@@ -356,6 +376,7 @@ CREATE TABLE `approval_tokens` (
   `revoked_by` CHAR(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `token_hash` (`token_hash`),
+  KEY `fk_at_revoked_by` (`revoked_by`),
   KEY `idx_at_job` (`job_id`),
   KEY `idx_at_expires` (`expires_at`),
   CONSTRAINT `fk_at_job` FOREIGN KEY (`job_id`) REFERENCES `jobs` (`id`),
@@ -372,6 +393,7 @@ CREATE TABLE `authorisation_decisions` (
   `decided_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_ad_token_line` (`token_id`, `estimate_line_id`),
+  KEY `fk_ad_line` (`estimate_line_id`),
   KEY `idx_ad_decision` (`decision`),
   CONSTRAINT `fk_ad_token` FOREIGN KEY (`token_id`) REFERENCES `approval_tokens` (`id`),
   CONSTRAINT `fk_ad_line` FOREIGN KEY (`estimate_line_id`) REFERENCES `estimate_lines` (`id`)
@@ -399,6 +421,7 @@ CREATE TABLE `deferred_work` (
   PRIMARY KEY (`id`),
   KEY `idx_dw_customer` (`customer_id`),
   KEY `idx_dw_status_remind` (`status`, `remind_after`),
+  KEY `idx_dw_remind_after` (`remind_after`),
   CONSTRAINT `fk_dw_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `fk_dw_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`),
   CONSTRAINT `fk_dw_original_job` FOREIGN KEY (`original_job_id`) REFERENCES `jobs` (`id`),
@@ -464,6 +487,20 @@ CREATE TABLE `labour_rates` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `booking_import_templates` (
+  `id` CHAR(36) NOT NULL,
+  `name` VARCHAR(120) NOT NULL,
+  `mappings` JSON NOT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_by` CHAR(36) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_bit_created_by` (`created_by`),
+  KEY `idx_bit_active` (`is_active`),
+  CONSTRAINT `fk_bit_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ============================================================
@@ -539,6 +576,7 @@ CREATE TABLE `notifications` (
   `sent_at` DATETIME DEFAULT NULL,
   `delivered_at` DATETIME DEFAULT NULL,
   PRIMARY KEY (`id`),
+  KEY `fk_nt_template` (`template_id`),
   KEY `idx_n_job` (`job_id`),
   KEY `idx_n_customer` (`customer_id`),
   KEY `idx_n_status` (`status`),
