@@ -1,0 +1,2970 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R 29 0 R 31 0 R 33 0 R 35 0 R 37 0 R 39 0 R 41 0 R 43 0 R 45 0 R 47 0 R 49 0 R] /Count 23 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 2583 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 1 of 23) Tj
+T*
+T*
+(PrioraFlow ? Owner Manual) Tj
+T*
+() Tj
+T*
+(Version: 1.1) Tj
+T*
+(Date: May 2026) Tj
+T*
+(For: Service center owners, general managers, and operations leadership) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(Table of Contents) Tj
+T*
+() Tj
+T*
+(1. [What Is PrioraFlow?]\(#1-what-is-prioraflow\)) Tj
+T*
+(2. [Who Is It For?]\(#2-who-is-it-for\)) Tj
+T*
+(3. [Getting Started]\(#3-getting-started\)) Tj
+T*
+(4. [User Roles & Permissions]\(#4-user-roles--permissions\)) Tj
+T*
+(5. [The Job Lifecycle]\(#5-the-job-lifecycle\)) Tj
+T*
+(6. [The Priority Engine]\(#6-the-priority-engine\)) Tj
+T*
+(7. [Next Best Actions]\(#7-next-best-actions\)) Tj
+T*
+(8. [Workshop Stages]\(#8-workshop-stages\)) Tj
+T*
+(9. [Parts Status Flow]\(#9-parts-status-flow\)) Tj
+T*
+(10. [Customer Informed System]\(#10-customer-informed-system\)) Tj
+T*
+(11. [The Job Board]\(#11-the-job-board\)) Tj
+T*
+(12. [Job Detail Page]\(#12-job-detail-page\)) Tj
+T*
+(13. [Inspection System]\(#13-inspection-system\)) Tj
+T*
+(14. [Estimate Builder & Authorization]\(#14-estimate-builder--authorization\)) Tj
+T*
+(15. [Booking Import]\(#15-booking-import\)) Tj
+T*
+(16. [Media & Photo Management]\(#16-media--photo-management\)) Tj
+T*
+(17. [Deferred Work]\(#17-deferred-work\)) Tj
+T*
+(18. [Notifications]\(#18-notifications\)) Tj
+T*
+(19. [Settings & Configuration]\(#19-settings--configuration\)) Tj
+T*
+(20. [Technical Architecture]\(#20-technical-architecture\)) Tj
+T*
+(21. [Deployment Guide]\(#21-deployment-guide\)) Tj
+T*
+(22. [Security Model]\(#22-security-model\)) Tj
+T*
+(23. [Glossary]\(#23-glossary\)) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(1. What Is PrioraFlow?) Tj
+T*
+() Tj
+T*
+(PrioraFlow is an AI-powered flow-control system for the entire service center ? reception, workshop,) Tj
+T*
+(parts, and delivery.) Tj
+T*
+() Tj
+T*
+(It is not a generic task manager. It is not a simple job tracker. PrioraFlow answers the critical) Tj
+T*
+(question every service center faces daily:) Tj
+T*
+() Tj
+T*
+(> Which vehicle needs attention right now ? and what should be done about it?) Tj
+T*
+() Tj
+T*
+(The system gives management full visibility over every job, every stage, and every delay. It turns) Tj
+T*
+(reactive workshop operations into a proactive, priority-driven flow.) Tj
+T*
+() Tj
+T*
+(The Problem It Solves) Tj
+T*
+() Tj
+T*
+(In a busy service center, managers oversee 15?50+ vehicles across reception, workshop, and delivery.) Tj
+T*
+(Without a smart system:) Tj
+T*
+() Tj
+T*
+(- Promised delivery times get missed) Tj
+T*
+(- Customers sit waiting without updates) Tj
+T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 3097 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 2 of 23) Tj
+T*
+T*
+(- Parts delays go unnoticed) Tj
+T*
+(- High-value or VIP customers don't get prioritized) Tj
+T*
+(- Vehicles sit idle because nobody noticed they were stuck) Tj
+T*
+(- Workshop capacity is underutilized) Tj
+T*
+(- Management has no real-time visibility into what's happening) Tj
+T*
+() Tj
+T*
+(PrioraFlow solves this by giving every job a live priority score, explaining why it's urgent,) Tj
+T*
+(telling the team exactly what to do next, and giving management a clear dashboard of the entire) Tj
+T*
+(operation.) Tj
+T*
+() Tj
+T*
+(Management Value) Tj
+T*
+() Tj
+T*
+(PrioraFlow gives owners and managers what they've never had before:) Tj
+T*
+() Tj
+T*
+(- Real-time visibility ? See every job, every delay, every risk in one place. No more walking the) Tj
+T*
+(floor.) Tj
+T*
+(- Priority-driven operations ? The system tells the team what to focus on, based on data, not gut) Tj
+T*
+(feeling.) Tj
+T*
+(- Revenue capture ? Deferred work tracking means no lost revenue. Customer approval flow means no) Tj
+T*
+(ambiguity.) Tj
+T*
+(- Accountability ? Every status change is logged. Every action has an owner. Every delay is visible.) Tj
+T*
+(- Scalability ? Works with 5 jobs or 500. The priority engine and next actions scale with the) Tj
+T*
+(operation.) Tj
+T*
+() Tj
+T*
+(Key Differentiators) Tj
+T*
+() Tj
+T*
+(| Feature | Traditional Workshop Software | PrioraFlow |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Priority scoring | None ? all jobs equal | Live 0?100 score, auto-updated |) Tj
+T*
+(| What to do next | Each person figures it out | Next Best Action for every job |) Tj
+T*
+(| Customer follow-up | Manual tracking | Auto-flagged when waiting or overdue |) Tj
+T*
+(| Promised date risk | Manual mental note | Auto-calculated, flagged before it's late |) Tj
+T*
+(| Workshop ? Overall sync | Manual dual entry | Auto-synced, impossible to break |) Tj
+T*
+(| Parts delay visibility | Separate system | Integrated into priority score |) Tj
+T*
+(| Customer Informed flow | Sticky notes, WhatsApp groups | One-click with priority adjustment |) Tj
+T*
+(| Management visibility | Walk the floor or ask | Real-time board with priority, risk, and actions |) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(2. Who Is It For?) Tj
+T*
+() Tj
+T*
+(Primary Decision Makers) Tj
+T*
+() Tj
+T*
+(- Service Center Owners ? Full visibility into every job, every delay, every missed promise. ROI-) Tj
+T*
+(driven oversight.) Tj
+T*
+(- General Managers / Operations Managers ? Real-time dashboard of the entire service center:) Tj
+T*
+(reception, workshop, and delivery.) Tj
+T*
+(- Workshop Controllers ? See the full workshop flow, identify bottlenecks, allocate resources.) Tj
+T*
+() Tj
+T*
+(Active Users) Tj
+T*
+() Tj
+T*
+(- Service Advisors ? Manage their jobs, priorities, next actions, and customer follow-ups.) Tj
+T*
+(- Technicians ? Receive assignments, complete inspections, report progress.) Tj
+T*
+(- Parts Coordinators ? Track parts status, update ETAs, unblock workshop.) Tj
+T*
+(- Administrators ? Configure the system, manage users, and customize priority weights.) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 2775 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 3 of 23) Tj
+T*
+T*
+(Ideal Service Center Profiles) Tj
+T*
+() Tj
+T*
+(- Premium and luxury automotive brands \(Mercedes-Benz, BMW, Audi, etc.\)) Tj
+T*
+(- Service centers with 10+ active repair orders per advisor) Tj
+T*
+(- Operations where missed promised dates cost real money and customer retention) Tj
+T*
+(- Teams that want data-driven decisions, not guesswork) Tj
+T*
+(- Management that needs real-time visibility, not just end-of-day reports) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(3. Getting Started) Tj
+T*
+() Tj
+T*
+(First Login) Tj
+T*
+() Tj
+T*
+(1. Open PrioraFlow in your browser \(e.g., https://your-workshop.prioraflow.com\)) Tj
+T*
+(2. Log in with your admin credentials \(provided during setup\)) Tj
+T*
+(3. You'll land on the Job Board ? your main cockpit) Tj
+T*
+() Tj
+T*
+(Initial Setup) Tj
+T*
+() Tj
+T*
+(As an admin, configure these before your team starts using the system:) Tj
+T*
+() Tj
+T*
+(1. Users & Roles ? Add your advisors, technicians, and managers \(Settings ? Users\)) Tj
+T*
+(2. Labour Rates ? Set your hourly rates for different operations \(Settings ? Labour Rates\)) Tj
+T*
+(3. Priority Weights ? Customize scoring to match your workshop's priorities \(Settings ? Priority) Tj
+T*
+(Matrix\)) Tj
+T*
+(4. Inspection Templates ? Create or customize inspection checklists \(Admin ? Templates\)) Tj
+T*
+(5. Integrations ? Connect webhooks for notifications \(Settings ? Integrations\)) Tj
+T*
+() Tj
+T*
+(Quick Tour) Tj
+T*
+() Tj
+T*
+(| Screen | What It Shows |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Job Board | All active jobs across the entire service center, sorted by priority |) Tj
+T*
+(| Job Detail | Full information for one job: status, priority, estimate, inspection, actions |) Tj
+T*
+(| Priority Snapshot | Top urgent jobs + next actions sidebar |) Tj
+T*
+(| Settings | System configuration, priority weights, users, labour rates |) Tj
+T*
+(| Admin | Dashboard stats, booking import, template management |) Tj
+T*
+() Tj
+T*
+(Management sees everything. Advisors see their own jobs. Technicians see their assignments. This) Tj
+T*
+(role-based visibility gives owners the full picture while keeping each team member focused on their) Tj
+T*
+(work.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(4. User Roles & Permissions) Tj
+T*
+() Tj
+T*
+(PrioraFlow uses role-based access control. Each user account is assigned one role. The role controls) Tj
+T*
+(what screens the user can access and what backend actions they are allowed to perform.) Tj
+T*
+() Tj
+T*
+(Available Roles) Tj
+T*
+() Tj
+T*
+(| Role | Purpose | Current Permission Keys |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Admin | Full owner/system administrator access | * |) Tj
+T*
+(| Manager | Operational management access | jobs:read, jobs:write, customers:read, estimates:read,) Tj
+T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2947 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 4 of 23) Tj
+T*
+T*
+(estimates:write, reports:read, settings:read, settings:write |) Tj
+T*
+(| Service Advisor | Advisor workflow: customers, jobs, estimates, inspections | jobs:read, jobs:write,) Tj
+T*
+(customers:read, customers:write, estimates:read, estimates:write, inspections:read, inspections:write |) Tj
+T*
+(| Receptionist | Front-desk booking/customer creation | customers:read, customers:write, jobs:read,) Tj
+T*
+(jobs:write |) Tj
+T*
+(| Technician | Inspection/workshop execution | inspections:read, inspections:write, jobs:read,) Tj
+T*
+(media:write |) Tj
+T*
+() Tj
+T*
+(> Important: in the current backend, route-level access is mainly enforced by role name \(admin,) Tj
+T*
+(manager, service_advisor, etc.\). The permission-key list is stored for configuration/future UI logic) Tj
+T*
+(and should still be kept accurate when creating custom roles.) Tj
+T*
+() Tj
+T*
+(Admin Permissions) Tj
+T*
+() Tj
+T*
+(Admin is the owner-level role. Admin can:) Tj
+T*
+() Tj
+T*
+(- See all jobs, users, roles, settings, templates, labour rates, integrations, reports, and audit-) Tj
+T*
+(sensitive configuration.) Tj
+T*
+(- Create, update, deactivate, and reset passwords for users.) Tj
+T*
+(- Create, update, and delete roles.) Tj
+T*
+(- Create/update/delete labour rates.) Tj
+T*
+(- Create/update/delete inspection templates, sections, and items.) Tj
+T*
+(- Update system settings, priority weights, and integrations.) Tj
+T*
+(- Access all jobs regardless of advisor or technician assignment.) Tj
+T*
+(- Archive/unarchive where supported by the workflow.) Tj
+T*
+() Tj
+T*
+(Admin-only backend actions include:) Tj
+T*
+() Tj
+T*
+(| Area | Admin-only Examples |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Users | Delete/deactivate users, reset user passwords |) Tj
+T*
+(| Roles | Create/update/delete roles |) Tj
+T*
+(| Labour Rates | Delete labour rates |) Tj
+T*
+(| Templates | Delete templates |) Tj
+T*
+(| System | Full access to all protected settings and configuration |) Tj
+T*
+() Tj
+T*
+(Service Advisor Permissions) Tj
+T*
+() Tj
+T*
+(Service Advisor is the daily front-line role. A service advisor can:) Tj
+T*
+() Tj
+T*
+(- View job board data relevant to their advisor workflow.) Tj
+T*
+(- Create and update jobs.) Tj
+T*
+(- Move jobs through advisor-owned statuses such as Booked, Checking, Estimate Sent, Approved, and) Tj
+T*
+(Closed when valid.) Tj
+T*
+(- Mark a booked customer as Arrived. This moves the job from booked to checking and records) Tj
+T*
+(arrived_at.) Tj
+T*
+(- Mark a booked job as No Show when valid. The Kanban board safely handles no_show jobs even though) Tj
+T*
+(there is no visible No Show column.) Tj
+T*
+(- Create/update customers.) Tj
+T*
+(- Read/write estimates.) Tj
+T*
+(- Read/write inspections where the advisor workflow requires it.) Tj
+T*
+(- Upload/read job media when the route allows it.) Tj
+T*
+() Tj
+T*
+(A service advisor cannot normally:) Tj
+T*
+() Tj
+T*
+(- Manage users or reset passwords.) Tj
+T*
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 2316 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 5 of 23) Tj
+T*
+T*
+(- Create, update, or delete roles.) Tj
+T*
+(- Delete templates or labour rates.) Tj
+T*
+(- Change protected system settings.) Tj
+T*
+(- Access admin-only configuration screens unless explicitly allowed by the backend route.) Tj
+T*
+() Tj
+T*
+(Manager Permissions) Tj
+T*
+() Tj
+T*
+(Manager is between Admin and Service Advisor. Manager can generally:) Tj
+T*
+() Tj
+T*
+(- See all jobs.) Tj
+T*
+(- Manage operational settings.) Tj
+T*
+(- View reports and dashboard stats.) Tj
+T*
+(- Manage labour rates and templates where the backend allows manager access.) Tj
+T*
+(- Create and update users, but not perform admin-only destructive actions such as deleting roles or) Tj
+T*
+(resetting passwords unless explicitly granted.) Tj
+T*
+() Tj
+T*
+(Receptionist Permissions) Tj
+T*
+() Tj
+T*
+(Receptionist is for front-desk intake. Receptionist can generally:) Tj
+T*
+() Tj
+T*
+(- Create and update customers.) Tj
+T*
+(- Create and update bookings/jobs.) Tj
+T*
+(- View jobs needed for booking/reception work.) Tj
+T*
+() Tj
+T*
+(Receptionist should not manage settings, roles, templates, labour rates, or password resets.) Tj
+T*
+() Tj
+T*
+(Technician Permissions) Tj
+T*
+() Tj
+T*
+(Technician is for workshop execution. Technician can generally:) Tj
+T*
+() Tj
+T*
+(- View assigned jobs/workshop tasks.) Tj
+T*
+(- Read and complete inspections.) Tj
+T*
+(- Upload media/photos.) Tj
+T*
+(- Update workshop-related progress where the route allows it.) Tj
+T*
+() Tj
+T*
+(Technician should not manage customers, estimates, settings, roles, users, or admin configuration.) Tj
+T*
+() Tj
+T*
+(Role-Based Job Visibility) Tj
+T*
+() Tj
+T*
+(- Advisors see only their own jobs by default.) Tj
+T*
+(- Technicians see only jobs assigned to them.) Tj
+T*
+(- Managers and admins see all jobs.) Tj
+T*
+(- Archived jobs are hidden from the active board unless the Archive filter is enabled.) Tj
+T*
+(- no_show is intentionally not a Kanban column; the board skips statuses that are not visible) Tj
+T*
+(columns so the board remains stable.) Tj
+T*
+() Tj
+T*
+(Creating a New Role) Tj
+T*
+() Tj
+T*
+(Only an Admin can create a role.) Tj
+T*
+() Tj
+T*
+(Recommended process:) Tj
+T*
+() Tj
+T*
+(1. Go to Admin ? Users & Roles.) Tj
+T*
+(2. Open the Roles section.) Tj
+T*
+(3. Click Create Role.) Tj
+T*
+(4. Enter:) Tj
+T*
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 2248 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 6 of 23) Tj
+T*
+T*
+(   - Name: use a stable lowercase name such as parts_coordinator or workshop_controller.) Tj
+T*
+(   - Description: short business explanation.) Tj
+T*
+(   - Permissions: JSON/list of permission keys. Example: ["jobs:read", "jobs:write",) Tj
+T*
+("customers:read"].) Tj
+T*
+(5. Save the role.) Tj
+T*
+(6. Assign the role to users from the user management screen.) Tj
+T*
+() Tj
+T*
+(Backend API reference:) Tj
+T*
+() Tj
+T*
+(| Action | Endpoint | Required Role |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| List roles | GET /api/admin/roles | Admin or Manager |) Tj
+T*
+(| Create role | POST /api/admin/roles | Admin |) Tj
+T*
+(| Update role | PATCH /api/admin/roles/:id | Admin |) Tj
+T*
+(| Delete role | DELETE /api/admin/roles/:id | Admin |) Tj
+T*
+() Tj
+T*
+(Example create-role payload:) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+({) Tj
+T*
+(  "name": "parts_coordinator",) Tj
+T*
+(  "description": "Parts team member who can read jobs and update parts workflow",) Tj
+T*
+(  "permissions": ["jobs:read", "jobs:write", "customers:read"]) Tj
+T*
+(}) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Safety rules:) Tj
+T*
+() Tj
+T*
+(- Do not delete a role while users are assigned to it; the backend blocks this.) Tj
+T*
+(- Avoid renaming core roles \(admin, manager, service_advisor, technician, receptionist\) unless the) Tj
+T*
+(backend guards are also reviewed.) Tj
+T*
+(- If a new role must access protected screens, confirm the backend route allows that role name.) Tj
+T*
+() Tj
+T*
+(5. The Job Lifecycle) Tj
+T*
+() Tj
+T*
+(Every vehicle that enters the workshop follows a structured lifecycle. The system enforces valid) Tj
+T*
+(transitions ? you cannot skip steps or jump backwards arbitrarily.) Tj
+T*
+() Tj
+T*
+(Status Flow Diagram) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(  ????????????) Tj
+T*
+(  ?  BOOKED  ?  ? Vehicle scheduled, not yet received) Tj
+T*
+(  ????????????) Tj
+T*
+(       ?) Tj
+T*
+(       ?) Tj
+T*
+(  ????????????) Tj
+T*
+(  ? CHECKING ?  ? Vehicle received, inspection/diagnosis in progress) Tj
+T*
+(  ????????????) Tj
+T*
+(       ?) Tj
+T*
+(       ?) Tj
+T*
+(  ????????????????) Tj
+T*
+(  ? ESTIMATE SENT?  ? Quote sent to customer, awaiting decision) Tj
+T*
+(  ????????????????) Tj
+T*
+(       ?     ?) Tj
+T*
+(       ?     ????????????) Tj
+T*
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 2095 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 7 of 23) Tj
+T*
+T*
+(       ?                ?) Tj
+T*
+(  ????????????          ?) Tj
+T*
+(  ? APPROVED ? ???????????  Customer approved the work) Tj
+T*
+(  ????????????) Tj
+T*
+(       ?) Tj
+T*
+(       ?) Tj
+T*
+(  ??????????????) Tj
+T*
+(  ? IN PROGRESS?  ? Workshop actively working on the vehicle) Tj
+T*
+(  ?????????????) Tj
+T*
+(       ?   ?) Tj
+T*
+(       ?   ????????????????) Tj
+T*
+(       ?                  ?) Tj
+T*
+(  ?????????????????       ?) Tj
+T*
+(  ? WAITING PARTS ? ???????  Parts needed, work paused) Tj
+T*
+(  ????????????????) Tj
+T*
+(       ?) Tj
+T*
+(       ?) Tj
+T*
+(  ????????????????) Tj
+T*
+(  ? QUALITY CHECK?  ? Work complete, final QC in progress) Tj
+T*
+(  ???????????????) Tj
+T*
+(       ?    ?) Tj
+T*
+(       ?    ????????) Tj
+T*
+(       ?           ?) Tj
+T*
+(  ??????????       ?) Tj
+T*
+(  ?  READY ? ???????  Vehicle ready for delivery) Tj
+T*
+(  ??????????) Tj
+T*
+(       ?) Tj
+T*
+(       ?) Tj
+T*
+(  ??????????) Tj
+T*
+(  ? CLOSED ?  ? Vehicle delivered, job archived) Tj
+T*
+(  ??????????) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Allowed Transitions) Tj
+T*
+() Tj
+T*
+(| From | Can Move To |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Booked | Checking, Closed, No Show |) Tj
+T*
+(| Checking | Estimate Sent, Approved, In Progress, Closed |) Tj
+T*
+(| Estimate Sent | Checking, Approved, Closed |) Tj
+T*
+(| Approved | Estimate Sent, In Progress, Closed |) Tj
+T*
+(| In Progress | Waiting Parts, Quality Check, Ready, Closed |) Tj
+T*
+(| Waiting Parts | In Progress, Closed |) Tj
+T*
+(| Quality Check | In Progress, Ready |) Tj
+T*
+(| Ready | Quality Check, Closed |) Tj
+T*
+(| Closed | *\(terminal ? no transitions out\)* |) Tj
+T*
+(| No Show | *\(terminal ? no transitions out\)* |) Tj
+T*
+() Tj
+T*
+(Three Operational Phases) Tj
+T*
+() Tj
+T*
+(| Phase | Statuses | Who Owns It |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Reception / Advisor | Booked, Checking, Estimate Sent, Approved | Service Advisor |) Tj
+T*
+(| Workshop | In Progress, Waiting Parts, Quality Check | Workshop / Technician |) Tj
+T*
+(| Delivery | Ready, Closed | Service Advisor |) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 3030 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 8 of 23) Tj
+T*
+T*
+(Side Effects on Status Changes) Tj
+T*
+() Tj
+T*
+(The system automatically handles these when status changes:) Tj
+T*
+() Tj
+T*
+(| Action | What Happens |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Move from Booked to Checking / click Arrived | arrived_at timestamp is set |) Tj
+T*
+(| Move from Booked to No Show | Job status becomes no_show; Workshop Stage is cleared; job is not shown) Tj
+T*
+(in visible Kanban columns |) Tj
+T*
+(| End-of-day no-show cron | At 9:00 PM Dubai, remaining booked jobs with empty arrived_at are marked) Tj
+T*
+(no_show |) Tj
+T*
+(| Move to Ready | completed_at timestamp is set |) Tj
+T*
+(| Move to Closed | invoiced_at timestamp is set |) Tj
+T*
+(| Move away from Closed | invoiced_at and archived_at are cleared |) Tj
+T*
+(| Move back to Booked | arrived_at is cleared |) Tj
+T*
+(| Move away from Ready \(backwards\) | completed_at is cleared |) Tj
+T*
+(| Move to Waiting Parts | Workshop Stage is cleared; Parts Status auto-sets to "Order Parts" |) Tj
+T*
+(| Parts Status ? Parts Ready | Workshop Stage auto-sets to "Waiting to Start" |) Tj
+T*
+(| Workshop Stage ? WIP | Overall status auto-sets to "In Progress" |) Tj
+T*
+(| Workshop Stage ? Quality Check | Overall status auto-sets to "Quality Check" |) Tj
+T*
+(| Workshop Stage ? Ready Handover | Overall status auto-sets to "Ready" |) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(6. The Priority Engine) Tj
+T*
+() Tj
+T*
+(This is the heart of PrioraFlow. Every active job receives a live priority score from 0 to 100.) Tj
+T*
+() Tj
+T*
+(Priority Levels) Tj
+T*
+() Tj
+T*
+(| Score | Level | Color | Meaning |) Tj
+T*
+(|---|---|---|---|) Tj
+T*
+(| 0?39 | Low | Grey | No urgency. Normal progress. |) Tj
+T*
+(| 40?64 | Normal | Blue | Standard attention needed. |) Tj
+T*
+(| 65?84 | High | Amber | Elevated urgency ? action soon. |) Tj
+T*
+(| 85?100 | Critical | Red | Immediate action required. |) Tj
+T*
+() Tj
+T*
+(How the Score Is Calculated) Tj
+T*
+() Tj
+T*
+(Formula: Priority = min\(100, 10 + ?\(active factor weights\)\)) Tj
+T*
+() Tj
+T*
+(Every job starts with a base score of 10. Then each active factor adds its weight. The total is) Tj
+T*
+(capped at 100.) Tj
+T*
+() Tj
+T*
+(Priority Factors) Tj
+T*
+() Tj
+T*
+(| Factor | Default Weight | When It Applies | Category |) Tj
+T*
+(|---|---:|---|---|) Tj
+T*
+(| Promise Overdue | 30 | Promised date has passed and job is not Ready/Closed | Promise Risk |) Tj
+T*
+(| Promise Due ? 2h | 20 | Promised date is within 2 hours | Promise Risk |) Tj
+T*
+(| Promise Due ? 6h | 10 | Promised date is within 6 hours | Promise Risk |) Tj
+T*
+(| No Promised Date | 5 | Active job \(not booked/closed\) has no promised date | Promise Risk |) Tj
+T*
+(| Customer Waiting | 22 | Customer is marked as waiting at the workshop | Customer |) Tj
+T*
+(| Customer Angry | 18 | Customer sensitivity set to "Angry" | Customer |) Tj
+T*
+(| Customer VIP | 16 | Customer sensitivity set to "VIP" | Customer |) Tj
+T*
+(| Customer Comeback | 14 | Customer sensitivity set to "Comeback" | Customer |) Tj
+T*
+ET
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 18 0 R >>
+endobj
+20 0 obj
+<< /Length 2703 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 9 of 23) Tj
+T*
+T*
+(| Waiting Customer Decision | 20 | Job is in "Estimate Sent" status | Approval |) Tj
+T*
+(| Parts Backorder | 22 | Parts status is "Backorder" | Parts Risk |) Tj
+T*
+(| Parts Waiting Warehouse | 16 | Parts status is "Waiting Warehouse" | Parts Risk |) Tj
+T*
+(| Parts Need Order | 12 | Parts status is "Order Parts" or job is "Waiting Parts" | Parts Risk |) Tj
+T*
+(| Idle 12h+ | 12 | Job hasn't been updated in 12+ hours \(not booked\) | Idle Risk |) Tj
+T*
+(| Idle 6h+ | 6 | Job hasn't been updated in 6+ hours \(not booked\) | Idle Risk |) Tj
+T*
+(| Stage: Checking/Diagnosis | 10 | Job is in "Checking" status | Stage Urgency |) Tj
+T*
+(| Stage: QC / Near Delivery | 10 | Job is in "Quality Check" status | Stage Urgency |) Tj
+T*
+(| Ready to Inform | 20 | Job is "Ready" but customer not yet informed | Delivery |) Tj
+T*
+(| High Estimate Value | 8 | Estimate total ? 10,000 | Value |) Tj
+T*
+(| Medium Estimate Value | 4 | Estimate total ? 5,000 | Value |) Tj
+T*
+() Tj
+T*
+(Weight Scale Guide) Tj
+T*
+() Tj
+T*
+(| Range | Intent | Examples |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| 4?8 | Mild nudge ? nice to address | Medium estimate, idle 6h |) Tj
+T*
+(| 10?16 | Moderate ? should act soon | Parts waiting, VIP customer, QC stage |) Tj
+T*
+(| 18?22 | Strong ? act now | Customer waiting, backorder, ready to inform |) Tj
+T*
+(| 30 | Maximum ? critical alert | Promise overdue |) Tj
+T*
+() Tj
+T*
+(Example Priority Calculation) Tj
+T*
+() Tj
+T*
+(Job: Mercedes C-Class, RO-49126) Tj
+T*
+() Tj
+T*
+(| Factor | Weight |) Tj
+T*
+(|---|---:|) Tj
+T*
+(| Base | 10 |) Tj
+T*
+(| Promise Due ? 2h | 20 |) Tj
+T*
+(| Customer Waiting | 22 |) Tj
+T*
+(| Customer VIP | 16 |) Tj
+T*
+(| Total | 68 ? High |) Tj
+T*
+() Tj
+T*
+(Priority explanation shown to advisor:) Tj
+T*
+(> Promise risk: due ?2h +20 ∑ Customer waiting +22 ∑ Customer sensitivity: VIP +16) Tj
+T*
+() Tj
+T*
+(What Gets Zeroed by "Customer Informed") Tj
+T*
+() Tj
+T*
+(When a job is Ready and you click "Customer Informed," urgency factors about getting the car ready) Tj
+T*
+(or informing the customer are zeroed:) Tj
+T*
+() Tj
+T*
+(Zeroed \(urgency factors\):) Tj
+T*
+(- Promise risk \(overdue, due soon\)) Tj
+T*
+(- Customer waiting) Tj
+T*
+(- Waiting customer decision) Tj
+T*
+(- Parts risk) Tj
+T*
+(- Idle risk) Tj
+T*
+(- Stage urgency \(checking, QC\)) Tj
+T*
+(- Ready to inform) Tj
+T*
+() Tj
+T*
+(Kept \(permanent facts\):) Tj
+T*
+(- Customer sensitivity \(angry, VIP, comeback\)) Tj
+T*
+(- Estimate value \(high, medium\)) Tj
+T*
+() Tj
+T*
+(This means an informed VIP customer with a high-value estimate still shows a meaningful priority ?) Tj
+T*
+(the car is handled, but the customer relationship matters.) Tj
+T*
+ET
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 20 0 R >>
+endobj
+22 0 obj
+<< /Length 2812 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 10 of 23) Tj
+T*
+T*
+() Tj
+T*
+(Booked Jobs and Idle Risk) Tj
+T*
+() Tj
+T*
+(Booked appointments are excluded from idle risk scoring. A booked car that hasn't moved in 12 hours) Tj
+T*
+(is normal ? it's an appointment waiting for its slot, not a stuck job.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(7. Next Best Actions) Tj
+T*
+() Tj
+T*
+(Every active job has a Next Best Action ? the system tells the responsible person exactly what to) Tj
+T*
+(do. This eliminates the "walk the floor and ask" approach and gives management confidence that) Tj
+T*
+(nothing falls through the cracks.) Tj
+T*
+() Tj
+T*
+(How It Works) Tj
+T*
+() Tj
+T*
+(The action is determined by the job's current status and phase. Risk signals \(promise overdue,) Tj
+T*
+(customer waiting, VIP, etc.\) increase the action's urgency and explain *why* it matters now.) Tj
+T*
+(Management can see the full action queue across all advisors, not just per-person.) Tj
+T*
+() Tj
+T*
+(Actions by Status) Tj
+T*
+() Tj
+T*
+(| Job Status | Next Best Action | Owner |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Booked | Receive vehicle and start check-in | Advisor |) Tj
+T*
+(| Checking | Complete diagnosis and prepare estimate | Advisor |) Tj
+T*
+(| Estimate Sent | Follow up customer decision | Advisor |) Tj
+T*
+(| Approved | Print job card and release to workshop | Advisor |) Tj
+T*
+(| Waiting Parts | Check parts ETA and update plan | Parts |) Tj
+T*
+(| In Progress \(no technician\) | Assign technician and start work | Workshop |) Tj
+T*
+(| In Progress \(approval blocker\) | Resolve advisor/approval blocker | Advisor |) Tj
+T*
+(| In Progress \(parts blocking\) | Check parts ETA and unblock technician | Parts |) Tj
+T*
+(| In Progress \(normal\) | Check technician progress | Workshop |) Tj
+T*
+(| Quality Check | Complete QC and prepare delivery | Workshop |) Tj
+T*
+(| Ready | Notify customer for collection | Advisor |) Tj
+T*
+() Tj
+T*
+(Action Urgency Levels) Tj
+T*
+() Tj
+T*
+(| Urgency | When | Color |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Low | Base scenario, no risk signals | Grey |) Tj
+T*
+(| Normal | Some risk signals present | Blue |) Tj
+T*
+(| High | Multiple risk signals | Amber |) Tj
+T*
+(| Critical | Promise overdue, angry customer, or multiple strong signals | Red |) Tj
+T*
+() Tj
+T*
+(Risk Signals) Tj
+T*
+() Tj
+T*
+(Each action shows the risk signals that make it urgent:) Tj
+T*
+() Tj
+T*
+(- Promise overdue ? promised date has passed) Tj
+T*
+(- Promise due within 2h ? delivery promised very soon) Tj
+T*
+(- Promise due within 6h ? delivery promised today) Tj
+T*
+(- Customer waiting ? customer is at the workshop) Tj
+T*
+(- Angry/VIP/Comeback customer ? sensitive customer relationship) Tj
+T*
+(- Idle 6h+/12h+ ? job hasn't progressed in too long) Tj
+T*
+(- Parts: backorder/waiting/order ? parts are blocking progress) Tj
+T*
+ET
+endstream
+endobj
+23 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 22 0 R >>
+endobj
+24 0 obj
+<< /Length 2348 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 11 of 23) Tj
+T*
+T*
+(- High/medium estimate value ? significant financial value at stake) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(8. Workshop Stages) Tj
+T*
+() Tj
+T*
+(Workshop stages track the physical progress of the vehicle inside the workshop. They are separate) Tj
+T*
+(from the overall job status.) Tj
+T*
+() Tj
+T*
+(Workshop Stage Flow) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Waiting to Start ? Diagnosis ? Estimate Prep ? Advisor/Approval ? WIP ? Final Test ? QC ? Ready) Tj
+T*
+(Handover) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Workshop Stages Detail) Tj
+T*
+() Tj
+T*
+(| Stage | Label | What It Means |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| waiting_technician | Waiting to Start | Vehicle received, waiting for a technician or bay |) Tj
+T*
+(| diagnosis | Diagnosis | Technician is inspecting and diagnosing the vehicle |) Tj
+T*
+(| estimate_prep | Estimate Prep | Technician or advisor is preparing the quote |) Tj
+T*
+(| customer_approval | Advisor / Approval | Waiting for advisor follow-up or customer decision |) Tj
+T*
+(| work_in_progress | WIP | Technician is actively performing the repair |) Tj
+T*
+(| final_test | Final Test | Road test or final functional test |) Tj
+T*
+(| quality_check | QC | Quality control check in progress |) Tj
+T*
+(| ready_handover | Ready Handover | Vehicle is ready for customer delivery |) Tj
+T*
+() Tj
+T*
+(Workshop ? Overall Auto-Sync) Tj
+T*
+() Tj
+T*
+(When you change the Workshop Stage, the overall job status updates automatically:) Tj
+T*
+() Tj
+T*
+(| Workshop Stage Change | Overall Status Auto-Set To |) Tj
+T*
+(|---|---|) Tj
+T*
+(| ? WIP | In Progress |) Tj
+T*
+(| ? Quality Check | Quality Check |) Tj
+T*
+(| ? Ready Handover | Ready |) Tj
+T*
+() Tj
+T*
+(And when overall status changes:) Tj
+T*
+() Tj
+T*
+(| Overall Status Change | Parts Status Auto-Set To |) Tj
+T*
+(|---|---|) Tj
+T*
+(| ? Waiting Parts | Order Parts |) Tj
+T*
+() Tj
+T*
+(| Parts Status Change | Workshop Stage Auto-Set To |) Tj
+T*
+(|---|---|) Tj
+T*
+(| ? Parts Ready | Waiting to Start |) Tj
+T*
+() Tj
+T*
+(When Workshop Stage Is Disabled) Tj
+T*
+() Tj
+T*
+(The Workshop Stage dropdown is disabled \(greyed out\) when the vehicle is not in the workshop:) Tj
+T*
+() Tj
+T*
+(| Overall Status | Workshop Stage | Parts Status |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Booked, Checking, Estimate Sent, Approved | ? Disabled | ? Disabled |) Tj
+T*
+ET
+endstream
+endobj
+25 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 24 0 R >>
+endobj
+26 0 obj
+<< /Length 2302 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 12 of 23) Tj
+T*
+T*
+(| Waiting Parts | ? Disabled | ? Active |) Tj
+T*
+(| In Progress, Quality Check, Ready | ? Active | ? Active |) Tj
+T*
+() Tj
+T*
+(When disabled, the Operational Snapshot shows "?" instead of a misleading stage name.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(9. Parts Status Flow) Tj
+T*
+() Tj
+T*
+(Parts status tracks the supply chain state for parts needed by the job.) Tj
+T*
+() Tj
+T*
+(Parts Statuses) Tj
+T*
+() Tj
+T*
+(| Status | Label | What It Means |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| no_parts | No Parts | No parts needed for this job |) Tj
+T*
+(| order_parts | Order Parts | Parts need to be ordered |) Tj
+T*
+(| waiting_warehouse | Waiting Warehouse | Parts ordered, waiting at warehouse |) Tj
+T*
+(| backorder | Backorder | Parts are on backorder ? delayed supply |) Tj
+T*
+(| parts_ready | Parts Ready | All parts received and available |) Tj
+T*
+() Tj
+T*
+(Auto-Sync Behaviors) Tj
+T*
+() Tj
+T*
+(- Overall status ? Waiting Parts: Parts status auto-sets to Order Parts) Tj
+T*
+(- Parts status ? Parts Ready: Workshop stage auto-sets to Waiting to Start) Tj
+T*
+() Tj
+T*
+(Parts Status and Priority) Tj
+T*
+() Tj
+T*
+(Parts status directly affects the priority score:) Tj
+T*
+() Tj
+T*
+(| Parts Status | Priority Impact |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Backorder | +22 \(strong ? supply chain is stuck\) |) Tj
+T*
+(| Waiting Warehouse | +16 \(moderate ? parts on the way\) |) Tj
+T*
+(| Order Parts | +12 \(mild ? needs action but not blocked yet\) |) Tj
+T*
+(| No Parts / Parts Ready | +0 |) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(10. Customer Informed System) Tj
+T*
+() Tj
+T*
+(When a vehicle is ready for delivery, the most important action is informing the customer. The) Tj
+T*
+(Customer Informed system makes this a one-click operation with smart priority adjustment.) Tj
+T*
+() Tj
+T*
+(When the Button Appears) Tj
+T*
+() Tj
+T*
+(The "Customer Informed" button appears:) Tj
+T*
+(- On the job detail page \(in the status section\)) Tj
+T*
+(- On the job board cards) Tj
+T*
+(- Only when the job status is Ready) Tj
+T*
+(- Only when customer_informed is false) Tj
+T*
+() Tj
+T*
+(What Happens When You Click It) Tj
+T*
+() Tj
+T*
+(1. customer_informed is set to true) Tj
+T*
+(2. is_customer_waiting is auto-cleared \(customer was waiting, now they know\)) Tj
+T*
+ET
+endstream
+endobj
+27 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 26 0 R >>
+endobj
+28 0 obj
+<< /Length 2295 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 13 of 23) Tj
+T*
+T*
+(3. Urgency factors are zeroed from the priority score) Tj
+T*
+(4. Button changes to ? Informed \(disabled, cannot be unclicked\)) Tj
+T*
+(5. Toast notification confirms: "Customer informed ? urgency factors cleared from priority") Tj
+T*
+() Tj
+T*
+(Priority Before and After ? Example) Tj
+T*
+() Tj
+T*
+(Before clicking "Customer Informed":) Tj
+T*
+() Tj
+T*
+(| Factor | Weight |) Tj
+T*
+(|---|---:|) Tj
+T*
+(| Base | 10 |) Tj
+T*
+(| Ready to Inform | 20 |) Tj
+T*
+(| Customer Waiting | 22 |) Tj
+T*
+(| Promise Due ? 2h | 20 |) Tj
+T*
+(| Total | 72 ? High |) Tj
+T*
+() Tj
+T*
+(After clicking "Customer Informed":) Tj
+T*
+() Tj
+T*
+(| Factor | Weight |) Tj
+T*
+(|---|---:|) Tj
+T*
+(| Base | 10 |) Tj
+T*
+(| *\(urgency factors zeroed\)* | 0 |) Tj
+T*
+(| Customer VIP \(permanent\) | 16 |) Tj
+T*
+(| High Estimate Value \(permanent\) | 8 |) Tj
+T*
+(| Total | 34 ? Low |) Tj
+T*
+() Tj
+T*
+(The priority drops because the car is handled and the customer knows. But permanent facts \(VIP,) Tj
+T*
+(value\) keep a small baseline ? you still treat VIP customers well.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(11. The Job Board) Tj
+T*
+() Tj
+T*
+(The Job Board is the main screen ? a Kanban-style view of all active jobs across the entire service) Tj
+T*
+(center, organized by status. This is management's real-time visibility tool: see the whole operation) Tj
+T*
+(at a glance, identify bottlenecks, and know exactly where attention is needed.) Tj
+T*
+() Tj
+T*
+(Board Layout) Tj
+T*
+() Tj
+T*
+(The board is divided into three phases, each with its own color:) Tj
+T*
+() Tj
+T*
+(| Phase | Color | Columns |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| Reception / Advisor | Blue | Booked, Checking, Estimate Sent, Approved |) Tj
+T*
+(| Workshop | Orange | In Progress, Waiting Parts, Quality Check |) Tj
+T*
+(| Delivery | Green | Ready, Closed |) Tj
+T*
+() Tj
+T*
+(What Each Card Shows) Tj
+T*
+() Tj
+T*
+(- Job number and current status badge) Tj
+T*
+(- Customer name and vehicle \(make, model, plate\)) Tj
+T*
+(- Priority score \(color-coded badge\)) Tj
+T*
+(- Priority reasons \(expandable on hover/click\)) Tj
+T*
+(- Parts status badge \(if applicable\)) Tj
+T*
+(- Customer sensitivity badge \(VIP, Angry, Comeback\)) Tj
+T*
+(- Promised date with overdue/due-soon indicators) Tj
+T*
+ET
+endstream
+endobj
+29 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 28 0 R >>
+endobj
+30 0 obj
+<< /Length 2089 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 14 of 23) Tj
+T*
+T*
+(- Customer Informed button \(when Ready and not yet informed\)) Tj
+T*
+() Tj
+T*
+(Priority Sidebar) Tj
+T*
+() Tj
+T*
+(The sidebar shows:) Tj
+T*
+() Tj
+T*
+(1. Priority Snapshot ? Top 6 most urgent jobs with scores and next actions) Tj
+T*
+(2. Advisor Actions ? Top 8 recommended actions, sorted by priority + action urgency) Tj
+T*
+() Tj
+T*
+(Drag and Drop) Tj
+T*
+() Tj
+T*
+(Jobs can be moved between columns by changing status via the dropdown or the "Next ?" button. The) Tj
+T*
+(board updates in real time.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(12. Job Detail Page) Tj
+T*
+() Tj
+T*
+(Clicking a job opens its full detail page with everything about that repair order.) Tj
+T*
+() Tj
+T*
+(Sections) Tj
+T*
+() Tj
+T*
+(Operational Snapshot) Tj
+T*
+() Tj
+T*
+(At-a-glance summary cards:) Tj
+T*
+() Tj
+T*
+(| Card | Shows |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Current Status | Overall job status with color badge |) Tj
+T*
+(| Workshop Stage | Current workshop stage \(or "?" if not applicable\) |) Tj
+T*
+(| Parts Status | Current parts status |) Tj
+T*
+(| Priority Flags | Customer waiting/not waiting + sensitivity level |) Tj
+T*
+(| Advisor | Assigned service advisor |) Tj
+T*
+(| Technician | Assigned technician |) Tj
+T*
+(| Odometer | Vehicle odometer reading \(synced from inspection\) |) Tj
+T*
+() Tj
+T*
+(Customer & Vehicle Info) Tj
+T*
+() Tj
+T*
+(- Customer name, phone, email) Tj
+T*
+(- Vehicle make, model, year, color, plate, VIN) Tj
+T*
+() Tj
+T*
+(Status Controls) Tj
+T*
+() Tj
+T*
+(- Overall Status dropdown ? shows current status, auto-changes on selection) Tj
+T*
+(- "Next ?" button ? advances to the logical next status) Tj
+T*
+(- Workshop Stage dropdown ? disabled when not applicable) Tj
+T*
+(- Parts Status dropdown ? disabled in reception phases) Tj
+T*
+(- Promised Date picker ? setting a promised date removes the +5 "No Promised Date" penalty) Tj
+T*
+(- Customer Informed button ? appears when Ready) Tj
+T*
+() Tj
+T*
+(Priority Explanation) Tj
+T*
+() Tj
+T*
+(Shows the full breakdown:) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Priority: 72 / High) Tj
+T*
+ET
+endstream
+endobj
+31 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 30 0 R >>
+endobj
+32 0 obj
+<< /Length 1898 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 15 of 23) Tj
+T*
+T*
+(? Promise risk: due ?2h +20) Tj
+T*
+(? Customer waiting +22) Tj
+T*
+(? Customer sensitivity: VIP +16) Tj
+T*
+(? Ready to inform customer +20) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Estimate / Quote) Tj
+T*
+() Tj
+T*
+(- Full estimate builder with labour, parts, and sublet lines) Tj
+T*
+(- Group by concern area or general/other) Tj
+T*
+(- Tax calculation \(auto\)) Tj
+T*
+(- Send approval link to customer) Tj
+T*
+(- Track customer decisions) Tj
+T*
+() Tj
+T*
+(Inspection) Tj
+T*
+() Tj
+T*
+(- Link to inspection workspace) Tj
+T*
+(- Odometer and fuel level readings) Tj
+T*
+(- Findings with severity markers) Tj
+T*
+(- Photos and media) Tj
+T*
+() Tj
+T*
+(Media Gallery) Tj
+T*
+() Tj
+T*
+(- All photos and documents attached to the job) Tj
+T*
+(- Upload new media) Tj
+T*
+(- View/delete existing media) Tj
+T*
+() Tj
+T*
+(Job History) Tj
+T*
+() Tj
+T*
+(- Timestamped log of all status changes) Tj
+T*
+(- Shows who changed what and when) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(13. Inspection System) Tj
+T*
+() Tj
+T*
+(Overview) Tj
+T*
+() Tj
+T*
+(Every job can have one inspection. The inspection captures the vehicle's condition when it arrives) Tj
+T*
+(and documents findings that may become estimate lines.) Tj
+T*
+() Tj
+T*
+(Inspection Templates) Tj
+T*
+() Tj
+T*
+(Templates define the structure of an inspection. Each template contains:) Tj
+T*
+() Tj
+T*
+(- Sections ? Groups like "Exterior", "Interior", "Engine", "Underbody") Tj
+T*
+(- Items ? Individual checks within each section) Tj
+T*
+() Tj
+T*
+(Item Input Types) Tj
+T*
+() Tj
+T*
+(| Type | What It Captures | Example |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| pass_fail | Green/Red pass or fail | Brake pads ? Pass / Fail |) Tj
+T*
+(| yes_no | Yes or No | Tyre rotation needed? |) Tj
+T*
+(| ok_warn_fail | Three-level: OK / Warning / Fail | Belt condition |) Tj
+T*
+(| number | Numeric value | Tyre tread depth \(mm\) |) Tj
+T*
+ET
+endstream
+endobj
+33 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 32 0 R >>
+endobj
+34 0 obj
+<< /Length 2313 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 16 of 23) Tj
+T*
+T*
+(| odometer | Mileage reading \(km\) | Vehicle odometer |) Tj
+T*
+(| fuel_level | Fuel level | Fuel gauge reading |) Tj
+T*
+(| text | Free-text notes | Additional observations |) Tj
+T*
+(| toggle | On/off switch | AC working? |) Tj
+T*
+(| photo | Photo capture | Damage documentation |) Tj
+T*
+() Tj
+T*
+(Odometer Sync) Tj
+T*
+() Tj
+T*
+(When a technician enters the odometer reading in the inspection, the value automatically syncs to) Tj
+T*
+(the job's odometer field. No double entry needed.) Tj
+T*
+() Tj
+T*
+(Inspection Lifecycle) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(In Progress \(editable\) ? Submitted \(locked\) ? Reviewed ? Approved) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(- Creating an inspection auto-moves a Booked job to Checking) Tj
+T*
+(- Once submitted, the inspection is locked and cannot be edited) Tj
+T*
+(- An advisor can reopen a submitted inspection to allow corrections) Tj
+T*
+(- Reopen moves the inspection back to In Progress) Tj
+T*
+() Tj
+T*
+(Urgency Markers) Tj
+T*
+() Tj
+T*
+(Each inspection response can be marked with urgency:) Tj
+T*
+() Tj
+T*
+(| Urgency | Meaning |) Tj
+T*
+(|---|---|) Tj
+T*
+(| None | Normal finding |) Tj
+T*
+(| Low | Minor note |) Tj
+T*
+(| Medium | Should be addressed |) Tj
+T*
+(| High | Must be addressed ? safety or customer impact |) Tj
+T*
+(| Critical | Immediate attention required |) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(14. Estimate Builder & Authorization) Tj
+T*
+() Tj
+T*
+(Estimate Builder) Tj
+T*
+() Tj
+T*
+(The estimate builder creates the quote for the customer. It supports:) Tj
+T*
+() Tj
+T*
+(- Labour lines ? Operation code, hours, labour rate, line total) Tj
+T*
+(- Parts lines ? Part number, quantity, unit price, line total) Tj
+T*
+(- Sublet lines ? External work sent to third parties) Tj
+T*
+(- Grouping ? Lines can be grouped by concern area \(linked to inspection findings\) or as) Tj
+T*
+(General/Other) Tj
+T*
+() Tj
+T*
+(All financial totals are calculated on the backend ? the frontend cannot override prices.) Tj
+T*
+() Tj
+T*
+(Customer Approval Flow) Tj
+T*
+() Tj
+T*
+(The customer approval flow is a key differentiator for management: no more verbal approvals, no more) Tj
+T*
+("I think they said yes." Every decision is tracked, timestamped, and auditable.) Tj
+T*
+() Tj
+T*
+(1. Advisor creates the estimate) Tj
+T*
+ET
+endstream
+endobj
+35 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 34 0 R >>
+endobj
+36 0 obj
+<< /Length 2321 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 17 of 23) Tj
+T*
+T*
+(2. Advisor clicks "Send Approval" ? system generates a unique approval link) Tj
+T*
+(3. Link is sent to the customer \(via WhatsApp, SMS, or email\)) Tj
+T*
+(4. Customer opens the portal and sees:) Tj
+T*
+(   - Job and vehicle summary) Tj
+T*
+(   - Inspection findings \(grouped by severity: red ? amber ? green\)) Tj
+T*
+(   - Estimate lines with approve/decline/defer buttons) Tj
+T*
+(   - Job photos) Tj
+T*
+(5. Customer makes decisions per line) Tj
+T*
+(6. System records decisions and:) Tj
+T*
+(   - Approved lines ? proceed with work) Tj
+T*
+(   - Declined/deferred lines ? create Deferred Work records) Tj
+T*
+(   - If all lines approved ? job auto-moves to Approved) Tj
+T*
+(7. Advisor receives notification of customer decision) Tj
+T*
+() Tj
+T*
+(Approval Links) Tj
+T*
+() Tj
+T*
+(- Links are hashed \(SHA-256\) for security ? raw tokens are never stored) Tj
+T*
+(- Links expire after 7 days by default) Tj
+T*
+(- Links are single-use ? once the customer submits, the link is invalid) Tj
+T*
+(- Links can be revoked manually by the advisor) Tj
+T*
+() Tj
+T*
+(Estimate Line History) Tj
+T*
+() Tj
+T*
+(Before any estimate line is modified, the system snapshots the previous version into) Tj
+T*
+(estimate_line_history. This provides a full audit trail of quote changes.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(15. Booking Import) Tj
+T*
+() Tj
+T*
+(Overview) Tj
+T*
+() Tj
+T*
+(The booking import allows bulk creation of jobs from a DMS export file \(XLSX or CSV\).) Tj
+T*
+() Tj
+T*
+(How to Use) Tj
+T*
+() Tj
+T*
+(1. Go to Admin ? Booking Import) Tj
+T*
+(2. Upload your XLSX or CSV file) Tj
+T*
+(3. Map columns to system fields) Tj
+T*
+(4. Preview and confirm import) Tj
+T*
+() Tj
+T*
+(Supported Fields) Tj
+T*
+() Tj
+T*
+(| Column | Maps To |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Customer name | Customer first/last name |) Tj
+T*
+(| Contact / Phone | Customer phone |) Tj
+T*
+(| Vehicle Make/Model/Year | Vehicle details |) Tj
+T*
+(| Plate number | Vehicle plate |) Tj
+T*
+(| VIN | Vehicle VIN |) Tj
+T*
+(| Appointment date | Job promised date |) Tj
+T*
+() Tj
+T*
+(Smart Features) Tj
+T*
+() Tj
+T*
+(- Header row detection ? Rows with "Customer name", "Name", "Contact" etc. are automatically skipped) Tj
+T*
+(- Duplicate detection ? Existing customers/vehicles are matched and reused) Tj
+T*
+ET
+endstream
+endobj
+37 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 36 0 R >>
+endobj
+38 0 obj
+<< /Length 2290 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 18 of 23) Tj
+T*
+T*
+(- Auto-booking ? Imported jobs start as "Booked" status) Tj
+T*
+(- Odometer import ? Mileage values from the booking file are stored) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(16. Media & Photo Management) Tj
+T*
+() Tj
+T*
+(Upload Methods) Tj
+T*
+() Tj
+T*
+(- Direct upload ? File uploaded through the browser) Tj
+T*
+(- Presigned URL ? For large files or mobile upload flows) Tj
+T*
+() Tj
+T*
+(Storage) Tj
+T*
+() Tj
+T*
+(Files are stored in MinIO \(S3-compatible object storage\). Metadata lives in the database.) Tj
+T*
+() Tj
+T*
+(Media Organization) Tj
+T*
+() Tj
+T*
+(- Media is attached to either a job or an inspection response) Tj
+T*
+(- Filenames are normalized to {job_number}_{timestamp}.{ext}) Tj
+T*
+(- Media is soft-deleted ? can be recovered if accidentally removed) Tj
+T*
+() Tj
+T*
+(Customer Portal Access) Tj
+T*
+() Tj
+T*
+(Customer-facing media \(photos, inspection findings\) is served through an API proxy ? customers never) Tj
+T*
+(get direct access to internal storage URLs.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(17. Deferred Work) Tj
+T*
+() Tj
+T*
+(What Is Deferred Work?) Tj
+T*
+() Tj
+T*
+(When a customer declines or defers an estimate line, the system creates a Deferred Work record. This) Tj
+T*
+(is work that was recommended but not approved.) Tj
+T*
+() Tj
+T*
+(For management, this is captured revenue. Deferred work represents jobs the customer didn't approve) Tj
+T*
+(today ? but might approve next visit, next month, or when reminded. Without tracking it, this) Tj
+T*
+(revenue simply disappears.) Tj
+T*
+() Tj
+T*
+(What You Can Do with Deferred Work) Tj
+T*
+() Tj
+T*
+(| Action | What Happens |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Remind | Send the customer a reminder about the deferred item |) Tj
+T*
+(| Book into New Job | Create a new job from the deferred work |) Tj
+T*
+(| Close / Expire | Mark the deferred work as no longer relevant |) Tj
+T*
+() Tj
+T*
+(Why It Matters for Revenue) Tj
+T*
+() Tj
+T*
+(Deferred work is revenue you haven't captured yet. The system keeps it visible so the team can) Tj
+T*
+(follow up when the timing is right ? next service visit, seasonal promotion, etc. Management can) Tj
+T*
+(track the total deferred value and measure follow-up conversion over time.) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+39 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 38 0 R >>
+endobj
+40 0 obj
+<< /Length 2227 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 19 of 23) Tj
+T*
+T*
+(18. Notifications) Tj
+T*
+() Tj
+T*
+(How Notifications Work) Tj
+T*
+() Tj
+T*
+(1. An event occurs \(inspection submitted, approval received, etc.\)) Tj
+T*
+(2. A notification record is created in the database) Tj
+T*
+(3. If a webhook is configured, the notification is queued for delivery) Tj
+T*
+(4. Delivery is retried with exponential backoff on failure) Tj
+T*
+(5. If no webhook exists, the notification is marked as "sent" \(no-op\)) Tj
+T*
+() Tj
+T*
+(Database Is the Source of Truth) Tj
+T*
+() Tj
+T*
+(All notifications live in the database first. The delivery queue \(BullMQ + Redis\) is best-effort) Tj
+T*
+(infrastructure. If Redis goes down, notifications still exist and can be re-queued when the system) Tj
+T*
+(recovers.) Tj
+T*
+() Tj
+T*
+(Supported Events) Tj
+T*
+() Tj
+T*
+(- Inspection submitted) Tj
+T*
+(- Customer decision received) Tj
+T*
+(- Job status changed) Tj
+T*
+(- Approval link generated) Tj
+T*
+(- Deferred work reminder) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(19. Settings & Configuration) Tj
+T*
+() Tj
+T*
+(Priority Matrix Settings) Tj
+T*
+() Tj
+T*
+(Customize the weight of every priority factor to match your workshop's priorities.) Tj
+T*
+() Tj
+T*
+(Access: Settings ? Priority Matrix) Tj
+T*
+() Tj
+T*
+(Each factor has a weight slider \(0?30\). Changes take effect immediately on the job board.) Tj
+T*
+() Tj
+T*
+(Settings Groups:) Tj
+T*
+() Tj
+T*
+(| Group | Factors |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Promise Risk | Promise Overdue, Promise Due ? 2h, Promise Due ? 6h, No Promised Date |) Tj
+T*
+(| Customer | Customer Waiting, Customer Angry, Customer VIP, Customer Comeback |) Tj
+T*
+(| Approval | Waiting Customer Decision |) Tj
+T*
+(| Parts Risk | Parts Backorder, Parts Waiting Warehouse, Parts Need Order |) Tj
+T*
+(| Idle Risk | Idle 12h+, Idle 6h+ |) Tj
+T*
+(| Stage Urgency | Stage: Checking/Diagnosis, Stage: QC/Near Delivery |) Tj
+T*
+(| Delivery | Ready to Inform |) Tj
+T*
+(| Value | High Estimate Value, Medium Estimate Value |) Tj
+T*
+() Tj
+T*
+(Labour Rates) Tj
+T*
+() Tj
+T*
+(Set hourly rates for different operation types. These are used in the estimate builder to calculate) Tj
+T*
+(labour line totals.) Tj
+T*
+() Tj
+T*
+(Users) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+41 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 40 0 R >>
+endobj
+42 0 obj
+<< /Length 2409 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 20 of 23) Tj
+T*
+T*
+(Add, edit, deactivate, and assign roles to users.) Tj
+T*
+() Tj
+T*
+(Integrations) Tj
+T*
+() Tj
+T*
+(Configure webhook URLs for notification delivery \(WhatsApp, SMS, email, etc.\).) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(20. Technical Architecture) Tj
+T*
+() Tj
+T*
+(System Components) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(????????????????     ????????????????     ????????????????) Tj
+T*
+(?   Browser    ???????   Next.js    ???????   NestJS     ?) Tj
+T*
+(?   \(User\)     ?     ?   Web App    ?     ?   API        ?) Tj
+T*
+(????????????????     ????????????????     ????????????????) Tj
+T*
+(                            ?                      ?) Tj
+T*
+(                            ?                      ?????? MariaDB \(Database\)) Tj
+T*
+(                            ?                      ?????? Redis \(Queue + Cache\)) Tj
+T*
+(                            ?                      ?????? MinIO \(Media Storage\)) Tj
+T*
+(                            ?                      ?????? BullMQ \(Background Jobs\)) Tj
+T*
+(                            ?) Tj
+T*
+(                     ????????????????) Tj
+T*
+(                     ?   Traefik    ?) Tj
+T*
+(                     ?   \(Reverse   ?) Tj
+T*
+(                     ?    Proxy +   ?) Tj
+T*
+(                     ?    TLS\)      ?) Tj
+T*
+(                     ????????????????) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Tech Stack) Tj
+T*
+() Tj
+T*
+(| Component | Technology | Purpose |) Tj
+T*
+(|---|---|---|) Tj
+T*
+(| API | NestJS \(Node.js\) | Business logic, REST API |) Tj
+T*
+(| Web App | Next.js 16 \(React\) | Frontend UI |) Tj
+T*
+(| Database | MariaDB \(MySQL\) | All data storage |) Tj
+T*
+(| ORM | Prisma | Database access layer |) Tj
+T*
+(| Cache | Redis | Session cache, BullMQ backend |) Tj
+T*
+(| Queue | BullMQ | Background job processing |) Tj
+T*
+(| Media | MinIO \(S3\) | File and photo storage |) Tj
+T*
+(| Proxy | Traefik | Reverse proxy, TLS, routing |) Tj
+T*
+(| Auth | JWT + Refresh Tokens | User authentication |) Tj
+T*
+() Tj
+T*
+(API Structure) Tj
+T*
+() Tj
+T*
+(- Base URL: /api) Tj
+T*
+(- Authentication: JWT Bearer tokens) Tj
+T*
+(- Health check: /health \(no auth required\)) Tj
+T*
+(- Customer portal: /api/portal/* \(token-based auth, no JWT\)) Tj
+T*
+(- Swagger docs: Available in non-production environments) Tj
+T*
+() Tj
+T*
+(Database Schema \(Key Tables\)) Tj
+T*
+() Tj
+T*
+(| Table | Purpose |) Tj
+T*
+ET
+endstream
+endobj
+43 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 42 0 R >>
+endobj
+44 0 obj
+<< /Length 1980 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 21 of 23) Tj
+T*
+T*
+(|---|---|) Tj
+T*
+(| users | Staff accounts |) Tj
+T*
+(| roles | Permission roles |) Tj
+T*
+(| customers | Customer records |) Tj
+T*
+(| vehicles | Vehicle records |) Tj
+T*
+(| jobs | Main workshop job records |) Tj
+T*
+(| job_status_history | Audit trail of status changes |) Tj
+T*
+(| inspections | One inspection per job |) Tj
+T*
+(| inspection_items | Template items |) Tj
+T*
+(| inspection_responses | Actual findings |) Tj
+T*
+(| estimate_lines | Quote/estimate items |) Tj
+T*
+(| estimate_line_history | Audit trail of estimate changes |) Tj
+T*
+(| approval_tokens | Customer approval links \(hashed\) |) Tj
+T*
+(| authorisation_decisions | Per-line customer decisions |) Tj
+T*
+(| deferred_work | Declined/deferred estimate items |) Tj
+T*
+(| media_files | Uploaded media metadata |) Tj
+T*
+(| notifications | Queued and sent notifications |) Tj
+T*
+(| settings | System configuration |) Tj
+T*
+(| labour_rates | Hourly rates |) Tj
+T*
+(| audit_logs | Operational audit trail |) Tj
+T*
+(| refresh_tokens | Login sessions |) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(21. Deployment Guide) Tj
+T*
+() Tj
+T*
+(Requirements) Tj
+T*
+() Tj
+T*
+(| Requirement | Minimum |) Tj
+T*
+(|---|---|) Tj
+T*
+(| OS | Linux \(Ubuntu 20.04+\) |) Tj
+T*
+(| CPU | 2 cores |) Tj
+T*
+(| RAM | 4 GB |) Tj
+T*
+(| Disk | 40 GB SSD |) Tj
+T*
+(| Docker | 20.10+ with Compose V2 |) Tj
+T*
+(| Domain | A registered domain with DNS access |) Tj
+T*
+() Tj
+T*
+(Deployment Steps) Tj
+T*
+() Tj
+T*
+(1. Clone the repository) Tj
+T*
+(   bash) Tj
+T*
+(   git clone https://github.com/hmelshenawy/superflow-api.git) Tj
+T*
+(   cd superflow-api) Tj
+T*
+(   git checkout dev) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(2. Configure environment) Tj
+T*
+(   bash) Tj
+T*
+(   cp .env.example .env.production) Tj
+T*
+(   # Edit .env.production with your settings) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(3. Build and start) Tj
+T*
+(   bash) Tj
+T*
+(   docker compose --env-file .env.production up -d) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+45 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 44 0 R >>
+endobj
+46 0 obj
+<< /Length 2045 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 22 of 23) Tj
+T*
+T*
+() Tj
+T*
+(4. Set up TLS) Tj
+T*
+(   - Traefik automatically provisions Let's Encrypt certificates) Tj
+T*
+(   - Point your domain DNS to the server IP) Tj
+T*
+(   - Traefik handles HTTP ? HTTPS redirect) Tj
+T*
+() Tj
+T*
+(5. Create admin user) Tj
+T*
+(   - First user through the setup flow becomes admin) Tj
+T*
+(   - Or seed via database) Tj
+T*
+() Tj
+T*
+(Environment Variables \(Key\)) Tj
+T*
+() Tj
+T*
+(| Variable | Purpose |) Tj
+T*
+(|---|---|) Tj
+T*
+(| DATABASE_URL | MariaDB connection string |) Tj
+T*
+(| JWT_SECRET | Token signing key |) Tj
+T*
+(| MINIO_ENDPOINT | Media storage endpoint |) Tj
+T*
+(| MINIO_ACCESS_KEY / MINIO_SECRET_KEY | MinIO credentials |) Tj
+T*
+(| CORS_ORIGINS | Allowed frontend origins |) Tj
+T*
+(| APP_DOMAIN | Your domain \(e.g., prioraflow.com\) |) Tj
+T*
+() Tj
+T*
+(Updating) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(git pull origin dev) Tj
+T*
+(docker compose --env-file .env.production build) Tj
+T*
+(docker compose --env-file .env.production up -d) Tj
+T*
+() Tj
+T*
+() Tj
+T*
+(Backups) Tj
+T*
+() Tj
+T*
+(- Database: Use mysqldump or MariaDB backup tools) Tj
+T*
+(- Media: Sync MinIO data directory) Tj
+T*
+(- Config: .env.production file should be securely stored) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(22. Security Model) Tj
+T*
+() Tj
+T*
+(Authentication) Tj
+T*
+() Tj
+T*
+(- Staff login: JWT access tokens \(short-lived\) + Refresh tokens \(long-lived\)) Tj
+T*
+(- Refresh tokens: Stored as SHA-256 hashes, rotated on each use) Tj
+T*
+(- Rate limiting: Login \(5/min\), Refresh \(10/min\)) Tj
+T*
+(- Session management: View active sessions, revoke individually or all) Tj
+T*
+() Tj
+T*
+(Customer Portal) Tj
+T*
+() Tj
+T*
+(- Token-based access: Unique hashed token per approval link) Tj
+T*
+(- No JWT required: Customer accesses via secure link only) Tj
+T*
+(- Token expiry: 7 days default) Tj
+T*
+(- Single use: Token invalidated after decision submission) Tj
+T*
+(- Media proxy: Customer never accesses internal storage directly) Tj
+T*
+() Tj
+T*
+(Data Protection) Tj
+T*
+() Tj
+T*
+ET
+endstream
+endobj
+47 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 46 0 R >>
+endobj
+48 0 obj
+<< /Length 2088 >>
+stream
+BT
+/F1 10 Tf
+14 TL
+50 800 Td
+(PrioraFlow Owner Manual - Page 23 of 23) Tj
+T*
+T*
+(- Soft deletes: Media and some records use soft deletion \(recoverable\)) Tj
+T*
+(- Audit logging: All significant actions are logged) Tj
+T*
+(- Input validation: Strict DTO validation rejects unknown fields) Tj
+T*
+(- CORS: Configured origins only) Tj
+T*
+(- Helmet: Security headers enabled) Tj
+T*
+(- Throttling: Global rate limiting on all API routes) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(23. Glossary) Tj
+T*
+() Tj
+T*
+(| Term | Definition |) Tj
+T*
+(|---|---|) Tj
+T*
+(| Job / RO | A repair order ? the main unit of work in PrioraFlow |) Tj
+T*
+(| Priority Score | 0?100 number indicating how urgently a job needs attention |) Tj
+T*
+(| Priority Level | Low / Normal / High / Critical ? derived from the score |) Tj
+T*
+(| Workshop Stage | The physical stage of the vehicle inside the workshop |) Tj
+T*
+(| Parts Status | The supply chain state for parts needed by the job |) Tj
+T*
+(| Customer Informed | Flag indicating the customer has been told their vehicle is ready |) Tj
+T*
+(| Next Best Action | The system's recommendation for what the advisor should do next |) Tj
+T*
+(| Deferred Work | Estimate items the customer didn't approve ? tracked for follow-up |) Tj
+T*
+(| Approval Token | A secure, hashed link sent to the customer for estimate approval |) Tj
+T*
+(| Inspection | A structured vehicle check performed by the technician |) Tj
+T*
+(| Estimate | The quote/price breakdown sent to the customer |) Tj
+T*
+(| DMS | Dealer Management System ? the workshop's core business system |) Tj
+T*
+(| Promised Date | The date/time the customer was told their vehicle would be ready |) Tj
+T*
+(| Idle Time | How long since the job was last updated |) Tj
+T*
+(| Kanban Board | Visual job board organized by status columns |) Tj
+T*
+(| Traefik | The reverse proxy that handles routing and TLS |) Tj
+T*
+(| MinIO | S3-compatible object storage for media files |) Tj
+T*
+(| BullMQ | Background job queue powered by Redis |) Tj
+T*
+() Tj
+T*
+(---) Tj
+T*
+() Tj
+T*
+(*PrioraFlow ? Know what's urgent. Know what to do next.*) Tj
+T*
+ET
+endstream
+endobj
+49 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 48 0 R >>
+endobj
+xref
+0 50
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000274 00000 n 
+0000000344 00000 n 
+0000002979 00000 n 
+0000003105 00000 n 
+0000006254 00000 n 
+0000006380 00000 n 
+0000009207 00000 n 
+0000009333 00000 n 
+0000012333 00000 n 
+0000012461 00000 n 
+0000014830 00000 n 
+0000014958 00000 n 
+0000017259 00000 n 
+0000017387 00000 n 
+0000019535 00000 n 
+0000019663 00000 n 
+0000022746 00000 n 
+0000022874 00000 n 
+0000025630 00000 n 
+0000025758 00000 n 
+0000028623 00000 n 
+0000028751 00000 n 
+0000031152 00000 n 
+0000031280 00000 n 
+0000033635 00000 n 
+0000033763 00000 n 
+0000036111 00000 n 
+0000036239 00000 n 
+0000038381 00000 n 
+0000038509 00000 n 
+0000040460 00000 n 
+0000040588 00000 n 
+0000042954 00000 n 
+0000043082 00000 n 
+0000045456 00000 n 
+0000045584 00000 n 
+0000047927 00000 n 
+0000048055 00000 n 
+0000050335 00000 n 
+0000050463 00000 n 
+0000052925 00000 n 
+0000053053 00000 n 
+0000055086 00000 n 
+0000055214 00000 n 
+0000057312 00000 n 
+0000057440 00000 n 
+0000059581 00000 n 
+trailer
+<< /Size 50 /Root 1 0 R >>
+startxref
+59709
+%%EOF
