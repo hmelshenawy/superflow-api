@@ -189,6 +189,7 @@ export class JobsService {
     // Certain statuses carry timestamp semantics that downstream flows
     // (invoicing, archiving) depend on, so they are set atomically here.
     if (dto.to_status === 'booked') transitionData.workshop_stage = null;
+    if (dto.to_status === 'no_show') transitionData.workshop_stage = null;
     if (dto.to_status === 'checking') transitionData.workshop_stage = null;
     if (dto.to_status === 'estimate_sent') transitionData.workshop_stage = null;
     if (dto.to_status === 'approved') transitionData.workshop_stage = null;

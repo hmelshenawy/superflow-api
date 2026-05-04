@@ -7,7 +7,8 @@ type JobStatus =
   | 'waiting_parts'
   | 'quality_check'
   | 'ready'
-  | 'closed';
+  | 'closed'
+  | 'no_show';
 
 const FLOW_ORDER: JobStatus[] = [
   'booked',
@@ -28,8 +29,9 @@ const FLOW_ORDER: JobStatus[] = [
 // Practical workshop transitions:
 // - mostly forward-only
 // - small number of controlled backtracks where operations commonly bounce
+// - no_show: booked jobs that didn't arrive (auto via end-of-day cron or manual)
 const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
-  booked: ['checking', 'closed'],
+  booked: ['checking', 'closed', 'no_show'],
   checking: ['estimate_sent', 'approved', 'in_progress', 'closed'],
   estimate_sent: ['checking', 'approved', 'closed'],
   approved: ['estimate_sent', 'in_progress', 'closed'],
@@ -38,6 +40,7 @@ const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   quality_check: ['in_progress', 'ready'],
   ready: ['quality_check', 'closed'],
   closed: [],
+  no_show: [],
 };
 
 // Used by JobsService, approval flow, and any future UI validation.

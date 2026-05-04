@@ -36,6 +36,24 @@ export function normalizePriorityWeights(value: unknown): PriorityWeights {
   ) as PriorityWeights;
 }
 
+// Mirror of backend state machine — single source of truth for frontend transitions.
+const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
+  booked: ["checking", "closed", "no_show"],
+  checking: ["estimate_sent", "approved", "in_progress", "closed"],
+  estimate_sent: ["checking", "approved", "closed"],
+  approved: ["estimate_sent", "in_progress", "closed"],
+  in_progress: ["waiting_parts", "quality_check", "ready", "closed"],
+  waiting_parts: ["in_progress", "closed"],
+  quality_check: ["in_progress", "ready"],
+  ready: ["quality_check", "closed"],
+  closed: [],
+  no_show: [],
+};
+
+export function getValidTransitions(current: JobStatus): JobStatus[] {
+  return [...(TRANSITIONS[current] ?? [])];
+}
+
 // ─── Status Metadata ──────────────────────────────────────────
 // Each tone/chip uses light+dark variants via Tailwind dark: prefix.
 export const STATUS_META: Record<JobStatus, { label: string; tone: string; chip: string; dot: string }> = {
@@ -48,6 +66,7 @@ export const STATUS_META: Record<JobStatus, { label: string; tone: string; chip:
   quality_check:    { label: "Quality Check",   tone: "border-cyan-200 dark:border-cyan-700/40 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-200", chip: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200", dot: "bg-cyan-500" },
   ready:            { label: "Ready",           tone: "border-teal-200 dark:border-teal-700/40 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200", chip: "bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200", dot: "bg-teal-500" },
   closed:           { label: "Closed",         tone: "border-border bg-muted text-foreground", chip: "bg-muted text-foreground", dot: "bg-slate-600" },
+  no_show:          { label: "No Show",        tone: "border-border bg-muted text-muted-foreground", chip: "bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400", dot: "bg-slate-300" },
 };
 
 export const BOARD_COLUMNS: JobStatus[] = [
@@ -58,6 +77,7 @@ export const BOARD_CARD_ACCENT: Record<JobStatus, string> = {
   booked: "border-l-slate-300", checking: "border-l-amber-400", estimate_sent: "border-l-rose-400",
   approved: "border-l-emerald-400", in_progress: "border-l-blue-400", waiting_parts: "border-l-purple-400",
   quality_check: "border-l-cyan-400", ready: "border-l-teal-400", closed: "border-l-slate-400",
+  no_show: "border-l-slate-300",
 };
 
 export const BOARD_COLUMN_WIDTH = 248;
@@ -74,6 +94,7 @@ export const OVERALL_COLUMN_TONE: Record<JobStatus, string> = {
   quality_check: "border-orange-200 dark:border-orange-800/40 bg-orange-50/70 dark:bg-orange-950/30",
   ready: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/70 dark:bg-emerald-950/30",
   closed: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/70 dark:bg-emerald-950/30",
+  no_show: "border-slate-200 dark:border-slate-800/40 bg-slate-50/70 dark:bg-slate-950/30",
 };
 
 export const OVERALL_COLUMN_HEADER_TONE: Record<JobStatus, string> = {
@@ -86,6 +107,7 @@ export const OVERALL_COLUMN_HEADER_TONE: Record<JobStatus, string> = {
   quality_check: "border-orange-200 dark:border-orange-800/40 bg-orange-100/70 dark:bg-orange-900/40",
   ready: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-100/70 dark:bg-emerald-900/40",
   closed: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-100/70 dark:bg-emerald-900/40",
+  no_show: "border-slate-200 dark:border-slate-800/40 bg-slate-100/70 dark:bg-slate-900/40",
 };
 
 export const OVERALL_PHASES: Array<{ label: string; hint: string; columns: JobStatus[]; className: string }> = [

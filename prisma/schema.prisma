@@ -703,6 +703,7 @@ enum jobs_status {
   quality_check
   ready
   closed
+  no_show
 }
 
 enum media_files_file_type {

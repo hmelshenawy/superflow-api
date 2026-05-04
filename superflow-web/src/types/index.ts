@@ -62,7 +62,8 @@ export type JobStatus =
   | "waiting_parts"
   | "quality_check"
   | "ready"
-  | "closed";
+  | "closed"
+  | "no_show";
 
 export interface Job {
   id: string;

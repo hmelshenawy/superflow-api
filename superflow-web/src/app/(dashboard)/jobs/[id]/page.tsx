@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getValidTransitions } from "@/lib/jobs-data";
 import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,7 @@ const STATUS_META: Record<
   quality_check: { label: "Quality Check", dot: "bg-cyan-500", badge: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200" },
   ready: { label: "Ready", dot: "bg-teal-500", badge: "bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200" },
   closed: { label: "Closed", dot: "bg-slate-600", badge: "bg-muted text-foreground/80" },
+  no_show: { label: "No Show", dot: "bg-slate-300", badge: "bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400" },
 };
 
 /** Overall statuses where workshop stage is not applicable.
@@ -79,6 +81,7 @@ const ALL_STATUSES: JobStatus[] = [
   "quality_check",
   "ready",
   "closed",
+  "no_show",
 ];
 
 
@@ -355,7 +358,7 @@ export default function JobDetailPage() {
   }, [authStatus?.hasActiveToken, id]);
 
   const availableStatuses = useMemo(
-    () => (job ? ALL_STATUSES.filter((status) => status !== job.status) : []),
+    () => (job ? getValidTransitions(job.status) : []),
     [job],
   );
 

@@ -37,4 +37,27 @@ export class SchedulerService implements OnModuleInit {
       this.logger.error('Failed to archive closed jobs', error);
     }
   }
+
+  // Mark booked jobs as no_show at end of Dubai working day (9 PM Gulf = 17:00 UTC)
+  @Cron('0 17 * * *') // 17:00 UTC = 9:00 PM Dubai time
+  async markBookedAsNoShow() {
+    try {
+      const result = await this.prisma.jobs.updateMany({
+        where: {
+          status: 'booked',
+        },
+        data: {
+          status: 'no_show',
+        },
+      });
+
+      if (result.count > 0) {
+        this.logger.log(`Marked ${result.count} booked job(s) as no_show`);
+      } else {
+        this.logger.log('No booked jobs to mark as no_show');
+      }
+    } catch (error) {
+      this.logger.error('Failed to mark booked jobs as no_show', error);
+    }
+  }
 }
