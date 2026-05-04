@@ -61,10 +61,10 @@ export function Sidebar() {
     setMounted(true);
   }, []);
 
-  // Auto-collapse when resizing below 1280px
+  // Auto-collapse when resizing below 768px (md breakpoint)
   useEffect(() => {
     const onResize = () => {
-      if (window.innerWidth < 1280) {
+      if (window.innerWidth < 768) {
         setCollapsed(true);
         localStorage.setItem("sidebar-collapsed", "true");
       }
@@ -183,14 +183,14 @@ export function Sidebar() {
 
       <button
         onClick={toggleCollapsed}
-        className="hidden lg:flex items-center justify-center border-t border-slate-800 py-2.5 text-slate-400 transition hover:bg-slate-900 hover:text-white"
+        className="hidden md:flex items-center justify-center border-t border-slate-800 py-2.5 text-slate-400 transition hover:bg-slate-900 hover:text-white"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
 
-      <div className="hidden lg:flex items-center justify-center border-t border-slate-800 py-2.5">
+      <div className="hidden md:flex items-center justify-center border-t border-slate-800 py-2.5">
         <ThemeToggle />
       </div>
     </>
@@ -199,7 +199,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile header bar */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background px-3 py-2 lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background px-3 py-2 md:hidden">
         <button
           onClick={() => setMobileOpen(true)}
           className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted"
@@ -220,7 +220,7 @@ export function Sidebar() {
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" role="presentation" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex h-full w-64 flex-col bg-slate-950 text-slate-100 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
@@ -288,7 +288,7 @@ export function Sidebar() {
       {/* Desktop sidebar — starts collapsed, user can toggle */}
       <aside
         className={cn(
-          "hidden h-screen shrink-0 flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-all duration-200 lg:flex",
+          "hidden h-screen shrink-0 flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-all duration-200 md:flex",
           collapsed ? "w-[60px]" : "w-52"
         )}
       >
