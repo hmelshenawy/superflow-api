@@ -4,6 +4,8 @@ import { AdminService } from './admin.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { CreateAdminTemplateDto } from './dto/create-template.dto';
 import { UpdateAdminTemplateDto } from './dto/update-template.dto';
+import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
+import { CreateItemDto, UpdateItemDto } from './dto/item.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -70,14 +72,14 @@ export class AdminController {
   @Post('roles')
   @Roles('admin')
   @ApiOperation({ summary: 'Create role' })
-  createRole(@Body() body: { name: string; permissions?: any; description?: string }) {
+  createRole(@Body() body: CreateRoleDto) {
     return this.service.createRole(body);
   }
 
   @Patch('roles/:id')
   @Roles('admin')
   @ApiOperation({ summary: 'Update role' })
-  updateRole(@Param('id') id: string, @Body() body: { name?: string; permissions?: any; description?: string }) {
+  updateRole(@Param('id') id: string, @Body() body: UpdateRoleDto) {
     return this.service.updateRole(id, body);
   }
 
@@ -162,17 +164,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Add item to template section' })
   addItem(
     @Param('id') id: string,
-    @Body() body: {
-      section_id: string;
-      label: string;
-      input_type?: string;
-      options?: any;
-      unit?: string;
-      requires_photo?: boolean;
-      requires_note_on?: string;
-      help_text?: string;
-      sort_order?: number;
-    },
+    @Body() body: CreateItemDto,
   ) {
     return this.service.addItem(id, body);
   }
@@ -182,17 +174,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Update item' })
   updateItem(
     @Param('itemId') itemId: string,
-    @Body() body: {
-      label?: string;
-      input_type?: string;
-      options?: any;
-      unit?: string;
-      requires_photo?: boolean;
-      requires_note_on?: string;
-      help_text?: string;
-      sort_order?: number;
-      is_active?: boolean;
-    },
+    @Body() body: UpdateItemDto,
   ) {
     return this.service.updateItem(itemId, body);
   }

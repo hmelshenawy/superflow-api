@@ -252,7 +252,7 @@ export class AdminService {
     return this.prisma.roles.findMany({ orderBy: { name: 'asc' } });
   }
 
-  async createRole(body: { name: string; permissions?: any; description?: string }) {
+  async createRole(body: { name: string; permissions?: string[]; description?: string }) {
     if (!body?.name) throw new BadRequestException('name is required');
     return this.prisma.roles.create({
       data: {
@@ -264,7 +264,7 @@ export class AdminService {
     });
   }
 
-  async updateRole(id: string, body: { name?: string; permissions?: any; description?: string }) {
+  async updateRole(id: string, body: { name?: string; permissions?: string[]; description?: string }) {
     const role = await this.prisma.roles.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
     return this.prisma.roles.update({
@@ -431,7 +431,7 @@ export class AdminService {
     section_id: string;
     label: string;
     input_type?: string;
-    options?: any;
+    options?: unknown[];
     unit?: string;
     requires_photo?: boolean;
     requires_note_on?: string;
@@ -447,7 +447,7 @@ export class AdminService {
         section_id: body.section_id,
         label: body.label,
         input_type: (body.input_type as any) || 'pass_fail',
-        options: body.options ? (typeof body.options === 'string' ? body.options : JSON.stringify(body.options)) : null,
+        options: body.options ? JSON.stringify(body.options) : null,
         unit: body.unit || null,
         requires_photo: body.requires_photo ?? false,
         requires_note_on: body.requires_note_on || null,
@@ -461,7 +461,7 @@ export class AdminService {
   async updateItem(itemId: string, body: {
     label?: string;
     input_type?: string;
-    options?: any;
+    options?: unknown[];
     unit?: string;
     requires_photo?: boolean;
     requires_note_on?: string;

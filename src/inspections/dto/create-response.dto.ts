@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class InspectionResponseItemDto {
@@ -19,5 +19,6 @@ export class CreateResponseDto {
 
   @ApiPropertyOptional({ description: 'Optional offline draft payload for mobile/offline support' })
   @IsOptional()
-  offline_draft?: any;
+  @IsObject()
+  offline_draft?: Record<string, unknown>;
 }
