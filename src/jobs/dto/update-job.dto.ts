@@ -1,5 +1,15 @@
-import { IsString, IsOptional, IsInt, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export const WORKSHOP_STAGES = [
+  'waiting_technician', 'diagnosis', 'estimate_prep',
+  'customer_approval', 'work_in_progress', 'final_test',
+  'quality_check', 'ready_handover',
+] as const;
+
+export const PARTS_STATUSES = [
+  'no_parts', 'order_parts', 'waiting_warehouse', 'backorder', 'parts_ready',
+] as const;
 
 export class UpdateJobDto {
   @ApiPropertyOptional() @IsOptional() @IsString() advisor_id?: string;
@@ -9,8 +19,8 @@ export class UpdateJobDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() odometer_in?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() promised_at?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() dms_ro_number?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() workshop_stage?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() parts_status?: string;
+  @ApiPropertyOptional({ enum: WORKSHOP_STAGES }) @IsOptional() @IsEnum(WORKSHOP_STAGES) workshop_stage?: typeof WORKSHOP_STAGES[number];
+  @ApiPropertyOptional({ enum: PARTS_STATUSES }) @IsOptional() @IsEnum(PARTS_STATUSES) parts_status?: typeof PARTS_STATUSES[number];
   @ApiPropertyOptional() @IsOptional() @IsBoolean() customer_informed?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_customer_waiting?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() customer_sensitivity?: string;

@@ -332,8 +332,8 @@ model jobs {
   owner_code                                        String?                   @db.VarChar(20)
   technician_id                                     String?                   @db.Char(36)
   status                                            jobs_status               @default(booked)
-  workshop_stage                                    String?                   @default("waiting_technician") @db.VarChar(40)
-  parts_status                                      String?                   @default("no_parts") @db.VarChar(40)
+  workshop_stage                                    jobs_workshop_stage?      @default(waiting_technician)
+  parts_status                                      jobs_parts_status?        @default(no_parts)
   customer_informed                                 Boolean?                  @default(false)
   is_customer_waiting                               Boolean?                  @default(false)
   customer_sensitivity                              String?                   @default("normal") @db.VarChar(40)
@@ -708,6 +708,25 @@ enum jobs_status {
   ready
   closed
   no_show
+}
+
+enum jobs_workshop_stage {
+  waiting_technician
+  diagnosis
+  estimate_prep
+  customer_approval
+  work_in_progress
+  final_test
+  quality_check
+  ready_handover
+}
+
+enum jobs_parts_status {
+  no_parts
+  order_parts
+  waiting_warehouse
+  backorder
+  parts_ready
 }
 
 enum media_files_file_type {
