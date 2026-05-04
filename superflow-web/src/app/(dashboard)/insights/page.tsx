@@ -51,6 +51,19 @@ interface DashboardData {
   };
   jobsByStatus: { status: string; count: number }[];
   jobsOverTime: { date: string; created: number; closed: number }[];
+  attendance: {
+    todayBooked: number;
+    todayArrived: number;
+    todayNoShow: number;
+    todayPendingArrival: number;
+    showRate30d: number;
+    noShow30d: number;
+    arrived30d: number;
+    booked30d: number;
+    dueToday: number;
+  };
+  attendanceTrend: { date: string; booked: number; arrived: number; noShow: number }[];
+  advisorPerformance: { advisor: string; booked: number; arrived: number; noShow: number; closed: number; showRate: number }[];
   revenue: {
     total: number;
     approved: number;
@@ -85,6 +98,7 @@ const STATUS_COLORS: Record<string, string> = {
   quality_check: "#06b6d4",
   ready: "#14b8a6",
   closed: "#64748b",
+  no_show: "#71717a",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -97,6 +111,7 @@ const STATUS_LABELS: Record<string, string> = {
   quality_check: "QC",
   ready: "Ready",
   closed: "Closed",
+  no_show: "No Show",
 };
 
 const DEFERRED_COLORS: Record<string, string> = {
@@ -289,6 +304,15 @@ export default function InsightsPage() {
         />
       </div>
 
+      {/* ── Attendance / No-show row ───────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard label="Booked Today" value={data.attendance.todayBooked} icon={Clock} tone="blue" sub="Created today" />
+        <StatCard label="Arrived Today" value={data.attendance.todayArrived} icon={CheckCircle2} tone="emerald" sub="arrived_at set" />
+        <StatCard label="No Show Today" value={data.attendance.todayNoShow} icon={XCircle} tone={data.attendance.todayNoShow > 0 ? "rose" : "slate"} sub="Marked no_show today" />
+        <StatCard label="Pending Arrival" value={data.attendance.todayPendingArrival} icon={AlertTriangle} tone={data.attendance.todayPendingArrival > 0 ? "amber" : "slate"} sub="Booked + not arrived" />
+        <StatCard label="30d Show Rate" value={`${data.attendance.showRate30d}%`} icon={TrendingUp} tone={data.attendance.showRate30d >= 80 ? "emerald" : data.attendance.showRate30d >= 60 ? "amber" : "rose"} sub={`${data.attendance.arrived30d}/${data.attendance.booked30d} arrived`} />
+      </div>
+
       {/* ── Revenue row ────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
@@ -361,6 +385,55 @@ export default function InsightsPage() {
                 <Area type="monotone" dataKey="closed" stroke="#10b981" fill="#10b981" fillOpacity={0.15} name="Closed" />
               </AreaChart>
             </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* ── Attendance trend + advisor performance ─────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Arrival / No-show Trend (14 Days)">
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.attendanceTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: isDark ? "#94a3b8" : "#334155" }} tickFormatter={(v) => v.slice(5)} />
+                <YAxis tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
+                <Legend wrapperStyle={{ color: isDark ? "#94a3b8" : undefined }} />
+                <Line type="monotone" dataKey="booked" stroke="#3b82f6" strokeWidth={2} name="Booked" />
+                <Line type="monotone" dataKey="arrived" stroke="#10b981" strokeWidth={2} name="Arrived" />
+                <Line type="monotone" dataKey="noShow" stroke="#f43f5e" strokeWidth={2} name="No Show" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Advisor Attendance Performance (30 Days)">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="py-2 pr-3">Advisor</th>
+                  <th className="py-2 pr-3 text-right">Booked</th>
+                  <th className="py-2 pr-3 text-right">Arrived</th>
+                  <th className="py-2 pr-3 text-right">No Show</th>
+                  <th className="py-2 text-right">Show %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.advisorPerformance.length > 0 ? data.advisorPerformance.map((row) => (
+                  <tr key={row.advisor} className="border-b border-border/60 last:border-0">
+                    <td className="py-2 pr-3 font-medium text-foreground">{row.advisor}</td>
+                    <td className="py-2 pr-3 text-right text-muted-foreground">{row.booked}</td>
+                    <td className="py-2 pr-3 text-right text-emerald-600 dark:text-emerald-400">{row.arrived}</td>
+                    <td className="py-2 pr-3 text-right text-rose-600 dark:text-rose-400">{row.noShow}</td>
+                    <td className="py-2 text-right font-semibold text-foreground">{row.showRate}%</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={5} className="py-10 text-center text-sm text-muted-foreground">No advisor data yet</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </ChartCard>
       </div>
