@@ -270,7 +270,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         seenGroupIds.add(line.quote_group_id);
         groups.push({
           key: line.quote_group_id,
-          title: line.quote_group?.title ?? line.quote_group_title || "Custom group",
+          title: (line.quote_group?.title ?? line.quote_group_title) || "Custom group",
           responseId: null,
           quoteGroupId: line.quote_group_id,
           severity: "other",
