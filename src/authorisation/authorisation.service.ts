@@ -24,7 +24,7 @@ export class AuthorisationService {
           include: {
             customers: true,
             vehicles: true,
-            estimate_lines: { orderBy: { created_at: 'asc' } },
+            estimate_lines: { include: { quote_groups: true }, orderBy: { created_at: 'asc' } },
             users_jobs_advisor_idTousers: true,
             inspections: {
               include: {
@@ -316,7 +316,7 @@ export class AuthorisationService {
       gLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
       grouped.push({
         key: gid,
-        title: gLines[0]?.quote_group_title || finding?.label || 'Quote items',
+        title: gLines[0]?.quote_groups?.title || gLines[0]?.quote_group_title || finding?.label || 'Quote items',
         severity: finding?.severity || null,
         finding: finding || null,
         isCustom: Boolean(gLines[0]?.quote_group_id),

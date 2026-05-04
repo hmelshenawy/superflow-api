@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { EstimatesService } from './estimates.service';
 import { CreateLineDto } from './dto/create-line.dto';
 import { UpdateLineDto } from './dto/update-line.dto';
 import { BulkReplaceLinesDto } from './dto/bulk-replace-lines.dto';
+import { CreateGroupDto, RenameGroupDto } from './dto/group-ops.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -53,4 +54,20 @@ export class EstimatesController {
   ) {
     return this.service.bulkReplace(jobId, body.lines, userId);
   }
+
+  // ─── Quote Groups ──────────────────────────────────────
+  @Post('groups')
+  @Roles('admin', 'manager', 'service_advisor')
+  @ApiOperation({ summary: 'Create a quote group' })
+  createGroup(@Body() dto: CreateGroupDto) { return this.service.createGroup(dto.job_id, dto.title); }
+
+  @Patch('groups/:id')
+  @Roles('admin', 'manager', 'service_advisor')
+  @ApiOperation({ summary: 'Rename a quote group' })
+  renameGroup(@Param('id') id: string, @Body() dto: RenameGroupDto) { return this.service.renameGroup(id, dto.title); }
+
+  @Delete('groups/:id')
+  @Roles('admin', 'manager', 'service_advisor')
+  @ApiOperation({ summary: 'Delete a quote group (detaches lines, does not delete them)' })
+  deleteGroup(@Param('id') id: string) { return this.service.deleteGroup(id); }
 }

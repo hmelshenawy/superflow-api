@@ -312,6 +312,18 @@ CREATE TABLE `media_files` (
 -- 7. PRICING & ESTIMATES
 -- ============================================================
 
+CREATE TABLE `quote_groups` (
+  `id` CHAR(36) NOT NULL,
+  `job_id` CHAR(36) DEFAULT NULL,
+  `title` VARCHAR(120) DEFAULT NULL,
+  `sort_order` SMALLINT DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_qg_job` (`job_id`),
+  CONSTRAINT `fk_qg_job` FOREIGN KEY (`job_id`) REFERENCES `jobs` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE `estimate_lines` (
   `id` CHAR(36) NOT NULL,
   `job_id` CHAR(36) DEFAULT NULL,
@@ -339,7 +351,8 @@ CREATE TABLE `estimate_lines` (
   KEY `idx_el_quote_group` (`quote_group_id`),
   CONSTRAINT `fk_el_job` FOREIGN KEY (`job_id`) REFERENCES `jobs` (`id`),
   CONSTRAINT `fk_el_response` FOREIGN KEY (`inspection_response_id`) REFERENCES `inspection_responses` (`id`),
-  CONSTRAINT `fk_el_added_by` FOREIGN KEY (`added_by`) REFERENCES `users` (`id`)
+  CONSTRAINT `fk_el_added_by` FOREIGN KEY (`added_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `fk_el_quote_group` FOREIGN KEY (`quote_group_id`) REFERENCES `quote_groups` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `estimate_line_history` (

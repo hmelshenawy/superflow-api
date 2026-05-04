@@ -20,6 +20,16 @@ export class EstimatesService {
     const lineTotal = qty * unitPrice * (1 - discount / 100);
     const taxAmount = lineTotal * (taxRate / 100);
 
+    // Ensure quote group exists before referencing it
+    if (dto.quote_group_id) {
+      const group = await this.prisma.quote_groups.findUnique({ where: { id: dto.quote_group_id } });
+      if (!group && dto.job_id) {
+        await this.prisma.quote_groups.create({
+          data: { id: dto.quote_group_id, job_id: dto.job_id, title: dto.quote_group_title || 'New group' },
+        });
+      }
+    }
+
     return this.prisma.estimate_lines.create({
       data: {
         id: uuid(), job_id: dto.job_id, type: dto.type as any, description: dto.description,
@@ -131,6 +141,18 @@ export class EstimatesService {
           .filter((id: string | null | undefined) => Boolean(id)),
       );
 
+      // Ensure any new quote groups exist before referencing them
+      const groupIds = [...new Set(lines.map((l) => l.quote_group_id).filter(Boolean))] as string[];
+      for (const gid of groupIds) {
+        const existingGroup = await tx.quote_groups.findUnique({ where: { id: gid } });
+        if (!existingGroup) {
+          const representativeLine = lines.find((l) => l.quote_group_id === gid);
+          await tx.quote_groups.create({
+            data: { id: gid, job_id: jobId, title: representativeLine?.quote_group_title || 'New group', sort_order: 0 },
+          });
+        }
+      }
+
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
         const qty = Number(l.quantity ?? 1);
@@ -213,5 +235,29 @@ export class EstimatesService {
         orderBy: { sort_order: 'asc' },
       });
     });
+  }
+
+  // ─── Quote Groups ─────────────────────────────────────────
+  async createGroup(jobId: string, title: string) {
+    return this.prisma.quote_groups.create({
+      data: { id: uuid(), job_id: jobId, title: title || 'New group', sort_order: 0 },
+    });
+  }
+
+  async renameGroup(groupId: string, title: string) {
+    const group = await this.prisma.quote_groups.findUnique({ where: { id: groupId } });
+    if (!group) throw new NotFoundException('Quote group not found');
+    return this.prisma.quote_groups.update({ where: { id: groupId }, data: { title } });
+  }
+
+  async deleteGroup(groupId: string) {
+    const group = await this.prisma.quote_groups.findUnique({ where: { id: groupId } });
+    if (!group) throw new NotFoundException('Quote group not found');
+    // Nullify quote_group_id on all lines in this group (detaches, does not delete lines)
+    await this.prisma.estimate_lines.updateMany({
+      where: { quote_group_id: groupId },
+      data: { quote_group_id: null, quote_group_title: null },
+    });
+    return this.prisma.quote_groups.delete({ where: { id: groupId } });
   }
 }
