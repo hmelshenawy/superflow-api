@@ -47,6 +47,7 @@ export class EstimatesService {
   async findByJob(jobId: string) {
     return this.prisma.estimate_lines.findMany({
       where: { job_id: jobId },
+      include: { quote_groups: true },
       orderBy: { sort_order: 'asc' },
     });
   }
@@ -232,6 +233,7 @@ export class EstimatesService {
 
       return tx.estimate_lines.findMany({
         where: { job_id: jobId },
+        include: { quote_groups: true },
         orderBy: { sort_order: 'asc' },
       });
     });
