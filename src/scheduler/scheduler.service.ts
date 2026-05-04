@@ -22,7 +22,7 @@ export class SchedulerService implements OnModuleInit {
       // active board immediately; debugging users can still query archived data.
       const result = await this.prisma.jobs.updateMany({
         where: {
-          status: 'closed',
+          status: { in: ['closed', 'no_show'] },
           archived_at: null,
         },
         data: { archived_at: new Date() },
@@ -48,6 +48,7 @@ export class SchedulerService implements OnModuleInit {
         },
         data: {
           status: 'no_show',
+          archived_at: new Date(),
         },
       });
 
