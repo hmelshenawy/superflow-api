@@ -339,6 +339,7 @@ model jobs {
   internal_notes                                    String?                   @db.Text
   odometer_in                                       Int?                      @db.UnsignedInt
   promised_at                                       DateTime?                 @db.DateTime(0)
+  arrived_at                                        DateTime?                 @db.DateTime(0)
   dms_ro_number                                     String?                   @db.VarChar(60)
   dms_synced_at                                     DateTime?                 @db.DateTime(0)
   completed_at                                      DateTime?                 @db.DateTime(0)

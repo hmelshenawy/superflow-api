@@ -83,6 +83,7 @@ export interface Job {
   internal_notes: string | null;
   odometer_in: number | null;
   promised_at: string | null;
+  arrived_at: string | null;
   dms_ro_number: string | null;
   dms_synced_at: string | null;
   completed_at: string | null;

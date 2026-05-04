@@ -190,7 +190,10 @@ export class JobsService {
     // (invoicing, archiving) depend on, so they are set atomically here.
     if (dto.to_status === 'booked') transitionData.workshop_stage = null;
     if (dto.to_status === 'no_show') transitionData.workshop_stage = null;
-    if (dto.to_status === 'checking') transitionData.workshop_stage = null;
+    if (dto.to_status === 'checking') {
+      transitionData.workshop_stage = null;
+      if (!job.arrived_at) transitionData.arrived_at = new Date();
+    }
     if (dto.to_status === 'estimate_sent') transitionData.workshop_stage = null;
     if (dto.to_status === 'approved') transitionData.workshop_stage = null;
     if (dto.to_status === 'waiting_parts') {
@@ -207,6 +210,7 @@ export class JobsService {
 
     if (dto.to_status === 'ready') transitionData.completed_at = new Date();
     if (dto.to_status === 'closed') transitionData.invoiced_at = new Date();
+    if (dto.to_status === 'booked') transitionData.arrived_at = null;
     // Moving away from closed clears invoiced_at and archived_at so a
     // reopened job does not get accidentally re-archived by the scheduler.
     if (job.status === 'closed' && dto.to_status !== 'closed') {

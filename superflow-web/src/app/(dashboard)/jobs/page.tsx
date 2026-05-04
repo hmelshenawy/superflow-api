@@ -139,7 +139,7 @@ export default function JobsPage() {
     return grouped;
   }, [jobs]);
 
-  const activeJobs = useMemo(() => jobs.filter((job) => job.status !== "closed"), [jobs]);
+  const activeJobs = useMemo(() => jobs.filter((job) => job.status !== "closed" && job.status !== "no_show"), [jobs]);
   const workshopJobs = useMemo(() => jobs.filter(isWorkshopPhaseJob), [jobs]);
 
   const enrichedJobs = useMemo(() => {

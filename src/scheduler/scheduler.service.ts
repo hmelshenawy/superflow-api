@@ -45,9 +45,11 @@ export class SchedulerService implements OnModuleInit {
       const result = await this.prisma.jobs.updateMany({
         where: {
           status: 'booked',
+          arrived_at: null,
         },
         data: {
           status: 'no_show',
+          workshop_stage: null,
         },
       });
 
