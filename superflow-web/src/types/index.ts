@@ -150,12 +150,22 @@ export interface Vehicle {
 // ─── Estimates ──────────────────────────────────────────
 export type EstimateLineType = "labour" | "part" | "sublet";
 
+export interface QuoteGroup {
+  id: string;
+  job_id: string | null;
+  title: string | null;
+  sort_order: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EstimateLine {
   id: string;
   job_id: string | null;
   inspection_response_id: string | null;
   quote_group_id: string | null;
   quote_group_title: string | null;
+  quote_group?: QuoteGroup | null;
   type: EstimateLineType;
   description: string | null;
   part_number: string | null;

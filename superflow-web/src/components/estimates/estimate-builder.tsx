@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import type { EstimateLine, EstimateLineType, JobAuthorisationDecision } from "@/types";
+import type { EstimateLine, EstimateLineType, JobAuthorisationDecision, QuoteGroup } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -203,26 +203,41 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
 
   const removeLine = (id: string) => { setLines((prev) => prev.filter((l) => l.id !== id)); };
 
-  const createCustomGroup = () => {
-    const groupId = crypto.randomUUID();
-    const newLine: EstimateLine = {
-      id: crypto.randomUUID(), job_id: jobId,
-      inspection_response_id: null, quote_group_id: groupId, quote_group_title: "New group",
-      type: "labour", description: "", part_number: null, quantity: 1,
-      unit_price: defaults.standard_labour_rate, discount_pct: 0,
-      tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,
-      is_recommended: false, sort_order: lines.length, added_by: null,
-      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-    };
-    setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
+  const createCustomGroup = async () => {
+    try {
+      const { data } = await api.post<QuoteGroup>("/estimates/groups", { job_id: jobId, title: "New group" });
+      const groupId = data.id;
+      const newLine: EstimateLine = {
+        id: crypto.randomUUID(), job_id: jobId,
+        inspection_response_id: null, quote_group_id: groupId, quote_group_title: data.title,
+        type: "labour", description: "", part_number: null, quantity: 1,
+        unit_price: defaults.standard_labour_rate, discount_pct: 0,
+        tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,
+        is_recommended: false, sort_order: lines.length, added_by: null,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      };
+      setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
+    } catch {
+      toast.error("Failed to create group");
+    }
   };
 
-  const renameCustomGroup = (groupId: string, title: string) => {
+  const renameCustomGroup = async (groupId: string, title: string) => {
     setLines((prev) => prev.map((l) => l.quote_group_id === groupId ? { ...l, quote_group_title: title } : l));
+    try {
+      await api.patch(`/estimates/groups/${groupId}`, { title });
+    } catch {
+      toast.error("Failed to rename group");
+    }
   };
 
-  const deleteCustomGroup = (groupId: string) => {
+  const deleteCustomGroup = async (groupId: string) => {
     setLines((prev) => prev.filter((l) => l.quote_group_id !== groupId));
+    try {
+      await api.delete(`/estimates/groups/${groupId}`);
+    } catch {
+      // Group already deleted on server or detached; local state is already updated
+    }
   };
 
   const concernGroups = useMemo(() => {
@@ -255,7 +270,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         seenGroupIds.add(line.quote_group_id);
         groups.push({
           key: line.quote_group_id,
-          title: line.quote_group_title || "Custom group",
+          title: line.quote_group?.title ?? line.quote_group_title || "Custom group",
           responseId: null,
           quoteGroupId: line.quote_group_id,
           severity: "other",
