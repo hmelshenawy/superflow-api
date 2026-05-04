@@ -16,6 +16,7 @@ import { MediaModule } from './media/media.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AuditModule } from './audit/audit.module';
 import { AdminModule } from './admin/admin.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { InsightsModule } from './insights/insights.module';
 import { BookingImportModule } from './booking-import/booking-import.module';
@@ -44,6 +45,7 @@ import { BookingImportModule } from './booking-import/booking-import.module';
     NotificationsModule,
     AuditModule,
     AdminModule,
+    ScheduleModule.forRoot(),
     SchedulerModule,
     InsightsModule,
     BookingImportModule,
