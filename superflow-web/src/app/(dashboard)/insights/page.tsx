@@ -136,12 +136,12 @@ function StatCard({
 }) {
   const tones: Record<string, string> = {
     slate: "border-border bg-muted",
-    blue: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40",
-    amber: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40",
+    blue: "border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-950/40",
+    amber: "border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/40",
     rose: "border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40",
-    emerald: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40",
-    red: "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40",
-    purple: "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40",
+    emerald: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/40",
+    red: "border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/40",
+    purple: "border-purple-200 dark:border-purple-800/40 bg-purple-50 dark:bg-purple-950/40",
   };
   const iconTones: Record<string, string> = {
     slate: "text-muted-foreground",
@@ -493,17 +493,17 @@ export default function InsightsPage() {
       <div className="rounded-2xl border border-border bg-card p-5">
         <h3 className="text-sm font-semibold text-foreground">Last 7 Days Activity</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
+          <div className="rounded-lg border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
             <TrendingUp className="mx-auto h-5 w-5 text-blue-600 dark:text-blue-400" />
             <p className="mt-1 text-2xl font-bold text-blue-950 dark:text-blue-200">{data.recentActivity.last7Days.jobsCreated}</p>
             <p className="text-[11px] text-blue-600 dark:text-blue-400">Jobs Created</p>
           </div>
-          <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
+          <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/30 p-3 text-center">
             <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <p className="mt-1 text-2xl font-bold text-emerald-950 dark:text-emerald-200">{data.recentActivity.last7Days.jobsClosed}</p>
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400">Jobs Closed</p>
           </div>
-          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-center">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 p-3 text-center">
             <ClipboardCheck className="mx-auto h-5 w-5 text-amber-600 dark:text-amber-400" />
             <p className="mt-1 text-2xl font-bold text-amber-950 dark:text-amber-200">{data.recentActivity.last7Days.inspectionsSubmitted}</p>
             <p className="text-[11px] text-amber-600 dark:text-amber-400">Inspections Submitted</p>

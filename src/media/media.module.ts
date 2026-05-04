@@ -1,9 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client } from '@aws-sdk/client-s3';
+import { S3Client, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
 import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { S3_CLIENT } from './media.constants';
+
+const logger = new Logger('MediaModule');
 
 @Module({
   controllers: [MediaController],
@@ -33,4 +35,21 @@ import { S3_CLIENT } from './media.constants';
   ],
   exports: [MediaService, S3_CLIENT],
 })
-export class MediaModule {}
+export class MediaModule implements OnModuleInit {
+  constructor(
+    @Inject(S3_CLIENT) private readonly s3: S3Client,
+    private readonly config: ConfigService,
+  ) {}
+
+  async onModuleInit() {
+    const bucket = this.config.get<string>('S3_BUCKET') || 'superflow-media';
+    try {
+      await this.s3.send(new HeadBucketCommand({ Bucket: bucket }));
+      logger.log(`S3 bucket "${bucket}" exists ✓`);
+    } catch {
+      logger.warn(`S3 bucket "${bucket}" not found — creating…`);
+      await this.s3.send(new CreateBucketCommand({ Bucket: bucket }));
+      logger.log(`S3 bucket "${bucket}" created ✓`);
+    }
+  }
+}

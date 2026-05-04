@@ -40,13 +40,13 @@ export function normalizePriorityWeights(value: unknown): PriorityWeights {
 // Each tone/chip uses light+dark variants via Tailwind dark: prefix.
 export const STATUS_META: Record<JobStatus, { label: string; tone: string; chip: string; dot: string }> = {
   booked:          { label: "Booked",         tone: "border-border bg-muted text-foreground", chip: "bg-muted text-foreground", dot: "bg-slate-400" },
-  checking:         { label: "Checking",       tone: "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200", chip: "bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200", dot: "bg-amber-500" },
-  estimate_sent:    { label: "Estimate Sent",  tone: "border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200", chip: "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200", dot: "bg-rose-500" },
-  approved:         { label: "Approved",       tone: "border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200", chip: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200", dot: "bg-emerald-500" },
-  in_progress:      { label: "In Progress",    tone: "border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200", chip: "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200", dot: "bg-blue-500" },
-  waiting_parts:    { label: "Waiting Parts",  tone: "border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200", chip: "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200", dot: "bg-purple-500" },
-  quality_check:    { label: "Quality Check",   tone: "border-cyan-200 dark:border-cyan-700 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-200", chip: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200", dot: "bg-cyan-500" },
-  ready:            { label: "Ready",           tone: "border-teal-200 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200", chip: "bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200", dot: "bg-teal-500" },
+  checking:         { label: "Checking",       tone: "border-amber-300 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200", chip: "bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200", dot: "bg-amber-500" },
+  estimate_sent:    { label: "Estimate Sent",  tone: "border-rose-200 dark:border-rose-700/40 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200", chip: "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200", dot: "bg-rose-500" },
+  approved:         { label: "Approved",       tone: "border-emerald-200 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200", chip: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200", dot: "bg-emerald-500" },
+  in_progress:      { label: "In Progress",    tone: "border-blue-200 dark:border-blue-700/40 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200", chip: "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200", dot: "bg-blue-500" },
+  waiting_parts:    { label: "Waiting Parts",  tone: "border-purple-200 dark:border-purple-700/40 bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200", chip: "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200", dot: "bg-purple-500" },
+  quality_check:    { label: "Quality Check",   tone: "border-cyan-200 dark:border-cyan-700/40 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-200", chip: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200", dot: "bg-cyan-500" },
+  ready:            { label: "Ready",           tone: "border-teal-200 dark:border-teal-700/40 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200", chip: "bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200", dot: "bg-teal-500" },
   closed:           { label: "Closed",         tone: "border-border bg-muted text-foreground", chip: "bg-muted text-foreground", dot: "bg-slate-600" },
 };
 
@@ -65,33 +65,33 @@ export const BOARD_COLUMN_COLLAPSED_WIDTH = 46;
 export const BOARD_COLUMN_GAP = 12;
 
 export const OVERALL_COLUMN_TONE: Record<JobStatus, string> = {
-  booked: "border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30",
-  checking: "border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30",
-  estimate_sent: "border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30",
-  approved: "border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30",
-  in_progress: "border-orange-200 dark:border-orange-800 bg-orange-50/70 dark:bg-orange-950/30",
-  waiting_parts: "border-orange-200 dark:border-orange-800 bg-orange-50/70 dark:bg-orange-950/30",
-  quality_check: "border-orange-200 dark:border-orange-800 bg-orange-50/70 dark:bg-orange-950/30",
-  ready: "border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30",
-  closed: "border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30",
+  booked: "border-blue-200 dark:border-blue-800/40 bg-blue-50/70 dark:bg-blue-950/30",
+  checking: "border-blue-200 dark:border-blue-800/40 bg-blue-50/70 dark:bg-blue-950/30",
+  estimate_sent: "border-blue-200 dark:border-blue-800/40 bg-blue-50/70 dark:bg-blue-950/30",
+  approved: "border-blue-200 dark:border-blue-800/40 bg-blue-50/70 dark:bg-blue-950/30",
+  in_progress: "border-orange-200 dark:border-orange-800/40 bg-orange-50/70 dark:bg-orange-950/30",
+  waiting_parts: "border-orange-200 dark:border-orange-800/40 bg-orange-50/70 dark:bg-orange-950/30",
+  quality_check: "border-orange-200 dark:border-orange-800/40 bg-orange-50/70 dark:bg-orange-950/30",
+  ready: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/70 dark:bg-emerald-950/30",
+  closed: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/70 dark:bg-emerald-950/30",
 };
 
 export const OVERALL_COLUMN_HEADER_TONE: Record<JobStatus, string> = {
-  booked: "border-blue-200 dark:border-blue-800 bg-blue-100/70 dark:bg-blue-900/40",
-  checking: "border-blue-200 dark:border-blue-800 bg-blue-100/70 dark:bg-blue-900/40",
-  estimate_sent: "border-blue-200 dark:border-blue-800 bg-blue-100/70 dark:bg-blue-900/40",
-  approved: "border-blue-200 dark:border-blue-800 bg-blue-100/70 dark:bg-blue-900/40",
-  in_progress: "border-orange-200 dark:border-orange-800 bg-orange-100/70 dark:bg-orange-900/40",
-  waiting_parts: "border-orange-200 dark:border-orange-800 bg-orange-100/70 dark:bg-orange-900/40",
-  quality_check: "border-orange-200 dark:border-orange-800 bg-orange-100/70 dark:bg-orange-900/40",
-  ready: "border-emerald-200 dark:border-emerald-800 bg-emerald-100/70 dark:bg-emerald-900/40",
-  closed: "border-emerald-200 dark:border-emerald-800 bg-emerald-100/70 dark:bg-emerald-900/40",
+  booked: "border-blue-200 dark:border-blue-800/40 bg-blue-100/70 dark:bg-blue-900/40",
+  checking: "border-blue-200 dark:border-blue-800/40 bg-blue-100/70 dark:bg-blue-900/40",
+  estimate_sent: "border-blue-200 dark:border-blue-800/40 bg-blue-100/70 dark:bg-blue-900/40",
+  approved: "border-blue-200 dark:border-blue-800/40 bg-blue-100/70 dark:bg-blue-900/40",
+  in_progress: "border-orange-200 dark:border-orange-800/40 bg-orange-100/70 dark:bg-orange-900/40",
+  waiting_parts: "border-orange-200 dark:border-orange-800/40 bg-orange-100/70 dark:bg-orange-900/40",
+  quality_check: "border-orange-200 dark:border-orange-800/40 bg-orange-100/70 dark:bg-orange-900/40",
+  ready: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-100/70 dark:bg-emerald-900/40",
+  closed: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-100/70 dark:bg-emerald-900/40",
 };
 
 export const OVERALL_PHASES: Array<{ label: string; hint: string; columns: JobStatus[]; className: string }> = [
-  { label: "Reception / Advisor", hint: "Booking, checking, estimate, approval", columns: ["booked", "checking", "estimate_sent", "approved"], className: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200" },
-  { label: "Workshop", hint: "Production, parts, quality control", columns: ["in_progress", "waiting_parts", "quality_check"], className: "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 text-orange-900 dark:text-orange-200" },
-  { label: "Delivery", hint: "Ready and closed", columns: ["ready", "closed"], className: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200" },
+  { label: "Reception / Advisor", hint: "Booking, checking, estimate, approval", columns: ["booked", "checking", "estimate_sent", "approved"], className: "border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200" },
+  { label: "Workshop", hint: "Production, parts, quality control", columns: ["in_progress", "waiting_parts", "quality_check"], className: "border-orange-200 dark:border-orange-800/40 bg-orange-50 dark:bg-orange-950/30 text-orange-900 dark:text-orange-200" },
+  { label: "Delivery", hint: "Ready and closed", columns: ["ready", "closed"], className: "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200" },
 ];
 
 // ─── Parts / Customer / Workshop Stage ─────────────────────────
@@ -111,15 +111,15 @@ export const PARTS_STATUS_META: Record<PartsStatus, { label: string; tone: strin
 };
 
 export const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; sub: string; tone: string }> = {
-  waiting_technician: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 dark:border-orange-700/70 bg-orange-50/35 dark:bg-orange-950/30" },
-  received: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 dark:border-orange-700/70 bg-orange-50/35 dark:bg-orange-950/30" },
-  diagnosis: { label: "Diagnosis", sub: "Inspection / diagnosis active", tone: "border-amber-200/70 dark:border-amber-700/70 bg-amber-50/35 dark:bg-amber-950/30" },
-  estimate_prep: { label: "Estimate Prep", sub: "Technician/advisor quote prep", tone: "border-blue-200/70 dark:border-blue-700/70 bg-blue-50/35 dark:bg-blue-950/30" },
-  customer_approval: { label: "Advisor / Approval", sub: "Advisor follow-up + customer approval", tone: "border-rose-200/70 dark:border-rose-700/70 bg-rose-50/35 dark:bg-rose-950/30" },
+  waiting_technician: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 dark:border-orange-700/40/70 bg-orange-50/35 dark:bg-orange-950/30" },
+  received: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 dark:border-orange-700/40/70 bg-orange-50/35 dark:bg-orange-950/30" },
+  diagnosis: { label: "Diagnosis", sub: "Inspection / diagnosis active", tone: "border-amber-200/70 dark:border-amber-700/40/70 bg-amber-50/35 dark:bg-amber-950/30" },
+  estimate_prep: { label: "Estimate Prep", sub: "Technician/advisor quote prep", tone: "border-blue-200/70 dark:border-blue-700/40/70 bg-blue-50/35 dark:bg-blue-950/30" },
+  customer_approval: { label: "Advisor / Approval", sub: "Advisor follow-up + customer approval", tone: "border-rose-200/70 dark:border-rose-700/40/70 bg-rose-50/35 dark:bg-rose-950/30" },
   work_in_progress: { label: "WIP", sub: "Work in progress", tone: "border-sky-200/70 dark:border-sky-700/70 bg-sky-50/35 dark:bg-sky-950/30" },
-  final_test: { label: "Final Test", sub: "Road/final test", tone: "border-cyan-200/70 dark:border-cyan-700/70 bg-cyan-50/35 dark:bg-cyan-950/30" },
+  final_test: { label: "Final Test", sub: "Road/final test", tone: "border-cyan-200/70 dark:border-cyan-700/40/70 bg-cyan-50/35 dark:bg-cyan-950/30" },
   quality_check: { label: "QC", sub: "Quality check", tone: "border-violet-200/70 dark:border-violet-700/70 bg-violet-50/35 dark:bg-violet-950/30" },
-  ready_handover: { label: "Ready Handover", sub: "Ready for delivery", tone: "border-emerald-200/70 dark:border-emerald-700/70 bg-emerald-50/35 dark:bg-emerald-950/30" },
+  ready_handover: { label: "Ready Handover", sub: "Ready for delivery", tone: "border-emerald-200/70 dark:border-emerald-700/40/70 bg-emerald-50/35 dark:bg-emerald-950/30" },
 };
 
 export const WORKSHOP_STAGE_ACCENT: Record<WorkshopStage, string> = {
@@ -193,9 +193,9 @@ export function getPriorityTone(score?: number) {
 }
 
 export function getActionUrgencyClass(urgency: string) {
-  if (urgency === "critical") return "bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 border-red-100 dark:border-red-800";
-  if (urgency === "high") return "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-100 dark:border-amber-800";
-  if (urgency === "normal") return "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-blue-100 dark:border-blue-800";
+  if (urgency === "critical") return "bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 border-red-100 dark:border-red-800/40";
+  if (urgency === "high") return "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-100 dark:border-amber-800/40";
+  if (urgency === "normal") return "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-blue-100 dark:border-blue-800/40";
   return "bg-muted text-muted-foreground border-border";
 }
 
