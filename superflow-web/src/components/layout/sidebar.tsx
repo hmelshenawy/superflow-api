@@ -49,6 +49,10 @@ export function Sidebar() {
   const { user, logout } = useAuthStore();
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
+    // Auto-collapse on smaller desktop screens
+    if (window.innerWidth < 1280) return true;
+    // Auto-collapse on smaller desktop screens
+    if (window.innerWidth < 1280) return true;
     return localStorage.getItem("sidebar-collapsed") === "true";
   });
   const [mounted, setMounted] = useState(false);
@@ -56,6 +60,16 @@ export function Sidebar() {
   const admin = isAdmin(user);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Auto-collapse/expand on resize across 1280px boundary
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth < 1280) setCollapsed(true);
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -273,7 +287,7 @@ export function Sidebar() {
       <aside
         className={cn(
           "hidden h-screen shrink-0 flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-all duration-200 lg:flex",
-          collapsed ? "w-16" : "w-52 xl:w-48"
+          collapsed ? "w-16" : "w-56"
         )}
       >
         {navContent(collapsed)}
