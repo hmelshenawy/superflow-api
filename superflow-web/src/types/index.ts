@@ -164,7 +164,6 @@ export interface EstimateLine {
   job_id: string | null;
   inspection_response_id: string | null;
   quote_group_id: string | null;
-  quote_group_title: string | null;
   quote_group?: QuoteGroup | null;
   type: EstimateLineType;
   description: string | null;

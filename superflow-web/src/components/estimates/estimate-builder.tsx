@@ -67,7 +67,6 @@ function normalizeLines(lines: EstimateLine[]) {
   return lines.map((line) => ({
     ...line,
     quote_group_id: line.quote_group_id ?? null,
-    quote_group_title: line.quote_group_title ?? null,
     quantity: Number(line.quantity ?? 0),
     unit_price: Number(line.unit_price ?? 0),
     discount_pct: Number(line.discount_pct ?? 0),
@@ -162,13 +161,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     setCollapsedGroups((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); try { localStorage.setItem(`estimate-collapsed-${jobId}`, JSON.stringify([...next])); } catch {} return next; });
   };
 
-  const addLine = (type: EstimateLineType = "labour", opts?: { inspectionResponseId?: string | null; quoteGroupId?: string | null; quoteGroupTitle?: string | null }) => {
+  const addLine = (type: EstimateLineType = "labour", opts?: { inspectionResponseId?: string | null; quoteGroupId?: string | null }) => {
     const isLabour = type === "labour";
     const newLine: EstimateLine = {
       id: crypto.randomUUID(), job_id: jobId,
       inspection_response_id: opts?.inspectionResponseId ?? null,
       quote_group_id: opts?.quoteGroupId ?? null,
-      quote_group_title: opts?.quoteGroupTitle ?? null,
       type, description: "", part_number: null, quantity: 1,
       unit_price: isLabour ? defaults.standard_labour_rate : 0,
       discount_pct: 0, tax_rate_pct: defaults.default_tax_rate,
@@ -209,7 +207,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       const groupId = data.id;
       const newLine: EstimateLine = {
         id: crypto.randomUUID(), job_id: jobId,
-        inspection_response_id: null, quote_group_id: groupId, quote_group_title: data.title,
+        inspection_response_id: null, quote_group_id: groupId,
         type: "labour", description: "", part_number: null, quantity: 1,
         unit_price: defaults.standard_labour_rate, discount_pct: 0,
         tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,
@@ -223,7 +221,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   };
 
   const renameCustomGroup = async (groupId: string, title: string) => {
-    setLines((prev) => prev.map((l) => l.quote_group_id === groupId ? { ...l, quote_group_title: title } : l));
+    setLines((prev) => prev.map((l) => l.quote_group_id === groupId ? { ...l, quote_group: l.quote_group ? { ...l.quote_group, title } : l.quote_group } : l));
     try {
       await api.patch(`/estimates/groups/${groupId}`, { title });
     } catch {
@@ -270,7 +268,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         seenGroupIds.add(line.quote_group_id);
         groups.push({
           key: line.quote_group_id,
-          title: (line.quote_group?.title ?? line.quote_group_title) || "Custom group",
+          title: line.quote_group?.title || "Custom group",
           responseId: null,
           quoteGroupId: line.quote_group_id,
           severity: "other",
@@ -318,7 +316,6 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         is_recommended: Boolean(line.is_recommended),
         inspection_response_id: line.inspection_response_id ?? undefined,
         quote_group_id: line.quote_group_id ?? undefined,
-        quote_group_title: line.quote_group_title ?? undefined,
       }));
 
       await api.put(`/estimates/job/${jobId}/bulk`, { lines: payloadLines });
@@ -404,13 +401,13 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   </div>
                   {!isCollapsed && (
                   <>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, quoteGroupTitle: group.title }); }}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId }); }}>
                       <Plus className="mr-1 h-4 w-4" /> Labour
                     </Button>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, quoteGroupTitle: group.title }); }}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId }); }}>
                       <Plus className="mr-1 h-4 w-4" /> Part
                     </Button>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, quoteGroupTitle: group.title }); }}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId }); }}>
                       <Plus className="mr-1 h-4 w-4" /> Sublet
                     </Button>
                     {isCustom ? (
