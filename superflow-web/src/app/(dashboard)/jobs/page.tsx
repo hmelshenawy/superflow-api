@@ -133,7 +133,9 @@ export default function JobsPage() {
 
   const boardJobs = useMemo(() => {
     const grouped = Object.fromEntries(BOARD_COLUMNS.map((column) => [column, [] as Job[]])) as Record<JobStatus, Job[]>;
-    for (const job of jobs) grouped[job.status].push(job);
+    for (const job of jobs) {
+      if (grouped[job.status]) grouped[job.status].push(job);
+    }
     return grouped;
   }, [jobs]);
 
