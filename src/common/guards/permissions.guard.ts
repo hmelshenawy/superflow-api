@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../permissions/require-permission.decorator';
 
@@ -23,12 +23,20 @@ export class PermissionsGuard implements CanActivate {
     if (!requiredPermissions || requiredPermissions.length === 0) return true;
 
     const { user } = context.switchToHttp().getRequest();
-    if (!user) return false;
+    if (!user) {
+      throw new ForbiddenException('Missing permission: authentication required');
+    }
 
     // Admin always passes
     if (user.role === 'admin') return true;
 
     const userPermissions: string[] = user.permissions ?? [];
-    return requiredPermissions.some((p) => userPermissions.includes(p));
+    const hasPermission = requiredPermissions.some((p) => userPermissions.includes(p));
+    if (!hasPermission) {
+      throw new ForbiddenException(
+        `Missing permission: ${requiredPermissions.join(', ')} — contact your admin to update your role`,
+      );
+    }
+    return true;
   }
 }
