@@ -88,20 +88,50 @@ The priority score should update automatically when:
 | Approval pending | +15 | Estimate sent but not approved |
 | Estimate not sent | +20 | Diagnosis complete but quote not sent |
 | Parts delay | +10 to +25 | Parts are blocking progress |
-| Vehicle idle too long | +15 | No stage movement for too long |
+| Vehicle idle 24h+ | +20 | No stage movement for 24+ hours (not Booked/Ready/Closed) |
+| Vehicle idle 12h+ | +12 | No stage movement for 12+ hours (not Booked/Ready/Closed) |
+| Vehicle idle 6h+ | +6 | No stage movement for 6+ hours (not Booked/Ready/Closed) |
 | High-value job | +5 to +15 | Large estimate/invoice |
 | Angry/VIP/comeback customer | +20 | Sensitive case |
 | Technician blocked | +15 | Technician needs advisor decision |
 | Warranty/internal approval pending | +10 | Waiting manager/importer approval |
 
-### Priority levels
+### Priority levels (unified — same thresholds everywhere)
 
-```text
-0–39    Low
-40–64   Normal
-65–84   High
-85–100  Critical
-```
+| Score | Level | Color | Meaning |
+|---|---|---|---|
+| 0–21 | **Low** | Grey | No urgency. Normal progress. |
+| 22–39 | **Normal** | Blue | Standard attention needed. |
+| 40–59 | **High** | Amber | Elevated urgency — act soon. |
+| ≥ 60 | **Critical** | Red | Immediate action required. |
+
+> **Important:** There is only one scoring system. The same `priorityScore` drives the priority level badge, the action card urgency label, dashboard sorting, and stats. No separate calculations, no mismatched thresholds.
+
+### Status exclusions from risk signals
+
+| Status | Excluded From | Why |
+|---|---|---|
+| **Booked** | Idle risk, Promise overdue | Appointment waiting for slot |
+| **Ready** | Idle risk, Promise overdue | Car done, waiting collection |
+| **Closed** | Idle risk, Promise overdue | Job finished |
+
+### Idle risk tiers
+
+| Tier | Weight | When | Applies To |
+|---|---:|---|---|
+| Idle 6h+ | 6 | No update in 6+ hours | Active workshop jobs only (not Booked/Ready/Closed) |
+| Idle 24h+ | 20 | No update in 24+ hours | Active workshop jobs only (excludes Booked/Ready/Closed) |
+| Idle 12h+ | 12 | No update in 12+ hours | Active workshop jobs only (excludes Booked/Ready/Closed) |
+| Idle 6h+ | 6 | No update in 6+ hours | Active workshop jobs only (excludes Booked/Ready/Closed) |
+| Idle 24h+ | 20 | No update in 24+ hours | Active workshop jobs only — triggers High risk floor |
+
+### Customer Informed zeroing
+
+When `customer_informed = true` on a Ready job:
+- Promise risk, customer waiting, parts risk, idle risk, stage urgency, ready-to-inform → **zeroed**
+- Customer sensitivity, estimate value → **kept**
+- Next Best Action changes from "Notify customer for collection" → "Arrange collection with customer" (Low urgency)
+- Excluded from "Promised delivery risk" widget
 
 ### Priority explanation
 

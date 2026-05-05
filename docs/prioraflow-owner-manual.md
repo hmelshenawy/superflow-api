@@ -383,16 +383,26 @@ The system automatically handles these when status changes:
 
 ## 6. The Priority Engine
 
-This is the heart of PrioraFlow. Every active job receives a **live priority score** from 0 to 100.
+This is the heart of PrioraFlow. Every active job receives a **live priority score** from 0 to 100 — a single number that drives all risk badges, urgency labels, and dashboard sorting.
+
+### Single Score System
+
+There is **one scoring system**. The same `priorityScore` determines:
+- The priority level badge (Low / Normal / High / Critical) on every card
+- The action card urgency label
+- Dashboard sorting and filtering
+- Stats counters
+
+No separate calculations. No mismatched thresholds. One number, one meaning.
 
 ### Priority Levels
 
 | Score | Level | Color | Meaning |
 |---|---|---|---|
-| 0–39 | **Low** | Grey | No urgency. Normal progress. |
-| 40–64 | **Normal** | Blue | Standard attention needed. |
-| 65–84 | **High** | Amber | Elevated urgency — action soon. |
-| 85–100 | **Critical** | Red | Immediate action required. |
+| 0–21 | **Low** | Grey | No urgency. Normal progress. |
+| 22–39 | **Normal** | Blue | Standard attention needed. |
+| 40–59 | **High** | Amber | Elevated urgency — act soon. |
+| ≥ 60 | **Critical** | Red | Immediate action required. |
 
 ### How the Score Is Calculated
 
@@ -400,11 +410,13 @@ This is the heart of PrioraFlow. Every active job receives a **live priority sco
 
 Every job starts with a base score of 10. Then each active factor adds its weight. The total is capped at 100.
 
+The action card's **urgency** (Low / Normal / High / Critical) is derived directly from this same `priorityScore` — not from a separate calculation.
+
 ### Priority Factors
 
 | Factor | Default Weight | When It Applies | Category |
 |---|---:|---|---|
-| Promise Overdue | 30 | Promised date has passed and job is not Ready/Closed | Promise Risk |
+| Promise Overdue | 30 | Promised date has passed and job is not Booked/Ready/Closed | Promise Risk |
 | Promise Due ≤ 2h | 20 | Promised date is within 2 hours | Promise Risk |
 | Promise Due ≤ 6h | 10 | Promised date is within 6 hours | Promise Risk |
 | No Promised Date | 5 | Active job (not booked/closed) has no promised date | Promise Risk |
@@ -416,8 +428,9 @@ Every job starts with a base score of 10. Then each active factor adds its weigh
 | Parts Backorder | 22 | Parts status is "Backorder" | Parts Risk |
 | Parts Waiting Warehouse | 16 | Parts status is "Waiting Warehouse" | Parts Risk |
 | Parts Need Order | 12 | Parts status is "Order Parts" or job is "Waiting Parts" | Parts Risk |
-| Idle 12h+ | 12 | Job hasn't been updated in 12+ hours (not booked) | Idle Risk |
-| Idle 6h+ | 6 | Job hasn't been updated in 6+ hours (not booked) | Idle Risk |
+| **Idle 24h+** | **20** | **Job hasn't been updated in 24+ hours (excludes Booked/Ready/Closed)** | **Idle Risk** |
+| Idle 12h+ | 12 | Job hasn't been updated in 12+ hours (excludes Booked/Ready/Closed) | Idle Risk |
+| Idle 6h+ | 6 | Job hasn't been updated in 6+ hours (excludes Booked/Ready/Closed) | Idle Risk |
 | Stage: Checking/Diagnosis | 10 | Job is in "Checking" status | Stage Urgency |
 | Stage: QC / Near Delivery | 10 | Job is in "Quality Check" status | Stage Urgency |
 | Ready to Inform | 20 | Job is "Ready" but customer not yet informed | Delivery |
@@ -430,30 +443,26 @@ Every job starts with a base score of 10. Then each active factor adds its weigh
 |---|---|---|
 | 4–8 | Mild nudge — nice to address | Medium estimate, idle 6h |
 | 10–16 | Moderate — should act soon | Parts waiting, VIP customer, QC stage |
-| 18–22 | Strong — act now | Customer waiting, backorder, ready to inform |
+| 18–22 | Strong — act now | Customer waiting, backorder, ready to inform, idle 24h |
 | 30 | Maximum — critical alert | Promise overdue |
 
-### Example Priority Calculation
+### Status Exclusions
 
-**Job: Mercedes C-Class, RO-49126**
+Certain statuses are excluded from specific risk factors because they represent terminal or pre-start states, not active delays:
 
-| Factor | Weight |
-|---|---:|
-| Base | 10 |
-| Promise Due ≤ 2h | 20 |
-| Customer Waiting | 22 |
-| Customer VIP | 16 |
-| **Total** | **68** → **High** |
-
-**Priority explanation shown to advisor:**
-> Promise risk: due ≤2h +20 · Customer waiting +22 · Customer sensitivity: VIP +16
+| Status | Excluded From | Why |
+|---|---|---|
+| **Booked** | Idle risk (6h/12h/24h), Promise overdue | Appointment waiting for its slot — not a stuck job |
+| **Ready** | Idle risk (6h/12h/24h), Promise overdue | Car is done — idle time here is normal collection wait |
+| **Closed** | Idle risk (6h/12h/24h), Promise overdue | Job is finished — no action needed |
 
 ### What Gets Zeroed by "Customer Informed"
 
-When a job is Ready and you click "Customer Informed," urgency factors about getting the car ready or informing the customer are zeroed:
+When a job is Ready and you click "Customer Informed," the priority score drops significantly because the main urgency factors are resolved:
 
 **Zeroed (urgency factors):**
-- Promise risk (overdue, due soon)
+- Promise risk (overdue, due soon, due today)
+- No promised date penalty
 - Customer waiting
 - Waiting customer decision
 - Parts risk
@@ -465,61 +474,121 @@ When a job is Ready and you click "Customer Informed," urgency factors about get
 - Customer sensitivity (angry, VIP, comeback)
 - Estimate value (high, medium)
 
-This means an informed VIP customer with a high-value estimate still shows a meaningful priority — the car is handled, but the customer relationship matters.
+The Next Best Action also changes from "Notify customer for collection" → "Arrange collection with customer" (Low urgency).
 
-### Booked Jobs and Idle Risk
+### Example Priority Calculations
 
-Booked appointments are excluded from idle risk scoring. A booked car that hasn't moved in 12 hours is normal — it's an appointment waiting for its slot, not a stuck job.
+**Job 1: Mercedes C-Class, RO-49126 (Ready, customer not informed)**
 
----
+| Factor | Weight |
+|---|---:|
+| Base | 10 |
+| Promise Due ≤ 2h | 20 |
+| Customer Waiting | 22 |
+| Customer VIP | 16 |
+| **Total** | **68** → **Critical** |
 
+**Job 2: Toyota Camry, RO-50106 (Ready, customer informed)**
+
+| Factor | Weight |
+|---|---:|
+| Base | 10 |
+| Customer VIP | 16 |
+| High Estimate Value | 8 |
+| **Total** | **34** → **Normal** |
+
+**Job 3: BMW X5, RO-53903 (In Progress, idle 12h, angry customer)**
+
+| Factor | Weight |
+|---|---:|
+| Base | 10 |
+| Idle 12h+ | 12 |
+| Customer Angry | 18 |
+| **Total** | **40** → **High** |
+
+**Job 4: Booking, RO-49715 (Booked, idle 24h)**
+
+| Factor | Weight |
+|---|---:|
+| Base | 10 |
+| *(idle excluded — booked)* | 0 |
+| **Total** | **10** → **Low** |
+
+### Priority Score in the Next Best Action
+
+The action card shows the job's `priorityScore` and derives its urgency badge from the same thresholds:
+
+| Score Range | Urgency Badge | Color |
+|---|---|---|
+| 0–21 | Low | Grey |
+| 22–39 | Normal | Blue |
+| 40–59 | High | Amber |
+| ≥ 60 | Critical | Red |
+
+This is why a score of 27 always shows "Normal" everywhere — on the card, on the badge, on the stats. One number, one label.
 ## 7. Next Best Actions
 
 Every active job has a **Next Best Action** — the system tells the responsible person exactly what to do. This eliminates the "walk the floor and ask" approach and gives management confidence that nothing falls through the cracks.
 
 ### How It Works
 
-The action is determined by the job's current status and phase. Risk signals (promise overdue, customer waiting, VIP, etc.) increase the action's urgency and explain *why* it matters now. **Management can see the full action queue across all advisors**, not just per-person.
+The action is determined by the job's current status and phase. The action card displays:
+- **Title** — what to do
+- **Urgency badge** — derived from the job's priorityScore (same single-score system)
+- **Owner** — who should act (Advisor / Workshop / Parts)
+- **Reason** — why it matters, including risk signals
+- **Score** — the job's priorityScore
 
 ### Actions by Status
 
-| Job Status | Next Best Action | Owner |
-|---|---|---|
-| **Booked** | Receive vehicle and start check-in | Advisor |
-| **Checking** | Complete diagnosis and prepare estimate | Advisor |
-| **Estimate Sent** | Follow up customer decision | Advisor |
-| **Approved** | Print job card and release to workshop | Advisor |
-| **Waiting Parts** | Check parts ETA and update plan | Parts |
-| **In Progress** (no technician) | Assign technician and start work | Workshop |
-| **In Progress** (approval blocker) | Resolve advisor/approval blocker | Advisor |
-| **In Progress** (parts blocking) | Check parts ETA and unblock technician | Parts |
-| **In Progress** (normal) | Check technician progress | Workshop |
-| **Quality Check** | Complete QC and prepare delivery | Workshop |
-| **Ready** | Notify customer for collection | Advisor |
+| Job Status | Next Best Action | Owner | Typical Score Range |
+|---|---|---|---|
+| **Booked** | Receive vehicle and start check-in | Advisor | 10–16 (Low) |
+| **Checking** | Complete diagnosis and prepare estimate | Advisor | 24–38 (Normal) |
+| **Estimate Sent** | Follow up customer decision | Advisor | 30–50 (Normal–High) |
+| **Approved** | Print job card and release to workshop | Advisor | 26–38 (Normal) |
+| **Waiting Parts** | Check parts ETA and update plan | Parts | 28–50 (Normal–High) |
+| **In Progress** (no technician) | Assign technician and start work | Workshop | 26–42 (Normal–High) |
+| **In Progress** (approval blocker) | Resolve advisor/approval blocker | Advisor | 30–60+ (Normal–Critical) |
+| **In Progress** (parts blocking) | Check parts ETA and unblock technician | Parts | 30–60+ (Normal–Critical) |
+| **In Progress** (normal) | Check technician progress | Workshop | 22–38 (Normal) |
+| **Quality Check** | Complete QC and prepare delivery | Workshop | 28–50 (Normal–High) |
+| **Ready** (customer not informed) | Notify customer for collection | Advisor | 24–44 (Normal–High) |
+| **Ready** (customer informed) | Arrange collection with customer | Advisor | 10–34 (Low–Normal) |
 
-### Action Urgency Levels
+### Customer Informed Impact on Actions
 
-| Urgency | When | Color |
-|---|---|---|
-| Low | Base scenario, no risk signals | Grey |
-| Normal | Some risk signals present | Blue |
-| High | Multiple risk signals | Amber |
-| Critical | Promise overdue, angry customer, or multiple strong signals | Red |
+When a "Ready" job has the **Customer Informed** flag set:
+
+| Before Inform | After Inform |
+|---|---|
+| Action: "Notify customer for collection" | Action: "Arrange collection with customer" |
+| Risk signals show idle, promise, etc. | Risk signals suppressed — only "customer informed" and "ready for delivery" |
+| Urgency: Normal–High | Urgency: Low |
+| Score: 24–44+ | Score: 10–34 |
+
+This prevents the common false alarm where a ready, informed car still shows high risk signals.
 
 ### Risk Signals
 
-Each action shows the risk signals that make it urgent:
+Each action shows the risk signals that make it urgent (only for non-excluded statuses):
 
-- **Promise overdue** — promised date has passed
+- **Promise overdue** — promised date has passed (excluded for Booked/Ready/Closed)
 - **Promise due within 2h** — delivery promised very soon
 - **Promise due within 6h** — delivery promised today
 - **Customer waiting** — customer is at the workshop
 - **Angry/VIP/Comeback customer** — sensitive customer relationship
-- **Idle 6h+/12h+** — job hasn't progressed in too long
+- **Idle 6h+/12h+/24h+** — job hasn't progressed in too long (excluded for Booked/Ready/Closed)
 - **Parts: backorder/waiting/order** — parts are blocking progress
 - **High/medium estimate value** — significant financial value at stake
 
----
+### Promise Delivery Risk Widget
+
+The "Promised delivery risk" sidebar widget shows jobs where:
+- Promise is overdue, OR promise is within 6 hours
+- **AND** job is NOT in Ready+Customer Informed status
+
+Ready + informed jobs are excluded because the car is done and the customer knows — it's not a delivery risk, just a collection pickup.
 
 ## 8. Workshop Stages
 

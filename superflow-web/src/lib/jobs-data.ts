@@ -14,6 +14,7 @@ export const DEFAULT_PRIORITY_WEIGHTS = {
   partsBackorder: 22,
   partsWaitingWarehouse: 16,
   partsNeedOrder: 12,
+  idle24h: 20,
   idle12h: 12,
   idle6h: 6,
   stageCheckingDiagnosis: 10,
@@ -193,7 +194,7 @@ export function getPromisedLabel(value: string | null) {
 
 export function isOverdue(job: Job, nowTs?: number | null) {
   if (!job.promised_at) return false;
-  if (["ready", "closed"].includes(job.status)) return false;
+  if (["booked", "ready", "closed"].includes(job.status)) return false;
   if (!nowTs) return false;
   return new Date(job.promised_at).getTime() < nowTs;
 }
@@ -204,9 +205,9 @@ export function getEstimateTotal(job: Job) {
 
 export function getPriorityTone(score?: number) {
   if (!score && score !== 0) return "bg-muted text-muted-foreground ring-border";
-  if (score >= 85) return "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 ring-red-200 dark:ring-red-700";
-  if (score >= 65) return "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 ring-amber-200 dark:ring-amber-700";
-  if (score >= 40) return "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 ring-blue-200 dark:ring-blue-700";
+  if (score >= 60) return "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 ring-red-200 dark:ring-red-700";
+  if (score >= 40) return "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 ring-amber-200 dark:ring-amber-700";
+  if (score >= 22) return "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 ring-blue-200 dark:ring-blue-700";
   return "bg-muted text-muted-foreground ring-border";
 }
 
@@ -231,7 +232,7 @@ export type NextBestAction = {
   signals: string[];
 };
 
-export function buildNextBestAction(job: Job, nowTs?: number | null): NextBestAction {
+export function buildNextBestAction(job: Job, nowTs?: number | null, priorityScore?: number): NextBestAction {
   const now = nowTs ?? Date.now();
   const promisedTs = job.promised_at ? new Date(job.promised_at).getTime() : null;
   const hoursToPromise = promisedTs ? (promisedTs - now) / 36e5 : null;
@@ -250,7 +251,7 @@ export function buildNextBestAction(job: Job, nowTs?: number | null): NextBestAc
     promiseDueToday && !promiseDueSoon ? "promise due within 6h" : null,
     job.is_customer_waiting ? "customer waiting" : null,
     sensitivity !== "normal" ? `${CUSTOMER_SENSITIVITY_META[sensitivity]?.label ?? sensitivity} customer` : null,
-    idleHours >= 12 ? "idle 12h+" : idleHours >= 6 ? "idle 6h+" : null,
+    (["booked", "ready", "closed"].includes(job.status) ? null : (idleHours >= 24 ? "idle 24h+" : idleHours >= 12 ? "idle 12h+" : idleHours >= 6 ? "idle 6h+" : null)),
     partsStatus !== "no_parts" ? `parts: ${partsStatus}` : null,
     estimateTotal >= 10000 ? "high estimate value" : estimateTotal >= 5000 ? "medium estimate value" : null,
   ].filter(Boolean) as string[];
@@ -259,33 +260,42 @@ export function buildNextBestAction(job: Job, nowTs?: number | null): NextBestAc
     (promiseOverdue ? 22 : promiseDueSoon ? 14 : promiseDueToday ? 7 : 0) +
     (job.is_customer_waiting ? 10 : 0) +
     (sensitivity === "angry" ? 8 : sensitivity === "vip" ? 6 : sensitivity === "comeback" ? 5 : 0) +
-    (idleHours >= 12 ? 8 : idleHours >= 6 ? 4 : 0) +
+    (["booked", "ready", "closed"].includes(job.status) ? 0 : (idleHours >= 24 ? 16 : idleHours >= 12 ? 8 : idleHours >= 6 ? 4 : 0)) +
     (partsStatus === "backorder" ? 10 : partsStatus === "waiting_warehouse" ? 7 : partsStatus === "order_parts" ? 5 : 0);
 
+  // Single-source-of-truth: use page priorityScore if provided, otherwise compute from base + riskBoost
+  const effectiveScore = priorityScore ?? Math.max(0, Math.min(100, Math.round(0 + riskBoost + 10)));
   const urgencyFromScore = (score: number): NextActionUrgency => (
-    score >= 55 ? "critical" : score >= 38 ? "high" : score >= 22 ? "normal" : "low"
+    score >= 60 ? "critical" : score >= 40 ? "high" : score >= 22 ? "normal" : "low"
   );
 
-  const makeAction = ({ title, reason, owner, actionType, baseScore, extraSignals = [] }: {
-    title: string; reason: string; owner: NextActionOwner; actionType: string; baseScore: number; extraSignals?: string[];
+  const makeAction = ({ title, reason, owner, actionType, extraSignals = [] }: {
+    title: string; reason: string; owner: NextActionOwner; actionType: string; extraSignals?: string[];
   }): NextBestAction => {
-    const score = Math.max(0, Math.min(100, Math.round(baseScore + riskBoost)));
     const riskReason = signals.length ? ` Risk signals: ${signals.join(", ")}.` : "";
-    return { title, reason: `${reason}${riskReason}`, urgency: urgencyFromScore(score), owner, actionType, score, signals: [...signals, ...extraSignals] };
+    return { title, reason: `${reason}${riskReason}`, urgency: urgencyFromScore(effectiveScore), owner, actionType, score: effectiveScore, signals: [...signals, ...extraSignals] };
   };
 
-  if (job.status === "booked") return makeAction({ title: "Receive vehicle and start check-in", reason: "Booking is still in reception phase. Receive the vehicle before it enters workshop flow.", owner: "advisor", actionType: "vehicle_check_in", baseScore: 16, extraSignals: ["booked/reception phase"] });
-  if (job.status === "checking") return makeAction({ title: "Complete diagnosis and prepare estimate", reason: "Vehicle is in checking/diagnosis. Confirm findings and prepare the estimate for customer decision.", owner: "advisor", actionType: "diagnosis_to_estimate", baseScore: 24, extraSignals: ["checking/diagnosis phase"] });
-  if (job.status === "estimate_sent") return makeAction({ title: "Follow up customer decision", reason: "Estimate has been sent. The vehicle cannot move forward until the customer approves, rejects, or asks a question.", owner: "advisor", actionType: "customer_decision_follow_up", baseScore: 30, extraSignals: ["waiting customer decision"] });
-  if (job.status === "approved") return makeAction({ title: "Print job card and release to workshop", reason: "Customer approval is received. The next operational step is to print/open the job card and hand it to workshop control.", owner: "advisor", actionType: "print_job_card_release_workshop", baseScore: 26, extraSignals: ["approved phase", "ready for workshop release"] });
-  if (job.status === "waiting_parts") return makeAction({ title: "Check parts ETA and update plan", reason: "Job is blocked by parts. Confirm ETA/status and update advisor, workshop, and customer plan if needed.", owner: "parts", actionType: "parts_eta_check", baseScore: 28, extraSignals: ["waiting parts phase"] });
+  if (job.status === "booked") return makeAction({ title: "Receive vehicle and start check-in", reason: "Booking is still in reception phase. Receive the vehicle before it enters workshop flow.", owner: "advisor", actionType: "vehicle_check_in", extraSignals: ["booked/reception phase"] });
+  if (job.status === "checking") return makeAction({ title: "Complete diagnosis and prepare estimate", reason: "Vehicle is in checking/diagnosis. Confirm findings and prepare the estimate for customer decision.", owner: "advisor", actionType: "diagnosis_to_estimate", extraSignals: ["checking/diagnosis phase"] });
+  if (job.status === "estimate_sent") return makeAction({ title: "Follow up customer decision", reason: "Estimate has been sent. The vehicle cannot move forward until the customer approves, rejects, or asks a question.", owner: "advisor", actionType: "customer_decision_follow_up", extraSignals: ["waiting customer decision"] });
+  if (job.status === "approved") return makeAction({ title: "Print job card and release to workshop", reason: "Customer approval is received. The next operational step is to print/open the job card and hand it to workshop control.", owner: "advisor", actionType: "print_job_card_release_workshop", extraSignals: ["approved phase", "ready for workshop release"] });
+  if (job.status === "waiting_parts") return makeAction({ title: "Check parts ETA and update plan", reason: "Job is blocked by parts. Confirm ETA/status and update advisor, workshop, and customer plan if needed.", owner: "parts", actionType: "parts_eta_check", extraSignals: ["waiting parts phase"] });
   if (job.status === "in_progress") {
-    if (workshopStage === "waiting_technician" || !job.technician_id) return makeAction({ title: "Assign technician and start work", reason: "Job is already in workshop phase but still needs a clear technician/workshop owner.", owner: "workshop", actionType: "assign_technician", baseScore: 26, extraSignals: ["workshop phase", "needs technician"] });
-    if (workshopStage === "customer_approval") return makeAction({ title: "Resolve advisor / approval blocker", reason: "Workshop progress is blocked by advisor/customer approval. Clear the decision before work continues.", owner: "advisor", actionType: "workshop_approval_blocker", baseScore: 30, extraSignals: ["workshop approval blocker"] });
-    if (["order_parts", "waiting_warehouse", "backorder"].includes(partsStatus)) return makeAction({ title: "Check parts ETA and unblock technician", reason: "Work is active but parts are blocking progress. Confirm ETA and update workshop plan.", owner: "parts", actionType: "parts_eta_check", baseScore: 30, extraSignals: ["parts blocking active work"] });
-    return makeAction({ title: "Check technician progress", reason: "Work is in progress. Confirm progress, blockers, and expected finish time.", owner: "workshop", actionType: "technician_progress_check", baseScore: 22, extraSignals: ["work in progress"] });
+    if (workshopStage === "waiting_technician" || !job.technician_id) return makeAction({ title: "Assign technician and start work", reason: "Job is already in workshop phase but still needs a clear technician/workshop owner.", owner: "workshop", actionType: "assign_technician", extraSignals: ["workshop phase", "needs technician"] });
+    if (workshopStage === "customer_approval") return makeAction({ title: "Resolve advisor / approval blocker", reason: "Workshop progress is blocked by advisor/customer approval. Clear the decision before work continues.", owner: "advisor", actionType: "workshop_approval_blocker", extraSignals: ["workshop approval blocker"] });
+    if (["order_parts", "waiting_warehouse", "backorder"].includes(partsStatus)) return makeAction({ title: "Check parts ETA and unblock technician", reason: "Work is active but parts are blocking progress. Confirm ETA and update workshop plan.", owner: "parts", actionType: "parts_eta_check", extraSignals: ["parts blocking active work"] });
+    return makeAction({ title: "Check technician progress", reason: "Work is in progress. Confirm progress, blockers, and expected finish time.", owner: "workshop", actionType: "technician_progress_check", extraSignals: ["work in progress"] });
   }
-  if (job.status === "quality_check") return makeAction({ title: "Complete QC and prepare delivery", reason: "Vehicle is near delivery. Finish quality check, confirm readiness, and prepare handover.", owner: "workshop", actionType: "qc_completion", baseScore: 28, extraSignals: ["QC / near delivery"] });
-  if (job.status === "ready") return makeAction({ title: "Notify customer for collection", reason: "Vehicle is ready. Contact the customer and arrange delivery/collection.", owner: "advisor", actionType: "ready_collection_notice", baseScore: 24, extraSignals: ["ready for delivery"] });
-  return makeAction({ title: "Review job", reason: "No specific phase action was detected. Review the job for normal follow-up.", owner: "advisor", actionType: "general_review", baseScore: 5 });
+  if (job.status === "quality_check") return makeAction({ title: "Complete QC and prepare delivery", reason: "Vehicle is near delivery. Finish quality check, confirm readiness, and prepare handover.", owner: "workshop", actionType: "qc_completion", extraSignals: ["QC / near delivery"] });
+  const isReadyInformed = job.status === "ready" && !!job.customer_informed;
+
+  if (isReadyInformed) {
+    return makeAction({ title: "Arrange collection with customer", reason: "Customer already informed. Confirm collection time and prepare handover paperwork.", owner: "advisor", actionType: "ready_arrange_collection", extraSignals: ["customer informed", "ready for delivery"] });
+  }
+
+  if (job.status === "ready") {
+    return makeAction({ title: "Notify customer for collection", reason: "Vehicle is ready. Contact the customer and arrange delivery/collection.", owner: "advisor", actionType: "ready_collection_notice", extraSignals: ["ready for delivery"] });
+  }
+  return makeAction({ title: "Review job", reason: "No specific phase action was detected. Review the job for normal follow-up.", owner: "advisor", actionType: "general_review" });
 }
