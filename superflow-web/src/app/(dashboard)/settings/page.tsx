@@ -47,6 +47,7 @@ const DEFAULT_PRIORITY_WEIGHTS = {
   partsBackorder: 22,
   partsWaitingWarehouse: 16,
   partsNeedOrder: 12,
+  idle24h: 20,
   idle12h: 12,
   idle6h: 6,
   stageCheckingDiagnosis: 10,
@@ -80,8 +81,9 @@ const PRIORITY_MATRIX_GROUPS: Array<{ title: string; description: string; items:
     { key: "partsNeedOrder", label: "Need order", description: "Parts required but not ordered yet / waiting parts status." },
   ]},
   { title: "Idle / Delay Risk", description: "Only one idle sub-item applies.", items: [
-    { key: "idle12h", label: "Idle more than 12h", description: "No recent movement for 12+ hours." },
-    { key: "idle6h", label: "Idle more than 6h", description: "No recent movement for 6+ hours." },
+    { key: "idle24h", label: "Idle more than 24h", description: "No recent movement for 24+ hours. Excluded for Booked/Ready/Closed." },
+    { key: "idle12h", label: "Idle more than 12h", description: "No recent movement for 12+ hours. Excluded for Booked/Ready/Closed." },
+    { key: "idle6h", label: "Idle more than 6h", description: "No recent movement for 6+ hours. Excluded for Booked/Ready/Closed." },
   ]},
   { title: "Stage Urgency", description: "Only one stage urgency sub-item applies.", items: [
     { key: "stageCheckingDiagnosis", label: "Checking / diagnosis", description: "Active diagnosis/checking needs follow-up." },
