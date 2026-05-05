@@ -44,7 +44,6 @@ export type PartsStatus =
 
 export type WorkshopStage =
   | "waiting_technician"
-  | "received"
   | "diagnosis"
   | "estimate_prep"
   | "customer_approval"

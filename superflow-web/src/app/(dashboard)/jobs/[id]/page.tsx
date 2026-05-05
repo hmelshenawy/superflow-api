@@ -107,7 +107,6 @@ const PARTS_STATUSES = Object.keys(PARTS_STATUS_META) as PartsStatus[];
 
 const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; hint: string }> = {
   waiting_technician: { label: "Waiting to Start", hint: "Received car waiting for technician/bay to start" },
-  received: { label: "Waiting to Start", hint: "Received car waiting for technician/bay to start" },
   diagnosis: { label: "Diagnosis", hint: "Inspection / diagnosis active" },
   estimate_prep: { label: "Estimate Prep", hint: "Preparing quote" },
   customer_approval: { label: "Advisor / Approval", hint: "Advisor follow-up and customer approval" },
@@ -117,7 +116,7 @@ const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; hint: string }
   ready_handover: { label: "Ready Handover", hint: "Ready for delivery" },
 };
 
-const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]).filter((stage) => !["received", "advisor_review", "parts_check"].includes(stage));
+const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]);
 
 function vehicleLabel(job: Job) {
   if (!job.vehicle) return "Vehicle pending";
@@ -680,7 +679,7 @@ export default function JobDetailPage() {
 
                 <div>
                   <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Workshop stage {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-muted-foreground">— not available</span>}</p>
-                  <Select value={job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage ?? "waiting_technician"} onValueChange={async (value) => {
+                  <Select value={job.workshop_stage ?? "waiting_technician"} onValueChange={async (value) => {
                     const workshopStage = value as WorkshopStage;
                     setSavingWorkshopStage(true);
                     try {
@@ -690,7 +689,7 @@ export default function JobDetailPage() {
                       toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
                     } catch { toast.error("Failed to update workshop stage"); } finally { setSavingWorkshopStage(false); }
                   }} disabled={savingWorkshopStage || isWorkshopStageDisabled}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[((job.workshop_stage === "received" ? "waiting_technician" : String(job.workshop_stage) === "advisor_review" ? "customer_approval" : job.workshop_stage) ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[(job.workshop_stage ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
                     <SelectContent className="min-w-[360px]">{WORKSHOP_STAGES.map((stage) => (<SelectItem key={stage} value={stage}>{WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>

@@ -134,7 +134,6 @@ export const PARTS_STATUS_META: Record<PartsStatus, { label: string; tone: strin
 
 export const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; sub: string; tone: string }> = {
   waiting_technician: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 dark:border-orange-700/40/70 bg-orange-50/35 dark:bg-orange-950/30" },
-  received: { label: "Waiting to Start", sub: "Received, waiting technician/bay", tone: "border-orange-200/70 dark:border-orange-700/40/70 bg-orange-50/35 dark:bg-orange-950/30" },
   diagnosis: { label: "Diagnosis", sub: "Inspection / diagnosis active", tone: "border-amber-200/70 dark:border-amber-700/40/70 bg-amber-50/35 dark:bg-amber-950/30" },
   estimate_prep: { label: "Estimate Prep", sub: "Technician/advisor quote prep", tone: "border-blue-200/70 dark:border-blue-700/40/70 bg-blue-50/35 dark:bg-blue-950/30" },
   customer_approval: { label: "Advisor / Approval", sub: "Advisor follow-up + customer approval", tone: "border-rose-200/70 dark:border-rose-700/40/70 bg-rose-50/35 dark:bg-rose-950/30" },
@@ -145,7 +144,7 @@ export const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; sub: st
 };
 
 export const WORKSHOP_STAGE_ACCENT: Record<WorkshopStage, string> = {
-  waiting_technician: "border-l-orange-400", received: "border-l-orange-400",
+  waiting_technician: "border-l-orange-400",
   diagnosis: "border-l-amber-400", estimate_prep: "border-l-blue-400",
   customer_approval: "border-l-rose-400", work_in_progress: "border-l-sky-400",
   final_test: "border-l-cyan-400", quality_check: "border-l-violet-400",
@@ -153,16 +152,14 @@ export const WORKSHOP_STAGE_ACCENT: Record<WorkshopStage, string> = {
 };
 
 export const WORKSHOP_STAGE_HEADER_TONE: Record<WorkshopStage, string> = {
-  waiting_technician: "bg-orange-50/60 dark:bg-orange-950/40", received: "bg-orange-50/60 dark:bg-orange-950/40",
+  waiting_technician: "bg-orange-50/60 dark:bg-orange-950/40",
   diagnosis: "bg-amber-50/60 dark:bg-amber-950/40", estimate_prep: "bg-blue-50/60 dark:bg-blue-950/40",
   customer_approval: "bg-rose-50/60 dark:bg-rose-950/40", work_in_progress: "bg-sky-50/60 dark:bg-sky-950/40",
   final_test: "bg-cyan-50/60 dark:bg-cyan-950/40", quality_check: "bg-violet-50/60 dark:bg-violet-950/40",
   ready_handover: "bg-emerald-50/60 dark:bg-emerald-950/40",
 };
 
-export const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]).filter(
-  (stage) => !["received", "advisor_review", "parts_check"].includes(stage),
-);
+export const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]);
 
 // ─── Helpers ───────────────────────────────────────────────────
 export function getVehicleLabel(job: Job) {
@@ -180,7 +177,6 @@ export function isWorkshopPhaseJob(job: Job) {
 
 export function getWorkshopStage(job: Job): WorkshopStage | null {
   if (["booked", "checking", "estimate_sent", "approved", "closed"].includes(job.status)) return null;
-  if (job.workshop_stage === "received") return "waiting_technician";
   if (String(job.workshop_stage) === "advisor_review") return "customer_approval";
   if (job.workshop_stage && WORKSHOP_STAGE_META[job.workshop_stage]) return job.workshop_stage;
   if (job.status === "waiting_parts") return null;
