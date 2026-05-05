@@ -15,8 +15,10 @@ export interface User {
 export interface Role {
   id: string;
   name: string | null;
-  permissions: string | null;
+  permissions: string[] | string | null;
   description: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AuthTokens {

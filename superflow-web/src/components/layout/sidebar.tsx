@@ -29,6 +29,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutGrid; adminOn
   { href: "/jobs", label: "Workshop Board", icon: LayoutGrid },
   { href: "/deferred", label: "Deferred Work", icon: Clock3 },
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users, adminOnly: true },
+  { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, adminOnly: true },
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, adminOnly: true },
   { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, adminOnly: true },
   { href: "/admin/booking-import", label: "Booking Import", icon: Upload, adminOnly: true },
