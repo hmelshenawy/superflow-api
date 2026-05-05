@@ -1,42 +1,6 @@
 import type { Job, JobStatus, PartsStatus, CustomerSensitivity, WorkshopStage } from "@/types";
 
-// ─── Priority Weights ──────────────────────────────────────────
-export const DEFAULT_PRIORITY_WEIGHTS = {
-  promiseOverdue: 30,
-  promiseDue2h: 20,
-  promiseDue6h: 10,
-  noPromiseDate: 5,
-  customerWaiting: 22,
-  customerAngry: 18,
-  customerVip: 16,
-  customerComeback: 14,
-  waitingCustomerDecision: 20,
-  partsBackorder: 22,
-  partsWaitingWarehouse: 16,
-  partsNeedOrder: 12,
-  idle24h: 20,
-  idle12h: 12,
-  idle6h: 6,
-  stageCheckingDiagnosis: 10,
-  stageQcNearDelivery: 10,
-  readyToInform: 20,
-  highEstimateValue: 8,
-  mediumEstimateValue: 4,
-};
-
-export type PriorityWeights = typeof DEFAULT_PRIORITY_WEIGHTS;
-
-export function normalizePriorityWeights(value: unknown): PriorityWeights {
-  const source = typeof value === "object" && value !== null ? value as Partial<Record<keyof PriorityWeights, unknown>> : {};
-  return Object.fromEntries(
-    Object.entries(DEFAULT_PRIORITY_WEIGHTS).map(([key, fallback]) => {
-      const raw = source[key as keyof PriorityWeights];
-      const parsed = typeof raw === "number" ? raw : Number(raw);
-      return [key, Number.isFinite(parsed) ? Math.max(0, Math.min(30, parsed)) : fallback];
-    }),
-  ) as PriorityWeights;
-}
-
+// ─── State Machine ─────────────────────────────────────────────
 // Mirror of backend state machine — single source of truth for frontend transitions.
 const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   booked: ["checking", "closed", "no_show"],
@@ -56,7 +20,6 @@ export function getValidTransitions(current: JobStatus): JobStatus[] {
 }
 
 // ─── Status Metadata ──────────────────────────────────────────
-// Each tone/chip uses light+dark variants via Tailwind dark: prefix.
 export const STATUS_META: Record<JobStatus, { label: string; tone: string; chip: string; dot: string }> = {
   booked:          { label: "Booked",         tone: "border-border bg-muted text-foreground", chip: "bg-muted text-foreground", dot: "bg-slate-400" },
   checking:         { label: "Checking",       tone: "border-amber-300 dark:border-amber-700/40 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200", chip: "bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200", dot: "bg-amber-500" },
@@ -162,7 +125,10 @@ export const WORKSHOP_STAGE_HEADER_TONE: Record<WorkshopStage, string> = {
 
 export const WORKSHOP_STAGES = (Object.keys(WORKSHOP_STAGE_META) as WorkshopStage[]);
 
-// ─── Helpers ───────────────────────────────────────────────────
+// ─── Display Helpers (UI-only, no scoring logic) ────────────────
+// ⚠️  All priority scoring lives in the backend: GET /priority API
+// ⚠️  Do not add scoring logic here — it will drift out of sync
+
 export function getVehicleLabel(job: Job) {
   if (!job.vehicle) return "Vehicle pending";
   return [job.vehicle.year, job.vehicle.make, job.vehicle.model].filter(Boolean).join(" ");
@@ -192,17 +158,7 @@ export function getPromisedLabel(value: string | null) {
   return new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(new Date(value));
 }
 
-export function isOverdue(job: Job, nowTs?: number | null) {
-  if (!job.promised_at) return false;
-  if (["booked", "ready", "closed"].includes(job.status)) return false;
-  if (!nowTs) return false;
-  return new Date(job.promised_at).getTime() < nowTs;
-}
-
-export function getEstimateTotal(job: Job) {
-  return (job.estimate_lines ?? []).reduce((sum, line) => sum + Number(line.line_total ?? 0), 0);
-}
-
+// Priority score → badge color (display only, thresholds match backend)
 export function getPriorityTone(score?: number) {
   if (!score && score !== 0) return "bg-muted text-muted-foreground ring-border";
   if (score >= 60) return "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 ring-red-200 dark:ring-red-700";
@@ -211,91 +167,10 @@ export function getPriorityTone(score?: number) {
   return "bg-muted text-muted-foreground ring-border";
 }
 
+// Urgency level → CSS class (display only)
 export function getActionUrgencyClass(urgency: string) {
   if (urgency === "critical") return "bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 border-red-100 dark:border-red-800/40";
   if (urgency === "high") return "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-100 dark:border-amber-800/40";
   if (urgency === "normal") return "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 border-blue-100 dark:border-blue-800/40";
   return "bg-muted text-muted-foreground border-border";
-}
-
-// ─── Next Best Action ──────────────────────────────────────────
-export type NextActionOwner = "advisor" | "workshop" | "parts" | "customer";
-export type NextActionUrgency = "low" | "normal" | "high" | "critical";
-
-export type NextBestAction = {
-  title: string;
-  reason: string;
-  urgency: NextActionUrgency;
-  owner: NextActionOwner;
-  actionType: string;
-  score: number;
-  signals: string[];
-};
-
-export function buildNextBestAction(job: Job, nowTs?: number | null, priorityScore?: number): NextBestAction {
-  const now = nowTs ?? Date.now();
-  const promisedTs = job.promised_at ? new Date(job.promised_at).getTime() : null;
-  const hoursToPromise = promisedTs ? (promisedTs - now) / 36e5 : null;
-  const promiseOverdue = isOverdue(job, now);
-  const promiseDueSoon = hoursToPromise !== null && hoursToPromise <= 2 && !promiseOverdue;
-  const promiseDueToday = hoursToPromise !== null && hoursToPromise <= 6 && !promiseOverdue;
-  const idleHours = Math.max(0, (now - new Date(job.updated_at).getTime()) / 36e5);
-  const partsStatus = job.parts_status ?? "no_parts";
-  const sensitivity = job.customer_sensitivity ?? "normal";
-  const estimateTotal = getEstimateTotal(job);
-  const workshopStage = getWorkshopStage(job);
-
-  const signals = [
-    promiseOverdue ? "promise overdue" : null,
-    promiseDueSoon ? "promise due within 2h" : null,
-    promiseDueToday && !promiseDueSoon ? "promise due within 6h" : null,
-    job.is_customer_waiting ? "customer waiting" : null,
-    sensitivity !== "normal" ? `${CUSTOMER_SENSITIVITY_META[sensitivity]?.label ?? sensitivity} customer` : null,
-    (["booked", "ready", "closed"].includes(job.status) ? null : (idleHours >= 24 ? "idle 24h+" : idleHours >= 12 ? "idle 12h+" : idleHours >= 6 ? "idle 6h+" : null)),
-    partsStatus !== "no_parts" ? `parts: ${partsStatus}` : null,
-    estimateTotal >= 10000 ? "high estimate value" : estimateTotal >= 5000 ? "medium estimate value" : null,
-  ].filter(Boolean) as string[];
-
-  const riskBoost =
-    (promiseOverdue ? 22 : promiseDueSoon ? 14 : promiseDueToday ? 7 : 0) +
-    (job.is_customer_waiting ? 10 : 0) +
-    (sensitivity === "angry" ? 8 : sensitivity === "vip" ? 6 : sensitivity === "comeback" ? 5 : 0) +
-    (["booked", "ready", "closed"].includes(job.status) ? 0 : (idleHours >= 24 ? 16 : idleHours >= 12 ? 8 : idleHours >= 6 ? 4 : 0)) +
-    (partsStatus === "backorder" ? 10 : partsStatus === "waiting_warehouse" ? 7 : partsStatus === "order_parts" ? 5 : 0);
-
-  // Single-source-of-truth: use page priorityScore if provided, otherwise compute from base + riskBoost
-  const effectiveScore = priorityScore ?? Math.max(0, Math.min(100, Math.round(0 + riskBoost + 10)));
-  const urgencyFromScore = (score: number): NextActionUrgency => (
-    score >= 60 ? "critical" : score >= 40 ? "high" : score >= 22 ? "normal" : "low"
-  );
-
-  const makeAction = ({ title, reason, owner, actionType, extraSignals = [] }: {
-    title: string; reason: string; owner: NextActionOwner; actionType: string; extraSignals?: string[];
-  }): NextBestAction => {
-    const riskReason = signals.length ? ` Risk signals: ${signals.join(", ")}.` : "";
-    return { title, reason: `${reason}${riskReason}`, urgency: urgencyFromScore(effectiveScore), owner, actionType, score: effectiveScore, signals: [...signals, ...extraSignals] };
-  };
-
-  if (job.status === "booked") return makeAction({ title: "Receive vehicle and start check-in", reason: "Booking is still in reception phase. Receive the vehicle before it enters workshop flow.", owner: "advisor", actionType: "vehicle_check_in", extraSignals: ["booked/reception phase"] });
-  if (job.status === "checking") return makeAction({ title: "Complete diagnosis and prepare estimate", reason: "Vehicle is in checking/diagnosis. Confirm findings and prepare the estimate for customer decision.", owner: "advisor", actionType: "diagnosis_to_estimate", extraSignals: ["checking/diagnosis phase"] });
-  if (job.status === "estimate_sent") return makeAction({ title: "Follow up customer decision", reason: "Estimate has been sent. The vehicle cannot move forward until the customer approves, rejects, or asks a question.", owner: "advisor", actionType: "customer_decision_follow_up", extraSignals: ["waiting customer decision"] });
-  if (job.status === "approved") return makeAction({ title: "Print job card and release to workshop", reason: "Customer approval is received. The next operational step is to print/open the job card and hand it to workshop control.", owner: "advisor", actionType: "print_job_card_release_workshop", extraSignals: ["approved phase", "ready for workshop release"] });
-  if (job.status === "waiting_parts") return makeAction({ title: "Check parts ETA and update plan", reason: "Job is blocked by parts. Confirm ETA/status and update advisor, workshop, and customer plan if needed.", owner: "parts", actionType: "parts_eta_check", extraSignals: ["waiting parts phase"] });
-  if (job.status === "in_progress") {
-    if (workshopStage === "waiting_technician" || !job.technician_id) return makeAction({ title: "Assign technician and start work", reason: "Job is already in workshop phase but still needs a clear technician/workshop owner.", owner: "workshop", actionType: "assign_technician", extraSignals: ["workshop phase", "needs technician"] });
-    if (workshopStage === "customer_approval") return makeAction({ title: "Resolve advisor / approval blocker", reason: "Workshop progress is blocked by advisor/customer approval. Clear the decision before work continues.", owner: "advisor", actionType: "workshop_approval_blocker", extraSignals: ["workshop approval blocker"] });
-    if (["order_parts", "waiting_warehouse", "backorder"].includes(partsStatus)) return makeAction({ title: "Check parts ETA and unblock technician", reason: "Work is active but parts are blocking progress. Confirm ETA and update workshop plan.", owner: "parts", actionType: "parts_eta_check", extraSignals: ["parts blocking active work"] });
-    return makeAction({ title: "Check technician progress", reason: "Work is in progress. Confirm progress, blockers, and expected finish time.", owner: "workshop", actionType: "technician_progress_check", extraSignals: ["work in progress"] });
-  }
-  if (job.status === "quality_check") return makeAction({ title: "Complete QC and prepare delivery", reason: "Vehicle is near delivery. Finish quality check, confirm readiness, and prepare handover.", owner: "workshop", actionType: "qc_completion", extraSignals: ["QC / near delivery"] });
-  const isReadyInformed = job.status === "ready" && !!job.customer_informed;
-
-  if (isReadyInformed) {
-    return makeAction({ title: "Arrange collection with customer", reason: "Customer already informed. Confirm collection time and prepare handover paperwork.", owner: "advisor", actionType: "ready_arrange_collection", extraSignals: ["customer informed", "ready for delivery"] });
-  }
-
-  if (job.status === "ready") {
-    return makeAction({ title: "Notify customer for collection", reason: "Vehicle is ready. Contact the customer and arrange delivery/collection.", owner: "advisor", actionType: "ready_collection_notice", extraSignals: ["ready for delivery"] });
-  }
-  return makeAction({ title: "Review job", reason: "No specific phase action was detected. Review the job for normal follow-up.", owner: "advisor", actionType: "general_review" });
 }
