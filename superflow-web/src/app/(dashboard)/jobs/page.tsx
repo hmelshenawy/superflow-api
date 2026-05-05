@@ -166,7 +166,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
 
   const stats = useMemo(() => ({
     awaitingApproval: jobs.filter((job) => job.status === "estimate_sent").length,
-    inWorkshop: jobs.filter((job) => ["checking", "approved", "in_progress", "waiting_parts", "quality_check"].includes(job.status)).length,
+    inWorkshop: workshopJobs.length,
     overdue: enrichedJobs.filter((item) => item.isOverdue).length,
     totalEstimate: enrichedJobs.reduce((sum, item) => sum + item.estimateTotal, 0),
     critical: enrichedJobs.filter((item) => item.priorityScore >= 60).length,
