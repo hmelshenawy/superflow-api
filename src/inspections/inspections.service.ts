@@ -96,6 +96,20 @@ export class InspectionsService {
       throw new BadRequestException('Inspection is locked and can no longer be edited');
     }
 
+    // Validate that all item_ids belong to this inspection's template.
+    if (inspection.template_id && dto.responses.length) {
+      const validItems = await this.prisma.inspection_items.findMany({
+        where: { inspection_sections: { template_id: inspection.template_id } },
+        select: { id: true },
+      });
+      const validIds = new Set(validItems.map(i => i.id));
+      for (const r of dto.responses) {
+        if (!validIds.has(r.item_id)) {
+          throw new BadRequestException(`Item ${r.item_id} does not belong to this inspection's template`);
+        }
+      }
+    }
+
     // Look up odometer item IDs from this inspection's template so we can sync the value to the job
     const odometerItems = inspection.template_id
       ? await this.prisma.inspection_items.findMany({

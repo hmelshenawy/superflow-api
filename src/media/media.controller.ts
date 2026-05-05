@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards, UseInterceptors, UploadedFile, StreamableFile } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, UseInterceptors, UploadedFile, StreamableFile, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { PresignUploadDto } from './dto/presign-upload.dto';
@@ -7,6 +7,9 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { ALLOWED_MIME_TYPES } from './dto/presign-upload.dto';
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 function toSafeInlineDisposition(filename?: string | null) {
   const fallback = 'file';
@@ -45,13 +48,16 @@ export class MediaController {
 
   @Post('upload-direct')
   @Roles('admin', 'manager', 'service_advisor', 'technician')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   @ApiOperation({ summary: 'Upload media directly through API' })
   uploadDirect(
     @UploadedFile() file: any,
     @Body() dto: PresignUploadDto,
     @CurrentUser('sub') userId: string,
   ) {
+    if (file && file.mimetype && !ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      throw new BadRequestException(`MIME type ${file.mimetype} is not allowed`);
+    }
     return this.service.uploadDirect(dto, file, userId);
   }
 

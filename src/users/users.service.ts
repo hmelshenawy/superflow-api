@@ -62,14 +62,16 @@ export class UsersService {
       data.password_hash = await bcrypt.hash(dto.password, 10);
       delete data.password;
     }
-    return this.prisma.users.update({ where: { id }, data });
+    const { password_hash, ...result } = await this.prisma.users.update({ where: { id }, data });
+    return result;
   }
 
   async remove(id: string) {
     await this.findOne(id);
     // Soft-delete: deactivating a user keeps historical references (audit logs,
     // job assignments) valid while blocking new logins.
-    return this.prisma.users.update({ where: { id }, data: { is_active: false } });
+    const { password_hash, ...result } = await this.prisma.users.update({ where: { id }, data: { is_active: false } });
+    return result;
   }
 
   async resetPassword(id: string, newPassword: string) {

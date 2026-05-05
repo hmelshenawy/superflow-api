@@ -67,6 +67,17 @@ function resolveImportedVehicleFields(row: BookingRow): { make: string | null; m
 }
 
 @Injectable()
+const ALLOWED_IMPORT_EXTENSIONS = ['xlsx', 'xls', 'csv'];
+
+// Strip CSV/Excel formula injection characters from cell values.
+// Leading = + - @ \t \r characters can trigger formula execution
+// when the data is later exported to Excel.
+function sanitizeCell(value: string): string {
+  return value
+    .replace(/^[\t\r=+\-@]/, match => match === '\t' || match === '\r' ? '' : ` '${match.slice(1)}`)
+    .replace(/\r/g, '');
+}
+
 export class BookingImportService {
   constructor(private prisma: PrismaService) {}
 
@@ -74,6 +85,9 @@ export class BookingImportService {
 
   async parseFile(file: Express.Multer.File): Promise<ParseResult> {
     const ext = file.originalname?.toLowerCase().split('.').pop() || '';
+    if (!ALLOWED_IMPORT_EXTENSIONS.includes(ext)) {
+      throw new BadRequestException(`File extension .${ext} is not allowed. Supported: ${ALLOWED_IMPORT_EXTENSIONS.join(', ')}`);
+    }
 
     let workbook: XLSX.WorkBook;
     try {
@@ -106,7 +120,7 @@ export class BookingImportService {
           // Numbers with 10+ digits are likely phone/VIN — format as integer string, no scientific notation
           clean[h] = Number.isInteger(val) ? String(val) : String(val);
         } else {
-          clean[h] = String(val ?? '').trim();
+          clean[h] = sanitizeCell(String(val ?? '').trim());
         }
       }
       return clean;

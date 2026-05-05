@@ -148,7 +148,7 @@ export class AuthorisationService {
         channel: (channel === 'link' ? 'push' : channel) as any,
         recipient: sentTo || job.customers?.email || job.customers?.phone || 'customer',
         subject: `Approval request for ${job.job_number}`,
-        body_rendered: `Please review and approve the estimate for ${job.vehicles?.make || ''} ${job.vehicles?.model || ''}. Link: ${portalUrl}`,
+        body_rendered: `Please review and approve the estimate for ${job.vehicles?.make || ''} ${job.vehicles?.model || ''}. Approval link sent to customer.`,
         status: 'queued',
         provider: 'internal',
       },
