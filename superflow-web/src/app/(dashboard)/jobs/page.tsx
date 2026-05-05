@@ -207,7 +207,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Service operations</p>
-            <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground">PrioraFlow command center</h1>
+            <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground">PrioraFlow</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">
