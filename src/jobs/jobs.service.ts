@@ -118,7 +118,7 @@ export class JobsService {
         users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
         estimate_lines: { include: { quote_groups: true } },
         inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
-        media_files: { where: { is_deleted: false }, select: { id: true, file_type: true, mime_type: true, original_filename: true, size_bytes: true, created_at: true } },
+        media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
         job_status_history: { orderBy: { changed_at: 'desc' } },
       },

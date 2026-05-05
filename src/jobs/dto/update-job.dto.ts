@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsInt, IsBoolean, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { JOB_STATUSES } from './transition-status.dto';
 
 export const WORKSHOP_STAGES = [
   'waiting_technician', 'diagnosis', 'estimate_prep',
@@ -12,6 +13,7 @@ export const PARTS_STATUSES = [
 ] as const;
 
 export class UpdateJobDto {
+  @ApiPropertyOptional({ enum: JOB_STATUSES }) @IsOptional() @IsEnum(JOB_STATUSES) status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() advisor_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() technician_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() customer_concern?: string;
