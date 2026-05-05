@@ -4,8 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { getValidTransitions } from "@/lib/jobs-data";
+import { getValidTransitions, getPriorityTone, getActionUrgencyClass } from "@/lib/jobs-data";
 import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
+
+// ─── Priority API result shape (mirrors backend) ──────────
+interface PriorityFactor { key: string; weight: number; description: string; category: string; }
+interface NextActionResult { title: string; reason: string; urgency: "low"|"normal"|"high"|"critical"; owner: string; actionType: string; score: number; signals: string[]; }
+interface PriorityResult { jobId: string; jobNumber: string | null; score: number; level: "low"|"normal"|"high"|"critical"; factors: PriorityFactor[]; idleHours: number; hoursToPromise: number | null; isOverdue: boolean; nextAction: NextActionResult; }
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -175,6 +180,7 @@ export default function JobDetailPage() {
   const router = useRouter();
 
   const [job, setJob] = useState<Job | null>(null);
+  const [priority, setPriority] = useState<PriorityResult | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
   const [authStatus, setAuthStatus] = useState<JobAuthorisationStatus | null>(null);
   const [inspectionRev, setInspectionRev] = useState(0);
@@ -286,13 +292,21 @@ export default function JobDetailPage() {
     return value;
   };
 
+  const fetchPriority = async (jobId: string) => {
+    try {
+      const { data } = await api.get<{ results: PriorityResult[] }>(`/priority?limit=200`);
+      const found = (data.results ?? []).find((r: PriorityResult) => r.jobId === jobId);
+      setPriority(found ?? null);
+    } catch { /* ignore */ }
+  };
+
   const refreshJob = async () => {
     const [{ data }, authRes] = await Promise.all([
       api.get<Job>(`/jobs/${id}`),
       api.get<JobAuthorisationStatus>(`/jobs/${id}/auth-status`).catch(() => ({ data: null })),
     ]);
 
-    setJob(data);
+    setJob(data); fetchPriority(data.id);
     setAuthStatus(authRes?.data ?? null);
     if (data.inspection?.id) {
       const inspectionRes = await api.get(`/inspections/${data.inspection.id}`);
@@ -735,6 +749,29 @@ export default function JobDetailPage() {
                 </div>
               </div>
             </div>
+
+                <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Risk Score</p>
+                  <div className="flex items-center justify-end gap-2">
+                    <span className={cn("rounded-full px-2 py-1 text-[11px] font-bold tabular-nums ring-1", getPriorityTone(priority?.score))}>{priority?.score ?? "—"}</span>
+                    <span className={cn("rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase", getActionUrgencyClass(priority?.level ?? "low"))}>{priority?.level ?? "low"}</span>
+                  </div>
+                </div>
+                {priority?.factors?.length ? (
+                <div className="py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground mb-1.5">Risk Factors</p>
+                  <div className="flex flex-wrap gap-1">
+                    {priority.factors.map((f) => (<span key={f.key} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">{f.description} +{f.weight}</span>))}
+                  </div>
+                </div>
+                ) : null}
+                {priority?.nextAction ? (
+                <div className="rounded-lg border px-3 py-2 mt-1">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground mb-1">Next Action</p>
+                  <div className={cn("rounded-lg border px-2 py-1.5 text-xs font-semibold", getActionUrgencyClass(priority.nextAction.urgency))}>{priority.nextAction.title} <span className="ml-1 font-normal opacity-70">({priority.nextAction.owner})</span></div>
+                  <p className="mt-1 text-[10px] text-muted-foreground leading-snug">{priority.nextAction.reason}</p>
+                </div>
+                ) : null}
           </div>
         </div>
       </div>
