@@ -7,19 +7,19 @@ import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('jobs')
 export class JobsController {
   constructor(private service: JobsService) {}
 
   @Get()
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(JOBS_READ)
   @ApiOperation({ summary: 'List jobs, filtered by role, optional ?status=' })
   findAll(
     @Query() query: ListJobsDto,
@@ -30,55 +30,55 @@ export class JobsController {
   }
 
   @Get(':id')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(JOBS_READ)
   @ApiOperation({ summary: 'Full job details' })
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
-  @Roles('admin', 'manager', 'service_advisor')
+  @RequirePermission(JOBS_CREATE)
   @ApiOperation({ summary: 'Create job' })
   create(@Body() dto: CreateJobDto, @CurrentUser('sub') userId: string) { return this.service.create(dto, userId); }
 
   @Patch(':id')
-  @Roles('admin', 'manager', 'service_advisor')
+  @RequirePermission(JOBS_UPDATE)
   @ApiOperation({ summary: 'Update job' })
   update(@Param('id') id: string, @Body() dto: UpdateJobDto) { return this.service.update(id, dto); }
 
   @Patch(':id/status')
-  @Roles('admin', 'manager', 'service_advisor')
+  @RequirePermission(JOBS_TRANSITION)
   @ApiOperation({ summary: 'State transition' })
   transition(@Param('id') id: string, @Body() dto: TransitionStatusDto, @CurrentUser('sub') userId: string) {
     return this.service.transition(id, dto, userId);
   }
 
   @Post(':id/assign')
-  @Roles('admin', 'manager')
+  @RequirePermission(JOBS_ASSIGN)
   @ApiOperation({ summary: 'Assign technician' })
   assign(@Param('id') id: string, @Body() dto: AssignTechnicianDto) {
     return this.service.assignTechnician(id, dto.technician_id ?? null);
   }
 
   @Patch(':id/archive')
-  @Roles('admin', 'manager')
+  @RequirePermission(JOBS_UPDATE)
   @ApiOperation({ summary: 'Archive a closed job' })
   archive(@Param('id') id: string) {
     return this.service.archiveJob(id);
   }
 
   @Patch(':id/unarchive')
-  @Roles('admin', 'manager')
+  @RequirePermission(JOBS_UPDATE)
   @ApiOperation({ summary: 'Unarchive a job back to the board' })
   unarchive(@Param('id') id: string) {
     return this.service.unarchiveJob(id);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission(JOBS_DELETE)
   @ApiOperation({ summary: 'Delete a job (admin only)' })
   remove(@Param('id') id: string) { return this.service.remove(id); }
 
   @Delete()
-  @Roles('admin', 'manager')
+  @RequirePermission(JOBS_DELETE)
   @ApiOperation({ summary: 'Delete ALL jobs (bulk clear)' })
   removeAll() { return this.service.removeAll(); }
 }

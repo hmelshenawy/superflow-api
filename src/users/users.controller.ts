@@ -6,18 +6,18 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission, ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE } from '../common/permissions';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('users')
 export class UsersController {
   constructor(private service: UsersService) {}
 
   @Get()
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_USERS)
   @ApiOperation({ summary: 'List all staff (admin)' })
   findAll(@Query() pagination: PaginationDto) {
     return this.service.findAll(pagination);
@@ -30,35 +30,35 @@ export class UsersController {
   }
 
   @Post()
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_USERS_CREATE)
   @ApiOperation({ summary: 'Create staff account' })
   create(@Body() dto: CreateUserDto) {
     return this.service.create(dto);
   }
 
   @Post('invite')
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_USERS_CREATE)
   @ApiOperation({ summary: 'Invite/create staff account' })
   invite(@Body() dto: CreateUserDto) {
     return this.service.create(dto);
   }
 
   @Patch(':id')
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_USERS)
   @ApiOperation({ summary: 'Update user' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.service.update(id, dto);
   }
 
   @Post(':id/reset-password')
-  @Roles('admin')
+  @RequirePermission(ADMIN_USERS_DELETE)
   @ApiOperation({ summary: 'Admin reset a user\'s password' })
   resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
     return this.service.resetPassword(id, dto.newPassword);
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @RequirePermission(ADMIN_USERS_DELETE)
   @ApiOperation({ summary: 'Deactivate user (soft delete)' })
   remove(@Param('id') id: string) {
     return this.service.remove(id);

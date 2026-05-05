@@ -3,8 +3,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { PresignUploadDto } from './dto/presign-upload.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission, MEDIA_UPLOAD, MEDIA_DELETE } from '../common/permissions';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ALLOWED_MIME_TYPES } from './dto/presign-upload.dto';
@@ -13,7 +13,6 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 function toSafeInlineDisposition(filename?: string | null) {
   const fallback = 'file';
-  // Only keep ASCII alphanumeric, underscore, hyphen, dot — strip everything else
   const cleaned = (filename || fallback)
     .replace(/[^a-zA-Z0-9._-]/g, '_')
     .replace(/_+/g, '_')
@@ -25,20 +24,20 @@ function toSafeInlineDisposition(filename?: string | null) {
 
 @ApiTags('Media')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('media')
 export class MediaController {
   constructor(private service: MediaService) {}
 
   @Post('presign')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(MEDIA_UPLOAD)
   @ApiOperation({ summary: 'Get MinIO/S3 presigned upload URL' })
   presign(@Body() dto: PresignUploadDto, @CurrentUser('sub') userId: string) {
     return this.service.presign(dto, userId);
   }
 
   @Post('confirm')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(MEDIA_UPLOAD)
   @ApiOperation({ summary: 'Confirm upload finished and persist metadata' })
   confirm(
     @Body() body: { id: string; size_bytes?: number; width_px?: number; height_px?: number; duration_sec?: number; thumbnail_key?: string },
@@ -47,7 +46,7 @@ export class MediaController {
   }
 
   @Post('upload-direct')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(MEDIA_UPLOAD)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   @ApiOperation({ summary: 'Upload media directly through API' })
   uploadDirect(
@@ -82,7 +81,7 @@ export class MediaController {
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Delete(':id')
-  @Roles('admin', 'manager')
+  @RequirePermission(MEDIA_DELETE)
   @ApiOperation({ summary: 'Soft delete media record' })
   remove(@Param('id') id: string) { return this.service.softDelete(id); }
 }

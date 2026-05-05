@@ -18,6 +18,16 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  private parsePermissions(raw: string | null | undefined): string[] {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
   // Access tokens are short-lived JWTs, but refresh tokens are treated like
   // durable session secrets. We store only their hash so a DB leak does not
   // expose reusable raw refresh tokens.
@@ -43,7 +53,8 @@ export class AuthService {
 
     // The frontend expects role info to be present in the JWT payload because
     // guards and navigation decisions are role-driven right after login.
-    const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown' });
+    const rolePermissions = this.parsePermissions(user.roles?.permissions);
+    const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown', permissions: rolePermissions });
     const refreshToken = uuid();
     const refreshHash = this.hashRefreshToken(refreshToken);
 
@@ -110,7 +121,8 @@ export class AuthService {
     const user = await this.prisma.users.findUnique({ where: { id: matchedToken.user_id }, include: { roles: true } });
     if (!user) throw new UnauthorizedException();
 
-    const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown' });
+    const rolePermissions = this.parsePermissions(user.roles?.permissions);
+    const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown', permissions: rolePermissions });
     const newRefresh = uuid();
     const newHash = this.hashRefreshToken(newRefresh);
     await this.prisma.refresh_tokens.create({

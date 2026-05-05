@@ -5,43 +5,43 @@ import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission, VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE } from '../common/permissions';
 
 @ApiTags('Vehicles')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('vehicles')
 export class VehiclesController {
   constructor(private service: VehiclesService) {}
 
   @Get()
-  @Roles('admin', 'manager', 'service_advisor')
+  @RequirePermission(VEHICLES_READ)
   @ApiOperation({ summary: 'List vehicles' })
   findAll(@Query() pagination: PaginationDto) { return this.service.findAll(pagination); }
 
   @Get('vin/:vin')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(VEHICLES_READ)
   @ApiOperation({ summary: 'Lookup by VIN, local DB + NHTSA decode' })
   findByVin(@Param('vin') vin: string) { return this.service.findByVin(vin); }
 
   @Get('customer/:customerId')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(VEHICLES_READ)
   @ApiOperation({ summary: 'List vehicles for a customer' })
   findByCustomer(@Param('customerId') customerId: string) { return this.service.findByCustomer(customerId); }
 
   @Get(':id')
-  @Roles('admin', 'manager', 'service_advisor', 'technician')
+  @RequirePermission(VEHICLES_READ)
   @ApiOperation({ summary: 'Vehicle details' })
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
-  @Roles('admin', 'manager', 'service_advisor')
+  @RequirePermission(VEHICLES_CREATE)
   @ApiOperation({ summary: 'Create vehicle' })
   create(@Body() dto: CreateVehicleDto) { return this.service.create(dto); }
 
   @Patch(':id')
-  @Roles('admin', 'manager', 'service_advisor')
+  @RequirePermission(VEHICLES_UPDATE)
   @ApiOperation({ summary: 'Update vehicle' })
   update(@Param('id') id: string, @Body() dto: UpdateVehicleDto) { return this.service.update(id, dto); }
 }

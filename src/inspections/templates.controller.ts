@@ -4,12 +4,12 @@ import { TemplatesService } from './templates.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { RequirePermission, ADMIN_TEMPLATES } from '../common/permissions';
 
 @ApiTags('Inspection Templates')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('inspection-templates')
 export class TemplatesController {
   constructor(private service: TemplatesService) {}
@@ -23,19 +23,19 @@ export class TemplatesController {
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_TEMPLATES)
   @ApiOperation({ summary: 'Create template' })
   create(@Body() dto: CreateTemplateDto, @CurrentUser('sub') userId: string) { return this.service.create(dto, userId); }
 
   @Post(':id/sections')
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_TEMPLATES)
   @ApiOperation({ summary: 'Add section to template' })
   addSection(@Param('id') id: string, @Body() body: { name: string; icon?: string; sort_order?: number }) {
     return this.service.addSection(id, body);
   }
 
   @Post(':id/items')
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_TEMPLATES)
   @ApiOperation({ summary: 'Add item to template section' })
   addItem(
     @Param('id') id: string,
@@ -56,7 +56,7 @@ export class TemplatesController {
   }
 
   @Patch(':id/publish')
-  @Roles('admin', 'manager')
+  @RequirePermission(ADMIN_TEMPLATES)
   @ApiOperation({ summary: 'Publish / activate template' })
   publish(@Param('id') id: string) { return this.service.publish(id); }
 }
