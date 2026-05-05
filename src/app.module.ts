@@ -20,6 +20,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { InsightsModule } from './insights/insights.module';
 import { BookingImportModule } from './booking-import/booking-import.module';
+import { PriorityModule } from './priority/priority.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { BookingImportModule } from './booking-import/booking-import.module';
     SchedulerModule,
     InsightsModule,
     BookingImportModule,
+    PriorityModule,
   ],
   providers: [
     {
