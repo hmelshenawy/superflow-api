@@ -69,8 +69,18 @@ export default function JobsPage() {
   const [limit] = useState(50);
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [dashboardView, setDashboardView] = useState<"overall" | "advisor" | "workshop">("overall");
-  const [overallView, setOverallView] = useState<"board" | "list">("board");
+  const [dashboardView, setDashboardView] = useState<"overall" | "advisor" | "workshop">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("sf_dashboard_view") as "overall" | "advisor" | "workshop") || "overall";
+    }
+    return "overall";
+  });
+  const [overallView, setOverallView] = useState<"board" | "list">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("sf_overall_view") as "board" | "list") || "board";
+    }
+    return "board";
+  });
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
@@ -82,6 +92,16 @@ export default function JobsPage() {
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
   const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopStage>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
+
+  const switchDashboardView = useCallback((view: "overall" | "advisor" | "workshop") => {
+    setDashboardView(view);
+    localStorage.setItem("sf_dashboard_view", view);
+  }, []);
+
+  const switchOverallView = useCallback((view: "board" | "list") => {
+    setOverallView(view);
+    localStorage.setItem("sf_overall_view", view);
+  }, []);
 
   const toggleColumn = useCallback((column: JobStatus) => {
     setCollapsedColumns((prev) => { const next = new Set(prev); if (next.has(column)) next.delete(column); else next.add(column); localStorage.setItem("superflow-collapsed-columns", JSON.stringify([...next])); return next; });
@@ -114,7 +134,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
     } finally { setLoading(false); fetchPriority(); }
   }, [page, limit, status, search, showArchived, fetchPriority]);
 
-  useEffect(() => { setMounted(true); if (typeof window !== "undefined" && window.innerWidth < 768) setOverallView("list"); }, []);
+  useEffect(() => { setMounted(true); if (typeof window !== "undefined" && window.innerWidth < 768) switchOverallView("list"); }, []);
 
   useEffect(() => { if (!mounted) return; fetchJobs(); }, [fetchJobs, mounted]);
 
@@ -212,7 +232,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">
               {[["overall", "Overall"], ["advisor", "Advisor"], ["workshop", "Workshop"]].map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setDashboardView(value as "overall" | "advisor" | "workshop")}
+                <button key={value} type="button" onClick={() => switchDashboardView(value as "overall" | "advisor" | "workshop")}
                   className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition", dashboardView === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                   {label}
                 </button>
@@ -220,8 +240,8 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
             </div>
             {dashboardView === "overall" && (
               <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">
-                <button type="button" onClick={() => setOverallView("board")} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition", overallView === "board" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><LayoutGrid className="h-3.5 w-3.5" /> Board</button>
-                <button type="button" onClick={() => setOverallView("list")} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition", overallView === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><List className="h-3.5 w-3.5" /> List</button>
+                <button type="button" onClick={() => switchOverallView("board")} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition", overallView === "board" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><LayoutGrid className="h-3.5 w-3.5" /> Board</button>
+                <button type="button" onClick={() => switchOverallView("list")} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition", overallView === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><List className="h-3.5 w-3.5" /> List</button>
               </div>
             )}
             <Link href="/jobs/new"><Button className="h-9 rounded-lg bg-slate-950 px-3 text-[13px] text-white hover:bg-slate-800"><Plus className="mr-1.5 h-3.5 w-3.5" /> New job</Button></Link>
