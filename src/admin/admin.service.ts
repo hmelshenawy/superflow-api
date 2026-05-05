@@ -274,12 +274,16 @@ export class AdminService {
 
   // ─── Roles ─────────────────────────────────────────────
   async getRoles() {
-    return this.prisma.roles.findMany({ orderBy: { name: 'asc' } });
+    const roles = await this.prisma.roles.findMany({ orderBy: { name: 'asc' } });
+    return roles.map((r: typeof roles[number]) => ({
+      ...r,
+      permissions: r.permissions ? JSON.parse(r.permissions) : [],
+    }));
   }
 
   async createRole(body: { name: string; permissions?: string[]; description?: string }) {
     if (!body?.name) throw new BadRequestException('name is required');
-    return this.prisma.roles.create({
+    const role = await this.prisma.roles.create({
       data: {
         id: uuid(),
         name: body.name,
@@ -287,12 +291,13 @@ export class AdminService {
         description: body.description || null,
       },
     });
+    return { ...role, permissions: role.permissions ? JSON.parse(role.permissions) : [] };
   }
 
   async updateRole(id: string, body: { name?: string; permissions?: string[]; description?: string }) {
     const role = await this.prisma.roles.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
-    return this.prisma.roles.update({
+    const updated = await this.prisma.roles.update({
       where: { id },
       data: {
         ...(body.name && { name: body.name }),
@@ -300,6 +305,7 @@ export class AdminService {
         ...(body.description !== undefined && { description: body.description }),
       },
     });
+    return { ...updated, permissions: updated.permissions ? JSON.parse(updated.permissions) : [] };
   }
 
   async deleteRole(id: string) {

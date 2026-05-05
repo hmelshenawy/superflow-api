@@ -11,6 +11,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import {
   RequirePermission,
+  ALL_PERMISSIONS, DEFAULT_ROLES,
   ADMIN_SETTINGS, ADMIN_SETTINGS_EDIT, ADMIN_ROLES,
   ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE,
   ADMIN_INTEGRATIONS, ADMIN_TEMPLATES, ADMIN_LABOUR_RATES, ADMIN_STATS,
@@ -67,6 +68,14 @@ export class AdminController {
   @RequirePermission(ADMIN_LABOUR_RATES)
   @ApiOperation({ summary: 'Delete labour rate' })
   deleteLabourRate(@Param('id') id: string) { return this.service.deleteLabourRate(id); }
+
+  // ─── Permissions catalogue ──────────────────────────────
+  @Get('permissions')
+  @RequirePermission(ADMIN_ROLES)
+  @ApiOperation({ summary: 'All available permissions + default role templates' })
+  getPermissions() {
+    return { permissions: ALL_PERMISSIONS, defaultRoles: DEFAULT_ROLES };
+  }
 
   // ─── Roles ─────────────────────────────────────────────
   @Get('roles')

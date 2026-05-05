@@ -145,144 +145,59 @@ As an admin, configure these before your team starts using the system:
 
 ## 4. User Roles & Permissions
 
-PrioraFlow uses **role-based access control**. Each user account is assigned one role. The role controls what screens the user can access and what backend actions they are allowed to perform.
+PrioraFlow uses **granular permission-based access control**. Each user account is assigned one role, and each role carries a specific set of permissions. The backend checks these permissions on every API request — not the role name itself.
 
-### Available Roles
+> **The `admin` role always passes every permission check**, regardless of what permissions are listed in its record. This is hardcoded and cannot be overridden.
 
-| Role | Purpose | Current Permission Keys |
+### 6 Default Roles
+
+| Role | Permissions | Purpose |
 |---|---|---|
-| **Admin** | Full owner/system administrator access | `*` |
-| **Manager** | Operational management access | `jobs:read`, `jobs:write`, `customers:read`, `estimates:read`, `estimates:write`, `reports:read`, `settings:read`, `settings:write` |
-| **Service Advisor** | Advisor workflow: customers, jobs, estimates, inspections | `jobs:read`, `jobs:write`, `customers:read`, `customers:write`, `estimates:read`, `estimates:write`, `inspections:read`, `inspections:write` |
-| **Receptionist** | Front-desk booking/customer creation | `customers:read`, `customers:write`, `jobs:read`, `jobs:write` |
-| **Technician** | Inspection/workshop execution | `inspections:read`, `inspections:write`, `jobs:read`, `media:write` |
+| **Admin** | All 43 | Full owner/system access |
+| **Manager** | 39 | Operational management — everything except audit logs and user deletion |
+| **Service Advisor** | 25 | Front-office — customers, estimates, jobs, authorisations |
+| **Workshop Team Leader** | 18 | Workshop floor leader — assign jobs, create/edit estimates, reopen inspections |
+| **Technician** | 11 | Workshop execution — view jobs, transition status, perform inspections |
+| **Receptionist** | 7 | Front desk — book customers and vehicles |
 
-> Important: in the current backend, route-level access is mainly enforced by **role name** (`admin`, `manager`, `service_advisor`, etc.). The permission-key list is stored for configuration/future UI logic and should still be kept accurate when creating custom roles.
+### Key Differences: Team Leader vs Technician
 
-### Admin Permissions
+The Workshop Team Leader role was designed to bridge the gap between Technician and Advisor:
 
-Admin is the owner-level role. Admin can:
-
-- See all jobs, users, roles, settings, templates, labour rates, integrations, reports, and audit-sensitive configuration.
-- Create, update, deactivate, and reset passwords for users.
-- Create, update, and delete roles.
-- Create/update/delete labour rates.
-- Create/update/delete inspection templates, sections, and items.
-- Update system settings, priority weights, and integrations.
-- Access all jobs regardless of advisor or technician assignment.
-- Archive/unarchive where supported by the workflow.
-
-Admin-only backend actions include:
-
-| Area | Admin-only Examples |
-|---|---|
-| Users | Delete/deactivate users, reset user passwords |
-| Roles | Create/update/delete roles |
-| Labour Rates | Delete labour rates |
-| Templates | Delete templates |
-| System | Full access to all protected settings and configuration |
-
-### Service Advisor Permissions
-
-Service Advisor is the daily front-line role. A service advisor can:
-
-- View job board data relevant to their advisor workflow.
-- Create and update jobs.
-- Move jobs through advisor-owned statuses such as Booked, Checking, Estimate Sent, Approved, and Closed when valid.
-- Mark a booked customer as **Arrived**. This moves the job from `booked` to `checking` and records `arrived_at`.
-- Mark a booked job as **No Show** when valid. The Kanban board safely handles `no_show` jobs even though there is no visible No Show column.
-- Create/update customers.
-- Read/write estimates.
-- Read/write inspections where the advisor workflow requires it.
-- Upload/read job media when the route allows it.
-
-A service advisor cannot normally:
-
-- Manage users or reset passwords.
-- Create, update, or delete roles.
-- Delete templates or labour rates.
-- Change protected system settings.
-- Access admin-only configuration screens unless explicitly allowed by the backend route.
-
-### Manager Permissions
-
-Manager is between Admin and Service Advisor. Manager can generally:
-
-- See all jobs.
-- Manage operational settings.
-- View reports and dashboard stats.
-- Manage labour rates and templates where the backend allows manager access.
-- Create and update users, but not perform admin-only destructive actions such as deleting roles or resetting passwords unless explicitly granted.
-
-### Receptionist Permissions
-
-Receptionist is for front-desk intake. Receptionist can generally:
-
-- Create and update customers.
-- Create and update bookings/jobs.
-- View jobs needed for booking/reception work.
-
-Receptionist should not manage settings, roles, templates, labour rates, or password resets.
-
-### Technician Permissions
-
-Technician is for workshop execution. Technician can generally:
-
-- View assigned jobs/workshop tasks.
-- Read and complete inspections.
-- Upload media/photos.
-- Update workshop-related progress where the route allows it.
-
-Technician should not manage customers, estimates, settings, roles, users, or admin configuration.
+| Ability | Technician | Team Leader |
+|---|---|---|
+| View jobs | ✅ | ✅ |
+| Transition job status | ✅ | ✅ |
+| Create/edit estimates | ❌ | ✅ |
+| Assign technicians | ❌ | ✅ |
+| Update job details | ❌ | ✅ |
+| Reopen inspections | ❌ | ✅ |
+| View priority & insights | ❌ | ✅ |
 
 ### Role-Based Job Visibility
 
-- Advisors see **only their own jobs** by default.
-- Technicians see **only jobs assigned to them**.
-- Managers and admins see **all jobs**.
-- Archived jobs are hidden from the active board unless the Archive filter is enabled.
-- `no_show` is intentionally not a Kanban column; the board skips statuses that are not visible columns so the board remains stable.
+- Advisors see **only their own jobs**
+- Technicians see **only jobs assigned to them**
+- Team Leaders see **all workshop-phase jobs**
+- Managers and Admins see **all jobs**
 
-### Creating a New Role
+### Managing Roles & Permissions
 
-Only an **Admin** can create a role.
+You can create custom roles and edit permissions for any role through the API:
 
-Recommended process:
-
-1. Go to **Admin → Users & Roles**.
-2. Open the **Roles** section.
-3. Click **Create Role**.
-4. Enter:
-   - **Name**: use a stable lowercase name such as `parts_coordinator` or `workshop_controller`.
-   - **Description**: short business explanation.
-   - **Permissions**: JSON/list of permission keys. Example: `["jobs:read", "jobs:write", "customers:read"]`.
-5. Save the role.
-6. Assign the role to users from the user management screen.
-
-Backend API reference:
-
-| Action | Endpoint | Required Role |
+| Action | Endpoint | Required Permission |
 |---|---|---|
-| List roles | `GET /api/admin/roles` | Admin or Manager |
-| Create role | `POST /api/admin/roles` | Admin |
-| Update role | `PATCH /api/admin/roles/:id` | Admin |
-| Delete role | `DELETE /api/admin/roles/:id` | Admin |
+| List all roles | `GET /api/admin/roles` | `admin:roles` |
+| Get all available permissions | `GET /api/admin/permissions` | `admin:roles` |
+| Create a role | `POST /api/admin/roles` | `admin:roles` |
+| Update role permissions | `PATCH /api/admin/roles/:id` | `admin:roles` |
+| Delete a role | `DELETE /api/admin/roles/:id` | `admin:roles` |
 
-Example create-role payload:
+When you update a role's permissions, users with that role get the new permissions on their next login.
 
-```json
-{
-  "name": "parts_coordinator",
-  "description": "Parts team member who can read jobs and update parts workflow",
-  "permissions": ["jobs:read", "jobs:write", "customers:read"]
-}
-```
+Safety: you cannot delete a role that has users assigned to it. Avoid renaming the 6 core roles — the backend uses role names for job visibility filtering.
 
-Safety rules:
-
-- Do not delete a role while users are assigned to it; the backend blocks this.
-- Avoid renaming core roles (`admin`, `manager`, `service_advisor`, `technician`, `receptionist`) unless the backend guards are also reviewed.
-- If a new role must access protected screens, confirm the backend route allows that role name.
+> **Full permission reference:** See [`docs/permissions-reference.md`](./permissions-reference.md) for the complete list of all 44 permissions, endpoint-to-permission mapping, and API examples.
 
 ## 5. The Job Lifecycle
 
