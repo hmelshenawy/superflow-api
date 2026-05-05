@@ -1,6 +1,6 @@
 # PrioraFlow — Owner Manual
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** May 2026  
 **For:** Service center owners, general managers, and operations leadership
 
@@ -27,10 +27,13 @@
 17. [Deferred Work](#17-deferred-work)
 18. [Notifications](#18-notifications)
 19. [Settings & Configuration](#19-settings--configuration)
-20. [Technical Architecture](#20-technical-architecture)
-21. [Deployment Guide](#21-deployment-guide)
-22. [Security Model](#22-security-model)
-23. [Glossary](#23-glossary)
+20. [Workshop Insights Dashboard](#20-workshop-insights-dashboard)
+21. [Audit Logs](#21-audit-logs)
+22. [Priority API Reference](#22-priority-api-reference)
+23. [Technical Architecture](#23-technical-architecture)
+24. [Deployment Guide](#24-deployment-guide)
+25. [Security Model](#25-security-model)
+26. [Glossary](#26-glossary)
 
 ---
 
@@ -1077,7 +1080,207 @@ Configure webhook URLs for notification delivery (WhatsApp, SMS, email, etc.).
 
 ---
 
-## 20. Technical Architecture
+## 20. Workshop Insights Dashboard
+
+The Insights Dashboard gives management a **real-time analytical view** of the entire service center. It is the executive summary — the numbers that matter, the trends that signal problems, and the KPIs that track performance.
+
+### Access
+
+- **URL:** `/insights`
+- **Roles:** Admin, Manager, Service Advisor
+- **Data source:** `GET /api/insights/dashboard`
+
+### Dashboard Cards
+
+The top of the page shows key metrics at a glance:
+
+| Card | What It Shows |
+|---|---|
+| **Active Jobs** | Count of non-archived, non-closed jobs |
+| **Customers** | Count of active customer records |
+| **Vehicles** | Total vehicles in the system |
+| **Inspections** | Total inspections on record |
+| **Estimate Lines** | Total estimate lines across all jobs |
+| **Pending Deferred** | Deferred work items still pending follow-up |
+
+### Charts & Visualizations
+
+| Chart | Description | Time Range |
+|---|---|---|
+| **Jobs by Status** | Bar chart showing distribution of jobs across all statuses | Current snapshot |
+| **Jobs Over Time** | Line chart — jobs created vs. jobs closed per day | 30 days |
+| **Arrival / No-Show Trend** | Daily arrival and no-show counts | 14 days |
+| **Advisor Attendance** | Per-advisor arrival vs. no-show ratio | 30 days |
+| **Customer Approval Rate** | Overall % of estimates approved by customers | Rolling |
+| **Inspection Completion** | % of inspections completed vs. pending | Rolling |
+
+### Revenue Metrics
+
+The dashboard tracks revenue visibility:
+
+- **Total estimate value** across all active jobs
+- **Approved revenue** — estimate value on approved/production jobs
+- **Pending revenue** — estimate value still awaiting customer decision
+- Revenue is broken down by job status
+
+### Deferred Work by Status
+
+Shows how many deferred items are in each state (pending, reminded, booked, closed, expired) — this ties directly to the Deferred Work page and helps management track lost revenue recovery.
+
+### Management Use Cases
+
+| Question | Where to Look |
+|---|---|
+| Are we closing jobs fast enough? | Jobs Over Time chart — created vs. closed gap |
+| Are customers approving estimates? | Customer Approval Rate card |
+| Are inspections being completed? | Inspection Completion Rate |
+| Are no-shows a problem? | Arrival / No-Show Trend |
+| How much revenue is at risk? | Revenue metrics + Deferred Work by Status |
+
+---
+
+## 21. Audit Logs
+
+PrioraFlow logs every significant action in the system. Audit logs provide a **complete, tamper-proof trail** of who did what, when, and to which record.
+
+### Access
+
+- **Endpoint:** `GET /api/audit-logs`
+- **Roles:** Admin only
+- **Filtering:** By entity type, user, action, and entity ID
+
+### What Gets Logged
+
+| Category | Examples |
+|---|---|
+| **Job changes** | Status transitions, field updates, archive/unarchive |
+| **Estimate changes** | Line added, line edited, line removed, authorization decision |
+| **Customer changes** | Customer created, updated, sensitivity changed |
+| **Inspection** | Inspection created, responses updated, media attached |
+| **Media** | Files uploaded, deleted |
+| **User management** | User created, role changed, password reset |
+| **Settings** | Priority weights changed, system settings updated |
+| **Auth** | Login, logout, token refresh, failed login attempt |
+
+### Log Entry Structure
+
+| Field | Description |
+|---|---|
+| `action` | What happened (e.g., `status_change`, `create`, `update`, `delete`) |
+| `entityType` | What record was affected (e.g., `job`, `estimate_line`, `customer`) |
+| `entityId` | UUID of the affected record |
+| `userId` | UUID of the user who performed the action |
+| `timestamp` | When the action occurred |
+| `oldValue` / `newValue` | Previous and new state (for updates) |
+
+### Management Use Cases
+
+- **Dispute resolution:** "Who changed this job's status and when?"
+- **Compliance:** Full audit trail for regulatory requirements
+- **Performance review:** Track how quickly advisors process estimates
+- **Security investigation:** Identify unauthorized access or suspicious patterns
+
+---
+
+## 22. Priority API Reference
+
+The Priority Engine is the **single source of truth** for all priority scoring. The frontend does not compute scores — it consumes the API.
+
+### Endpoints
+
+| Endpoint | Method | Auth | Description |
+|---|---|---|---|
+| `/api/priority` | GET | Admin, Manager, Service Advisor | Get priority scores for all active jobs |
+| `/api/priority/:id` | GET | Admin, Manager, Service Advisor | Get priority score for a single job |
+
+### Query Parameters (Bulk Endpoint)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `status` | string | Filter by status (comma-separated), e.g. `in_progress,waiting_parts` |
+| `advisor_id` | UUID | Filter to a specific advisor's jobs |
+| `limit` | number | Max results (default 200) |
+
+### Response Structure
+
+```json
+{
+  "results": [
+    {
+      "jobId": "uuid",
+      "jobNumber": "PF-0001",
+      "score": 52,
+      "level": "high",
+      "factors": [
+        { "key": "promiseDue2h", "weight": 20, "description": "Promise risk: due ≤2h", "category": "promise" },
+        { "key": "customerAngry", "weight": 18, "description": "Customer sensitivity: angry", "category": "customer" },
+        { "key": "idle12h", "weight": 12, "description": "Idle risk: 12h+", "category": "idle" }
+      ],
+      "idleHours": 14.3,
+      "hoursToPromise": 1.5,
+      "isOverdue": false,
+      "nextAction": {
+        "title": "Follow up customer decision",
+        "reason": "Estimate has been sent...",
+        "urgency": "high",
+        "owner": "advisor",
+        "actionType": "customer_decision_follow_up",
+        "score": 52,
+        "signals": ["waiting customer decision"]
+      }
+    }
+  ],
+  "computedAt": "2026-05-05T12:00:00.000Z"
+}
+```
+
+### Scoring Exclusions
+
+The Priority Engine applies **smart exclusions** to avoid false risk signals:
+
+| Factor | Excluded Statuses | Reason |
+|---|---|---|
+| **Promise overdue** | Booked, Ready, Closed | Booked hasn't started; Ready/Closed are past delivery |
+| **Idle risk** | Booked, Ready, Closed | Booked = not started; Ready/Closed = idle is normal |
+| **Customer Informed jobs** | Ready + Informed | Customer already knows — no risk to signal |
+
+When a job is `ready` **and** `customer_informed = true`, the engine **zeros out** promise, customer-waiting, parts, and stage urgency factors. The only remaining action is "Arrange collection with customer."
+
+### Priority Level Thresholds
+
+| Score Range | Level | Badge Color |
+|---|---|---|
+| 0–21 | Low | Gray |
+| 22–39 | Normal | Blue |
+| 40–59 | High | Amber |
+| 60–100 | Critical | Red |
+
+### Factor Categories
+
+| Category | Factors | What They Measure |
+|---|---|---|
+| **Promise** | `promiseOverdue` (30), `promiseDue2h` (20), `promiseDue6h` (10), `noPromiseDate` (5) | Delivery deadline risk |
+| **Customer** | `customerWaiting` (22), `customerAngry` (18), `customerVip` (16), `customerComeback` (14) | Customer profile risk |
+| **Approval** | `waitingCustomerDecision` (20) | Estimate approval delay |
+| **Parts** | `partsBackorder` (22), `partsWaitingWarehouse` (16), `partsNeedOrder` (12) | Supply chain blockers |
+| **Idle** | `idle24h` (20), `idle12h` (12), `idle6h` (6) | Time since last update |
+| **Stage** | `stageCheckingDiagnosis` (10), `stageQcNearDelivery` (10) | Phase-specific urgency |
+| **Delivery** | `readyToInform` (20) | Ready but customer not informed |
+| **Value** | `highEstimateValue` (8), `mediumEstimateValue` (4) | Revenue at stake |
+
+> **Note:** All weights are configurable from Settings → Priority Matrix. The values above are defaults.
+
+### Frontend Integration
+
+The frontend **never** computes priority scores. Both the Job Board and Job Detail pages fetch from `/api/priority`:
+
+- **Job Board:** Fetches bulk priority on load, merges scores into each job card
+- **Job Detail (Overview tab):** Shows live score, level badge, risk factors, and next action panel
+- **Display helpers** (`getPriorityTone`, `getActionUrgencyClass`) in `jobs-data.ts` are **pure UI mapping** — they convert scores/levels to CSS classes, not scoring logic
+
+---
+
+## 23. Technical Architecture
 
 ### System Components
 
@@ -1149,7 +1352,7 @@ Configure webhook URLs for notification delivery (WhatsApp, SMS, email, etc.).
 
 ---
 
-## 21. Deployment Guide
+## 24. Deployment Guide
 
 ### Requirements
 
@@ -1218,7 +1421,7 @@ docker compose --env-file .env.production up -d
 
 ---
 
-## 22. Security Model
+## 25. Security Model
 
 ### Authentication
 
@@ -1246,7 +1449,7 @@ docker compose --env-file .env.production up -d
 
 ---
 
-## 23. Glossary
+## 26. Glossary
 
 | Term | Definition |
 |---|---|
