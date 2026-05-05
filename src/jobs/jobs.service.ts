@@ -38,7 +38,7 @@ export class JobsService {
 
   async findAll(pagination: ListJobsDto, status?: string, search?: string, userId?: string, role?: string) {
     const skip = (pagination.page - 1) * pagination.limit;
-    const where: any = {};
+    const where: any = { is_deleted: false };
 
     // By default, exclude archived jobs unless explicitly requested.
     // `archived=all` shows everything; `archived=true` shows only archived.
@@ -58,7 +58,8 @@ export class JobsService {
         FROM jobs j
         LEFT JOIN customers c ON c.id = j.customer_id
         LEFT JOIN vehicles v ON v.id = j.vehicle_id
-        WHERE (
+        WHERE j.is_deleted = 0
+        AND (
           LOWER(COALESCE(j.job_number, '')) LIKE ${term}
           OR LOWER(COALESCE(j.customer_concern, '')) LIKE ${term}
           OR LOWER(COALESCE(c.name, '')) LIKE ${term}
@@ -108,8 +109,8 @@ export class JobsService {
   }
 
   async findOne(id: string) {
-    const job = await this.prisma.jobs.findUnique({
-      where: { id },
+    const job = await this.prisma.jobs.findFirst({
+      where: { id, is_deleted: false },
       include: {
         customers: true,
         vehicles: true,
@@ -289,10 +290,9 @@ export class JobsService {
   }
 
   async removeAll(): Promise<{ deleted: number }> {
-    // Soft-delete all jobs still in 'booked' status.
-    // The Prisma middleware converts deleteMany to updateMany with is_deleted: true.
-    const { count } = await this.prisma.jobs.deleteMany({
-      where: { status: 'booked' },
+    const { count } = await this.prisma.jobs.updateMany({
+      where: { status: 'booked', is_deleted: false },
+      data: { is_deleted: true },
     });
     return { deleted: count };
   }
