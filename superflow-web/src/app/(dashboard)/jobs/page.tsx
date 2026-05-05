@@ -5,9 +5,13 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Job, JobStatus, PaginatedResponse, WorkshopStage } from "@/types";
+
+// ─── Priority API result shape (mirrors backend) ──────────
+interface PriorityFactor { key: string; weight: number; description: string; category: string; }
+interface NextActionResult { title: string; reason: string; urgency: "low"|"normal"|"high"|"critical"; owner: string; actionType: string; score: number; signals: string[]; }
+interface PriorityResult { jobId: string; jobNumber: string | null; score: number; level: "low"|"normal"|"high"|"critical"; factors: PriorityFactor[]; idleHours: number; hoursToPromise: number | null; isOverdue: boolean; nextAction: NextActionResult; }
 import {
-  DEFAULT_PRIORITY_WEIGHTS,
-  normalizePriorityWeights,
+
   STATUS_META,
   BOARD_COLUMNS,
   BOARD_CARD_ACCENT,
@@ -28,13 +32,8 @@ import {
   isWorkshopPhaseJob,
   getWorkshopStage,
   getPromisedLabel,
-  isOverdue,
-  getEstimateTotal,
   getPriorityTone,
   getActionUrgencyClass,
-  buildNextBestAction,
-  type PriorityWeights,
-  type NextBestAction,
 } from "@/lib/jobs-data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,7 @@ export default function JobsPage() {
   const [dropWorkshopStage, setDropWorkshopStage] = useState<WorkshopStage | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
-  const [priorityWeights, setPriorityWeights] = useState<PriorityWeights>(DEFAULT_PRIORITY_WEIGHTS);
+  const [priorityMap, setPriorityMap] = useState<Map<string, PriorityResult>>(new Map());
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
   const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopStage>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
@@ -92,6 +91,16 @@ export default function JobsPage() {
     setCollapsedWorkshopStages((prev) => { const next = new Set(prev); if (next.has(stage)) next.delete(stage); else next.add(stage); localStorage.setItem("superflow-collapsed-workshop-stages", JSON.stringify([...next])); return next; });
   }, []);
 
+  const fetchPriority = useCallback(async () => {
+    try {
+      const { data } = await api.get<{ results: PriorityResult[]; computedAt: string }>("/priority");
+      const map = new Map<string, PriorityResult>();
+      for (const r of (data.results ?? [])) map.set(r.jobId, r);
+      setPriorityMap(map);
+    } catch { /* fallback: client-side scoring will handle it */ }
+  }, []);
+useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, mounted]);
+
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
@@ -102,20 +111,15 @@ export default function JobsPage() {
       const { data } = await api.get<PaginatedResponse<Job>>("/jobs", { params });
       setJobs(data.data ?? data.items ?? []);
       setTotal(data.total);
-    } finally { setLoading(false); }
-  }, [page, limit, status, search, showArchived]);
+    } finally { setLoading(false); fetchPriority(); }
+  }, [page, limit, status, search, showArchived, fetchPriority]);
 
   useEffect(() => { setMounted(true); if (typeof window !== "undefined" && window.innerWidth < 768) setOverallView("list"); }, []);
 
   useEffect(() => { if (!mounted) return; fetchJobs(); }, [fetchJobs, mounted]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    api.get("/admin/settings").then(({ data }) => {
-      const setting = Array.isArray(data) ? data.find((item: any) => item.key === "priority_matrix_weights") : null;
-      if (setting?.parsed_value) setPriorityWeights(normalizePriorityWeights(setting.parsed_value));
-    }).catch(() => setPriorityWeights(DEFAULT_PRIORITY_WEIGHTS));
-  }, [mounted]);
+
+
 
   useEffect(() => {
     const hasAwaiting = jobs.some((j) => j.status === "estimate_sent");
@@ -143,55 +147,18 @@ export default function JobsPage() {
   const workshopJobs = useMemo(() => jobs.filter(isWorkshopPhaseJob), [jobs]);
 
   const enrichedJobs = useMemo(() => {
-    const now = nowTs ?? Date.now();
     return activeJobs.map((job) => {
-      const promisedTs = job.promised_at ? new Date(job.promised_at).getTime() : null;
-      const hoursToPromise = promisedTs ? (promisedTs - now) / 36e5 : null;
-      const idleHours = Math.max(0, (now - new Date(job.updated_at).getTime()) / 36e5);
-      const estimateTotal = getEstimateTotal(job);
-      let score = 10;
-      const reasons: string[] = [];
-      const partsStatus = job.parts_status ?? "no_parts";
-      const customerSensitivity = job.customer_sensitivity ?? "normal";
-      const isReady = job.status === "ready";
-      const isCustomerInformed = !!job.customer_informed;
-      const informedReady = isReady && isCustomerInformed;
-
-      if (!informedReady) {
-        if (isOverdue(job, now)) { score += priorityWeights.promiseOverdue; reasons.push(`Promise risk: overdue +${priorityWeights.promiseOverdue}`); }
-        else if (hoursToPromise !== null && hoursToPromise <= 2) { score += priorityWeights.promiseDue2h; reasons.push(`Promise risk: due ≤2h +${priorityWeights.promiseDue2h}`); }
-        else if (hoursToPromise !== null && hoursToPromise <= 6) { score += priorityWeights.promiseDue6h; reasons.push(`Promise risk: due ≤6h +${priorityWeights.promiseDue6h}`); }
-        if (!promisedTs && job.status !== "booked" && job.status !== "closed") { score += priorityWeights.noPromiseDate; reasons.push(`No promised date set +${priorityWeights.noPromiseDate}`); }
-        if (job.is_customer_waiting) { score += priorityWeights.customerWaiting; reasons.push(`Customer waiting +${priorityWeights.customerWaiting}`); }
-      }
-      if (customerSensitivity === "angry") { score += priorityWeights.customerAngry; reasons.push(`Customer sensitivity: angry +${priorityWeights.customerAngry}`); }
-      else if (customerSensitivity === "vip") { score += priorityWeights.customerVip; reasons.push(`Customer sensitivity: VIP +${priorityWeights.customerVip}`); }
-      else if (customerSensitivity === "comeback") { score += priorityWeights.customerComeback; reasons.push(`Customer sensitivity: comeback +${priorityWeights.customerComeback}`); }
-      if (!informedReady && job.status === "estimate_sent") { score += priorityWeights.waitingCustomerDecision; reasons.push(`Customer decision: waiting +${priorityWeights.waitingCustomerDecision}`); }
-      if (!informedReady) {
-        if (partsStatus === "backorder") { score += priorityWeights.partsBackorder; reasons.push(`Parts risk: backorder +${priorityWeights.partsBackorder}`); }
-        else if (partsStatus === "waiting_warehouse") { score += priorityWeights.partsWaitingWarehouse; reasons.push(`Parts risk: waiting warehouse +${priorityWeights.partsWaitingWarehouse}`); }
-        else if (partsStatus === "order_parts" || job.status === "waiting_parts") { score += priorityWeights.partsNeedOrder; reasons.push(`Parts risk: need order +${priorityWeights.partsNeedOrder}`); }
-      }
-      if (!["booked", "ready", "closed"].includes(job.status)) {
-        if (idleHours >= 24) { score += priorityWeights.idle24h; reasons.push(`Idle risk: 24h+ +${priorityWeights.idle24h}`); }
-        else if (idleHours >= 12) { score += priorityWeights.idle12h; reasons.push(`Idle risk: 12h+ +${priorityWeights.idle12h}`); }
-        else if (idleHours >= 6) { score += priorityWeights.idle6h; reasons.push(`Idle risk: 6h+ +${priorityWeights.idle6h}`); }
-      }
-      if (!informedReady) {
-        if (job.status === "checking") { score += priorityWeights.stageCheckingDiagnosis; reasons.push(`Stage urgency: checking/diagnosis +${priorityWeights.stageCheckingDiagnosis}`); }
-        else if (job.status === "quality_check") { score += priorityWeights.stageQcNearDelivery; reasons.push(`Stage urgency: QC/near delivery +${priorityWeights.stageQcNearDelivery}`); }
-      }
-      if (isReady && !isCustomerInformed) { score += priorityWeights.readyToInform; reasons.push(`Ready to inform customer +${priorityWeights.readyToInform}`); }
-      if (estimateTotal >= 10000) { score += priorityWeights.highEstimateValue; reasons.push(`Value: high estimate +${priorityWeights.highEstimateValue}`); }
-      else if (estimateTotal >= 5000) { score += priorityWeights.mediumEstimateValue; reasons.push(`Value: medium estimate +${priorityWeights.mediumEstimateValue}`); }
-
-      const priorityScore = Math.min(100, score);
-      const priorityLevel = priorityScore >= 60 ? "Critical" : priorityScore >= 40 ? "High" : priorityScore >= 22 ? "Normal" : "Low";
-      const nextAction = buildNextBestAction(job, now, priorityScore);
-      return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal, nextAction };
+      const pr = priorityMap.get(job.id);
+      const priorityScore = pr?.score ?? 0;
+      const priorityLevel = pr ? (pr.level === "critical" ? "Critical" : pr.level === "high" ? "High" : pr.level === "normal" ? "Normal" : "Low") : "Low";
+      const reasons = pr?.factors?.map((f) => f.description) ?? [];
+      const idleHours = pr?.idleHours ?? 0;
+      const hoursToPromise = pr?.hoursToPromise ?? null;
+      const estimateTotal = (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0);
+      const nextAction: any = pr?.nextAction ?? { title: "Review job", reason: "", urgency: "low", owner: "advisor", actionType: "general_review", score: 0, signals: [] };
+      return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal, nextAction, isOverdue: pr?.isOverdue ?? false };
     }).sort((a, b) => b.priorityScore - a.priorityScore);
-  }, [activeJobs, nowTs, priorityWeights]);
+  }, [activeJobs, priorityMap]);
 
   const advisorActions = useMemo(() => [...enrichedJobs].sort((a, b) => b.priorityScore !== a.priorityScore ? b.priorityScore - a.priorityScore : b.nextAction.score - a.nextAction.score).slice(0, 8), [enrichedJobs]);
   const priorityByJobId = useMemo(() => new Map(enrichedJobs.map((item) => [item.job.id, item])), [enrichedJobs]);
@@ -200,10 +167,10 @@ export default function JobsPage() {
   const stats = useMemo(() => ({
     awaitingApproval: jobs.filter((job) => job.status === "estimate_sent").length,
     inWorkshop: jobs.filter((job) => ["checking", "approved", "in_progress", "waiting_parts", "quality_check"].includes(job.status)).length,
-    overdue: jobs.filter((job) => isOverdue(job, nowTs)).length,
-    totalEstimate: jobs.reduce((sum, job) => sum + getEstimateTotal(job), 0),
+    overdue: enrichedJobs.filter((item) => item.isOverdue).length,
+    totalEstimate: enrichedJobs.reduce((sum, item) => sum + item.estimateTotal, 0),
     critical: enrichedJobs.filter((item) => item.priorityScore >= 60).length,
-  }), [jobs, nowTs, enrichedJobs]);
+  }), [jobs, enrichedJobs]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -264,7 +231,7 @@ export default function JobsPage() {
           <div className="rounded-lg border border-border bg-muted p-2.5"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Total</p><p className="mt-0.5 text-xl font-semibold text-foreground">{total}</p></div>
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-2.5"><p className="text-[10px] font-medium uppercase tracking-wide text-rose-700">Awaiting</p><p className="mt-0.5 text-xl font-semibold text-rose-950 dark:text-rose-200">{stats.awaitingApproval}</p></div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5"><p className="text-[10px] font-medium uppercase tracking-wide text-amber-700">In workshop</p><p className="mt-0.5 text-xl font-semibold text-amber-950">{stats.inWorkshop}</p></div>
-          <div className="rounded-lg border border-red-200 bg-red-50 p-2.5"><p className="text-[10px] font-medium uppercase tracking-wide text-red-700">Overdue</p><p className="mt-0.5 text-xl font-semibold text-red-950">{workshopEnrichedJobs.filter((item) => isOverdue(item.job, nowTs)).length}</p></div>
+          <div className="rounded-lg border border-red-200 bg-red-50 p-2.5"><p className="text-[10px] font-medium uppercase tracking-wide text-red-700">Overdue</p><p className="mt-0.5 text-xl font-semibold text-red-950">{workshopEnrichedJobs.filter((item) => item.nextAction?.signals?.some((s: any) => String(s).includes("overdue"))).length}</p></div>
         </div>
       </div>
 
@@ -310,15 +277,15 @@ export default function JobsPage() {
                 <div className="rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/40 p-3">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-rose-950 dark:text-rose-200"><PhoneCall className="h-4 w-4" /> Pending approvals</h3>
                   <div className="mt-3 space-y-2">
-                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.customer?.name || "Walk-in"}</span><span className="text-xs font-semibold text-rose-700 dark:text-rose-300">{getEstimateTotal(job).toFixed(0)} AED</span></Link>))}
+                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.customer?.name || "Walk-in"}</span><span className="text-xs font-semibold text-rose-700 dark:text-rose-300">{((job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0)).toFixed(0)} AED</span></Link>))}
                     {jobs.filter((job) => job.status === "estimate_sent").length === 0 && <p className="text-xs text-rose-700 dark:text-rose-300">No approvals pending.</p>}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/40 p-3">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-red-950 dark:text-red-200"><TimerReset className="h-4 w-4" /> Promised delivery risk</h3>
                   <div className="mt-3 space-y-2">
-                    {enrichedJobs.filter(({ job, hoursToPromise }) => !(job.status === "ready" && job.customer_informed) && (isOverdue(job, nowTs) || (hoursToPromise !== null && hoursToPromise <= 6))).slice(0, 5).map(({ job, hoursToPromise }) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.job_number || "Draft"} · {STATUS_META[job.status].label}</span><span className="shrink-0 text-xs font-semibold text-red-700">{isOverdue(job, nowTs) ? "Overdue" : `${Math.max(0, Math.round(hoursToPromise ?? 0))}h left`}</span></Link>))}
-                    {enrichedJobs.filter(({ job, hoursToPromise }) => !(job.status === "ready" && job.customer_informed) && (isOverdue(job, nowTs) || (hoursToPromise !== null && hoursToPromise <= 6))).length === 0 && <p className="text-xs text-red-700 dark:text-red-300">No delivery risks in this list.</p>}
+                    {enrichedJobs.filter(({ job, isOverdue: jobOverdue, hoursToPromise }) => !(job.status === "ready" && job.customer_informed) && (jobOverdue || (hoursToPromise !== null && hoursToPromise <= 6))).slice(0, 5).map(({ job, hoursToPromise }) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.job_number || "Draft"} · {STATUS_META[job.status].label}</span><span className="shrink-0 text-xs font-semibold text-red-700">{(priorityMap.get(job.id)?.isOverdue) ? "Overdue" : `${Math.max(0, Math.round(hoursToPromise ?? 0))}h left`}</span></Link>))}
+                    {enrichedJobs.filter(({ job, isOverdue: jobOverdue, hoursToPromise }) => !(job.status === "ready" && job.customer_informed) && (jobOverdue || (hoursToPromise !== null && hoursToPromise <= 6))).length === 0 && <p className="text-xs text-red-700 dark:text-red-300">No delivery risks in this list.</p>}
                   </div>
                 </div>
               </div>
@@ -343,7 +310,7 @@ export default function JobsPage() {
                 <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
                   <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Blocked</p><p className="text-xl font-semibold">{workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length}</p></div>
                   <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">Idle +6h</p><p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => !["ready", "closed"].includes(item.job.status) && item.idleHours >= 6).length}</p></div>
-                  <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">At risk</p><p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => isOverdue(item.job, nowTs)).length}</p></div>
+                  <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">At risk</p><p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => item.nextAction?.signals?.some((s: any) => String(s).includes("overdue"))).length}</p></div>
                 </div>
               </div>
             </div>
@@ -374,7 +341,7 @@ export default function JobsPage() {
                             {stage.jobs.length === 0 ? (<div className="rounded-xl border border-dashed border-border bg-card/70 p-4 text-center text-xs text-muted-foreground">No vehicles</div>) : (
                               stage.jobs.map((job) => {
                                 const item = enrichedJobs.find((entry) => entry.job.id === job.id);
-                                const overdue = isOverdue(job, nowTs);
+                                const overdue = !!priorityMap.get(job.id)?.isOverdue;
                                 return (
                                   <Link key={`${stage.key}-${job.id}`} href={`/jobs/${job.id}`} draggable onDragStart={(event) => { setDraggedJobId(job.id); event.dataTransfer.setData("text/plain", job.id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => { setDraggedJobId(null); setDropWorkshopStage(null); }}
                                     className={cn("block rounded-xl border border-l-4 border-border bg-card p-2.5 text-xs shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md", WORKSHOP_STAGE_ACCENT[stage.key], overdue && "border-l-red-500 dark:border-l-red-500 bg-red-50/40 dark:bg-red-950/40 dark:bg-red-950/40", draggedJobId === job.id && "opacity-60", updatingJobId === job.id && "ring-2 ring-border")}>
@@ -430,8 +397,8 @@ export default function JobsPage() {
                         {loading ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">Loading jobs...</div>)
                         : columnJobs.length === 0 ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">No jobs in this stage</div>)
                         : columnJobs.map((job) => {
-                          const estimateTotal = getEstimateTotal(job);
-                          const overdue = isOverdue(job, nowTs);
+                          const estimateTotal = (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0);
+                          const overdue = !!priorityMap.get(job.id)?.isOverdue;
                           const priority = priorityByJobId.get(job.id);
                           const partsStatus = job.parts_status ?? "no_parts";
                           const hasPartsSignal = partsStatus !== "no_parts" || job.status === "waiting_parts";
@@ -477,7 +444,7 @@ export default function JobsPage() {
                     <TableCell><StatusPill status={job.status} /></TableCell>
                     <TableCell className="hidden md:table-cell">{job.advisor?.name || "Unassigned"}</TableCell>
                     <TableCell className="hidden md:table-cell">{job.promised_at ? new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "—"}</TableCell>
-                    <TableCell className="text-right">{isOverdue(job, nowTs) ? <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"><TriangleAlert className="h-3.5 w-3.5" /> Overdue</span> : <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"><Wrench className="h-3.5 w-3.5" /> Normal</span>}</TableCell>
+                    <TableCell className="text-right">{(priorityMap.get(job.id)?.isOverdue) ? <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"><TriangleAlert className="h-3.5 w-3.5" /> Overdue</span> : <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"><Wrench className="h-3.5 w-3.5" /> Normal</span>}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
