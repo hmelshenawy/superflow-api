@@ -360,6 +360,7 @@ model jobs {
   completed_at                                      DateTime?                 @db.DateTime(0)
   invoiced_at                                       DateTime?                 @db.DateTime(0)
   archived_at                                       DateTime?                 @db.DateTime(0)
+  is_deleted                                        Boolean?                  @default(false)
   created_at                                        DateTime?                 @default(now()) @db.DateTime(0)
   updated_at                                        DateTime?                 @default(now()) @db.DateTime(0)
   approval_tokens                                   approval_tokens[]
@@ -388,6 +389,7 @@ model jobs {
   @@index([technician_id], map: "idx_jobs_technician")
   @@index([vehicle_id], map: "idx_jobs_vehicle")
   @@index([archived_at], map: "idx_jobs_archived_at")
+  @@index([is_deleted], map: "idx_jobs_is_deleted")
 }
 
 model labour_rates {
@@ -565,6 +567,7 @@ model vehicles {
   vehicle_type            vehicles_vehicle_type?
   engine                  String?                   @db.VarChar(60)
   dms_vehicle_id          String?                   @db.VarChar(60)
+  is_deleted                      Boolean?                  @default(false)
   created_at              DateTime?                 @default(now()) @db.DateTime(0)
   updated_at              DateTime?                 @default(now()) @db.DateTime(0)
   deferred_work           deferred_work[]
@@ -575,6 +578,7 @@ model vehicles {
   @@index([customer_id], map: "idx_vehicles_customer")
   @@index([plate], map: "idx_vehicles_plate")
   @@index([vin], map: "idx_vehicles_vin")
+  @@index([is_deleted], map: "idx_vehicles_is_deleted")
 }
 
 enum deferred_work_reminders_channel {

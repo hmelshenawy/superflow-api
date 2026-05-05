@@ -145,7 +145,6 @@ export class JobsService {
     else if (dto.workshop_stage === 'ready_handover') data.status = 'ready';
     else if ([
       'waiting_technician',
-      'received',
       'diagnosis',
       'estimate_prep',
       'customer_approval',
@@ -286,61 +285,16 @@ export class JobsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.jobs.delete({ where: { id } });
+    return this.prisma.jobs.update({ where: { id }, data: { is_deleted: true } });
   }
 
   async removeAll(): Promise<{ deleted: number }> {
-    // Only delete jobs still in 'booked' status (still on the booking column)
-    // Jobs that have progressed past booking are protected
-    const result = await this.prisma.$transaction(async (tx: any) => {
-      // Find all booked job IDs first
-      const bookedJobs = await tx.jobs.findMany({
-        where: { status: 'booked' },
-        select: { id: true },
-      });
-      const jobIds = bookedJobs.map((j: any) => j.id);
-
-      if (jobIds.length === 0) return 0;
-
-      // Delete dependent records for those jobs only
-      await tx.estimate_lines.deleteMany({
-        where: { job_id: { in: jobIds } },
-      });
-      await tx.estimate_line_history.deleteMany({
-        where: { estimate_lines: { job_id: { in: jobIds } } },
-      });
-      await tx.authorisation_decisions.deleteMany({
-        where: { estimate_lines: { job_id: { in: jobIds } } },
-      });
-      await tx.approval_tokens.deleteMany({
-        where: { job_id: { in: jobIds } },
-      });
-      await tx.inspection_responses.deleteMany({
-        where: { inspections: { job_id: { in: jobIds } } },
-      });
-      await tx.media_files.deleteMany({
-        where: { job_id: { in: jobIds } },
-      });
-      await tx.job_status_history.deleteMany({
-        where: { job_id: { in: jobIds } },
-      });
-      await tx.inspections.deleteMany({
-        where: { job_id: { in: jobIds } },
-      });
-      await tx.notifications.deleteMany({
-        where: { job_id: { in: jobIds } },
-      });
-      await tx.deferred_work.deleteMany({
-        where: { original_job_id: { in: jobIds } },
-      });
-
-      // Delete the jobs themselves
-      const { count } = await tx.jobs.deleteMany({
-        where: { id: { in: jobIds } },
-      });
-      return count;
+    // Soft-delete all jobs still in 'booked' status.
+    // The Prisma middleware converts deleteMany to updateMany with is_deleted: true.
+    const { count } = await this.prisma.jobs.deleteMany({
+      where: { status: 'booked' },
     });
-    return { deleted: result };
+    return { deleted: count };
   }
 
   async archiveOldClosedJobs(): Promise<number> {
