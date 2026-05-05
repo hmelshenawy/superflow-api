@@ -5,23 +5,27 @@ import { AuthorisationService } from './authorisation.service';
 import { DecideDto } from './dto/decide.dto';
 import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { MediaService } from '../media/media.service';
 import { Request, Response } from 'express';
 
 @ApiTags('Authorisation')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('jobs')
 export class AuthorisationController {
   constructor(private service: AuthorisationService) {}
 
   @Post(':id/auth-request')
+  @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'Resend/create approval link for a job (staff)' })
   request(@Param('id') jobId: string, @Body() body: RequestAuthorisationDto) {
     return this.service.requestAuthorisation(jobId, body?.channel, body?.sentTo);
   }
 
   @Get(':id/auth-status')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Check authorisation status for a job (staff)' })
   status(@Param('id') jobId: string) {
     return this.service.getAuthStatus(jobId);

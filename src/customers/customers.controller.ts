@@ -16,21 +16,26 @@ export class CustomersController {
   constructor(private service: CustomersService) {}
 
   @Get()
+  @Roles('admin', 'manager', 'service_advisor')
   findAll(@Query() pagination: PaginationDto) { return this.service.findAll(pagination); }
 
   @Get('search')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Search customers by name/email/phone' })
   search(@Query('q') query: string) { return this.service.search(query); }
 
   @Get(':id/jobs')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Get job history for a customer' })
   getJobs(@Param('id') id: string, @Query() pagination: PaginationDto) { return this.service.getJobs(id, pagination); }
 
   @Get(':id/deferred')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Get deferred work for a customer' })
   getDeferred(@Param('id') id: string, @Query() pagination: PaginationDto) { return this.service.getDeferred(id, pagination); }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()

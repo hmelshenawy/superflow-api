@@ -78,6 +78,27 @@ export class AdminService {
     });
   }
 
+  // Sensitive keys that must never be exposed via the API.
+  private static readonly SENSITIVE_KEYS = new Set([
+    'password', 'secret', 'token', 'apikey', 'api_key', 'apiSecret',
+    'api_secret', 'auth', 'authorization', 'credentials', 'private_key',
+    'accessToken', 'access_token', 'refreshToken', 'refresh_token',
+  ]);
+
+  private maskConfig(config: any): any {
+    if (!config || typeof config !== 'object') return config;
+    const masked = { ...config };
+    for (const key of Object.keys(masked)) {
+      const lower = key.toLowerCase();
+      if (AdminService.SENSITIVE_KEYS.has(lower) || AdminService.SENSITIVE_KEYS.has(lower.replace(/[_-]/g, ''))) {
+        masked[key] = '********';
+      } else if (typeof masked[key] === 'object' && masked[key] !== null && !Array.isArray(masked[key])) {
+        masked[key] = this.maskConfig(masked[key]);
+      }
+    }
+    return masked;
+  }
+
   async listIntegrations() {
     const rows = await this.prisma.integrations.findMany({
       include: {
@@ -89,10 +110,14 @@ export class AdminService {
       orderBy: { name: 'asc' },
     });
 
-    return rows.map((row: (typeof rows)[number]) => ({
-      ...row,
-      parsed_config: row.config ? (() => { try { return JSON.parse(row.config); } catch { return row.config; } })() : null,
-    }));
+    return rows.map((row: (typeof rows)[number]) => {
+      const parsedConfig = row.config ? (() => { try { return JSON.parse(row.config); } catch { return row.config; } })() : null;
+      return {
+        ...row,
+        config: '********',
+        parsed_config: parsedConfig ? this.maskConfig(parsedConfig) : null,
+      };
+    });
   }
 
   async testIntegration(name: string) {

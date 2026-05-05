@@ -16,16 +16,19 @@ export class DeferredController {
   constructor(private service: DeferredService) {}
 
   @Get()
+  @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'List all deferred work, optional ?status=' })
   findAll(@Query('page') page = '1', @Query('limit') limit = '20', @Query('status') status?: string) {
     return this.service.findAll({ page: Number(page), limit: Number(limit) } as PaginationDto, status);
   }
 
   @Get('reminders')
+  @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'Get deferred items due for reminder' })
   getDueReminders() { return this.service.getDueReminders(); }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post(':id/remind')

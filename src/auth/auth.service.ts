@@ -91,7 +91,16 @@ export class AuthService {
     }
 
     if (!matchedToken?.user_id) throw new UnauthorizedException('Invalid refresh token');
-    if (matchedToken.revoked_at) throw new UnauthorizedException('Refresh token revoked');
+    if (matchedToken.revoked_at) {
+      // A revoked token being reused strongly suggests theft: the legitimate user
+      // already used this token (which revoked it), so someone else has a copy.
+      // Revoke all sessions for this user to contain the damage.
+      await this.prisma.refresh_tokens.updateMany({
+        where: { user_id: matchedToken.user_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      throw new UnauthorizedException('Refresh token reuse detected — all sessions revoked');
+    }
     if (matchedToken.expires_at && matchedToken.expires_at <= new Date()) throw new UnauthorizedException('Refresh token expired');
 
     // Refresh tokens are rotated on every use. Once one refresh succeeds, the

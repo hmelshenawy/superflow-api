@@ -19,17 +19,21 @@ export class EstimatesController {
   constructor(private service: EstimatesService) {}
 
   @Get('defaults')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Get default tax and standard labour rate for quote builder' })
   getDefaults() { return this.service.getDefaults(); }
 
   @Get('job/:jobId')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'List estimate lines for a job' })
   findByJob(@Param('jobId') jobId: string) { return this.service.findByJob(jobId); }
 
   @Get()
+  @Roles('admin', 'manager', 'service_advisor')
   findAll(@Query() pagination: PaginationDto) { return this.service.findAll(pagination); }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()

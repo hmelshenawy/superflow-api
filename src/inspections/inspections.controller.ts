@@ -17,9 +17,11 @@ export class InspectionsController {
   constructor(private service: InspectionsService) {}
 
   @Get()
+  @Roles('admin', 'manager', 'service_advisor')
   findAll(@Query() pagination: PaginationDto) { return this.service.findAll(pagination); }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Get inspection + responses' })
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 

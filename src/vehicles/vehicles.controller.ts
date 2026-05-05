@@ -16,18 +16,22 @@ export class VehiclesController {
   constructor(private service: VehiclesService) {}
 
   @Get()
+  @Roles('admin', 'manager', 'service_advisor')
   @ApiOperation({ summary: 'List vehicles' })
   findAll(@Query() pagination: PaginationDto) { return this.service.findAll(pagination); }
 
   @Get('vin/:vin')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Lookup by VIN, local DB + NHTSA decode' })
   findByVin(@Param('vin') vin: string) { return this.service.findByVin(vin); }
 
   @Get('customer/:customerId')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'List vehicles for a customer' })
   findByCustomer(@Param('customerId') customerId: string) { return this.service.findByCustomer(customerId); }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Vehicle details' })
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 

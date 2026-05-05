@@ -19,6 +19,7 @@ export class JobsController {
   constructor(private service: JobsService) {}
 
   @Get()
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'List jobs, filtered by role, optional ?status=' })
   findAll(
     @Query() query: ListJobsDto,
@@ -29,6 +30,7 @@ export class JobsController {
   }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'service_advisor', 'technician')
   @ApiOperation({ summary: 'Full job details' })
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 

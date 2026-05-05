@@ -112,13 +112,13 @@ export class JobsService {
     const job = await this.prisma.jobs.findFirst({
       where: { id, is_deleted: false },
       include: {
-        customers: true,
-        vehicles: true,
+        customers: { select: { id: true, name: true, phone: true, email: true } },
+        vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true, color: true } },
         users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
         users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
-        estimate_lines: true,
-        inspections: { include: { inspection_responses: true } },
-        media_files: { where: { is_deleted: false } },
+        estimate_lines: { include: { quote_groups: true } },
+        inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
+        media_files: { where: { is_deleted: false }, select: { id: true, file_type: true, mime_type: true, original_filename: true, size_bytes: true, created_at: true } },
         approval_tokens: { include: { authorisation_decisions: true } },
         job_status_history: { orderBy: { changed_at: 'desc' } },
       },
@@ -135,7 +135,17 @@ export class JobsService {
   }
 
   async update(id: string, dto: UpdateJobDto) {
-    await this.findOne(id);
+    const job = await this.findOne(id);
+
+    // If status is being changed, it must follow the state machine.
+    // Direct status mutations via PATCH bypass the /status endpoint at
+    // the operator's own risk — but invalid transitions are still rejected.
+    if (dto.status && dto.status !== job.status) {
+      if (!canTransition(job.status as any, dto.status as any)) {
+        throw new BadRequestException(`Cannot transition from ${job.status} to ${dto.status}. Use PATCH /jobs/:id/status for valid transitions.`);
+      }
+    }
+
     const data: any = {
       ...dto,
       promised_at: dto.promised_at ? new Date(dto.promised_at) : undefined,
@@ -164,8 +174,6 @@ export class JobsService {
     // Additionally: if job was ready and customer is informed, no need to
     // keep is_customer_waiting flagged.
     if (dto.customer_informed === true && (data.status === 'ready' || data.status === undefined)) {
-      // Look up current status if not already changed in this update
-      const job = await this.findOne(id);
       const effectiveStatus = data.status || job.status;
       if (effectiveStatus === 'ready' || effectiveStatus === 'quality_check') {
         data.is_customer_waiting = false;

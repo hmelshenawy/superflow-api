@@ -23,7 +23,10 @@ export class CustomersService {
   }
 
   async findOne(id: string) {
-    const customer = await this.prisma.customers.findUnique({ where: { id }, include: { vehicles: true } });
+    const customer = await this.prisma.customers.findUnique({
+      where: { id },
+      include: { vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true } } },
+    });
     if (!customer) throw new NotFoundException('Customer not found');
     return customer;
   }
