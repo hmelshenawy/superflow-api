@@ -66,7 +66,6 @@ function resolveImportedVehicleFields(row: BookingRow): { make: string | null; m
   };
 }
 
-@Injectable()
 const ALLOWED_IMPORT_EXTENSIONS = ['xlsx', 'xls', 'csv'];
 
 // Strip CSV/Excel formula injection characters from cell values.
@@ -78,6 +77,7 @@ function sanitizeCell(value: string): string {
     .replace(/\r/g, '');
 }
 
+@Injectable()
 export class BookingImportService {
   constructor(private prisma: PrismaService) {}
 
