@@ -24,15 +24,17 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutGrid; adminOnly?: boolean }[] = [
-  { href: "/insights", label: "Insights", icon: BarChart3 },
+type NavItem = { href: string; label: string; icon: typeof LayoutGrid; requirePermission?: string };
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/insights", label: "Insights", icon: BarChart3, requirePermission: "insights:dashboard" },
   { href: "/jobs", label: "Workshop Board", icon: LayoutGrid },
-  { href: "/deferred", label: "Deferred Work", icon: Clock3 },
-  { href: "/admin/users-roles", label: "Users & Roles", icon: Users, adminOnly: true },
-  { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, adminOnly: true },
-  { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, adminOnly: true },
-  { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, adminOnly: true },
-  { href: "/admin/booking-import", label: "Booking Import", icon: Upload, adminOnly: true },
+  { href: "/deferred", label: "Deferred Work", icon: Clock3, requirePermission: "deferred:read" },
+  { href: "/admin/users-roles", label: "Users & Roles", icon: Users, requirePermission: "admin:users" },
+  { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, requirePermission: "admin:roles" },
+  { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },
+  { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, requirePermission: "admin:templates" },
+  { href: "/admin/booking-import", label: "Booking Import", icon: Upload, requirePermission: "import:parse" },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -43,6 +45,21 @@ function isAdmin(user: { role?: { name?: string | null } | null; role_id?: strin
   const roleId = user.role_id;
   if (roleId === "admin" || roleId === "super_admin") return true;
   return false;
+}
+
+function getUserPermissions(user: { role?: { name?: string | null; permissions?: string[] | string | null } | null } | null): Set<string> {
+  if (!user) return new Set();
+  if (isAdmin(user)) return new Set(["*"]);
+  const perms = user.role?.permissions;
+  if (!perms) return new Set();
+  if (Array.isArray(perms)) return new Set(perms);
+  try { return new Set(JSON.parse(String(perms))); } catch { return new Set(); }
+}
+
+function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
+  if (!item.requirePermission) return true;
+  if (isAdmin(user)) return true;
+  return getUserPermissions(user).has(item.requirePermission);
 }
 
 export function Sidebar() {
@@ -82,7 +99,7 @@ export function Sidebar() {
     });
   }, []);
 
-  const filteredItems = NAV_ITEMS.filter((item) => !item.adminOnly || admin);
+  const filteredItems = NAV_ITEMS.filter((item) => canSeeNavItem(item, user));
 
   useEffect(() => {
     setMobileOpen(false);

@@ -167,11 +167,12 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
   },
   receptionist: {
     name: 'receptionist',
-    description: 'Front desk — books customers and vehicles, views basic job status',
+    description: 'Front desk — books customers and vehicles, imports bookings, views basic job status',
     permissions: [
       JOBS_READ, JOBS_CREATE,
       CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE,
       VEHICLES_READ, VEHICLES_CREATE,
+      IMPORT_PARSE, IMPORT_RUN,
     ],
   },
 };

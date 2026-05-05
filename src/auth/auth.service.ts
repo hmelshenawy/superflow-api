@@ -141,9 +141,10 @@ export class AuthService {
       select: { id: true, name: true, email: true, is_active: true, avatar_url: true, last_login_at: true, created_at: true, roles: { select: { id: true, name: true, permissions: true } } },
     });
     if (!user) throw new UnauthorizedException();
+    const { roles, ...rest } = user;
     return {
-      ...user,
-      role: user.roles,
+      ...rest,
+      role: roles ? { ...roles, permissions: this.parsePermissions(roles.permissions) } : null,
     };
   }
 
