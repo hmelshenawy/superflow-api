@@ -750,28 +750,9 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-                <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Risk Score</p>
-                  <div className="flex items-center justify-end gap-2">
-                    <span className={cn("rounded-full px-2 py-1 text-[11px] font-bold tabular-nums ring-1", getPriorityTone(priority?.score))}>{priority?.score ?? "—"}</span>
-                    <span className={cn("rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase", getActionUrgencyClass(priority?.level ?? "low"))}>{priority?.level ?? "low"}</span>
-                  </div>
-                </div>
-                {priority?.factors?.length ? (
-                <div className="py-2">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground mb-1.5">Risk Factors</p>
-                  <div className="flex flex-wrap gap-1">
-                    {priority.factors.map((f) => (<span key={f.key} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">{f.description} +{f.weight}</span>))}
-                  </div>
-                </div>
-                ) : null}
-                {priority?.nextAction ? (
-                <div className="rounded-lg border px-3 py-2 mt-1">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground mb-1">Next Action</p>
-                  <div className={cn("rounded-lg border px-2 py-1.5 text-xs font-semibold", getActionUrgencyClass(priority.nextAction.urgency))}>{priority.nextAction.title} <span className="ml-1 font-normal opacity-70">({priority.nextAction.owner})</span></div>
-                  <p className="mt-1 text-[10px] text-muted-foreground leading-snug">{priority.nextAction.reason}</p>
-                </div>
-                ) : null}
+
+
+
           </div>
         </div>
       </div>
@@ -799,10 +780,36 @@ export default function JobDetailPage() {
           <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
             <Card className="overflow-hidden rounded-2xl border-border shadow-sm">
               <CardHeader className="border-b border-border bg-gradient-to-r from-card to-blue-500/50/5">
-                <CardTitle className="text-lg">Recommended next move</CardTitle>
-                <p className="text-sm text-muted-foreground">A clean action brief without repeating the full job record above.</p>
+                <CardTitle className="text-lg">Priority & Next Action</CardTitle>
+                <p className="text-sm text-muted-foreground">Live risk score and recommended move from the Priority Engine.</p>
               </CardHeader>
               <CardContent className="space-y-4 p-5 text-sm text-foreground/80">
+                {/* Priority Score + Level */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className={cn("rounded-full px-3 py-1.5 text-sm font-black tabular-nums ring-1", getPriorityTone(priority?.score))}>{priority?.score ?? "—"}</span>
+                    <span className={cn("rounded-full border px-2 py-1 text-[11px] font-bold uppercase", getActionUrgencyClass(priority?.level ?? "low"))}>{priority?.level ?? "low"}</span>
+                  </div>
+                  {priority?.isOverdue && <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">Overdue</span>}
+                </div>
+
+                {/* Risk Factors */}
+                {priority?.factors?.length ? (
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-muted-foreground mb-1.5">Risk Factors</p>
+                  <div className="flex flex-wrap gap-1">
+                    {priority.factors.map((f) => (<span key={f.key} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">{f.description} +{f.weight}</span>))}
+                  </div>
+                </div>
+                ) : <p className="text-xs text-muted-foreground">No active risk factors.</p>}
+
+                {/* Next Action */}
+                {priority?.nextAction ? (
+                <div className="rounded-2xl border border-blue-200 dark:border-blue-800/40 bg-blue-50/60 dark:bg-blue-950/30 p-4">
+                  <div className={cn("rounded-lg border px-2.5 py-1.5 text-xs font-semibold inline-block mb-2", getActionUrgencyClass(priority.nextAction.urgency))}>{priority.nextAction.title} <span className="ml-1 font-normal opacity-70">({priority.nextAction.owner})</span></div>
+                  <p className="text-sm leading-6">{priority.nextAction.reason}</p>
+                </div>
+                ) : (
                 <div className="rounded-2xl border border-blue-200 dark:border-blue-800/40 bg-blue-50/60 dark:bg-blue-950/30 p-4 leading-6">
                   {job.status === "booked" && <p>Move the job into checking and assign the technician so the inspection can start.</p>}
                   {job.status === "checking" && <p>Complete the inspection and convert findings into estimate lines for advisor review.</p>}
@@ -814,6 +821,7 @@ export default function JobDetailPage() {
                   {job.status === "ready" && <p>Move to invoicing and collection steps so finished work does not sit idle.</p>}
                   {job.status === "closed" && <p>This job is complete. Use it as a clean historical record.</p>}
                 </div>
+                )}
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-border bg-card p-4">
                     <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Commercial readiness</p>
