@@ -249,7 +249,7 @@ export class AuthorisationService {
   async loadPortal(rawToken: string) {
     const [token, currencyRow] = await Promise.all([
       this.getValidTokenByRaw(rawToken),
-      this.prisma.tenant.settings.findUnique({ where: { key: 'currency' } }).catch(() => null),
+      this.prisma.tenant.settings.findFirst({ where: { key: 'currency' } }).catch(() => null),
     ]);
 
     if (!token.first_opened_at) {

@@ -256,7 +256,7 @@ export class BookingImportService {
         // 3. Duplicate check: WIP/job_number first, then VIN
         // a) Match by WIP/job_number — if exists, skip (duplicate booking)
         if (row.job_number?.trim()) {
-          const existingJob = await this.prisma.tenant.jobs.findUnique({
+          const existingJob = await this.prisma.tenant.jobs.findFirst({
             where: { job_number: row.job_number.trim() },
           });
           if (existingJob) {
@@ -268,7 +268,7 @@ export class BookingImportService {
         // b) Match by VIN — if same VIN has an active booked job, skip (car already in booking column)
         const vinToCheck = normalizeVin(row.vehicle_vin);
         if (vinToCheck) {
-          const vinVehicle = await this.prisma.tenant.vehicles.findUnique({ where: { vin: vinToCheck } });
+          const vinVehicle = await this.prisma.tenant.vehicles.findFirst({ where: { vin: vinToCheck } });
           if (vinVehicle) {
             const activeBooking = await this.prisma.tenant.jobs.findFirst({
               where: { vehicle_id: vinVehicle.id, status: 'booked' },
@@ -359,7 +359,7 @@ export class BookingImportService {
 
   private async findVehicle(row: BookingRow, customerId: string) {
     if (row.vehicle_vin?.trim()) {
-      const byVin = await this.prisma.tenant.vehicles.findUnique({
+      const byVin = await this.prisma.tenant.vehicles.findFirst({
         where: { vin: normalizeVin(row.vehicle_vin)! },
       });
       if (byVin) return byVin;
