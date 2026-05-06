@@ -27,8 +27,8 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Missing permission: authentication required');
     }
 
-    // Admin always passes
-    if (user.role === 'admin') return true;
+    // Admin and platform_admin always pass
+    if (user.role === 'admin' || user.role === 'platform_admin') return true;
 
     const userPermissions: string[] = user.permissions ?? [];
     const hasPermission = requiredPermissions.some((p) => userPermissions.includes(p));

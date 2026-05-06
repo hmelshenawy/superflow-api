@@ -69,6 +69,13 @@ export const ADMIN_TEMPLATES = 'admin:templates';
 export const ADMIN_LABOUR_RATES = 'admin:labour-rates';
 export const ADMIN_STATS = 'admin:stats';
 
+// ─── Workshops (platform_admin) ────────────────────────
+export const WORKSHOPS_READ = 'workshops:read';
+export const WORKSHOPS_CREATE = 'workshops:create';
+export const WORKSHOPS_UPDATE = 'workshops:update';
+export const WORKSHOPS_DELETE = 'workshops:delete';
+export const WORKSHOPS_ASSIGN_USERS = 'workshops:assign-users';
+
 // ─── Priority / Insights ────────────────────────────────
 export const PRIORITY_READ = 'priority:read';
 export const INSIGHTS_DASHBOARD = 'insights:dashboard';
@@ -90,6 +97,7 @@ export const ALL_PERMISSIONS: string[] = [
   ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE,
   ADMIN_AUDIT, ADMIN_INTEGRATIONS, ADMIN_TEMPLATES,
   ADMIN_LABOUR_RATES, ADMIN_STATS,
+  WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS,
   PRIORITY_READ, INSIGHTS_DASHBOARD,
 ];
 
@@ -98,6 +106,17 @@ export const ALL_PERMISSIONS: string[] = [
  * Used by the seed script and as a reference in the admin UI.
  */
 export const DEFAULT_ROLES: Record<string, { name: string; description: string; permissions: string[] }> = {
+  platform_admin: {
+    name: 'platform_admin',
+    description: 'Platform administrator — manages workshops and cross-workshop user assignments',
+    permissions: [
+      WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS,
+      ADMIN_SETTINGS, ADMIN_SETTINGS_EDIT, ADMIN_ROLES,
+      ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE,
+      ADMIN_AUDIT, ADMIN_INTEGRATIONS, ADMIN_TEMPLATES,
+      ADMIN_LABOUR_RATES, ADMIN_STATS,
+    ],
+  },
   admin: {
     name: 'admin',
     description: 'Full system access — can do everything',

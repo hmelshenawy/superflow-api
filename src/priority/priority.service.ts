@@ -62,7 +62,7 @@ export class PriorityService {
 
   /** Compute priority for a single job */
   async computeOne(jobId: string): Promise<PriorityResultDto> {
-    const job = await this.prisma.jobs.findUnique({
+    const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
       include: {
         estimate_lines: true,
@@ -87,7 +87,7 @@ export class PriorityService {
     }
     if (opts?.advisorId) where.advisor_id = opts.advisorId;
 
-    const jobs = await this.prisma.jobs.findMany({
+    const jobs = await this.prisma.tenant.jobs.findMany({
       where,
       include: {
         estimate_lines: true,

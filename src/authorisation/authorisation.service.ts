@@ -17,7 +17,7 @@ export class AuthorisationService {
   // Portal tokens are stored hashed for the same reason as refresh tokens:
   // a leaked DB row should not grant direct customer portal access.
   private async getValidTokenByRaw(rawToken: string) {
-    const token = await this.prisma.approval_tokens.findUnique({
+    const token = await this.prisma.tenant.approval_tokens.findUnique({
       where: { token_hash: this.hashToken(rawToken) },
       include: {
         jobs: {
@@ -78,7 +78,7 @@ export class AuthorisationService {
   }
 
   async validatePortalToken(rawToken: string) {
-    const token = await this.prisma.approval_tokens.findUnique({
+    const token = await this.prisma.tenant.approval_tokens.findUnique({
       where: { token_hash: this.hashToken(rawToken) },
     });
     if (!token) throw new NotFoundException('Approval link not found');
@@ -88,7 +88,7 @@ export class AuthorisationService {
   }
 
   async requestAuthorisation(jobId: string, channel: string = 'link', sentTo?: string) {
-    const job = await this.prisma.jobs.findUnique({
+    const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
       include: {
         customers: true,
@@ -105,7 +105,7 @@ export class AuthorisationService {
     const raw = crypto.randomBytes(32).toString('hex');
     const hash = this.hashToken(raw);
 
-    const token = await this.prisma.approval_tokens.create({
+    const token = await this.prisma.tenant.approval_tokens.create({
       data: {
         id: uuid(),
         job_id: jobId,
@@ -123,11 +123,11 @@ export class AuthorisationService {
     // effectively sent the estimate to the customer, so the job moves forward.
     if (job.status !== 'estimate_sent' && canTransition(job.status as any, 'estimate_sent')) {
       await this.prisma.$transaction([
-        this.prisma.jobs.update({
+        this.prisma.tenant.jobs.update({
           where: { id: job.id },
           data: { status: 'estimate_sent' as any },
         }),
-        this.prisma.job_status_history.create({
+        this.prisma.tenant.job_status_history.create({
           data: {
             id: uuid(),
             job_id: job.id,
@@ -140,7 +140,7 @@ export class AuthorisationService {
       ]).catch(() => {});
     }
 
-    await this.prisma.notifications.create({
+    await this.prisma.tenant.notifications.create({
       data: {
         id: uuid(),
         job_id: job.id,
@@ -155,7 +155,7 @@ export class AuthorisationService {
     }).catch(() => {});
 
     if (job.advisor_id) {
-      await this.prisma.notifications.create({
+      await this.prisma.tenant.notifications.create({
         data: {
           id: uuid(),
           job_id: job.id,
@@ -180,7 +180,7 @@ export class AuthorisationService {
   }
 
   async getAuthStatus(jobId: string) {
-    const job = await this.prisma.jobs.findUnique({
+    const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
       include: {
         estimate_lines: true,
@@ -249,11 +249,11 @@ export class AuthorisationService {
   async loadPortal(rawToken: string) {
     const [token, currencyRow] = await Promise.all([
       this.getValidTokenByRaw(rawToken),
-      this.prisma.settings.findUnique({ where: { key: 'currency' } }).catch(() => null),
+      this.prisma.tenant.settings.findUnique({ where: { key: 'currency' } }).catch(() => null),
     ]);
 
     if (!token.first_opened_at) {
-      await this.prisma.approval_tokens.update({
+      await this.prisma.tenant.approval_tokens.update({
         where: { id: token.id },
         data: { first_opened_at: new Date() },
       }).catch(() => {});
@@ -462,7 +462,7 @@ export class AuthorisationService {
       const declinedCount = dto.decisions.filter((item) => item.decision === 'declined').length;
       const deferredCount = dto.decisions.filter((item) => item.decision === 'deferred').length;
 
-      await this.prisma.notifications.create({
+      await this.prisma.tenant.notifications.create({
         data: {
           id: uuid(),
           job_id: token.job_id,

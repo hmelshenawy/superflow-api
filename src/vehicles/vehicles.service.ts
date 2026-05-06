@@ -33,11 +33,11 @@ export class VehiclesService {
     const engine = this.cleanString(dto.engine);
 
     if (vin) {
-      const existing = await this.prisma.vehicles.findUnique({ where: { vin } });
+      const existing = await this.prisma.tenant.vehicles.findUnique({ where: { vin } });
       if (existing) {
         // Existing VIN found — merge incoming fields over the existing record
         // so we never duplicate vehicles on repeated job creation.
-        return this.prisma.vehicles.update({
+        return this.prisma.tenant.vehicles.update({
           where: { id: existing.id },
           data: {
             customer_id: dto.customer_id || existing.customer_id,
@@ -54,7 +54,7 @@ export class VehiclesService {
       }
     }
 
-    return this.prisma.vehicles.create({
+    return this.prisma.tenant.vehicles.create({
       data: {
         id: uuid(),
         customer_id: dto.customer_id,
@@ -74,19 +74,19 @@ export class VehiclesService {
   async findAll(pagination: PaginationDto) {
     const skip = (pagination.page - 1) * pagination.limit;
     const [items, total] = await Promise.all([
-      this.prisma.vehicles.findMany({
+      this.prisma.tenant.vehicles.findMany({
         skip,
         take: pagination.limit,
         include: { customers: { select: { id: true, name: true, phone: true } } },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.vehicles.count(),
+      this.prisma.tenant.vehicles.count(),
     ]);
     return { items, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
-    const vehicle = await this.prisma.vehicles.findUnique({
+    const vehicle = await this.prisma.tenant.vehicles.findUnique({
       where: { id },
       include: { customers: true, jobs: true, vehicle_service_history: true },
     });
@@ -100,7 +100,7 @@ export class VehiclesService {
     const normalizedVin = vin.trim().toUpperCase().substring(0, 17);
     if (normalizedVin.length !== 17) throw new BadRequestException('VIN must be exactly 17 characters');
 
-    const existingVehicle = await this.prisma.vehicles.findUnique({
+    const existingVehicle = await this.prisma.tenant.vehicles.findUnique({
       where: { vin: normalizedVin },
       include: { customers: { select: { id: true, name: true, phone: true } } },
     });
@@ -139,12 +139,12 @@ export class VehiclesService {
   }
 
   async findByCustomer(customerId: string) {
-    return this.prisma.vehicles.findMany({ where: { customer_id: customerId }, orderBy: { created_at: 'desc' } });
+    return this.prisma.tenant.vehicles.findMany({ where: { customer_id: customerId }, orderBy: { created_at: 'desc' } });
   }
 
   async update(id: string, dto: UpdateVehicleDto) {
     await this.findOne(id);
-    return this.prisma.vehicles.update({
+    return this.prisma.tenant.vehicles.update({
       where: { id },
       data: {
         ...dto,

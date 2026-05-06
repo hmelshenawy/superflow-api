@@ -16,7 +16,7 @@ export class MediaService {
   private async generateCleanFilename(jobId: string, ext: string): Promise<string> {
     // Media filenames are normalized up front because original phone/browser
     // filenames often contain characters that later break HTTP headers.
-    const job = await this.prisma.jobs.findUnique({ where: { id: jobId }, select: { job_number: true } });
+    const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId }, select: { job_number: true } });
     const jobNum = (job?.job_number || jobId.slice(0, 8)).replace(/[^a-zA-Z0-9._-]/g, '_');
     const ts = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').replace(/\..+/, '');
     // e.g. SF-MOGZ76J8_20260427_160100.jpg
@@ -29,12 +29,12 @@ export class MediaService {
     // In that case we create a placeholder response so media still has a stable link.
     if (!dto.inspection_id || !dto.item_id) return undefined;
 
-    const existing = await this.prisma.inspection_responses.findFirst({
+    const existing = await this.prisma.tenant.inspection_responses.findFirst({
       where: { inspection_id: dto.inspection_id, item_id: dto.item_id },
     });
     if (existing) return existing.id;
 
-    const created = await this.prisma.inspection_responses.create({
+    const created = await this.prisma.tenant.inspection_responses.create({
       data: {
         id: uuid(),
         inspection_id: dto.inspection_id,
@@ -72,7 +72,7 @@ export class MediaService {
     });
     const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: 15 * 60 });
 
-    await this.prisma.media_files.create({
+    await this.prisma.tenant.media_files.create({
       data: {
         id: mediaId,
         job_id: dto.job_id,
@@ -98,10 +98,10 @@ export class MediaService {
   }
 
   async confirm(id: string, body: { size_bytes?: number; width_px?: number; height_px?: number; duration_sec?: number; thumbnail_key?: string }) {
-    const file = await this.prisma.media_files.findUnique({ where: { id } });
+    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
 
-    const updated = await this.prisma.media_files.update({
+    const updated = await this.prisma.tenant.media_files.update({
       where: { id },
       data: {
         size_bytes: body.size_bytes,
@@ -142,7 +142,7 @@ export class MediaService {
       }),
     );
 
-    const created = await this.prisma.media_files.create({
+    const created = await this.prisma.tenant.media_files.create({
       data: {
         id: mediaId,
         job_id: dto.job_id,
@@ -162,7 +162,7 @@ export class MediaService {
     if (inspectionResponseId) {
       // Response media_count is denormalized for quick UI rendering on inspection
       // screens, so uploads/deletes must keep it in sync.
-      await this.prisma.inspection_responses.update({
+      await this.prisma.tenant.inspection_responses.update({
         where: { id: inspectionResponseId },
         data: { media_count: { increment: 1 } },
       }).catch(() => {});
@@ -172,7 +172,7 @@ export class MediaService {
   }
 
   async getSignedDownloadUrl(id: string) {
-    const file = await this.prisma.media_files.findUnique({ where: { id } });
+    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
 
@@ -195,7 +195,7 @@ export class MediaService {
   async getDownloadStream(id: string) {
     // Stream-through download keeps storage private; callers do not need direct
     // bucket credentials or publicly reachable MinIO endpoints.
-    const file = await this.prisma.media_files.findUnique({ where: { id } });
+    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
 
@@ -215,7 +215,7 @@ export class MediaService {
   }
 
   async findByJob(jobId: string) {
-    const files = await this.prisma.media_files.findMany({
+    const files = await this.prisma.tenant.media_files.findMany({
       where: { job_id: jobId, is_deleted: false },
       orderBy: { uploaded_at: 'desc' },
     });
@@ -223,16 +223,16 @@ export class MediaService {
   }
 
   async findOne(id: string) {
-    const file = await this.prisma.media_files.findUnique({ where: { id } });
+    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     return this.normalizeMedia(file);
   }
 
   async softDelete(id: string) {
     const file = await this.findOne(id);
-    const deleted = await this.prisma.media_files.update({ where: { id }, data: { is_deleted: true } });
+    const deleted = await this.prisma.tenant.media_files.update({ where: { id }, data: { is_deleted: true } });
     if ((file as any).inspection_response_id) {
-      await this.prisma.inspection_responses.update({
+      await this.prisma.tenant.inspection_responses.update({
         where: { id: (file as any).inspection_response_id },
         data: { media_count: { decrement: 1 } },
       }).catch(() => {});

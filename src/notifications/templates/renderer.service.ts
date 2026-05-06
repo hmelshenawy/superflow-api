@@ -15,7 +15,7 @@ export class RendererService {
   }
 
   async render(templateName: string, variables: Record<string, any>) {
-    const template = await this.prisma.notification_templates.findUnique({ where: { name: templateName } });
+    const template = await this.prisma.tenant.notification_templates.findUnique({ where: { name: templateName } });
     if (!template) return null;
 
     const subject = this.applyVariables(template.subject || '', variables);

@@ -19,7 +19,7 @@ export class AuditService {
   }) {
     // Central audit entry point — all sensitive actions (status transitions,
     // portal decisions, inspection submit/reopen) write through here.
-    return this.prisma.audit_logs.create({
+    return this.prisma.tenant.audit_logs.create({
       data: {
         id: uuid(),
         user_id: params.userId || null,
@@ -47,14 +47,14 @@ export class AuditService {
     if (filters?.entityId) where.entity_id = filters.entityId;
 
     const [items, total] = await Promise.all([
-      this.prisma.audit_logs.findMany({
+      this.prisma.tenant.audit_logs.findMany({
         skip,
         take: pagination.limit,
         where,
         include: { users: { select: { id: true, name: true, email: true } } },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.audit_logs.count({ where }),
+      this.prisma.tenant.audit_logs.count({ where }),
     ]);
 
     return { items, total, page: pagination.page, limit: pagination.limit };

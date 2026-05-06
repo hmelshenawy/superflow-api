@@ -8,7 +8,7 @@ export class TemplatesService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateTemplateDto, userId: string) {
-    return this.prisma.inspection_templates.create({
+    return this.prisma.tenant.inspection_templates.create({
       data: {
         id: uuid(),
         name: dto.name,
@@ -21,7 +21,7 @@ export class TemplatesService {
   }
 
   async findAll(vehicleType?: string) {
-    return this.prisma.inspection_templates.findMany({
+    return this.prisma.tenant.inspection_templates.findMany({
       where: { ...(vehicleType ? { vehicle_type: vehicleType } : {}) },
       include: {
         inspection_sections: {
@@ -34,7 +34,7 @@ export class TemplatesService {
   }
 
   async findOne(id: string) {
-    const template = await this.prisma.inspection_templates.findUnique({
+    const template = await this.prisma.tenant.inspection_templates.findUnique({
       where: { id },
       include: {
         inspection_sections: {
@@ -49,7 +49,7 @@ export class TemplatesService {
 
   async addSection(templateId: string, body: { name: string; icon?: string; sort_order?: number }) {
     await this.findOne(templateId);
-    return this.prisma.inspection_sections.create({
+    return this.prisma.tenant.inspection_sections.create({
       data: {
         id: uuid(),
         template_id: templateId,
@@ -75,11 +75,11 @@ export class TemplatesService {
       sort_order?: number;
     },
   ) {
-    const section = await this.prisma.inspection_sections.findUnique({ where: { id: body.section_id } });
+    const section = await this.prisma.tenant.inspection_sections.findUnique({ where: { id: body.section_id } });
     if (!section) throw new NotFoundException('Section not found');
     if (section.template_id !== templateId) throw new BadRequestException('Section does not belong to this template');
 
-    return this.prisma.inspection_items.create({
+    return this.prisma.tenant.inspection_items.create({
       data: {
         id: uuid(),
         section_id: body.section_id,
@@ -98,7 +98,7 @@ export class TemplatesService {
 
   async publish(id: string) {
     await this.findOne(id);
-    return this.prisma.inspection_templates.update({
+    return this.prisma.tenant.inspection_templates.update({
       where: { id },
       data: { is_active: true },
     });

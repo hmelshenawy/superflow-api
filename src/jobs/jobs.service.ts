@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
+import { getWorkshopContext } from '../prisma/workshop-context';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
@@ -15,7 +16,7 @@ export class JobsService {
     // Job numbers are derived from a base-36 timestamp so they are short,
     // unique, and human-readable without needing a separate sequence.
     const jobNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
-    return this.prisma.jobs.create({
+    return this.prisma.tenant.jobs.create({
       data: {
         id: uuid(),
         job_number: jobNumber,
@@ -53,12 +54,14 @@ export class JobsService {
 
     if (search?.trim()) {
       const term = `%${search.trim().toLowerCase()}%`;
+      const { workshopId } = getWorkshopContext();
       const matches = await this.prisma.$queryRaw<Array<{ id: string }>>`
         SELECT DISTINCT j.id
         FROM jobs j
         LEFT JOIN customers c ON c.id = j.customer_id
         LEFT JOIN vehicles v ON v.id = j.vehicle_id
         WHERE j.is_deleted = 0
+        AND j.workshop_id = ${workshopId}
         AND (
           LOWER(COALESCE(j.job_number, '')) LIKE ${term}
           OR LOWER(COALESCE(j.customer_concern, '')) LIKE ${term}
@@ -82,7 +85,7 @@ export class JobsService {
     if (role === 'technician') where.technician_id = userId;
 
     const [items, total] = await Promise.all([
-      this.prisma.jobs.findMany({
+      this.prisma.tenant.jobs.findMany({
         skip,
         take: pagination.limit,
         where,
@@ -94,7 +97,7 @@ export class JobsService {
         },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.jobs.count({ where }),
+      this.prisma.tenant.jobs.count({ where }),
     ]);
     const data = items.map((item: (typeof items)[number]) => ({
       ...item,
@@ -109,7 +112,7 @@ export class JobsService {
   }
 
   async findOne(id: string) {
-    const job = await this.prisma.jobs.findFirst({
+    const job = await this.prisma.tenant.jobs.findFirst({
       where: { id, is_deleted: false },
       include: {
         customers: { select: { id: true, name: true, phone: true, email: true } },
@@ -182,7 +185,7 @@ export class JobsService {
     // Allow clearing optional fields by sending empty string → null
     if (data.advisor_id === '') data.advisor_id = null;
     if (data.technician_id === '') data.technician_id = null;
-    return this.prisma.jobs.update({ where: { id }, data });
+    return this.prisma.tenant.jobs.update({ where: { id }, data });
   }
 
   async transition(id: string, dto: TransitionStatusDto, userId: string) {
@@ -235,11 +238,11 @@ export class JobsService {
     // Status transition is written atomically alongside its history row
     // so the trail never drifts from the actual transition.
     const [updated] = await this.prisma.$transaction([
-      this.prisma.jobs.update({
+      this.prisma.tenant.jobs.update({
         where: { id },
         data: transitionData,
       }),
-      this.prisma.job_status_history.create({
+      this.prisma.tenant.job_status_history.create({
         data: {
           id: uuid(),
           job_id: id,
@@ -256,15 +259,15 @@ export class JobsService {
   async assignTechnician(id: string, technicianId: string | null) {
     const job = await this.findOne(id);
     if (!technicianId) {
-      return this.prisma.jobs.update({
+      return this.prisma.tenant.jobs.update({
         where: { id },
         data: { technician_id: null, workshop_stage: job.status === 'in_progress' ? 'waiting_technician' : job.workshop_stage },
       });
     }
-    const technician = await this.prisma.users.findUnique({ where: { id: technicianId } });
+    const technician = await this.prisma.raw.users.findUnique({ where: { id: technicianId } });
     if (!technician || !technician.is_active) throw new BadRequestException('Technician not found or inactive');
 
-    return this.prisma.jobs.update({
+    return this.prisma.tenant.jobs.update({
       where: { id },
       data: {
         technician_id: technicianId,
@@ -276,17 +279,17 @@ export class JobsService {
   async archiveJob(id: string) {
     const job = await this.findOne(id);
     if (job.status !== 'closed') throw new BadRequestException('Only closed jobs can be archived');
-    return this.prisma.jobs.update({
+    return this.prisma.tenant.jobs.update({
       where: { id },
       data: { archived_at: new Date() },
     });
   }
 
   async unarchiveJob(id: string) {
-    const job = await this.prisma.jobs.findUnique({ where: { id } });
+    const job = await this.prisma.tenant.jobs.findUnique({ where: { id } });
     if (!job) throw new NotFoundException('Job not found');
     if (!job.archived_at) throw new BadRequestException('Job is not archived');
-    return this.prisma.jobs.update({
+    return this.prisma.tenant.jobs.update({
       where: { id },
       data: { archived_at: null },
     });
@@ -294,11 +297,11 @@ export class JobsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.jobs.update({ where: { id }, data: { is_deleted: true } });
+    return this.prisma.tenant.jobs.update({ where: { id }, data: { is_deleted: true } });
   }
 
   async removeAll(): Promise<{ deleted: number }> {
-    const { count } = await this.prisma.jobs.updateMany({
+    const { count } = await this.prisma.tenant.jobs.updateMany({
       where: { status: 'booked', is_deleted: false },
       data: { is_deleted: true },
     });
@@ -309,7 +312,7 @@ export class JobsService {
     // This method is also called by the scheduler service for daily archive.
     // The 24h guard here is intentionally stricter than the scheduler's
     // catch-up which archives all closed+unarchived jobs regardless of age.
-    const result = await this.prisma.jobs.updateMany({
+    const result = await this.prisma.tenant.jobs.updateMany({
       where: {
         status: 'closed',
         archived_at: null,

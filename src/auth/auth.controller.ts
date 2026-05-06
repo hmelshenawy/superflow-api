@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
+import { SelectWorkshopDto } from './dto/select-workshop.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -25,6 +26,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   refresh(@Body() dto: RefreshTokenDto) {
     return this.auth.refresh(dto.refreshToken || dto.refresh_token || '');
+  }
+
+  @Post('select-workshop')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Select active workshop — returns new access token with workshopId' })
+  selectWorkshop(@CurrentUser('sub') userId: string, @Body() dto: SelectWorkshopDto) {
+    return this.auth.selectWorkshop(userId, dto.workshopId);
   }
 
   @Post('logout')

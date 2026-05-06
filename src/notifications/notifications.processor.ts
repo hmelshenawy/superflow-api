@@ -40,7 +40,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
 
       // Non-terminal failures are moved back to queued so the DB state matches
       // the retry lifecycle instead of pretending the notification is permanently dead.
-      await this.prisma.notifications.update({
+      await this.prisma.tenant.notifications.update({
         where: { id: notificationId },
         data: {
           status: terminal ? 'failed' : 'queued',
@@ -73,7 +73,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   private async process(job: Job<{ notificationId: string }>) {
-    const notification = await this.prisma.notifications.findUnique({ where: { id: job.data.notificationId } });
+    const notification = await this.prisma.tenant.notifications.findUnique({ where: { id: job.data.notificationId } });
     if (!notification) throw new Error('Notification not found');
 
     const webhook = this.getWebhook(notification.channel);
@@ -81,7 +81,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     if (!webhook) {
       // No webhook configured is treated as an intentional no-op environment,
       // not an operational failure. The row is marked sent via provider `noop`.
-      await this.prisma.notifications.update({
+      await this.prisma.tenant.notifications.update({
         where: { id: notification.id },
         data: {
           status: 'sent',
@@ -123,7 +123,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
       providerMessageId = notification.provider_message_id || null;
     }
 
-    await this.prisma.notifications.update({
+    await this.prisma.tenant.notifications.update({
       where: { id: notification.id },
       data: {
         status: 'sent',

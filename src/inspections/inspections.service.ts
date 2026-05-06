@@ -11,21 +11,21 @@ export class InspectionsService {
   constructor(private prisma: PrismaService) {}
 
   async create(jobId: string, templateId: string, technicianId: string) {
-    const existing = await this.prisma.inspections.findUnique({ where: { job_id: jobId } });
+    const existing = await this.prisma.tenant.inspections.findUnique({ where: { job_id: jobId } });
     // One inspection per job keeps the workflow simple: later steps (estimate,
     // portal findings, advisor review) all assume a single active inspection.
     if (existing) return existing;
 
     // Move job from booked → checking when inspection is created.
-    const job = await this.prisma.jobs.findUnique({ where: { id: jobId } });
+    const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'booked') {
-      await this.prisma.jobs.update({
+      await this.prisma.tenant.jobs.update({
         where: { id: jobId },
         data: { status: 'checking' },
       });
     }
 
-    return this.prisma.inspections.create({
+    return this.prisma.tenant.inspections.create({
       data: {
         id: uuid(),
         job_id: jobId,
@@ -40,19 +40,19 @@ export class InspectionsService {
   async findAll(pagination: PaginationDto) {
     const skip = (pagination.page - 1) * pagination.limit;
     const [items, total] = await Promise.all([
-      this.prisma.inspections.findMany({
+      this.prisma.tenant.inspections.findMany({
         skip,
         take: pagination.limit,
         include: { jobs: true, inspection_templates: true },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.inspections.count(),
+      this.prisma.tenant.inspections.count(),
     ]);
     return { items, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
-    const inspection = await this.prisma.inspections.findUnique({
+    const inspection = await this.prisma.tenant.inspections.findUnique({
       where: { id },
       include: {
         inspection_responses: {
@@ -90,7 +90,7 @@ export class InspectionsService {
   }
 
   async saveResponses(id: string, dto: CreateResponseDto) {
-    const inspection = await this.prisma.inspections.findUnique({ where: { id } });
+    const inspection = await this.prisma.tenant.inspections.findUnique({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
     if (inspection.status && ['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
       throw new BadRequestException('Inspection is locked and can no longer be edited');
@@ -98,7 +98,7 @@ export class InspectionsService {
 
     // Validate that all item_ids belong to this inspection's template.
     if (inspection.template_id && dto.responses.length) {
-      const validItems = await this.prisma.inspection_items.findMany({
+      const validItems = await this.prisma.tenant.inspection_items.findMany({
         where: { inspection_sections: { template_id: inspection.template_id } },
         select: { id: true },
       });
@@ -112,7 +112,7 @@ export class InspectionsService {
 
     // Look up odometer item IDs from this inspection's template so we can sync the value to the job
     const odometerItems = inspection.template_id
-      ? await this.prisma.inspection_items.findMany({
+      ? await this.prisma.tenant.inspection_items.findMany({
           where: {
             input_type: 'odometer',
             inspection_sections: { template_id: inspection.template_id },
@@ -169,7 +169,7 @@ export class InspectionsService {
       if (odometerResponse) {
         const odometerValue = parseInt(String(odometerResponse.value), 10);
         if (!isNaN(odometerValue) && odometerValue > 0) {
-          await this.prisma.jobs.update({
+          await this.prisma.tenant.jobs.update({
             where: { id: inspection.job_id },
             data: { odometer_in: odometerValue },
           });
@@ -180,7 +180,7 @@ export class InspectionsService {
     if (dto.offline_draft !== undefined) {
       // Offline draft is stored on the inspection row so the frontend can keep
       // a device-friendly draft payload without inventing a separate draft table.
-      await this.prisma.inspections.update({
+      await this.prisma.tenant.inspections.update({
         where: { id },
         data: { offline_draft: JSON.stringify(dto.offline_draft) },
       });
@@ -200,7 +200,7 @@ export class InspectionsService {
       throw new BadRequestException('Inspection already finalized');
     }
 
-    const updated = await this.prisma.inspections.update({
+    const updated = await this.prisma.tenant.inspections.update({
       where: { id },
       data: {
         status: 'submitted',
@@ -210,7 +210,7 @@ export class InspectionsService {
 
     if (!inspection.job_id) throw new BadRequestException('Inspection is missing linked job');
 
-    const job = await this.prisma.jobs.findUnique({
+    const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: inspection.job_id },
       include: { customers: true, vehicles: true, users_jobs_advisor_idTousers: true },
     });
@@ -218,7 +218,7 @@ export class InspectionsService {
     if (job?.advisor_id) {
       // Submitting an inspection is the handoff from technician work to advisor
       // review, so the notification is part of the business workflow, not just UX.
-      await this.prisma.notifications.create({
+      await this.prisma.tenant.notifications.create({
         data: {
           id: uuid(),
           job_id: job.id,
@@ -234,7 +234,7 @@ export class InspectionsService {
     }
 
     // Audit log keeps a durable trace of who finalized the inspection.
-    await this.prisma.audit_logs.create({
+    await this.prisma.tenant.audit_logs.create({
       data: {
         id: uuid(),
         user_id: userId,
@@ -249,13 +249,13 @@ export class InspectionsService {
   }
 
   async reopen(id: string, userId: string) {
-    const inspection = await this.prisma.inspections.findUnique({ where: { id } });
+    const inspection = await this.prisma.tenant.inspections.findUnique({ where: { id } });
     if (!inspection) throw new NotFoundException('Inspection not found');
     if (!inspection.status || !['submitted', 'reviewed', 'approved'].includes(inspection.status)) {
       throw new BadRequestException('Inspection is not locked');
     }
 
-    const updated = await this.prisma.inspections.update({
+    const updated = await this.prisma.tenant.inspections.update({
       where: { id },
       data: {
         status: 'in_progress',
@@ -266,7 +266,7 @@ export class InspectionsService {
 
     // Reopen is intentionally audited because it unlocks a finalized record
     // and can affect downstream estimate/customer-approval work.
-    await this.prisma.audit_logs.create({
+    await this.prisma.tenant.audit_logs.create({
       data: {
         id: uuid(),
         user_id: userId,

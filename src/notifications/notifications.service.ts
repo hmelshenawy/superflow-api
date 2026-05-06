@@ -37,7 +37,7 @@ export class NotificationsService {
     jobId?: string;
     customerId?: string;
   }) {
-    const notification = await this.prisma.notifications.create({
+    const notification = await this.prisma.tenant.notifications.create({
       data: {
         id: uuid(),
         template_id: params.templateId || null,
@@ -61,7 +61,7 @@ export class NotificationsService {
     // If it was already sent or failed, re-queueing would duplicate work.
     if (!this.queue) return null;
 
-    const notification = await this.prisma.notifications.findUnique({ where: { id: notificationId } });
+    const notification = await this.prisma.tenant.notifications.findUnique({ where: { id: notificationId } });
     if (!notification) return null;
     if (notification.status !== 'queued') return notification;
 
@@ -77,7 +77,7 @@ export class NotificationsService {
       },
     );
 
-    await this.prisma.notifications.update({
+    await this.prisma.tenant.notifications.update({
       where: { id: notificationId },
       data: { provider_message_id: job.id || notificationId },
     });
@@ -88,7 +88,7 @@ export class NotificationsService {
   async requeuePendingDbNotifications() {
     // Startup / periodic safety net: scans the DB for any notifications still
     // marked "queued" that are not currently in BullMQ, and re-adds them.
-    const pending = await this.prisma.notifications.findMany({
+    const pending = await this.prisma.tenant.notifications.findMany({
       where: { status: 'queued' },
       orderBy: { queued_at: 'asc' },
       take: 100,
@@ -121,10 +121,10 @@ export class NotificationsService {
   }
 
   async findByJob(jobId: string) {
-    return this.prisma.notifications.findMany({ where: { job_id: jobId }, orderBy: { queued_at: 'desc' } });
+    return this.prisma.tenant.notifications.findMany({ where: { job_id: jobId }, orderBy: { queued_at: 'desc' } });
   }
 
   async findByCustomer(customerId: string) {
-    return this.prisma.notifications.findMany({ where: { customer_id: customerId }, orderBy: { queued_at: 'desc' } });
+    return this.prisma.tenant.notifications.findMany({ where: { customer_id: customerId }, orderBy: { queued_at: 'desc' } });
   }
 }

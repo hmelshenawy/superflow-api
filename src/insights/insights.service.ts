@@ -21,25 +21,25 @@ export class InsightsService {
       sentNotifications,
       pendingDeferred,
     ] = await Promise.all([
-      this.prisma.jobs.count({ where: { archived_at: null } }),
-      this.prisma.customers.count({ where: { is_active: true } }),
-      this.prisma.vehicles.count(),
-      this.prisma.inspections.count(),
-      this.prisma.estimate_lines.count({ where: { job_id: { not: null } } }),
-      this.prisma.notifications.count(),
-      this.prisma.notifications.count({ where: { status: 'sent' } }),
-      this.prisma.deferred_work.count({ where: { status: 'pending' } }),
+      this.prisma.tenant.jobs.count({ where: { archived_at: null } }),
+      this.prisma.tenant.customers.count({ where: { is_active: true } }),
+      this.prisma.tenant.vehicles.count(),
+      this.prisma.tenant.inspections.count(),
+      this.prisma.tenant.estimate_lines.count({ where: { job_id: { not: null } } }),
+      this.prisma.tenant.notifications.count(),
+      this.prisma.tenant.notifications.count({ where: { status: 'sent' } }),
+      this.prisma.tenant.deferred_work.count({ where: { status: 'pending' } }),
     ]);
 
     // ── Jobs by status ─────────────────────────────────────
-    const jobsByStatus = await this.prisma.jobs.groupBy({
+    const jobsByStatus = await this.prisma.tenant.jobs.groupBy({
       by: ['status'],
       _count: true,
       where: { archived_at: null },
     });
 
     // ── Jobs created per day (last 30 days) ────────────────
-    const jobsPerDay = await this.prisma.jobs.findMany({
+    const jobsPerDay = await this.prisma.tenant.jobs.findMany({
       where: { created_at: { gte: thirtyDaysAgo } },
       select: { created_at: true, status: true },
     });
@@ -63,7 +63,7 @@ export class InsightsService {
     }
 
     // ── Estimate revenue by status ─────────────────────────
-    const estimateLines = await this.prisma.estimate_lines.findMany({
+    const estimateLines = await this.prisma.tenant.estimate_lines.findMany({
       where: { job_id: { not: null } },
       select: {
         line_total: true,
@@ -98,31 +98,31 @@ export class InsightsService {
 
     // ── Inspection completion rate ─────────────────────────
     const [submittedInspections, totalInspectionsAll] = await Promise.all([
-      this.prisma.inspections.count({ where: { status: { in: ['submitted', 'reviewed', 'approved'] } } }),
-      this.prisma.inspections.count(),
+      this.prisma.tenant.inspections.count({ where: { status: { in: ['submitted', 'reviewed', 'approved'] } } }),
+      this.prisma.tenant.inspections.count(),
     ]);
     const inspectionCompletionRate = totalInspectionsAll > 0 ? Math.round((submittedInspections / totalInspectionsAll) * 100) : 0;
 
     // ── Portal approval rate ────────────────────────────────
     const [approvedDecisions, declinedDecisions, totalDecisions] = await Promise.all([
-      this.prisma.authorisation_decisions.count({ where: { decision: 'approved' } }),
-      this.prisma.authorisation_decisions.count({ where: { decision: 'declined' } }),
-      this.prisma.authorisation_decisions.count(),
+      this.prisma.tenant.authorisation_decisions.count({ where: { decision: 'approved' } }),
+      this.prisma.tenant.authorisation_decisions.count({ where: { decision: 'declined' } }),
+      this.prisma.tenant.authorisation_decisions.count(),
     ]);
     const approvalRate = totalDecisions > 0 ? Math.round((approvedDecisions / totalDecisions) * 100) : 0;
 
     // ── Deferred work aging ────────────────────────────────
-    const deferredByStatus = await this.prisma.deferred_work.groupBy({
+    const deferredByStatus = await this.prisma.tenant.deferred_work.groupBy({
       by: ['status'],
       _count: true,
     });
 
-    const overdueReminders = await this.prisma.deferred_work.count({
+    const overdueReminders = await this.prisma.tenant.deferred_work.count({
       where: { status: 'pending', remind_after: { lt: now } },
     });
 
     // ── Average job turnaround (closed jobs last 30 days) ──
-    const closedJobsLast30 = await this.prisma.jobs.findMany({
+    const closedJobsLast30 = await this.prisma.tenant.jobs.findMany({
       where: {
         status: 'closed',
         completed_at: { not: null },
@@ -142,7 +142,7 @@ export class InsightsService {
     }
 
     // ── Overdue jobs (promised date passed, not closed/ready) ──
-    const overdueJobs = await this.prisma.jobs.count({
+    const overdueJobs = await this.prisma.tenant.jobs.count({
       where: {
         promised_at: { lt: now },
         status: { notIn: ['ready', 'closed'] },
@@ -158,16 +158,16 @@ export class InsightsService {
     const tomorrowDubaiStart = new Date(todayDubaiStart.getTime() + 24 * 60 * 60 * 1000);
 
     const [todayBooked, todayArrived, todayNoShow, noShow30d, arrived30d, booked30d, dueToday] = await Promise.all([
-      this.prisma.jobs.count({ where: { created_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart } } }),
-      this.prisma.jobs.count({ where: { arrived_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart } } }),
-      this.prisma.jobs.count({ where: { status: 'no_show', updated_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart } } }),
-      this.prisma.jobs.count({ where: { status: 'no_show', updated_at: { gte: thirtyDaysAgo } } }),
-      this.prisma.jobs.count({ where: { arrived_at: { gte: thirtyDaysAgo } } }),
-      this.prisma.jobs.count({ where: { created_at: { gte: thirtyDaysAgo } } }),
-      this.prisma.jobs.count({ where: { promised_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart }, status: { notIn: ['closed', 'no_show'] }, archived_at: null } }),
+      this.prisma.tenant.jobs.count({ where: { created_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart } } }),
+      this.prisma.tenant.jobs.count({ where: { arrived_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart } } }),
+      this.prisma.tenant.jobs.count({ where: { status: 'no_show', updated_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart } } }),
+      this.prisma.tenant.jobs.count({ where: { status: 'no_show', updated_at: { gte: thirtyDaysAgo } } }),
+      this.prisma.tenant.jobs.count({ where: { arrived_at: { gte: thirtyDaysAgo } } }),
+      this.prisma.tenant.jobs.count({ where: { created_at: { gte: thirtyDaysAgo } } }),
+      this.prisma.tenant.jobs.count({ where: { promised_at: { gte: todayDubaiStart, lt: tomorrowDubaiStart }, status: { notIn: ['closed', 'no_show'] }, archived_at: null } }),
     ]);
 
-    const todayPendingArrival = await this.prisma.jobs.count({
+    const todayPendingArrival = await this.prisma.tenant.jobs.count({
       where: { status: 'booked', arrived_at: null, archived_at: null },
     });
 
@@ -179,14 +179,14 @@ export class InsightsService {
       const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
       const date = new Date(start.getTime() + dubaiOffsetMs).toISOString().slice(0, 10);
       const [booked, arrived, noShow] = await Promise.all([
-        this.prisma.jobs.count({ where: { created_at: { gte: start, lt: end } } }),
-        this.prisma.jobs.count({ where: { arrived_at: { gte: start, lt: end } } }),
-        this.prisma.jobs.count({ where: { status: 'no_show', updated_at: { gte: start, lt: end } } }),
+        this.prisma.tenant.jobs.count({ where: { created_at: { gte: start, lt: end } } }),
+        this.prisma.tenant.jobs.count({ where: { arrived_at: { gte: start, lt: end } } }),
+        this.prisma.tenant.jobs.count({ where: { status: 'no_show', updated_at: { gte: start, lt: end } } }),
       ]);
       attendanceTrend.push({ date, booked, arrived, noShow });
     }
 
-    const advisorJobs = await this.prisma.jobs.findMany({
+    const advisorJobs = await this.prisma.tenant.jobs.findMany({
       where: { created_at: { gte: thirtyDaysAgo } },
       select: {
         status: true,
@@ -211,10 +211,10 @@ export class InsightsService {
 
     // ── Recent activity (last 7 days) ─────────────────────
     const [recentJobsCreated, recentJobsClosed, recentInspectionsSubmitted, recentApprovalsSent] = await Promise.all([
-      this.prisma.jobs.count({ where: { created_at: { gte: sevenDaysAgo } } }),
-      this.prisma.jobs.count({ where: { status: 'closed', updated_at: { gte: sevenDaysAgo } } }),
-      this.prisma.inspections.count({ where: { submitted_at: { gte: sevenDaysAgo } } }),
-      this.prisma.approval_tokens.count({ where: { issued_at: { gte: sevenDaysAgo } } }),
+      this.prisma.tenant.jobs.count({ where: { created_at: { gte: sevenDaysAgo } } }),
+      this.prisma.tenant.jobs.count({ where: { status: 'closed', updated_at: { gte: sevenDaysAgo } } }),
+      this.prisma.tenant.inspections.count({ where: { submitted_at: { gte: sevenDaysAgo } } }),
+      this.prisma.tenant.approval_tokens.count({ where: { issued_at: { gte: sevenDaysAgo } } }),
     ]);
 
     return {

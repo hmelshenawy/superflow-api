@@ -17,7 +17,7 @@ export class AdminService {
   }
 
   async getSettings() {
-    const rows = await this.prisma.settings.findMany({
+    const rows = await this.prisma.tenant.settings.findMany({
       include: { users: { select: { id: true, name: true, email: true } } },
       orderBy: { key: 'asc' },
     });
@@ -45,14 +45,14 @@ export class AdminService {
       const valueType = item.valueType || 'string';
       const value = valueType === 'json' ? JSON.stringify(item.value) : String(item.value ?? '');
 
-      const existing = await this.prisma.settings.findUnique({ where: { key } });
+      const existing = await this.prisma.tenant.settings.findUnique({ where: { key } });
       if (existing) {
-        result.push(await this.prisma.settings.update({
+        result.push(await this.prisma.tenant.settings.update({
           where: { id: existing.id },
           data: { value, value_type: valueType as any, description: item.description, updated_by: userId },
         }));
       } else {
-        result.push(await this.prisma.settings.create({
+        result.push(await this.prisma.tenant.settings.create({
           data: { id: uuid(), key, value, value_type: valueType as any, description: item.description, updated_by: userId },
         }));
       }
@@ -62,12 +62,12 @@ export class AdminService {
   }
 
   async getLabourRates() {
-    return this.prisma.labour_rates.findMany({ orderBy: { name: 'asc' } });
+    return this.prisma.tenant.labour_rates.findMany({ orderBy: { name: 'asc' } });
   }
 
   async addLabourRate(body: { name: string; rate_per_hour: number; currency?: string; is_active?: boolean }) {
     if (!body?.name || body?.rate_per_hour == null) throw new BadRequestException('name and rate_per_hour are required');
-    return this.prisma.labour_rates.create({
+    return this.prisma.tenant.labour_rates.create({
       data: {
         id: uuid(),
         name: body.name,
@@ -100,7 +100,7 @@ export class AdminService {
   }
 
   async listIntegrations() {
-    const rows = await this.prisma.integrations.findMany({
+    const rows = await this.prisma.tenant.integrations.findMany({
       include: {
         integration_events: {
           orderBy: { created_at: 'desc' },
@@ -121,7 +121,7 @@ export class AdminService {
   }
 
   async testIntegration(name: string) {
-    const integration = await this.prisma.integrations.findUnique({ where: { name } });
+    const integration = await this.prisma.tenant.integrations.findUnique({ where: { name } });
     if (!integration) throw new NotFoundException('Integration not found');
 
     let parsedConfig: any = {};
@@ -136,7 +136,7 @@ export class AdminService {
     const start = new Date();
 
     if (!testUrl) {
-      await this.prisma.integration_events.create({
+      await this.prisma.tenant.integration_events.create({
         data: {
           id: eventId,
           integration_id: integration.id,
@@ -148,7 +148,7 @@ export class AdminService {
         },
       });
 
-      await this.prisma.integrations.update({
+      await this.prisma.tenant.integrations.update({
         where: { id: integration.id },
         data: { last_tested_at: start, last_test_status: 'failed' },
       });
@@ -164,7 +164,7 @@ export class AdminService {
       });
       const text = await response.text();
 
-      await this.prisma.integration_events.create({
+      await this.prisma.tenant.integration_events.create({
         data: {
           id: eventId,
           integration_id: integration.id,
@@ -179,7 +179,7 @@ export class AdminService {
         },
       });
 
-      await this.prisma.integrations.update({
+      await this.prisma.tenant.integrations.update({
         where: { id: integration.id },
         data: { last_tested_at: start, last_test_status: response.ok ? 'success' : 'failed' },
       });
@@ -191,7 +191,7 @@ export class AdminService {
         response: text,
       };
     } catch (error: any) {
-      await this.prisma.integration_events.create({
+      await this.prisma.tenant.integration_events.create({
         data: {
           id: eventId,
           integration_id: integration.id,
@@ -204,7 +204,7 @@ export class AdminService {
         },
       });
 
-      await this.prisma.integrations.update({
+      await this.prisma.tenant.integrations.update({
         where: { id: integration.id },
         data: { last_tested_at: start, last_test_status: 'failed' },
       });
@@ -228,21 +228,21 @@ export class AdminService {
       totalNotifications,
       sentNotifications,
     ] = await Promise.all([
-      this.prisma.jobs.count(),
-      this.prisma.jobs.count({ where: { status: 'booked' } }),
-      this.prisma.jobs.count({ where: { status: 'in_progress' } }),
-      this.prisma.jobs.count({ where: { status: 'ready' } }),
-      this.prisma.customers.count({ where: { is_active: true } }),
-      this.prisma.vehicles.count(),
-      this.prisma.deferred_work.count({ where: { status: 'pending' } }),
-      this.prisma.inspections.count(),
-      this.prisma.inspections.count({ where: { status: 'submitted' } }),
-      this.prisma.estimate_lines.count(),
-      this.prisma.notifications.count(),
-      this.prisma.notifications.count({ where: { status: 'sent' } }),
+      this.prisma.tenant.jobs.count(),
+      this.prisma.tenant.jobs.count({ where: { status: 'booked' } }),
+      this.prisma.tenant.jobs.count({ where: { status: 'in_progress' } }),
+      this.prisma.tenant.jobs.count({ where: { status: 'ready' } }),
+      this.prisma.tenant.customers.count({ where: { is_active: true } }),
+      this.prisma.tenant.vehicles.count(),
+      this.prisma.tenant.deferred_work.count({ where: { status: 'pending' } }),
+      this.prisma.tenant.inspections.count(),
+      this.prisma.tenant.inspections.count({ where: { status: 'submitted' } }),
+      this.prisma.tenant.estimate_lines.count(),
+      this.prisma.tenant.notifications.count(),
+      this.prisma.tenant.notifications.count({ where: { status: 'sent' } }),
     ]);
 
-    const jobsByStatus = await this.prisma.jobs.groupBy({ by: ['status'], _count: true });
+    const jobsByStatus = await this.prisma.tenant.jobs.groupBy({ by: ['status'], _count: true });
 
     return {
       totals: {
@@ -274,7 +274,7 @@ export class AdminService {
 
   // ─── Roles ─────────────────────────────────────────────
   async getRoles() {
-    const roles = await this.prisma.roles.findMany({ orderBy: { name: 'asc' } });
+    const roles = await this.prisma.raw.roles.findMany({ orderBy: { name: 'asc' } });
     return roles.map((r: typeof roles[number]) => ({
       ...r,
       permissions: r.permissions ? JSON.parse(r.permissions) : [],
@@ -283,7 +283,7 @@ export class AdminService {
 
   async createRole(body: { name: string; permissions?: string[]; description?: string }) {
     if (!body?.name) throw new BadRequestException('name is required');
-    const role = await this.prisma.roles.create({
+    const role = await this.prisma.raw.roles.create({
       data: {
         id: uuid(),
         name: body.name,
@@ -295,9 +295,9 @@ export class AdminService {
   }
 
   async updateRole(id: string, body: { name?: string; permissions?: string[]; description?: string }) {
-    const role = await this.prisma.roles.findUnique({ where: { id } });
+    const role = await this.prisma.raw.roles.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
-    const updated = await this.prisma.roles.update({
+    const updated = await this.prisma.raw.roles.update({
       where: { id },
       data: {
         ...(body.name && { name: body.name }),
@@ -309,20 +309,20 @@ export class AdminService {
   }
 
   async deleteRole(id: string) {
-    const role = await this.prisma.roles.findUnique({ where: { id } });
+    const role = await this.prisma.raw.roles.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
     // Safety check: prevents deleting a role that still has users assigned,
     // which would leave orphaned role_id references.
-    const usersWithRole = await this.prisma.users.count({ where: { role_id: id } });
+    const usersWithRole = await this.prisma.raw.users.count({ where: { role_id: id } });
     if (usersWithRole > 0) throw new BadRequestException(`Cannot delete: ${usersWithRole} user(s) assigned to this role`);
-    return this.prisma.roles.delete({ where: { id } });
+    return this.prisma.raw.roles.delete({ where: { id } });
   }
 
   // ─── Labour Rates CRUD ──────────────────────────────────
   async updateLabourRate(id: string, body: { name?: string; rate_per_hour?: number; currency?: string; is_active?: boolean }) {
-    const rate = await this.prisma.labour_rates.findUnique({ where: { id } });
+    const rate = await this.prisma.tenant.labour_rates.findUnique({ where: { id } });
     if (!rate) throw new NotFoundException('Labour rate not found');
-    return this.prisma.labour_rates.update({
+    return this.prisma.tenant.labour_rates.update({
       where: { id },
       data: {
         ...(body.name !== undefined && { name: body.name }),
@@ -334,14 +334,14 @@ export class AdminService {
   }
 
   async deleteLabourRate(id: string) {
-    const rate = await this.prisma.labour_rates.findUnique({ where: { id } });
+    const rate = await this.prisma.tenant.labour_rates.findUnique({ where: { id } });
     if (!rate) throw new NotFoundException('Labour rate not found');
-    return this.prisma.labour_rates.delete({ where: { id } });
+    return this.prisma.tenant.labour_rates.delete({ where: { id } });
   }
 
   // ─── Inspection Templates ──────────────────────────────
   async getTemplates() {
-    return this.prisma.inspection_templates.findMany({
+    return this.prisma.tenant.inspection_templates.findMany({
       include: {
         inspection_sections: {
           include: { inspection_items: { where: { is_active: true }, orderBy: { sort_order: 'asc' } } },
@@ -353,7 +353,7 @@ export class AdminService {
   }
 
   async getTemplate(id: string) {
-    const template = await this.prisma.inspection_templates.findUnique({
+    const template = await this.prisma.tenant.inspection_templates.findUnique({
       where: { id },
       include: {
         inspection_sections: {
@@ -368,7 +368,7 @@ export class AdminService {
 
   async createTemplate(body: any, userId: string) {
     if (!body?.name) throw new BadRequestException('name is required');
-    return this.prisma.inspection_templates.create({
+    return this.prisma.tenant.inspection_templates.create({
       data: {
         id: uuid(),
         name: body.name,
@@ -382,9 +382,9 @@ export class AdminService {
   }
 
   async updateTemplate(id: string, body: any) {
-    const template = await this.prisma.inspection_templates.findUnique({ where: { id } });
+    const template = await this.prisma.tenant.inspection_templates.findUnique({ where: { id } });
     if (!template) throw new NotFoundException('Template not found');
-    return this.prisma.inspection_templates.update({
+    return this.prisma.tenant.inspection_templates.update({
       where: { id },
       data: {
         ...(body.name !== undefined && { name: body.name }),
@@ -397,11 +397,11 @@ export class AdminService {
   }
 
   async deleteTemplate(id: string) {
-    const template = await this.prisma.inspection_templates.findUnique({ where: { id } });
+    const template = await this.prisma.tenant.inspection_templates.findUnique({ where: { id } });
     if (!template) throw new NotFoundException('Template not found');
     // Soft-delete by setting is_active = false so existing inspections
     // that reference this template still resolve correctly.
-    return this.prisma.inspection_templates.update({
+    return this.prisma.tenant.inspection_templates.update({
       where: { id },
       data: { is_active: false },
     });
@@ -409,9 +409,9 @@ export class AdminService {
 
   // ─── Sections ──────────────────────────────────────────
   async addSection(templateId: string, body: { name: string; icon?: string; sort_order?: number }) {
-    const template = await this.prisma.inspection_templates.findUnique({ where: { id: templateId } });
+    const template = await this.prisma.tenant.inspection_templates.findUnique({ where: { id: templateId } });
     if (!template) throw new NotFoundException('Template not found');
-    return this.prisma.inspection_sections.create({
+    return this.prisma.tenant.inspection_sections.create({
       data: {
         id: uuid(),
         template_id: templateId,
@@ -424,9 +424,9 @@ export class AdminService {
   }
 
   async updateSection(sectionId: string, body: { name?: string; icon?: string; sort_order?: number; is_active?: boolean }) {
-    const section = await this.prisma.inspection_sections.findUnique({ where: { id: sectionId } });
+    const section = await this.prisma.tenant.inspection_sections.findUnique({ where: { id: sectionId } });
     if (!section) throw new NotFoundException('Section not found');
-    return this.prisma.inspection_sections.update({
+    return this.prisma.tenant.inspection_sections.update({
       where: { id: sectionId },
       data: {
         ...(body.name !== undefined && { name: body.name }),
@@ -438,20 +438,20 @@ export class AdminService {
   }
 
   async deleteSection(sectionId: string) {
-    const section = await this.prisma.inspection_sections.findUnique({ where: { id: sectionId } });
+    const section = await this.prisma.tenant.inspection_sections.findUnique({ where: { id: sectionId } });
     if (!section) throw new NotFoundException('Section not found');
     // Hard-delete: items are deleted first because they are structurally
     // dependent on the section and have no independent lifecycle.
-    await this.prisma.inspection_items.deleteMany({ where: { section_id: sectionId } });
-    await this.prisma.inspection_sections.delete({ where: { id: sectionId } });
+    await this.prisma.tenant.inspection_items.deleteMany({ where: { section_id: sectionId } });
+    await this.prisma.tenant.inspection_sections.delete({ where: { id: sectionId } });
     return { deleted: true };
   }
 
   async reorderSections(templateId: string, sectionIds: string[]) {
-    const template = await this.prisma.inspection_templates.findUnique({ where: { id: templateId } });
+    const template = await this.prisma.tenant.inspection_templates.findUnique({ where: { id: templateId } });
     if (!template) throw new NotFoundException('Template not found');
     const updates = sectionIds.map((id, index) =>
-      this.prisma.inspection_sections.update({ where: { id }, data: { sort_order: index + 1 } }),
+      this.prisma.tenant.inspection_sections.update({ where: { id }, data: { sort_order: index + 1 } }),
     );
     await this.prisma.$transaction(updates);
     return { reordered: true };
@@ -469,10 +469,10 @@ export class AdminService {
     help_text?: string;
     sort_order?: number;
   }) {
-    const section = await this.prisma.inspection_sections.findUnique({ where: { id: body.section_id } });
+    const section = await this.prisma.tenant.inspection_sections.findUnique({ where: { id: body.section_id } });
     if (!section) throw new NotFoundException('Section not found');
     if (section.template_id !== templateId) throw new BadRequestException('Section does not belong to this template');
-    return this.prisma.inspection_items.create({
+    return this.prisma.tenant.inspection_items.create({
       data: {
         id: uuid(),
         section_id: body.section_id,
@@ -500,9 +500,9 @@ export class AdminService {
     sort_order?: number;
     is_active?: boolean;
   }) {
-    const item = await this.prisma.inspection_items.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.tenant.inspection_items.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Item not found');
-    return this.prisma.inspection_items.update({
+    return this.prisma.tenant.inspection_items.update({
       where: { id: itemId },
       data: {
         ...(body.label !== undefined && { label: body.label }),
@@ -519,17 +519,17 @@ export class AdminService {
   }
 
   async deleteItem(itemId: string) {
-    const item = await this.prisma.inspection_items.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.tenant.inspection_items.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Item not found');
-    await this.prisma.inspection_items.delete({ where: { id: itemId } });
+    await this.prisma.tenant.inspection_items.delete({ where: { id: itemId } });
     return { deleted: true };
   }
 
   async reorderItems(sectionId: string, itemIds: string[]) {
-    const section = await this.prisma.inspection_sections.findUnique({ where: { id: sectionId } });
+    const section = await this.prisma.tenant.inspection_sections.findUnique({ where: { id: sectionId } });
     if (!section) throw new NotFoundException('Section not found');
     const updates = itemIds.map((id, index) =>
-      this.prisma.inspection_items.update({ where: { id }, data: { sort_order: index + 1 } }),
+      this.prisma.tenant.inspection_items.update({ where: { id }, data: { sort_order: index + 1 } }),
     );
     await this.prisma.$transaction(updates);
     return { reordered: true };

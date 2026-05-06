@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -21,6 +21,8 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { InsightsModule } from './insights/insights.module';
 import { BookingImportModule } from './booking-import/booking-import.module';
 import { PriorityModule } from './priority/priority.module';
+import { WorkshopsModule } from './workshops/workshops.module';
+import { WorkshopContextMiddleware } from './common/middleware/workshop-context.middleware';
 
 @Module({
   imports: [
@@ -51,6 +53,7 @@ import { PriorityModule } from './priority/priority.module';
     InsightsModule,
     BookingImportModule,
     PriorityModule,
+    WorkshopsModule,
   ],
   providers: [
     {
@@ -59,4 +62,8 @@ import { PriorityModule } from './priority/priority.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(WorkshopContextMiddleware).forRoutes('*');
+  }
+}

@@ -13,7 +13,7 @@ export class DeferredService {
     const skip = (pagination.page - 1) * pagination.limit;
     const where = status ? { status: status as any } : {};
     const [items, total] = await Promise.all([
-      this.prisma.deferred_work.findMany({
+      this.prisma.tenant.deferred_work.findMany({
         skip,
         take: pagination.limit,
         where,
@@ -24,7 +24,7 @@ export class DeferredService {
         },
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.deferred_work.count({ where }),
+      this.prisma.tenant.deferred_work.count({ where }),
     ]);
     const data = items.map((item: (typeof items)[number]) => ({
       ...item,
@@ -35,7 +35,7 @@ export class DeferredService {
   }
 
   async findOne(id: string) {
-    const item = await this.prisma.deferred_work.findUnique({
+    const item = await this.prisma.tenant.deferred_work.findUnique({
       where: { id },
       include: {
         customers: true,
@@ -54,7 +54,7 @@ export class DeferredService {
     await this.findOne(id);
     const data: any = { ...dto };
     if (dto.remind_after) data.remind_after = new Date(dto.remind_after);
-    return this.prisma.deferred_work.update({ where: { id }, data });
+    return this.prisma.tenant.deferred_work.update({ where: { id }, data });
   }
 
   async remindNow(id: string) {
@@ -167,7 +167,7 @@ export class DeferredService {
   async getDueReminders() {
     // Returns deferred items where remind_after has passed, used by any
     // future cron or polling mechanism for automated reminders.
-    return this.prisma.deferred_work.findMany({
+    return this.prisma.tenant.deferred_work.findMany({
       where: { status: 'pending', remind_after: { lte: new Date() } },
       include: { customers: true, vehicles: true },
     });

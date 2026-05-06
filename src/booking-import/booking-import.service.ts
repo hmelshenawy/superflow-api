@@ -137,7 +137,7 @@ export class BookingImportService {
   // ─── Template CRUD ─────────────────────────────────────
 
   async listTemplates() {
-    const templates = await this.prisma.booking_import_templates.findMany({
+    const templates = await this.prisma.tenant.booking_import_templates.findMany({
       where: { is_active: true },
       orderBy: { created_at: 'desc' },
     });
@@ -145,13 +145,13 @@ export class BookingImportService {
   }
 
   async getTemplate(id: string) {
-    const t = await this.prisma.booking_import_templates.findUnique({ where: { id } });
+    const t = await this.prisma.tenant.booking_import_templates.findUnique({ where: { id } });
     if (!t) throw new NotFoundException('Template not found');
     return { ...t, mappings: JSON.parse(t.mappings) };
   }
 
   async saveTemplate(dto: SaveTemplateDto, userId: string) {
-    return this.prisma.booking_import_templates.create({
+    return this.prisma.tenant.booking_import_templates.create({
       data: {
         id: uuid(),
         name: dto.name,
@@ -163,7 +163,7 @@ export class BookingImportService {
 
   async deleteTemplate(id: string) {
     await this.getTemplate(id);
-    return this.prisma.booking_import_templates.update({
+    return this.prisma.tenant.booking_import_templates.update({
       where: { id },
       data: { is_active: false },
     });
@@ -206,7 +206,7 @@ export class BookingImportService {
         // 1. Find or create customer
         let customer = await this.findCustomer(row);
         if (!customer) {
-          customer = await this.prisma.customers.create({
+          customer = await this.prisma.tenant.customers.create({
             data: {
               id: uuid(),
               name: row.customer_name.trim(),
@@ -220,7 +220,7 @@ export class BookingImportService {
         let vehicle = await this.findVehicle(row, customer.id);
         const vehicleFields = resolveImportedVehicleFields(row);
         if (!vehicle) {
-          vehicle = await this.prisma.vehicles.create({
+          vehicle = await this.prisma.tenant.vehicles.create({
             data: {
               id: uuid(),
               customer_id: customer.id,
@@ -249,14 +249,14 @@ export class BookingImportService {
           if (row.vehicle_plate?.trim() && !vehicle.plate) updateData.plate = row.vehicle_plate.trim();
           if (row.vehicle_vin?.trim() && !vehicle.vin) updateData.vin = normalizeVin(row.vehicle_vin);
           if (Object.keys(updateData).length > 1) {
-            await this.prisma.vehicles.update({ where: { id: vehicle.id }, data: updateData });
+            await this.prisma.tenant.vehicles.update({ where: { id: vehicle.id }, data: updateData });
           }
         }
 
         // 3. Duplicate check: WIP/job_number first, then VIN
         // a) Match by WIP/job_number — if exists, skip (duplicate booking)
         if (row.job_number?.trim()) {
-          const existingJob = await this.prisma.jobs.findUnique({
+          const existingJob = await this.prisma.tenant.jobs.findUnique({
             where: { job_number: row.job_number.trim() },
           });
           if (existingJob) {
@@ -268,9 +268,9 @@ export class BookingImportService {
         // b) Match by VIN — if same VIN has an active booked job, skip (car already in booking column)
         const vinToCheck = normalizeVin(row.vehicle_vin);
         if (vinToCheck) {
-          const vinVehicle = await this.prisma.vehicles.findUnique({ where: { vin: vinToCheck } });
+          const vinVehicle = await this.prisma.tenant.vehicles.findUnique({ where: { vin: vinToCheck } });
           if (vinVehicle) {
-            const activeBooking = await this.prisma.jobs.findFirst({
+            const activeBooking = await this.prisma.tenant.jobs.findFirst({
               where: { vehicle_id: vinVehicle.id, status: 'booked' },
             });
             if (activeBooking) {
@@ -284,7 +284,7 @@ export class BookingImportService {
         let advisorId: string | null = null;
         const ownerCode = row.advisor_id?.trim() || null;
         if (ownerCode) {
-          const advisor = await this.prisma.users.findFirst({
+          const advisor = await this.prisma.raw.users.findFirst({
             where: {
               OR: [
                 { employee_code: ownerCode },
@@ -297,7 +297,7 @@ export class BookingImportService {
         }
 
         // 5. Create job
-        await this.prisma.jobs.create({
+        await this.prisma.tenant.jobs.create({
           data: {
             id: uuid(),
             job_number: row.job_number?.trim() || null,
@@ -337,19 +337,19 @@ export class BookingImportService {
 
   private async findCustomer(row: BookingRow) {
     if (row.customer_phone?.trim()) {
-      const byPhone = await this.prisma.customers.findFirst({
+      const byPhone = await this.prisma.tenant.customers.findFirst({
         where: { phone: row.customer_phone.trim(), is_active: true },
       });
       if (byPhone) return byPhone;
     }
     if (row.customer_email?.trim()) {
-      const byEmail = await this.prisma.customers.findFirst({
+      const byEmail = await this.prisma.tenant.customers.findFirst({
         where: { email: row.customer_email.trim(), is_active: true },
       });
       if (byEmail) return byEmail;
     }
     if (row.customer_name?.trim()) {
-      const byName = await this.prisma.customers.findFirst({
+      const byName = await this.prisma.tenant.customers.findFirst({
         where: { name: { equals: row.customer_name.trim() }, is_active: true },
       });
       if (byName) return byName;
@@ -359,13 +359,13 @@ export class BookingImportService {
 
   private async findVehicle(row: BookingRow, customerId: string) {
     if (row.vehicle_vin?.trim()) {
-      const byVin = await this.prisma.vehicles.findUnique({
+      const byVin = await this.prisma.tenant.vehicles.findUnique({
         where: { vin: normalizeVin(row.vehicle_vin)! },
       });
       if (byVin) return byVin;
     }
     if (row.vehicle_plate?.trim()) {
-      const byPlate = await this.prisma.vehicles.findFirst({
+      const byPlate = await this.prisma.tenant.vehicles.findFirst({
         where: { plate: row.vehicle_plate.trim(), customer_id: customerId },
       });
       if (byPlate) return byPlate;
