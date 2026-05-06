@@ -38,7 +38,7 @@ export const workshopTenantExtension = Prisma.defineExtension({
   model: {
     $allModels: {
       $allOperations: {
-        async $allArgs({ model, operation, args, query }) {
+        async $allArgs({ model, operation, args, query }: { model: string; operation: string; args: any; query: (args: any) => Promise<any> }) {
           if (!TENANT_SCOPED_MODELS.has(model)) {
             return query(args);
           }

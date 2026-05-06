@@ -33,7 +33,7 @@ export class VehiclesService {
     const engine = this.cleanString(dto.engine);
 
     if (vin) {
-      const existing = await this.prisma.tenant.vehicles.findUnique({ where: { vin } });
+      const existing = await this.prisma.tenant.vehicles.findFirst({ where: { vin } });
       if (existing) {
         // Existing VIN found — merge incoming fields over the existing record
         // so we never duplicate vehicles on repeated job creation.
@@ -100,7 +100,7 @@ export class VehiclesService {
     const normalizedVin = vin.trim().toUpperCase().substring(0, 17);
     if (normalizedVin.length !== 17) throw new BadRequestException('VIN must be exactly 17 characters');
 
-    const existingVehicle = await this.prisma.tenant.vehicles.findUnique({
+    const existingVehicle = await this.prisma.tenant.vehicles.findFirst({
       where: { vin: normalizedVin },
       include: { customers: { select: { id: true, name: true, phone: true } } },
     });

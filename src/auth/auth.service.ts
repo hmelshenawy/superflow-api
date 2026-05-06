@@ -164,7 +164,7 @@ export class AuthService {
       where: { user_id: userId },
       include: { workshops: { select: { id: true, name: true, slug: true, is_active: true } } },
     });
-    return accesses.map((a) => a.workshops).filter((w) => w.is_active);
+    return accesses.map((a: any) => a.workshops).filter((w: any) => w.is_active);
   }
 
   async selectWorkshop(userId: string, workshopId: string) {

@@ -102,7 +102,7 @@ export class InspectionsService {
         where: { inspection_sections: { template_id: inspection.template_id } },
         select: { id: true },
       });
-      const validIds = new Set(validItems.map(i => i.id));
+      const validIds = new Set(validItems.map((i: any) => i.id));
       for (const r of dto.responses) {
         if (!validIds.has(r.item_id)) {
           throw new BadRequestException(`Item ${r.item_id} does not belong to this inspection's template`);
@@ -120,7 +120,7 @@ export class InspectionsService {
           select: { id: true },
         })
       : [];
-    const odometerItemIds = new Set(odometerItems.map(i => i.id));
+    const odometerItemIds = new Set(odometerItems.map((i: any) => i.id));
 
     const results = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];

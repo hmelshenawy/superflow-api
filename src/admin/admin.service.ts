@@ -45,7 +45,7 @@ export class AdminService {
       const valueType = item.valueType || 'string';
       const value = valueType === 'json' ? JSON.stringify(item.value) : String(item.value ?? '');
 
-      const existing = await this.prisma.tenant.settings.findUnique({ where: { key } });
+      const existing = await this.prisma.tenant.settings.findFirst({ where: { key } });
       if (existing) {
         result.push(await this.prisma.tenant.settings.update({
           where: { id: existing.id },
@@ -121,7 +121,7 @@ export class AdminService {
   }
 
   async testIntegration(name: string) {
-    const integration = await this.prisma.tenant.integrations.findUnique({ where: { name } });
+    const integration = await this.prisma.tenant.integrations.findFirst({ where: { name } });
     if (!integration) throw new NotFoundException('Integration not found');
 
     let parsedConfig: any = {};

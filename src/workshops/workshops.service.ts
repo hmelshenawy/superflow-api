@@ -66,7 +66,7 @@ export class WorkshopsService {
         users: { select: { id: true, name: true, email: true, is_active: true, roles: { select: { name: true } } } },
       },
     });
-    return accesses.map((a) => ({
+    return accesses.map((a: any) => ({
       id: a.id,
       userId: a.user_id,
       assignedAt: a.assigned_at,

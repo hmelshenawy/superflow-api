@@ -15,7 +15,6 @@ export class AuditService {
     oldValues?: any;
     newValues?: any;
     ipAddress?: string | null;
-    userAgent?: string | null;
   }) {
     // Central audit entry point — all sensitive actions (status transitions,
     // portal decisions, inspection submit/reopen) write through here.
@@ -29,7 +28,6 @@ export class AuditService {
         old_values: params.oldValues !== undefined ? JSON.stringify(params.oldValues) : null,
         new_values: params.newValues !== undefined ? JSON.stringify(params.newValues) : null,
         ip_address: params.ipAddress || null,
-        user_agent: params.userAgent || null,
       },
     });
   }

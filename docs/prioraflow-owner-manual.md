@@ -1,6 +1,6 @@
 # PrioraFlow — Owner Manual
 
-**Version:** 1.2  
+**Version:** 1.1  
 **Date:** May 2026  
 **For:** Service center owners, general managers, and operations leadership
 
@@ -27,13 +27,10 @@
 17. [Deferred Work](#17-deferred-work)
 18. [Notifications](#18-notifications)
 19. [Settings & Configuration](#19-settings--configuration)
-20. [Workshop Insights Dashboard](#20-workshop-insights-dashboard)
-21. [Audit Logs](#21-audit-logs)
-22. [Priority API Reference](#22-priority-api-reference)
-23. [Technical Architecture](#23-technical-architecture)
-24. [Deployment Guide](#24-deployment-guide)
-25. [Security Model](#25-security-model)
-26. [Glossary](#26-glossary)
+20. [Technical Architecture](#20-technical-architecture)
+21. [Deployment Guide](#21-deployment-guide)
+22. [Security Model](#22-security-model)
+23. [Glossary](#23-glossary)
 
 ---
 
@@ -145,59 +142,144 @@ As an admin, configure these before your team starts using the system:
 
 ## 4. User Roles & Permissions
 
-PrioraFlow uses **granular permission-based access control**. Each user account is assigned one role, and each role carries a specific set of permissions. The backend checks these permissions on every API request — not the role name itself.
+PrioraFlow uses **role-based access control**. Each user account is assigned one role. The role controls what screens the user can access and what backend actions they are allowed to perform.
 
-> **The `admin` role always passes every permission check**, regardless of what permissions are listed in its record. This is hardcoded and cannot be overridden.
+### Available Roles
 
-### 6 Default Roles
-
-| Role | Permissions | Purpose |
+| Role | Purpose | Current Permission Keys |
 |---|---|---|
-| **Admin** | All 43 | Full owner/system access |
-| **Manager** | 39 | Operational management — everything except audit logs and user deletion |
-| **Service Advisor** | 25 | Front-office — customers, estimates, jobs, authorisations |
-| **Workshop Team Leader** | 18 | Workshop floor leader — assign jobs, create/edit estimates, reopen inspections |
-| **Technician** | 11 | Workshop execution — view jobs, transition status, perform inspections |
-| **Receptionist** | 7 | Front desk — book customers and vehicles |
+| **Admin** | Full owner/system administrator access | `*` |
+| **Manager** | Operational management access | `jobs:read`, `jobs:write`, `customers:read`, `estimates:read`, `estimates:write`, `reports:read`, `settings:read`, `settings:write` |
+| **Service Advisor** | Advisor workflow: customers, jobs, estimates, inspections | `jobs:read`, `jobs:write`, `customers:read`, `customers:write`, `estimates:read`, `estimates:write`, `inspections:read`, `inspections:write` |
+| **Receptionist** | Front-desk booking/customer creation | `customers:read`, `customers:write`, `jobs:read`, `jobs:write` |
+| **Technician** | Inspection/workshop execution | `inspections:read`, `inspections:write`, `jobs:read`, `media:write` |
 
-### Key Differences: Team Leader vs Technician
+> Important: in the current backend, route-level access is mainly enforced by **role name** (`admin`, `manager`, `service_advisor`, etc.). The permission-key list is stored for configuration/future UI logic and should still be kept accurate when creating custom roles.
 
-The Workshop Team Leader role was designed to bridge the gap between Technician and Advisor:
+### Admin Permissions
 
-| Ability | Technician | Team Leader |
-|---|---|---|
-| View jobs | ✅ | ✅ |
-| Transition job status | ✅ | ✅ |
-| Create/edit estimates | ❌ | ✅ |
-| Assign technicians | ❌ | ✅ |
-| Update job details | ❌ | ✅ |
-| Reopen inspections | ❌ | ✅ |
-| View priority & insights | ❌ | ✅ |
+Admin is the owner-level role. Admin can:
+
+- See all jobs, users, roles, settings, templates, labour rates, integrations, reports, and audit-sensitive configuration.
+- Create, update, deactivate, and reset passwords for users.
+- Create, update, and delete roles.
+- Create/update/delete labour rates.
+- Create/update/delete inspection templates, sections, and items.
+- Update system settings, priority weights, and integrations.
+- Access all jobs regardless of advisor or technician assignment.
+- Archive/unarchive where supported by the workflow.
+
+Admin-only backend actions include:
+
+| Area | Admin-only Examples |
+|---|---|
+| Users | Delete/deactivate users, reset user passwords |
+| Roles | Create/update/delete roles |
+| Labour Rates | Delete labour rates |
+| Templates | Delete templates |
+| System | Full access to all protected settings and configuration |
+
+### Service Advisor Permissions
+
+Service Advisor is the daily front-line role. A service advisor can:
+
+- View job board data relevant to their advisor workflow.
+- Create and update jobs.
+- Move jobs through advisor-owned statuses such as Booked, Checking, Estimate Sent, Approved, and Closed when valid.
+- Mark a booked customer as **Arrived**. This moves the job from `booked` to `checking` and records `arrived_at`.
+- Mark a booked job as **No Show** when valid. The Kanban board safely handles `no_show` jobs even though there is no visible No Show column.
+- Create/update customers.
+- Read/write estimates.
+- Read/write inspections where the advisor workflow requires it.
+- Upload/read job media when the route allows it.
+
+A service advisor cannot normally:
+
+- Manage users or reset passwords.
+- Create, update, or delete roles.
+- Delete templates or labour rates.
+- Change protected system settings.
+- Access admin-only configuration screens unless explicitly allowed by the backend route.
+
+### Manager Permissions
+
+Manager is between Admin and Service Advisor. Manager can generally:
+
+- See all jobs.
+- Manage operational settings.
+- View reports and dashboard stats.
+- Manage labour rates and templates where the backend allows manager access.
+- Create and update users, but not perform admin-only destructive actions such as deleting roles or resetting passwords unless explicitly granted.
+
+### Receptionist Permissions
+
+Receptionist is for front-desk intake. Receptionist can generally:
+
+- Create and update customers.
+- Create and update bookings/jobs.
+- View jobs needed for booking/reception work.
+
+Receptionist should not manage settings, roles, templates, labour rates, or password resets.
+
+### Technician Permissions
+
+Technician is for workshop execution. Technician can generally:
+
+- View assigned jobs/workshop tasks.
+- Read and complete inspections.
+- Upload media/photos.
+- Update workshop-related progress where the route allows it.
+
+Technician should not manage customers, estimates, settings, roles, users, or admin configuration.
 
 ### Role-Based Job Visibility
 
-- Advisors see **only their own jobs**
-- Technicians see **only jobs assigned to them**
-- Team Leaders see **all workshop-phase jobs**
-- Managers and Admins see **all jobs**
+- Advisors see **only their own jobs** by default.
+- Technicians see **only jobs assigned to them**.
+- Managers and admins see **all jobs**.
+- Archived jobs are hidden from the active board unless the Archive filter is enabled.
+- `no_show` is intentionally not a Kanban column; the board skips statuses that are not visible columns so the board remains stable.
 
-### Managing Roles & Permissions
+### Creating a New Role
 
-You can create custom roles and edit permissions for any role through the API:
+Only an **Admin** can create a role.
 
-| Action | Endpoint | Required Permission |
+Recommended process:
+
+1. Go to **Admin → Users & Roles**.
+2. Open the **Roles** section.
+3. Click **Create Role**.
+4. Enter:
+   - **Name**: use a stable lowercase name such as `parts_coordinator` or `workshop_controller`.
+   - **Description**: short business explanation.
+   - **Permissions**: JSON/list of permission keys. Example: `["jobs:read", "jobs:write", "customers:read"]`.
+5. Save the role.
+6. Assign the role to users from the user management screen.
+
+Backend API reference:
+
+| Action | Endpoint | Required Role |
 |---|---|---|
-| List all roles | `GET /api/admin/roles` | `admin:roles` |
-| Get all available permissions | `GET /api/admin/permissions` | `admin:roles` |
-| Create a role | `POST /api/admin/roles` | `admin:roles` |
-| Update role permissions | `PATCH /api/admin/roles/:id` | `admin:roles` |
-| Delete a role | `DELETE /api/admin/roles/:id` | `admin:roles` |
+| List roles | `GET /api/admin/roles` | Admin or Manager |
+| Create role | `POST /api/admin/roles` | Admin |
+| Update role | `PATCH /api/admin/roles/:id` | Admin |
+| Delete role | `DELETE /api/admin/roles/:id` | Admin |
 
-When you update a role's permissions, users with that role get the new permissions on their next login.
+Example create-role payload:
 
-Safety: you cannot delete a role that has users assigned to it. Avoid renaming the 6 core roles — the backend uses role names for job visibility filtering.
+```json
+{
+  "name": "parts_coordinator",
+  "description": "Parts team member who can read jobs and update parts workflow",
+  "permissions": ["jobs:read", "jobs:write", "customers:read"]
+}
+```
 
-> **Full permission reference:** See [`docs/permissions-reference.md`](./permissions-reference.md) for the complete list of all 44 permissions, endpoint-to-permission mapping, and API examples.
+Safety rules:
+
+- Do not delete a role while users are assigned to it; the backend blocks this.
+- Avoid renaming core roles (`admin`, `manager`, `service_advisor`, `technician`, `receptionist`) unless the backend guards are also reviewed.
+- If a new role must access protected screens, confirm the backend route allows that role name.
 
 ## 5. The Job Lifecycle
 
@@ -301,26 +383,16 @@ The system automatically handles these when status changes:
 
 ## 6. The Priority Engine
 
-This is the heart of PrioraFlow. Every active job receives a **live priority score** from 0 to 100 — a single number that drives all risk badges, urgency labels, and dashboard sorting.
-
-### Single Score System
-
-There is **one scoring system**. The same `priorityScore` determines:
-- The priority level badge (Low / Normal / High / Critical) on every card
-- The action card urgency label
-- Dashboard sorting and filtering
-- Stats counters
-
-No separate calculations. No mismatched thresholds. One number, one meaning.
+This is the heart of PrioraFlow. Every active job receives a **live priority score** from 0 to 100.
 
 ### Priority Levels
 
 | Score | Level | Color | Meaning |
 |---|---|---|---|
-| 0–21 | **Low** | Grey | No urgency. Normal progress. |
-| 22–39 | **Normal** | Blue | Standard attention needed. |
-| 40–59 | **High** | Amber | Elevated urgency — act soon. |
-| ≥ 60 | **Critical** | Red | Immediate action required. |
+| 0–39 | **Low** | Grey | No urgency. Normal progress. |
+| 40–64 | **Normal** | Blue | Standard attention needed. |
+| 65–84 | **High** | Amber | Elevated urgency — action soon. |
+| 85–100 | **Critical** | Red | Immediate action required. |
 
 ### How the Score Is Calculated
 
@@ -328,13 +400,11 @@ No separate calculations. No mismatched thresholds. One number, one meaning.
 
 Every job starts with a base score of 10. Then each active factor adds its weight. The total is capped at 100.
 
-The action card's **urgency** (Low / Normal / High / Critical) is derived directly from this same `priorityScore` — not from a separate calculation.
-
 ### Priority Factors
 
 | Factor | Default Weight | When It Applies | Category |
 |---|---:|---|---|
-| Promise Overdue | 30 | Promised date has passed and job is not Booked/Ready/Closed | Promise Risk |
+| Promise Overdue | 30 | Promised date has passed and job is not Ready/Closed | Promise Risk |
 | Promise Due ≤ 2h | 20 | Promised date is within 2 hours | Promise Risk |
 | Promise Due ≤ 6h | 10 | Promised date is within 6 hours | Promise Risk |
 | No Promised Date | 5 | Active job (not booked/closed) has no promised date | Promise Risk |
@@ -346,9 +416,8 @@ The action card's **urgency** (Low / Normal / High / Critical) is derived direct
 | Parts Backorder | 22 | Parts status is "Backorder" | Parts Risk |
 | Parts Waiting Warehouse | 16 | Parts status is "Waiting Warehouse" | Parts Risk |
 | Parts Need Order | 12 | Parts status is "Order Parts" or job is "Waiting Parts" | Parts Risk |
-| **Idle 24h+** | **20** | **Job hasn't been updated in 24+ hours (excludes Booked/Ready/Closed)** | **Idle Risk** |
-| Idle 12h+ | 12 | Job hasn't been updated in 12+ hours (excludes Booked/Ready/Closed) | Idle Risk |
-| Idle 6h+ | 6 | Job hasn't been updated in 6+ hours (excludes Booked/Ready/Closed) | Idle Risk |
+| Idle 12h+ | 12 | Job hasn't been updated in 12+ hours (not booked) | Idle Risk |
+| Idle 6h+ | 6 | Job hasn't been updated in 6+ hours (not booked) | Idle Risk |
 | Stage: Checking/Diagnosis | 10 | Job is in "Checking" status | Stage Urgency |
 | Stage: QC / Near Delivery | 10 | Job is in "Quality Check" status | Stage Urgency |
 | Ready to Inform | 20 | Job is "Ready" but customer not yet informed | Delivery |
@@ -361,26 +430,30 @@ The action card's **urgency** (Low / Normal / High / Critical) is derived direct
 |---|---|---|
 | 4–8 | Mild nudge — nice to address | Medium estimate, idle 6h |
 | 10–16 | Moderate — should act soon | Parts waiting, VIP customer, QC stage |
-| 18–22 | Strong — act now | Customer waiting, backorder, ready to inform, idle 24h |
+| 18–22 | Strong — act now | Customer waiting, backorder, ready to inform |
 | 30 | Maximum — critical alert | Promise overdue |
 
-### Status Exclusions
+### Example Priority Calculation
 
-Certain statuses are excluded from specific risk factors because they represent terminal or pre-start states, not active delays:
+**Job: Mercedes C-Class, RO-49126**
 
-| Status | Excluded From | Why |
-|---|---|---|
-| **Booked** | Idle risk (6h/12h/24h), Promise overdue | Appointment waiting for its slot — not a stuck job |
-| **Ready** | Idle risk (6h/12h/24h), Promise overdue | Car is done — idle time here is normal collection wait |
-| **Closed** | Idle risk (6h/12h/24h), Promise overdue | Job is finished — no action needed |
+| Factor | Weight |
+|---|---:|
+| Base | 10 |
+| Promise Due ≤ 2h | 20 |
+| Customer Waiting | 22 |
+| Customer VIP | 16 |
+| **Total** | **68** → **High** |
+
+**Priority explanation shown to advisor:**
+> Promise risk: due ≤2h +20 · Customer waiting +22 · Customer sensitivity: VIP +16
 
 ### What Gets Zeroed by "Customer Informed"
 
-When a job is Ready and you click "Customer Informed," the priority score drops significantly because the main urgency factors are resolved:
+When a job is Ready and you click "Customer Informed," urgency factors about getting the car ready or informing the customer are zeroed:
 
 **Zeroed (urgency factors):**
-- Promise risk (overdue, due soon, due today)
-- No promised date penalty
+- Promise risk (overdue, due soon)
 - Customer waiting
 - Waiting customer decision
 - Parts risk
@@ -392,121 +465,61 @@ When a job is Ready and you click "Customer Informed," the priority score drops 
 - Customer sensitivity (angry, VIP, comeback)
 - Estimate value (high, medium)
 
-The Next Best Action also changes from "Notify customer for collection" → "Arrange collection with customer" (Low urgency).
+This means an informed VIP customer with a high-value estimate still shows a meaningful priority — the car is handled, but the customer relationship matters.
 
-### Example Priority Calculations
+### Booked Jobs and Idle Risk
 
-**Job 1: Mercedes C-Class, RO-49126 (Ready, customer not informed)**
+Booked appointments are excluded from idle risk scoring. A booked car that hasn't moved in 12 hours is normal — it's an appointment waiting for its slot, not a stuck job.
 
-| Factor | Weight |
-|---|---:|
-| Base | 10 |
-| Promise Due ≤ 2h | 20 |
-| Customer Waiting | 22 |
-| Customer VIP | 16 |
-| **Total** | **68** → **Critical** |
+---
 
-**Job 2: Toyota Camry, RO-50106 (Ready, customer informed)**
-
-| Factor | Weight |
-|---|---:|
-| Base | 10 |
-| Customer VIP | 16 |
-| High Estimate Value | 8 |
-| **Total** | **34** → **Normal** |
-
-**Job 3: BMW X5, RO-53903 (In Progress, idle 12h, angry customer)**
-
-| Factor | Weight |
-|---|---:|
-| Base | 10 |
-| Idle 12h+ | 12 |
-| Customer Angry | 18 |
-| **Total** | **40** → **High** |
-
-**Job 4: Booking, RO-49715 (Booked, idle 24h)**
-
-| Factor | Weight |
-|---|---:|
-| Base | 10 |
-| *(idle excluded — booked)* | 0 |
-| **Total** | **10** → **Low** |
-
-### Priority Score in the Next Best Action
-
-The action card shows the job's `priorityScore` and derives its urgency badge from the same thresholds:
-
-| Score Range | Urgency Badge | Color |
-|---|---|---|
-| 0–21 | Low | Grey |
-| 22–39 | Normal | Blue |
-| 40–59 | High | Amber |
-| ≥ 60 | Critical | Red |
-
-This is why a score of 27 always shows "Normal" everywhere — on the card, on the badge, on the stats. One number, one label.
 ## 7. Next Best Actions
 
 Every active job has a **Next Best Action** — the system tells the responsible person exactly what to do. This eliminates the "walk the floor and ask" approach and gives management confidence that nothing falls through the cracks.
 
 ### How It Works
 
-The action is determined by the job's current status and phase. The action card displays:
-- **Title** — what to do
-- **Urgency badge** — derived from the job's priorityScore (same single-score system)
-- **Owner** — who should act (Advisor / Workshop / Parts)
-- **Reason** — why it matters, including risk signals
-- **Score** — the job's priorityScore
+The action is determined by the job's current status and phase. Risk signals (promise overdue, customer waiting, VIP, etc.) increase the action's urgency and explain *why* it matters now. **Management can see the full action queue across all advisors**, not just per-person.
 
 ### Actions by Status
 
-| Job Status | Next Best Action | Owner | Typical Score Range |
-|---|---|---|---|
-| **Booked** | Receive vehicle and start check-in | Advisor | 10–16 (Low) |
-| **Checking** | Complete diagnosis and prepare estimate | Advisor | 24–38 (Normal) |
-| **Estimate Sent** | Follow up customer decision | Advisor | 30–50 (Normal–High) |
-| **Approved** | Print job card and release to workshop | Advisor | 26–38 (Normal) |
-| **Waiting Parts** | Check parts ETA and update plan | Parts | 28–50 (Normal–High) |
-| **In Progress** (no technician) | Assign technician and start work | Workshop | 26–42 (Normal–High) |
-| **In Progress** (approval blocker) | Resolve advisor/approval blocker | Advisor | 30–60+ (Normal–Critical) |
-| **In Progress** (parts blocking) | Check parts ETA and unblock technician | Parts | 30–60+ (Normal–Critical) |
-| **In Progress** (normal) | Check technician progress | Workshop | 22–38 (Normal) |
-| **Quality Check** | Complete QC and prepare delivery | Workshop | 28–50 (Normal–High) |
-| **Ready** (customer not informed) | Notify customer for collection | Advisor | 24–44 (Normal–High) |
-| **Ready** (customer informed) | Arrange collection with customer | Advisor | 10–34 (Low–Normal) |
+| Job Status | Next Best Action | Owner |
+|---|---|---|
+| **Booked** | Receive vehicle and start check-in | Advisor |
+| **Checking** | Complete diagnosis and prepare estimate | Advisor |
+| **Estimate Sent** | Follow up customer decision | Advisor |
+| **Approved** | Print job card and release to workshop | Advisor |
+| **Waiting Parts** | Check parts ETA and update plan | Parts |
+| **In Progress** (no technician) | Assign technician and start work | Workshop |
+| **In Progress** (approval blocker) | Resolve advisor/approval blocker | Advisor |
+| **In Progress** (parts blocking) | Check parts ETA and unblock technician | Parts |
+| **In Progress** (normal) | Check technician progress | Workshop |
+| **Quality Check** | Complete QC and prepare delivery | Workshop |
+| **Ready** | Notify customer for collection | Advisor |
 
-### Customer Informed Impact on Actions
+### Action Urgency Levels
 
-When a "Ready" job has the **Customer Informed** flag set:
-
-| Before Inform | After Inform |
-|---|---|
-| Action: "Notify customer for collection" | Action: "Arrange collection with customer" |
-| Risk signals show idle, promise, etc. | Risk signals suppressed — only "customer informed" and "ready for delivery" |
-| Urgency: Normal–High | Urgency: Low |
-| Score: 24–44+ | Score: 10–34 |
-
-This prevents the common false alarm where a ready, informed car still shows high risk signals.
+| Urgency | When | Color |
+|---|---|---|
+| Low | Base scenario, no risk signals | Grey |
+| Normal | Some risk signals present | Blue |
+| High | Multiple risk signals | Amber |
+| Critical | Promise overdue, angry customer, or multiple strong signals | Red |
 
 ### Risk Signals
 
-Each action shows the risk signals that make it urgent (only for non-excluded statuses):
+Each action shows the risk signals that make it urgent:
 
-- **Promise overdue** — promised date has passed (excluded for Booked/Ready/Closed)
+- **Promise overdue** — promised date has passed
 - **Promise due within 2h** — delivery promised very soon
 - **Promise due within 6h** — delivery promised today
 - **Customer waiting** — customer is at the workshop
 - **Angry/VIP/Comeback customer** — sensitive customer relationship
-- **Idle 6h+/12h+/24h+** — job hasn't progressed in too long (excluded for Booked/Ready/Closed)
+- **Idle 6h+/12h+** — job hasn't progressed in too long
 - **Parts: backorder/waiting/order** — parts are blocking progress
 - **High/medium estimate value** — significant financial value at stake
 
-### Promise Delivery Risk Widget
-
-The "Promised delivery risk" sidebar widget shows jobs where:
-- Promise is overdue, OR promise is within 6 hours
-- **AND** job is NOT in Ready+Customer Informed status
-
-Ready + informed jobs are excluded because the car is done and the customer knows — it's not a delivery risk, just a collection pickup.
+---
 
 ## 8. Workshop Stages
 
@@ -995,207 +1008,7 @@ Configure webhook URLs for notification delivery (WhatsApp, SMS, email, etc.).
 
 ---
 
-## 20. Workshop Insights Dashboard
-
-The Insights Dashboard gives management a **real-time analytical view** of the entire service center. It is the executive summary — the numbers that matter, the trends that signal problems, and the KPIs that track performance.
-
-### Access
-
-- **URL:** `/insights`
-- **Roles:** Admin, Manager, Service Advisor
-- **Data source:** `GET /api/insights/dashboard`
-
-### Dashboard Cards
-
-The top of the page shows key metrics at a glance:
-
-| Card | What It Shows |
-|---|---|
-| **Active Jobs** | Count of non-archived, non-closed jobs |
-| **Customers** | Count of active customer records |
-| **Vehicles** | Total vehicles in the system |
-| **Inspections** | Total inspections on record |
-| **Estimate Lines** | Total estimate lines across all jobs |
-| **Pending Deferred** | Deferred work items still pending follow-up |
-
-### Charts & Visualizations
-
-| Chart | Description | Time Range |
-|---|---|---|
-| **Jobs by Status** | Bar chart showing distribution of jobs across all statuses | Current snapshot |
-| **Jobs Over Time** | Line chart — jobs created vs. jobs closed per day | 30 days |
-| **Arrival / No-Show Trend** | Daily arrival and no-show counts | 14 days |
-| **Advisor Attendance** | Per-advisor arrival vs. no-show ratio | 30 days |
-| **Customer Approval Rate** | Overall % of estimates approved by customers | Rolling |
-| **Inspection Completion** | % of inspections completed vs. pending | Rolling |
-
-### Revenue Metrics
-
-The dashboard tracks revenue visibility:
-
-- **Total estimate value** across all active jobs
-- **Approved revenue** — estimate value on approved/production jobs
-- **Pending revenue** — estimate value still awaiting customer decision
-- Revenue is broken down by job status
-
-### Deferred Work by Status
-
-Shows how many deferred items are in each state (pending, reminded, booked, closed, expired) — this ties directly to the Deferred Work page and helps management track lost revenue recovery.
-
-### Management Use Cases
-
-| Question | Where to Look |
-|---|---|
-| Are we closing jobs fast enough? | Jobs Over Time chart — created vs. closed gap |
-| Are customers approving estimates? | Customer Approval Rate card |
-| Are inspections being completed? | Inspection Completion Rate |
-| Are no-shows a problem? | Arrival / No-Show Trend |
-| How much revenue is at risk? | Revenue metrics + Deferred Work by Status |
-
----
-
-## 21. Audit Logs
-
-PrioraFlow logs every significant action in the system. Audit logs provide a **complete, tamper-proof trail** of who did what, when, and to which record.
-
-### Access
-
-- **Endpoint:** `GET /api/audit-logs`
-- **Roles:** Admin only
-- **Filtering:** By entity type, user, action, and entity ID
-
-### What Gets Logged
-
-| Category | Examples |
-|---|---|
-| **Job changes** | Status transitions, field updates, archive/unarchive |
-| **Estimate changes** | Line added, line edited, line removed, authorization decision |
-| **Customer changes** | Customer created, updated, sensitivity changed |
-| **Inspection** | Inspection created, responses updated, media attached |
-| **Media** | Files uploaded, deleted |
-| **User management** | User created, role changed, password reset |
-| **Settings** | Priority weights changed, system settings updated |
-| **Auth** | Login, logout, token refresh, failed login attempt |
-
-### Log Entry Structure
-
-| Field | Description |
-|---|---|
-| `action` | What happened (e.g., `status_change`, `create`, `update`, `delete`) |
-| `entityType` | What record was affected (e.g., `job`, `estimate_line`, `customer`) |
-| `entityId` | UUID of the affected record |
-| `userId` | UUID of the user who performed the action |
-| `timestamp` | When the action occurred |
-| `oldValue` / `newValue` | Previous and new state (for updates) |
-
-### Management Use Cases
-
-- **Dispute resolution:** "Who changed this job's status and when?"
-- **Compliance:** Full audit trail for regulatory requirements
-- **Performance review:** Track how quickly advisors process estimates
-- **Security investigation:** Identify unauthorized access or suspicious patterns
-
----
-
-## 22. Priority API Reference
-
-The Priority Engine is the **single source of truth** for all priority scoring. The frontend does not compute scores — it consumes the API.
-
-### Endpoints
-
-| Endpoint | Method | Auth | Description |
-|---|---|---|---|
-| `/api/priority` | GET | Admin, Manager, Service Advisor | Get priority scores for all active jobs |
-| `/api/priority/:id` | GET | Admin, Manager, Service Advisor | Get priority score for a single job |
-
-### Query Parameters (Bulk Endpoint)
-
-| Parameter | Type | Description |
-|---|---|---|
-| `status` | string | Filter by status (comma-separated), e.g. `in_progress,waiting_parts` |
-| `advisor_id` | UUID | Filter to a specific advisor's jobs |
-| `limit` | number | Max results (default 200) |
-
-### Response Structure
-
-```json
-{
-  "results": [
-    {
-      "jobId": "uuid",
-      "jobNumber": "PF-0001",
-      "score": 52,
-      "level": "high",
-      "factors": [
-        { "key": "promiseDue2h", "weight": 20, "description": "Promise risk: due ≤2h", "category": "promise" },
-        { "key": "customerAngry", "weight": 18, "description": "Customer sensitivity: angry", "category": "customer" },
-        { "key": "idle12h", "weight": 12, "description": "Idle risk: 12h+", "category": "idle" }
-      ],
-      "idleHours": 14.3,
-      "hoursToPromise": 1.5,
-      "isOverdue": false,
-      "nextAction": {
-        "title": "Follow up customer decision",
-        "reason": "Estimate has been sent...",
-        "urgency": "high",
-        "owner": "advisor",
-        "actionType": "customer_decision_follow_up",
-        "score": 52,
-        "signals": ["waiting customer decision"]
-      }
-    }
-  ],
-  "computedAt": "2026-05-05T12:00:00.000Z"
-}
-```
-
-### Scoring Exclusions
-
-The Priority Engine applies **smart exclusions** to avoid false risk signals:
-
-| Factor | Excluded Statuses | Reason |
-|---|---|---|
-| **Promise overdue** | Booked, Ready, Closed | Booked hasn't started; Ready/Closed are past delivery |
-| **Idle risk** | Booked, Ready, Closed | Booked = not started; Ready/Closed = idle is normal |
-| **Customer Informed jobs** | Ready + Informed | Customer already knows — no risk to signal |
-
-When a job is `ready` **and** `customer_informed = true`, the engine **zeros out** promise, customer-waiting, parts, and stage urgency factors. The only remaining action is "Arrange collection with customer."
-
-### Priority Level Thresholds
-
-| Score Range | Level | Badge Color |
-|---|---|---|
-| 0–21 | Low | Gray |
-| 22–39 | Normal | Blue |
-| 40–59 | High | Amber |
-| 60–100 | Critical | Red |
-
-### Factor Categories
-
-| Category | Factors | What They Measure |
-|---|---|---|
-| **Promise** | `promiseOverdue` (30), `promiseDue2h` (20), `promiseDue6h` (10), `noPromiseDate` (5) | Delivery deadline risk |
-| **Customer** | `customerWaiting` (22), `customerAngry` (18), `customerVip` (16), `customerComeback` (14) | Customer profile risk |
-| **Approval** | `waitingCustomerDecision` (20) | Estimate approval delay |
-| **Parts** | `partsBackorder` (22), `partsWaitingWarehouse` (16), `partsNeedOrder` (12) | Supply chain blockers |
-| **Idle** | `idle24h` (20), `idle12h` (12), `idle6h` (6) | Time since last update |
-| **Stage** | `stageCheckingDiagnosis` (10), `stageQcNearDelivery` (10) | Phase-specific urgency |
-| **Delivery** | `readyToInform` (20) | Ready but customer not informed |
-| **Value** | `highEstimateValue` (8), `mediumEstimateValue` (4) | Revenue at stake |
-
-> **Note:** All weights are configurable from Settings → Priority Matrix. The values above are defaults.
-
-### Frontend Integration
-
-The frontend **never** computes priority scores. Both the Job Board and Job Detail pages fetch from `/api/priority`:
-
-- **Job Board:** Fetches bulk priority on load, merges scores into each job card
-- **Job Detail (Overview tab):** Shows live score, level badge, risk factors, and next action panel
-- **Display helpers** (`getPriorityTone`, `getActionUrgencyClass`) in `jobs-data.ts` are **pure UI mapping** — they convert scores/levels to CSS classes, not scoring logic
-
----
-
-## 23. Technical Architecture
+## 20. Technical Architecture
 
 ### System Components
 
@@ -1267,7 +1080,7 @@ The frontend **never** computes priority scores. Both the Job Board and Job Deta
 
 ---
 
-## 24. Deployment Guide
+## 21. Deployment Guide
 
 ### Requirements
 
@@ -1336,7 +1149,7 @@ docker compose --env-file .env.production up -d
 
 ---
 
-## 25. Security Model
+## 22. Security Model
 
 ### Authentication
 
@@ -1364,7 +1177,7 @@ docker compose --env-file .env.production up -d
 
 ---
 
-## 26. Glossary
+## 23. Glossary
 
 | Term | Definition |
 |---|---|

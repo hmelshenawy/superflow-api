@@ -101,8 +101,8 @@ export class PriorityService {
     });
 
     const results = jobs
-      .map((job) => this.computeForJob(job as any))
-      .sort((a, b) => b.score - a.score);
+      .map((job: any) => this.computeForJob(job as any))
+      .sort((a: any, b: any) => b.score - a.score);
 
     return { results, computedAt: new Date() };
   }

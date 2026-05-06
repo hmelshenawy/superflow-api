@@ -52,7 +52,6 @@ export class AuditInterceptor implements NestInterceptor {
     const entityType = this.resolveEntityType(request);
     const path = String(request.originalUrl || request.url || '');
     const ip = request.ip;
-    const userAgent = request.headers['user-agent'];
     const oldValues = undefined;
     const isAuthEndpoint = /^\/api\/auth\/(login|refresh|register)$/i.test(path);
     const requestBody = isAuthEndpoint
@@ -77,7 +76,6 @@ export class AuditInterceptor implements NestInterceptor {
             response: responseBody,
           },
           ipAddress: ip,
-          userAgent,
         }).catch(() => {});
       }),
     );
