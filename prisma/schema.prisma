@@ -58,8 +58,8 @@ model user_workshop_access {
   workshop_id String    @db.Char(36)
   assigned_at DateTime? @default(now()) @db.DateTime(0)
 
-  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_uwa_user")
-  workshops workshops @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_uwa_workshop")
+  users     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_uwa_user")
+  workshops workshops @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_uwa_workshop")
 
   @@unique([user_id, workshop_id], map: "idx_uwa_user_workshop")
   @@index([user_id], map: "idx_uwa_user")
