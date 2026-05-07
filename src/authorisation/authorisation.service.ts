@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { runWithWorkshop } from '../prisma/workshop-context';
 import { DecideDto } from './dto/decide.dto';
 import { canTransition } from '../jobs/jobs.state-machine';
 
@@ -16,8 +17,11 @@ export class AuthorisationService {
 
   // Portal tokens are stored hashed for the same reason as refresh tokens:
   // a leaked DB row should not grant direct customer portal access.
+  // Portal tokens are accessed by their unique hash, not by workshop, so
+  // we use the raw (unscoped) client. The workshop context is set separately
+  // for subsequent tenant-scoped writes using runWithWorkshop.
   private async getValidTokenByRaw(rawToken: string) {
-    const token = await this.prisma.tenant.approval_tokens.findUnique({
+    const token = await this.prisma.raw.approval_tokens.findUnique({
       where: { token_hash: this.hashToken(rawToken) },
       include: {
         jobs: {
@@ -78,7 +82,7 @@ export class AuthorisationService {
   }
 
   async validatePortalToken(rawToken: string) {
-    const token = await this.prisma.tenant.approval_tokens.findUnique({
+    const token = await this.prisma.raw.approval_tokens.findUnique({
       where: { token_hash: this.hashToken(rawToken) },
     });
     if (!token) throw new NotFoundException('Approval link not found');
@@ -247,17 +251,24 @@ export class AuthorisationService {
   }
 
   async loadPortal(rawToken: string) {
-    const [token, currencyRow] = await Promise.all([
-      this.getValidTokenByRaw(rawToken),
-      this.prisma.tenant.settings.findFirst({ where: { key: 'currency' } }).catch(() => null),
-    ]);
+    const token = await this.getValidTokenByRaw(rawToken);
 
-    if (!token.first_opened_at) {
-      await this.prisma.tenant.approval_tokens.update({
-        where: { id: token.id },
-        data: { first_opened_at: new Date() },
-      }).catch(() => {});
-    }
+    // Portal requests have no JWT, so the workshop context is not set by the
+    // interceptor. Set it from the token's job so tenant-scoped reads/writes work.
+    const workshopId = (token.jobs as any)?.workshop_id;
+    const ctx = { workshopId, isPlatformAdmin: false };
+
+    return runWithWorkshop(ctx, async () => {
+      const currencyRow = workshopId
+        ? await this.prisma.tenant.settings.findFirst({ where: { key: 'currency' } }).catch(() => null)
+        : null;
+
+      if (!token.first_opened_at) {
+        await this.prisma.tenant.approval_tokens.update({
+          where: { id: token.id },
+          data: { first_opened_at: new Date() },
+        }).catch(() => {});
+      }
 
     // Build inspection findings for customer view.
     // Only abnormal findings are shown; normal/pass items are intentionally
@@ -372,6 +383,7 @@ export class AuthorisationService {
       existing_decisions: token.authorisation_decisions,
       currency: currencyRow?.value || 'AED',
     };
+    });
   }
 
   async decideFromPortal(rawToken: string, dto: DecideDto, ip: string, userAgent?: string) {
@@ -387,6 +399,12 @@ export class AuthorisationService {
       }
     }
 
+    // Portal requests have no JWT, so the workshop context is not set by the
+    // interceptor. Set it from the token's job so tenant-scoped writes work.
+    const workshopId = (token.jobs as any)?.workshop_id;
+    if (!workshopId) throw new BadRequestException('No workshop associated with this job');
+
+    return runWithWorkshop({ workshopId, isPlatformAdmin: false }, async () => {
     // Decision submission is transactional because three things must stay in
     // sync: the per-line decisions, the token usage state, and the job status.
     // Use tenant-scoped transaction so workshop_id is auto-injected
@@ -483,5 +501,6 @@ export class AuthorisationService {
       saved: created.length,
       decisions: created,
     };
+    });
   }
 }
