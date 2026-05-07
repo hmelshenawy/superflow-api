@@ -101,32 +101,35 @@ export class UsersService {
   }
 
   async findAssignable(requestingUser?: any) {
-    // Return active technicians and advisors in the same workshop, minimal fields
+    // Return active technicians and advisors for job assignment dropdowns
     const workshopId = requestingUser?.workshopId;
+    const isPlatformAdmin = requestingUser?.role === 'platform_admin';
 
-    // Find the role IDs for technician, service_advisor, admin, and manager
     const targetRoleNames = ['technician', 'service_advisor', 'admin', 'manager', 'workshop_teamleader'];
     const roles = await this.prisma.raw.roles.findMany({
       where: { name: { in: targetRoleNames } },
       select: { id: true, name: true },
     });
     const roleIds = roles.map((r: any) => r.id);
-    const roleNameMap = new Map(roles.map((r: any) => [r.id, r.name]));
 
-    let userIds: string[] = [];
-
+    // Platform admin with no workshop selected sees all users
+    let userIds: string[] | undefined;
     if (workshopId) {
       const accesses = await this.prisma.raw.user_workshop_access.findMany({
         where: { workshop_id: workshopId },
         select: { user_id: true },
       });
       userIds = accesses.map((a: any) => a.user_id);
+    } else if (!isPlatformAdmin) {
+      return [];
     }
 
-    if (userIds.length === 0) return [];
+    const where: any = { is_active: true, role_id: { in: roleIds } };
+    if (userIds && userIds.length > 0) where.id = { in: userIds };
+    else if (userIds && userIds.length === 0) return [];
 
     const users = await this.prisma.raw.users.findMany({
-      where: { id: { in: userIds }, is_active: true, role_id: { in: roleIds } },
+      where,
       select: {
         id: true, name: true, role_id: true,
         roles: { select: { name: true } },
