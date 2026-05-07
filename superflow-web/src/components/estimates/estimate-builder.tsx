@@ -213,6 +213,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       const newLine: EstimateLine = {
         id: crypto.randomUUID(), job_id: jobId,
         inspection_response_id: null, quote_group_id: groupId,
+        quote_group: { ...data },
         type: "labour", description: "", part_number: null, quantity: 1,
         unit_price: defaults.standard_labour_rate, discount_pct: 0,
         tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,

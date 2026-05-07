@@ -40,11 +40,12 @@ export class EstimatesService {
   }
 
   async findByJob(jobId: string) {
-    return this.prisma.tenant.estimate_lines.findMany({
+    const lines = await this.prisma.tenant.estimate_lines.findMany({
       where: { job_id: jobId },
       include: { quote_groups: true },
       orderBy: { sort_order: 'asc' },
     });
+    return lines.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
   }
 
   async getDefaults() {
@@ -227,11 +228,12 @@ export class EstimatesService {
         }
       }
 
-      return tx.estimate_lines.findMany({
+      const saved = await tx.estimate_lines.findMany({
         where: { job_id: jobId },
         include: { quote_groups: true },
         orderBy: { sort_order: 'asc' },
       });
+      return saved.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
     });
   }
 

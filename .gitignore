@@ -25,6 +25,9 @@ Thumbs.db
 .idea/
 *.swp
 
+# Claude Code
+.claude/
+
 # Test coverage
 coverage/
 node_modules.root-owned-backup-20260503T183953Z/

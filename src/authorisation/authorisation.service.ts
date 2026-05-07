@@ -295,7 +295,8 @@ export class AuthorisationService {
     // 1) explicit custom quote groups
     // 2) fallback grouping by inspection finding/response
     // 3) ungrouped General / Other lines
-    const lines = token.jobs?.estimate_lines || [];
+    const rawLines: any[] = token.jobs?.estimate_lines || [];
+    const lines = rawLines.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
     const grouped: any[] = [];
     const byGroup = new Map<string, any[]>();
     const generalLines: any[] = [];

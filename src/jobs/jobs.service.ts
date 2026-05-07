@@ -134,6 +134,7 @@ export class JobsService {
       advisor: job.users_jobs_advisor_idTousers,
       technician: job.users_jobs_technician_idTousers,
       inspection: job.inspections ? { ...job.inspections, responses: job.inspections.inspection_responses } : null,
+      estimate_lines: (job.estimate_lines ?? []).map((l: any) => ({ ...l, quote_group: l.quote_groups })),
     };
   }
 
