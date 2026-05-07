@@ -139,7 +139,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     return { line_total: Math.round(sub * 100) / 100, tax_amount: Math.round(taxAmt * 100) / 100 };
   };
 
-  useEffect(() => { setLines(normalizeLines(initialLines)); }, [initialLines]);
+  // Only reset lines when the incoming data meaningfully changes (new job, server
+  // refresh after save), not on every parent re-render that creates a new array ref.
+  // We compare a serialised fingerprint so optimistic local edits (e.g. group
+  // rename) are not overwritten by the same server data re-rendering.
+  const incomingFingerprint = useMemo(() => JSON.stringify(initialLines.map((l: EstimateLine) => `${l.id}:${l.updated_at ?? l.created_at ?? ""}:${l.quote_group?.title ?? ""}`)), [initialLines]);
+  useEffect(() => { setLines(normalizeLines(initialLines)); }, [incomingFingerprint]);
 
   useEffect(() => {
     const fetchDefaults = async () => {
@@ -221,10 +226,14 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   };
 
   const renameCustomGroup = async (groupId: string, title: string) => {
+    const previousLines = lines;
     setLines((prev) => prev.map((l) => l.quote_group_id === groupId ? { ...l, quote_group: l.quote_group ? { ...l.quote_group, title } : l.quote_group } : l));
     try {
       await api.patch(`/estimates/groups/${groupId}`, { title });
+      // Don't call onUpdate() here — the optimistic update is already correct,
+      // and an immediate refresh could race with the server write, reverting the title.
     } catch {
+      setLines(previousLines); // revert optimistic update on failure
       toast.error("Failed to rename group");
     }
   };
@@ -373,13 +382,14 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                           value={draftGroupTitle}
                           onChange={(e) => setDraftGroupTitle(e.target.value)}
                           autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") { renameCustomGroup(group.quoteGroupId as string, draftGroupTitle); setEditingGroupTitle(null); }
+                          onKeyDown={async (e) => {
+                            e.stopPropagation(); // prevent parent div[role=button] from capturing Space/Enter
+                            if (e.key === "Enter") { await renameCustomGroup(group.quoteGroupId as string, draftGroupTitle); setEditingGroupTitle(null); }
                             if (e.key === "Escape") { setEditingGroupTitle(null); }
                           }}
                         />
-                        <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={() => { renameCustomGroup(group.quoteGroupId as string, draftGroupTitle); setEditingGroupTitle(null); }}>Save</Button>
-                        <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={() => setEditingGroupTitle(null)}>Cancel</Button>
+                        <Button size="sm" className="h-7 rounded-lg bg-slate-950 px-2 text-xs text-white hover:bg-slate-800" onClick={async (e) => { e.stopPropagation(); await renameCustomGroup(group.quoteGroupId as string, draftGroupTitle); setEditingGroupTitle(null); }}>Save</Button>
+                        <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={(e) => { e.stopPropagation(); setEditingGroupTitle(null); }}>Cancel</Button>
                       </div>
                     ) : (
                       <h3 className="cursor-pointer rounded px-1 text-sm font-semibold text-foreground hover:bg-muted" onClick={(e) => { e.stopPropagation(); setDraftGroupTitle(group.title); setEditingGroupTitle(group.quoteGroupId); }}>

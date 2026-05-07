@@ -10,6 +10,7 @@ export interface User {
   created_at: string;
   updated_at: string;
   role?: Role;
+  workshops?: Workshop[];
 }
 
 export interface Role {
@@ -26,6 +27,8 @@ export interface AuthTokens {
   refresh_token?: string;
   accessToken?: string;
   refreshToken?: string;
+  workshopId?: string;
+  workshops?: Workshop[];
 }
 
 export interface LoginRequest {
@@ -33,6 +36,18 @@ export interface LoginRequest {
   password: string;
 }
 
+
+// ─── Workshops ─────────────────────────────────────────
+export interface Workshop {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  timezone?: string | null;
+}
 // ─── Jobs ───────────────────────────────────────────────
 
 export type CustomerSensitivity = "normal" | "vip" | "angry" | "comeback";

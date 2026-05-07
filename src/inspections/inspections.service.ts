@@ -122,7 +122,8 @@ export class InspectionsService {
       : [];
     const odometerItemIds = new Set(odometerItems.map((i: any) => i.id));
 
-    const results = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Use tenant-scoped transaction so workshop_id is auto-injected on create.
+    const results = await this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: any[] = [];
       // Responses are effectively upserted by (inspection_id, item_id). This
       // lets the mobile/offline UI resend the same batch safely.

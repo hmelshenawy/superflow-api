@@ -388,7 +388,8 @@ export class AuthorisationService {
 
     // Decision submission is transactional because three things must stay in
     // sync: the per-line decisions, the token usage state, and the job status.
-    const created = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Use tenant-scoped transaction so workshop_id is auto-injected
+    const created = await this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const rows: any[] = [];
       for (const item of dto.decisions) {
         const row = await tx.authorisation_decisions.create({

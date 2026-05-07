@@ -67,7 +67,8 @@ export class DeferredService {
     const customer = item.customers;
     const recipient = customer.phone || customer.email || 'customer';
 
-    const reminder = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Use tenant-scoped transaction so workshop_id is auto-injected on create
+    const reminder = await this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const row = await tx.deferred_work_reminders.create({
         data: {
           id: uuid(),
@@ -117,7 +118,8 @@ export class DeferredService {
     const jobNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
     const description = item.estimate_lines?.description || 'Deferred work booking';
 
-    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Use tenant-scoped transaction so workshop_id is auto-injected on create
+    const result = await this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const newJob = await tx.jobs.create({
         data: {
           id: uuid(),

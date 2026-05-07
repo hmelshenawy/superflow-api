@@ -128,7 +128,11 @@ export class EstimatesService {
    * lines when they are not referenced elsewhere.
    */
   async bulkReplace(jobId: string, lines: Array<Record<string, any>>, userId: string) {
-    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Use the tenant-scoped client for the transaction so workshop_id is
+    // auto-injected on create/update. The raw prisma.$transaction passes a
+    // plain tx client that bypasses the tenant extension, causing null
+    // constraint violations on workshop_id.
+    return this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const existing = await tx.estimate_lines.findMany({ where: { job_id: jobId } });
       const existingIds = new Set(existing.map((line: (typeof existing)[number]) => line.id));
       const incomingIds = new Set(
@@ -142,7 +146,6 @@ export class EstimatesService {
       for (const gid of groupIds) {
         const existingGroup = await tx.quote_groups.findUnique({ where: { id: gid } });
         if (!existingGroup) {
-          const representativeLine = lines.find((l) => l.quote_group_id === gid);
           await tx.quote_groups.create({
             data: { id: gid, job_id: jobId, title: 'New group', sort_order: 0 },
           });
