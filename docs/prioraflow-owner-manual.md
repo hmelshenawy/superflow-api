@@ -1,6 +1,6 @@
 # PrioraFlow — Owner Manual
 
-**Version:** 1.1  
+**Version:** 2.0  
 **Date:** May 2026  
 **For:** Service center owners, general managers, and operations leadership
 
@@ -29,8 +29,9 @@
 19. [Settings & Configuration](#19-settings--configuration)
 20. [Technical Architecture](#20-technical-architecture)
 21. [Deployment Guide](#21-deployment-guide)
-22. [Security Model](#22-security-model)
-23. [Glossary](#23-glossary)
+22. [Multi-Tenant Architecture & Workshops](#22-multi-tenant-architecture--workshops)
+23. [Security Model](#23-security-model)
+24. [Glossary](#24-glossary)
 
 ---
 
@@ -114,17 +115,20 @@ PrioraFlow gives owners and managers what they've never had before:
 
 1. Open PrioraFlow in your browser (e.g., `https://your-workshop.prioraflow.com`)
 2. Log in with your admin credentials (provided during setup)
-3. You'll land on the **Job Board** — your main cockpit
+3. If you have only one workshop, it is auto-selected and you land on the **Job Board**
+4. If you have multiple workshops, you will be redirected to the **Workshop Selector** — pick the workshop you want to work in
+5. You can switch workshops anytime using the **Workshop Dropdown** in the sidebar
 
 ### Initial Setup
 
-As an admin, configure these before your team starts using the system:
+As a platform admin, configure these before your team starts using the system:
 
-1. **Users & Roles** — Add your advisors, technicians, and managers (Settings → Users)
-2. **Labour Rates** — Set your hourly rates for different operations (Settings → Labour Rates)
-3. **Priority Weights** — Customize scoring to match your workshop's priorities (Settings → Priority Matrix)
-4. **Inspection Templates** — Create or customize inspection checklists (Admin → Templates)
-5. **Integrations** — Connect webhooks for notifications (Settings → Integrations)
+1. **Workshops** — Create your workshops (branches) and assign users to them (Admin → Workshops)
+2. **Users & Roles** — Add your advisors, technicians, and managers (Settings → Users)
+3. **Labour Rates** — Set your hourly rates for different operations (Settings → Labour Rates)
+4. **Priority Weights** — Customize scoring to match your workshop's priorities (Settings → Priority Matrix)
+5. **Inspection Templates** — Create or customize inspection checklists (Admin → Templates)
+6. **Integrations** — Connect webhooks for notifications (Settings → Integrations)
 
 ### Quick Tour
 
@@ -142,145 +146,142 @@ As an admin, configure these before your team starts using the system:
 
 ## 4. User Roles & Permissions
 
-PrioraFlow uses **role-based access control**. Each user account is assigned one role. The role controls what screens the user can access and what backend actions they are allowed to perform.
+PrioraFlow uses **role-based access control** with **workshop-scoped data isolation**. Each user is assigned one global role. Data (jobs, customers, vehicles, etc.) is automatically scoped to the workshop the user selects. The role controls what the user can do; the workshop controls what data they can see.
+
+### Two-Tier Admin System
+
+PrioraFlow has two distinct admin levels:
+
+| | **Platform Admin** | **Workshop Admin** |
+|---|---|---|
+| Role name | `platform_admin` | `workshop_admin` |
+| Scope | Entire platform — all workshops | Own assigned workshop(s) only |
+| Sees all workshops | Yes | No — only assigned workshops |
+| Create/delete workshops | Yes | No |
+| Assign users to any workshop | Yes | Only within own workshop |
+| See all users | Yes (across platform) | Only users in own workshop |
+| Jobs/customers/vehicles | All workshops | Own workshop only |
+| Admin pages (roles, settings) | Yes | Yes |
+| Can create `platform_admin` users | Yes | **No — blocked** |
+| Can see `platform_admin` role | Yes | **No — hidden** |
+| Can change role to `platform_admin` | Yes | **No — blocked** |
 
 ### Available Roles
 
-| Role | Purpose | Current Permission Keys |
+| Role | Purpose | Permission Scope |
 |---|---|---|
-| **Admin** | Full owner/system administrator access | `*` |
-| **Manager** | Operational management access | `jobs:read`, `jobs:write`, `customers:read`, `estimates:read`, `estimates:write`, `reports:read`, `settings:read`, `settings:write` |
-| **Service Advisor** | Advisor workflow: customers, jobs, estimates, inspections | `jobs:read`, `jobs:write`, `customers:read`, `customers:write`, `estimates:read`, `estimates:write`, `inspections:read`, `inspections:write` |
-| **Receptionist** | Front-desk booking/customer creation | `customers:read`, `customers:write`, `jobs:read`, `jobs:write` |
-| **Technician** | Inspection/workshop execution | `inspections:read`, `inspections:write`, `jobs:read`, `media:write` |
+| **Platform Admin** | Platform owner — manages the entire SaaS | All 48 permissions including `workshops:*`, bypasses all workshop scoping |
+| **Workshop Admin** | Workshop owner — manages their own workshop | 46 permissions (all operational + `workshops:read`, `workshops:update`, `workshops:assign-users`), scoped to own workshop |
+| **Manager** | Operational management | 39 permissions — jobs, estimates, inspections, customers, vehicles, admin settings, roles, users, integrations, templates, labour rates, stats |
+| **Service Advisor** | Advisor workflow: customers, jobs, estimates, inspections | 25 permissions — jobs, estimates, inspections, customers, vehicles, media, auth, deferred, admin:settings, priority, insights |
+| **Workshop Team Leader** | Team leader with inspection reopen authority | 18 permissions — jobs (read, update, assign, transition), estimates, inspections (including reopen), read-only customers/vehicles, media, deferred, priority, insights |
+| **Technician** | Workshop execution and inspections | 11 permissions — jobs (read, transition), estimates (read), inspections (read, create, submit), customers/vehicles (read), media, auth, deferred, priority |
+| **Receptionist** | Front-desk booking and customer creation | 9 permissions — jobs (read, create), customers (read, create, update), vehicles (read, create) |
 
-> Important: in the current backend, route-level access is mainly enforced by **role name** (`admin`, `manager`, `service_advisor`, etc.). The permission-key list is stored for configuration/future UI logic and should still be kept accurate when creating custom roles.
+### Platform Admin Permissions
 
-### Admin Permissions
+Platform admin is the **top-level platform owner**. They can:
 
-Admin is the owner-level role. Admin can:
+- See and manage **all workshops** on the platform
+- Create, update, and delete workshops
+- Assign any user to any workshop
+- See **all users** across all workshops
+- Access all data across all workshops (bypasses workshop scoping)
+- Create other `platform_admin` users
+- Perform all administrative functions: roles, settings, templates, labour rates, integrations, audit
 
-- See all jobs, users, roles, settings, templates, labour rates, integrations, reports, and audit-sensitive configuration.
-- Create, update, deactivate, and reset passwords for users.
-- Create, update, and delete roles.
-- Create/update/delete labour rates.
-- Create/update/delete inspection templates, sections, and items.
-- Update system settings, priority weights, and integrations.
-- Access all jobs regardless of advisor or technician assignment.
-- Archive/unarchive where supported by the workflow.
+Platform admin is the **only role that can**:
+- Create or assign the `platform_admin` role to users
+- See the `platform_admin` role in the roles list
+- Access the `/workshops` create and delete endpoints
+- Operate without selecting a workshop (all data visible)
 
-Admin-only backend actions include:
+### Workshop Admin Permissions
 
-| Area | Admin-only Examples |
-|---|---|
-| Users | Delete/deactivate users, reset user passwords |
-| Roles | Create/update/delete roles |
-| Labour Rates | Delete labour rates |
-| Templates | Delete templates |
-| System | Full access to all protected settings and configuration |
+Workshop admin manages **their own workshop**. They can:
+
+- View and edit their own workshop details
+- Assign/remove users within their own workshop
+- See only users assigned to their workshop
+- Create new users (automatically assigned to their workshop)
+- Manage jobs, customers, vehicles, estimates, inspections within their workshop
+- Access admin pages: roles, settings, templates, labour rates, users
+- Use all operational features (full jobs/customers/vehicles/estimates/inspections permissions)
+
+Workshop admin **cannot**:
+- See or access other workshops' data
+- Create or delete workshops
+- See the `platform_admin` role (hidden from their view)
+- Create users with `platform_admin` role (blocked with 403)
+- Change any user's role to `platform_admin` (blocked with 403)
+- See users outside their workshop
 
 ### Service Advisor Permissions
 
 Service Advisor is the daily front-line role. A service advisor can:
 
-- View job board data relevant to their advisor workflow.
-- Create and update jobs.
-- Move jobs through advisor-owned statuses such as Booked, Checking, Estimate Sent, Approved, and Closed when valid.
-- Mark a booked customer as **Arrived**. This moves the job from `booked` to `checking` and records `arrived_at`.
-- Mark a booked job as **No Show** when valid. The Kanban board safely handles `no_show` jobs even though there is no visible No Show column.
-- Create/update customers.
-- Read/write estimates.
-- Read/write inspections where the advisor workflow requires it.
-- Upload/read job media when the route allows it.
+- View and manage jobs within their workshop
+- Create and update jobs
+- Move jobs through advisor-owned statuses (Booked, Checking, Estimate Sent, Approved, Closed)
+- Create and update customers
+- Read/write estimates and inspections
+- Upload job media
 
-A service advisor cannot normally:
+A service advisor cannot:
+- Manage users, roles, or system settings
+- Access admin configuration screens
+- See users or data from other workshops
 
-- Manage users or reset passwords.
-- Create, update, or delete roles.
-- Delete templates or labour rates.
-- Change protected system settings.
-- Access admin-only configuration screens unless explicitly allowed by the backend route.
+### Workshop-Scoped Data Isolation
 
-### Manager Permissions
+All data in PrioraFlow is automatically isolated by workshop. When a user selects a workshop from the dropdown, **every query** is scoped to that workshop:
 
-Manager is between Admin and Service Advisor. Manager can generally:
+- Jobs, customers, vehicles, estimates, inspections, media, deferred work, notifications, settings, labour rates, audit logs — all scoped to the selected workshop
+- Users are scoped: workshop admins see only users in their workshop
+- Workshop data is invisible to users in other workshops
+- Same VIN can exist in different workshops (uniqueness is per-workshop)
+- Same job number can exist in different workshops
 
-- See all jobs.
-- Manage operational settings.
-- View reports and dashboard stats.
-- Manage labour rates and templates where the backend allows manager access.
-- Create and update users, but not perform admin-only destructive actions such as deleting roles or resetting passwords unless explicitly granted.
+Users must select a workshop before accessing data. If no workshop is selected, the system returns empty results (except for `platform_admin` who can operate without one).
 
-### Receptionist Permissions
+### Creating Users
 
-Receptionist is for front-desk intake. Receptionist can generally:
+**As Platform Admin:**
+1. Go to **Admin → Users & Roles**
+2. Click **Add User** — fill in name, email, password, role
+3. User can be assigned `platform_admin` or any other role
+4. Go to **Admin → Workshops** → select workshop → **Assign User** to give them workshop access
 
-- Create and update customers.
-- Create and update bookings/jobs.
-- View jobs needed for booking/reception work.
-
-Receptionist should not manage settings, roles, templates, labour rates, or password resets.
-
-### Technician Permissions
-
-Technician is for workshop execution. Technician can generally:
-
-- View assigned jobs/workshop tasks.
-- Read and complete inspections.
-- Upload media/photos.
-- Update workshop-related progress where the route allows it.
-
-Technician should not manage customers, estimates, settings, roles, users, or admin configuration.
-
-### Role-Based Job Visibility
-
-- Advisors see **only their own jobs** by default.
-- Technicians see **only jobs assigned to them**.
-- Managers and admins see **all jobs**.
-- Archived jobs are hidden from the active board unless the Archive filter is enabled.
-- `no_show` is intentionally not a Kanban column; the board skips statuses that are not visible columns so the board remains stable.
+**As Workshop Admin:**
+1. Go to **Admin → Users & Roles**
+2. Click **Add User** — fill in name, email, password, role
+3. User is automatically assigned to your current workshop
+4. You cannot assign `platform_admin` role — the option is hidden and blocked
 
 ### Creating a New Role
 
-Only an **Admin** can create a role.
+Only admins can create custom roles.
 
-Recommended process:
+1. Go to **Admin → Roles & Permissions**
+2. Click **New Role**
+3. Enter name (lowercase, underscore-separated), description
+4. Select permissions using the quick-fill template or individual toggles
+5. Save the role
 
-1. Go to **Admin → Users & Roles**.
-2. Open the **Roles** section.
-3. Click **Create Role**.
-4. Enter:
-   - **Name**: use a stable lowercase name such as `parts_coordinator` or `workshop_controller`.
-   - **Description**: short business explanation.
-   - **Permissions**: JSON/list of permission keys. Example: `["jobs:read", "jobs:write", "customers:read"]`.
-5. Save the role.
-6. Assign the role to users from the user management screen.
+Safety rules:
+- Do not delete a role while users are assigned to it; the backend blocks this
+- Workshop admins cannot see or assign the `platform_admin` role
+- The `platform_admin` role always bypasses all permission and workshop checks
 
 Backend API reference:
 
-| Action | Endpoint | Required Role |
+| Action | Endpoint | Required Permission |
 |---|---|---|
-| List roles | `GET /api/admin/roles` | Admin or Manager |
-| Create role | `POST /api/admin/roles` | Admin |
-| Update role | `PATCH /api/admin/roles/:id` | Admin |
-| Delete role | `DELETE /api/admin/roles/:id` | Admin |
-
-Example create-role payload:
-
-```json
-{
-  "name": "parts_coordinator",
-  "description": "Parts team member who can read jobs and update parts workflow",
-  "permissions": ["jobs:read", "jobs:write", "customers:read"]
-}
-```
-
-Safety rules:
-
-- Do not delete a role while users are assigned to it; the backend blocks this.
-- Avoid renaming core roles (`admin`, `manager`, `service_advisor`, `technician`, `receptionist`) unless the backend guards are also reviewed.
-- If a new role must access protected screens, confirm the backend route allows that role name.
-
+| List roles | `GET /api/admin/roles` | `admin:roles` |
+| Create role | `POST /api/admin/roles` | `admin:roles` |
+| Update role | `PATCH /api/admin/roles/:id` | `admin:roles` |
+| Delete role | `DELETE /api/admin/roles/:id` | `admin:roles` |
+| List permissions | `GET /api/admin/permissions` | `admin:roles` |
 ## 5. The Job Lifecycle
 
 Every vehicle that enters the workshop follows a structured lifecycle. The system enforces valid transitions — you cannot skip steps or jump backwards arbitrarily.
@@ -1149,14 +1150,134 @@ docker compose --env-file .env.production up -d
 
 ---
 
-## 22. Security Model
+## 22. Multi-Tenant Architecture & Workshops
+
+PrioraFlow is a **multi-tenant SaaS platform**. Multiple workshops (branches, garages, service centers) run on the same platform, each with completely isolated data.
+
+### How It Works
+
+- Each workshop is a separate entity with its own data: jobs, customers, vehicles, estimates, inspections, settings, labour rates, notifications, audit logs, etc.
+- Users are assigned to one or more workshops via the **Workshop Access** system
+- After login, the user selects which workshop to work in from the **Workshop Dropdown** in the sidebar
+- All data queries are automatically scoped to the selected workshop by the **Prisma Client Extension** using AsyncLocalStorage
+- A user in Workshop A **cannot see** Workshop B data — not through the UI, not through the API
+
+### Workshop Management
+
+Workshops are managed by **Platform Admin** only.
+
+| Action | Endpoint | Who Can Do It |
+|---|---|---|
+| List workshops | `GET /api/workshops` | Platform Admin (all), Workshop Admin (own only) |
+| Create workshop | `POST /api/workshops` | Platform Admin only |
+| View workshop details | `GET /api/workshops/:id` | Platform Admin + Workshop Admin (own only) |
+| Edit workshop | `PATCH /api/workshops/:id` | Platform Admin + Workshop Admin (own only) |
+| Delete workshop (soft) | `DELETE /api/workshops/:id` | Platform Admin only |
+| List workshop users | `GET /api/workshops/:id/users` | Platform Admin + Workshop Admin (own only) |
+| Assign user to workshop | `POST /api/workshops/:id/users` | Platform Admin + Workshop Admin (own only) |
+| Remove user from workshop | `DELETE /api/workshops/:id/users/:userId` | Platform Admin + Workshop Admin (own only) |
+
+### Workshop Selector
+
+After login:
+
+1. If the user has **one workshop** only, it is auto-selected
+2. If the user has **multiple workshops**, they select one from the dropdown in the sidebar
+3. Selecting a workshop calls `POST /api/auth/select-workshop`, which returns a new JWT with the selected `workshopId`
+4. The page reloads and all data is scoped to the selected workshop
+5. Switching workshops is instant — just pick from the dropdown
+
+### Data Isolation Details
+
+| Data Type | Scoped Per Workshop | Notes |
+|---|---|---|
+| Jobs | Yes | Same job number can exist in different workshops |
+| Customers | Yes | Each workshop has its own customer list |
+| Vehicles | Yes | Same VIN can exist in different workshops |
+| Estimates / Estimate Lines | Yes | Scoped to workshop |
+| Inspections | Yes | Templates are per-workshop |
+| Media Files | Yes | Photos/docs per workshop |
+| Settings | Yes | Each workshop has independent settings |
+| Labour Rates | Yes | Each workshop sets its own rates |
+| Notifications | Yes | Per-workshop notification queue |
+| Audit Logs | Yes | Activity logs per workshop |
+| Deferred Work | Yes | Per-workshop tracking |
+| Integrations | Yes | Each workshop connects its own webhooks |
+
+**Global (not scoped):**
+| Data Type | Notes |
+|---|---|
+| Users | Global accounts — one login across workshops |
+| Roles | Global — same role names across platform |
+| Workshops | Global entities managed by platform_admin |
+
+### Technical Implementation
+
+The data isolation is enforced at the **database query level** using a Prisma Client Extension:
+
+1. **WorkshopContextInterceptor** runs on every request (after auth guards), reading the `workshopId` from the JWT
+2. It sets an **AsyncLocalStorage** context with `{ workshopId, isPlatformAdmin }`
+3. The **Prisma Client Extension** intercepts every query and automatically injects `workshop_id` into:
+   - **Reads** (`findMany`, `findFirst`, `count`): adds `where: { workshop_id }` 
+   - **Creates**: injects `workshop_id` into `data`
+   - **Updates/Deletes**: adds `workshop_id` to `where` clause
+4. If `platform_admin` has no `workshopId` selected, all scoping is bypassed (they see everything)
+5. If a non-platform user has no `workshopId`, queries return empty results
+
+### Setting Up a New Workshop
+
+**Platform Admin workflow:**
+
+1. Go to **Admin → Workshops**
+2. Click **Create Workshop** — enter name, slug, address, phone, email
+3. Assign users to the workshop via the workshop user management
+4. The assigned users will see the new workshop in their dropdown after login
+5. Configure workshop-specific settings: labour rates, inspection templates, integrations
+
+### Test Credentials
+
+| User | Password | Role | Workshop Access |
+|---|---|---|---|
+| admin@superflow.app | Test1234 | Platform Admin | All workshops (bypass) |
+| nhda_admin@superflow.app | Test1234 | Workshop Admin | Al-Nahda Branch only |
+| fatima@superflow.app | Test1234 | Workshop Admin | Mercedes-Benz Test only |
+| haitham@prioraflow.app | Test1234 | Service Advisor | Mercedes-Benz Test only |
+
+## 23. Security Model
 
 ### Authentication
 
-- **Staff login:** JWT access tokens (short-lived) + Refresh tokens (long-lived)
+- **Staff login:** JWT access tokens (15 min default) + Refresh tokens (30 day expiry)
+- **JWT payload:** `{ sub, role, permissions, workshopId }` — workshopId is set when user selects a workshop
 - **Refresh tokens:** Stored as SHA-256 hashes, rotated on each use
 - **Rate limiting:** Login (5/min), Refresh (10/min)
+- **Workshop selection:** `POST /api/auth/select-workshop` returns new JWT with workshopId
 - **Session management:** View active sessions, revoke individually or all
+
+### Multi-Tenant Data Isolation
+
+- **AsyncLocalStorage context:** Set by `WorkshopContextInterceptor` on every authenticated request
+- **Prisma Client Extension:** Automatically injects `workshop_id` into all queries on scoped models (25 models)
+- **Platform Admin bypass:** `platform_admin` with no workshopId sees all data across all workshops
+- **Workshop Admin scoping:** `workshop_admin` and all other roles are strictly scoped to their selected workshop
+- **Same VIN/Job Number:** Can exist in different workshops — uniqueness is per-workshop, not global
+
+### Role-Based Access Control
+
+- **Permission keys:** Fine-grained permissions (e.g., `jobs:read`, `admin:users:create`) stored in JWT
+- **Permission guard:** `PermissionsGuard` checks each request against required permissions
+- **Platform Admin bypass:** `platform_admin` passes all permission checks automatically
+- **Workshop Admin:** Must have explicit permissions (no bypass) — cannot see or assign `platform_admin` role
+
+### Workshop Admin Restrictions
+
+Workshop admins **cannot**:
+- See the `platform_admin` role in the roles list (hidden)
+- Create users with `platform_admin` role (returns 403 Forbidden)
+- Change any user role to `platform_admin` (returns 403 Forbidden)
+- Create or delete workshops
+- See users outside their assigned workshop
+- Access workshop management endpoints for workshops they are not assigned to
 
 ### Customer Portal
 
@@ -1169,15 +1290,14 @@ docker compose --env-file .env.production up -d
 ### Data Protection
 
 - **Soft deletes:** Media and some records use soft deletion (recoverable)
-- **Audit logging:** All significant actions are logged
+- **Audit logging:** All significant actions are logged with workshop context
 - **Input validation:** Strict DTO validation rejects unknown fields
 - **CORS:** Configured origins only
 - **Helmet:** Security headers enabled
 - **Throttling:** Global rate limiting on all API routes
 
 ---
-
-## 23. Glossary
+## 24. Glossary
 
 | Term | Definition |
 |---|---|

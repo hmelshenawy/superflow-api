@@ -28,7 +28,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Admin and platform_admin always pass
-    if (user.role === 'admin' || user.role === 'platform_admin') return true;
+    if (user.role === 'platform_admin') return true;
 
     const userPermissions: string[] = user.permissions ?? [];
     const hasPermission = requiredPermissions.some((p) => userPermissions.includes(p));

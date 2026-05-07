@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Request, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -18,9 +18,10 @@ export class UsersController {
 
   @Get()
   @RequirePermission(ADMIN_USERS)
-  @ApiOperation({ summary: 'List all staff (admin)' })
-  findAll(@Query() pagination: PaginationDto) {
-    return this.service.findAll(pagination);
+  @ApiOperation({ summary: 'List staff (scoped to workshop)' })
+  findAll(@Request() req: any, @Query() pagination: PaginationDto) {
+    const user = req.user;
+    return this.service.findAll(pagination, user);
   }
 
   @Get(':id')
@@ -32,27 +33,29 @@ export class UsersController {
   @Post()
   @RequirePermission(ADMIN_USERS_CREATE)
   @ApiOperation({ summary: 'Create staff account' })
-  create(@Body() dto: CreateUserDto) {
-    return this.service.create(dto);
+  create(@Request() req: any, @Body() dto: CreateUserDto) {
+    const user = req.user;
+    return this.service.create(dto, user);
   }
 
   @Post('invite')
   @RequirePermission(ADMIN_USERS_CREATE)
   @ApiOperation({ summary: 'Invite/create staff account' })
-  invite(@Body() dto: CreateUserDto) {
-    return this.service.create(dto);
+  invite(@Request() req: any, @Body() dto: CreateUserDto) {
+    const user = req.user;
+    return this.service.create(dto, user);
   }
 
   @Patch(':id')
   @RequirePermission(ADMIN_USERS)
   @ApiOperation({ summary: 'Update user' })
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.service.update(id, dto);
+  update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.service.update(id, dto, req.user);
   }
 
   @Post(':id/reset-password')
   @RequirePermission(ADMIN_USERS_DELETE)
-  @ApiOperation({ summary: 'Admin reset a user\'s password' })
+  @ApiOperation({ summary: 'Admin reset a user password' })
   resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
     return this.service.resetPassword(id, dto.newPassword);
   }

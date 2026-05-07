@@ -160,6 +160,12 @@ export class AuthService {
   }
 
   async getUserWorkshops(userId: string) {
+    const user = await this.prisma.raw.users.findUnique({ where: { id: userId }, include: { roles: true } });
+    const roleName = user?.roles?.name;
+    // platform_admin sees all active workshops regardless of assignment
+    if (roleName === 'platform_admin') {
+      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true } });
+    }
     const accesses = await this.prisma.raw.user_workshop_access.findMany({
       where: { user_id: userId },
       include: { workshops: { select: { id: true, name: true, slug: true, is_active: true } } },
@@ -168,16 +174,20 @@ export class AuthService {
   }
 
   async selectWorkshop(userId: string, workshopId: string) {
-    const access = await this.prisma.raw.user_workshop_access.findUnique({
-      where: { user_id_workshop_id: { user_id: userId, workshop_id: workshopId } },
-    });
-    if (!access) throw new BadRequestException('You do not have access to this workshop');
+    const user = await this.prisma.raw.users.findUnique({ where: { id: userId }, include: { roles: true } });
+    if (!user) throw new UnauthorizedException();
+
+    const roleName = user.roles?.name;
+    // platform_admin can select any workshop; others must have explicit access
+    if (roleName !== 'platform_admin') {
+      const access = await this.prisma.raw.user_workshop_access.findUnique({
+        where: { user_id_workshop_id: { user_id: userId, workshop_id: workshopId } },
+      });
+      if (!access) throw new BadRequestException('You do not have access to this workshop');
+    }
 
     const workshop = await this.prisma.raw.workshops.findUnique({ where: { id: workshopId } });
     if (!workshop || !workshop.is_active) throw new BadRequestException('Workshop not found or inactive');
-
-    const user = await this.prisma.raw.users.findUnique({ where: { id: userId }, include: { roles: true } });
-    if (!user) throw new UnauthorizedException();
 
     const rolePermissions = this.parsePermissions(user.roles?.permissions);
     const accessToken = this.jwt.sign({ sub: user.id, role: user.roles?.name || 'unknown', permissions: rolePermissions, workshopId });

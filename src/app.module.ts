@@ -1,6 +1,6 @@
-import { Module, MiddlewareConsumer } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -22,7 +22,7 @@ import { InsightsModule } from './insights/insights.module';
 import { BookingImportModule } from './booking-import/booking-import.module';
 import { PriorityModule } from './priority/priority.module';
 import { WorkshopsModule } from './workshops/workshops.module';
-import { WorkshopContextMiddleware } from './common/middleware/workshop-context.middleware';
+import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 
 @Module({
   imports: [
@@ -60,10 +60,10 @@ import { WorkshopContextMiddleware } from './common/middleware/workshop-context.
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: WorkshopContextInterceptor,
+    },
   ],
 })
-export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(WorkshopContextMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}

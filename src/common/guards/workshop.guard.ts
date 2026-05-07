@@ -7,7 +7,7 @@ export class WorkshopGuard implements CanActivate {
     if (!user) return true; // JwtAuthGuard handles missing user
 
     // platform_admin and admin can operate without a workshop context
-    if (user.role === 'platform_admin' || user.role === 'admin') return true;
+    if (user.role === 'platform_admin') return true;
 
     // All other roles must have a workshopId in their token
     if (!user.workshopId) {

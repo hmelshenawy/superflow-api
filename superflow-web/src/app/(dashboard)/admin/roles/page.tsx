@@ -128,7 +128,7 @@ function normalizePermissions(p: string[] | string | null | undefined): string[]
 
 export default function RolesPermissionsPage() {
   const { user } = useAuthStore();
-  const isAdmin = user?.role?.name === "admin" || user?.role?.name === "administrator";
+  const isAdmin = user?.role?.name === "admin" || user?.role?.name === "administrator" || user?.role?.name === "platform_admin" || user?.role?.name === "workshop_admin";
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [allPermissions, setAllPermissions] = useState<string[]>([]);
@@ -301,7 +301,7 @@ export default function RolesPermissionsPage() {
                   roles.map((role) => {
                     const perms = normalizePermissions(role.permissions);
                     const isSelected = selectedRoleId === role.id;
-                    const isDefault = ["admin", "manager", "service_advisor", "workshop_teamleader", "technician", "receptionist"].includes(role.name ?? "");
+                    const isDefault = ["workshop_admin", "manager", "service_advisor", "workshop_teamleader", "technician", "receptionist"].includes(role.name ?? "");
                     return (
                       <TableRow
                         key={role.id}
@@ -312,8 +312,8 @@ export default function RolesPermissionsPage() {
                           <div>
                             <div className="font-medium flex items-center gap-2">
                               {role.name}
-                              {role.name === "admin" && <Badge variant="default" className="text-[10px]">Always Full</Badge>}
-                              {isDefault && role.name !== "admin" && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
+                              {role.name === "workshop_admin" && <Badge variant="default" className="text-[10px]">Always Full</Badge>}
+                              {isDefault && role.name !== "workshop_admin" && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
                             </div>
                             {role.description && (
                               <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{role.description}</div>
@@ -489,6 +489,7 @@ export default function RolesPermissionsPage() {
                   <SelectItem value="all">Select All</SelectItem>
                   <SelectItem value="none">Clear All</SelectItem>
                   <SelectItem value="admin">Admin template</SelectItem>
+                  <SelectItem value="platform_admin">Platform Admin template</SelectItem>
                   <SelectItem value="manager">Manager template</SelectItem>
                   <SelectItem value="service_advisor">Service Advisor template</SelectItem>
                   <SelectItem value="workshop_teamleader">Workshop Team Leader template</SelectItem>
@@ -595,6 +596,23 @@ export default function RolesPermissionsPage() {
 
 // Default role templates for the quick-fill dropdown
 const ROLES_TEMPLATES: Record<string, string[]> = {
+  platform_admin: [
+    "jobs:read","jobs:create","jobs:update","jobs:delete","jobs:assign","jobs:transition",
+    "estimates:read","estimates:create","estimates:update","estimates:delete",
+    "inspections:read","inspections:create","inspections:submit","inspections:reopen",
+    "customers:read","customers:create","customers:update","customers:delete",
+    "vehicles:read","vehicles:create","vehicles:update",
+    "media:upload","media:delete",
+    "auth:request","auth:status",
+    "deferred:read","deferred:manage","deferred:book",
+    "import:parse","import:run",
+    "admin:settings","admin:settings:edit","admin:roles",
+    "admin:users","admin:users:create","admin:users:delete",
+    "admin:audit","admin:integrations","admin:templates",
+    "admin:labour-rates","admin:stats",
+    "workshops:read","workshops:create","workshops:update","workshops:delete","workshops:assign-users",
+    "priority:read","insights:dashboard",
+  ],
   admin: [
     "jobs:read","jobs:create","jobs:update","jobs:delete","jobs:assign","jobs:transition",
     "estimates:read","estimates:create","estimates:update","estimates:delete",

@@ -4,14 +4,17 @@ import { workshopTenantExtension } from './prisma-tenant.extension';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  /** Raw/unscoped client — for global tables (users, roles, workshops) and platform_admin queries.
-   *  We create a separate PrismaClient instance because $extends creates a proxy
-   *  that shadows the base models on `this`. The `raw` getter can't return `this`
-   *  because `this.tenant` (the extended client) overrides model access. */
   readonly raw = new PrismaClient();
+  // Lazy-initialized tenant-scoped client; can't create during class field init
+  // because PrismaClient must be connected first
+  private _tenant: any = null;
 
-  /** Tenant-scoped client — auto-injects workshop_id from AsyncLocalStorage */
-  readonly tenant = this.$extends(workshopTenantExtension);
+  get tenant(): any {
+    if (!this._tenant) {
+      this._tenant = this.$extends(workshopTenantExtension);
+    }
+    return this._tenant;
+  }
 
   async onModuleInit() {
     await this.$connect();

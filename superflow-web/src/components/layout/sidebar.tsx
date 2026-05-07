@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
 import {
   BadgeCheck,
+  Building2,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -36,12 +37,13 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, requirePermission: "admin:templates" },
   { href: "/admin/booking-import", label: "Booking Import", icon: Upload, requirePermission: "import:parse" },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/admin/workshops", label: "Workshops", icon: Building2, requirePermission: "workshops:read" },
 ];
 
 function isAdmin(user: { role?: { name?: string | null } | null; role_id?: string | null } | null): boolean {
   if (!user) return false;
   const roleName = user.role?.name?.toLowerCase();
-  if (roleName === "admin" || roleName === "administrator" || roleName === "super_admin") return true;
+  if (roleName === "admin" || roleName === "administrator" || roleName === "super_admin" || roleName === "platform_admin" || roleName === "workshop_admin") return true;
   const roleId = user.role_id;
   if (roleId === "admin" || roleId === "super_admin") return true;
   return false;
@@ -64,7 +66,7 @@ function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; per
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, workshops, currentWorkshopId, selectWorkshop } = useAuthStore();
   const [collapsed, setCollapsed] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -129,6 +131,27 @@ export function Sidebar() {
           )}
         </div>
       </div>
+
+      {/* Workshop selector - shown when user has workshops */}
+      {!isCollapsed && workshops && workshops.length > 0 && (
+        <div className="mx-2 mb-1">
+          <select
+            value={currentWorkshopId || ""}
+            onChange={(e) => { selectWorkshop(e.target.value); }}
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 focus:border-blue-500 focus:outline-none"
+          >
+            {!currentWorkshopId && <option value="" disabled>Select workshop...</option>}
+            {workshops.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {isCollapsed && workshops && workshops.length > 0 && (
+        <div className="flex justify-center py-1">
+          <Building2 className="h-3.5 w-3.5 text-slate-400" />
+        </div>
+      )}
 
       <nav className={cn("flex-1 space-y-1 px-2 py-3", isCollapsed && "px-1.5")}>
         {filteredItems.map((item) => {

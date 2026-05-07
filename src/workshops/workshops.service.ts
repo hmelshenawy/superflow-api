@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
@@ -32,6 +32,28 @@ export class WorkshopsService {
     });
   }
 
+  async findAllForUser(userId: string) {
+    const accesses = await this.prisma.raw.user_workshop_access.findMany({
+      where: { user_id: userId },
+      select: { workshop_id: true },
+    });
+    const workshopIds = accesses.map((a: any) => a.workshop_id);
+    return this.prisma.raw.workshops.findMany({
+      where: { id: { in: workshopIds } },
+      orderBy: { created_at: 'desc' },
+      include: { _count: { select: { user_workshop_access: true } } },
+    });
+  }
+
+  async verifyUserAccess(workshopId: string, userId: string) {
+    const access = await this.prisma.raw.user_workshop_access.findUnique({
+      where: { user_id_workshop_id: { user_id: userId, workshop_id: workshopId } },
+    });
+    if (!access) {
+      throw new ForbiddenException('You do not have access to this workshop');
+    }
+  }
+
   async findOne(id: string) {
     const workshop = await this.prisma.raw.workshops.findUnique({
       where: { id },
@@ -51,7 +73,6 @@ export class WorkshopsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    // Soft-delete by setting is_active = false
     return this.prisma.raw.workshops.update({
       where: { id },
       data: { is_active: false },

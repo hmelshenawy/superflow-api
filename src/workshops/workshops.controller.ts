@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Request, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WorkshopsService } from './workshops.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
@@ -18,9 +18,13 @@ export class WorkshopsController {
 
   @Get()
   @RequirePermission(WORKSHOPS_READ)
-  @ApiOperation({ summary: 'List all workshops' })
-  findAll() {
-    return this.workshops.findAll();
+  @ApiOperation({ summary: 'List workshops the user has access to' })
+  findAll(@Request() req: any) {
+    const user = req.user;
+    if (user.role === 'platform_admin') {
+      return this.workshops.findAll();
+    }
+    return this.workshops.findAllForUser(user.sub);
   }
 
   @Post()
@@ -33,14 +37,22 @@ export class WorkshopsController {
   @Get(':id')
   @RequirePermission(WORKSHOPS_READ)
   @ApiOperation({ summary: 'Get workshop details' })
-  findOne(@Param('id') id: string) {
+  async findOne(@Request() req: any, @Param('id') id: string) {
+    const user = req.user;
+    if (user.role !== 'platform_admin') {
+      await this.workshops.verifyUserAccess(id, user.sub);
+    }
     return this.workshops.findOne(id);
   }
 
   @Patch(':id')
   @RequirePermission(WORKSHOPS_UPDATE)
   @ApiOperation({ summary: 'Update a workshop' })
-  update(@Param('id') id: string, @Body() dto: UpdateWorkshopDto) {
+  async update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateWorkshopDto) {
+    const user = req.user;
+    if (user.role !== 'platform_admin') {
+      await this.workshops.verifyUserAccess(id, user.sub);
+    }
     return this.workshops.update(id, dto);
   }
 
@@ -54,21 +66,33 @@ export class WorkshopsController {
   @Get(':id/users')
   @RequirePermission(WORKSHOPS_READ)
   @ApiOperation({ summary: 'List users assigned to a workshop' })
-  getWorkshopUsers(@Param('id') id: string) {
+  async getWorkshopUsers(@Request() req: any, @Param('id') id: string) {
+    const user = req.user;
+    if (user.role !== 'platform_admin') {
+      await this.workshops.verifyUserAccess(id, user.sub);
+    }
     return this.workshops.getWorkshopUsers(id);
   }
 
   @Post(':id/users')
   @RequirePermission(WORKSHOPS_ASSIGN_USERS)
   @ApiOperation({ summary: 'Assign user to workshop' })
-  assignUser(@Param('id') id: string, @Body() dto: AssignUserDto) {
+  async assignUser(@Request() req: any, @Param('id') id: string, @Body() dto: AssignUserDto) {
+    const user = req.user;
+    if (user.role !== 'platform_admin') {
+      await this.workshops.verifyUserAccess(id, user.sub);
+    }
     return this.workshops.assignUser(id, dto.userId);
   }
 
   @Delete(':id/users/:userId')
   @RequirePermission(WORKSHOPS_ASSIGN_USERS)
   @ApiOperation({ summary: 'Remove user from workshop' })
-  removeUser(@Param('id') id: string, @Param('userId') userId: string) {
+  async removeUser(@Request() req: any, @Param('id') id: string, @Param('userId') userId: string) {
+    const user = req.user;
+    if (user.role !== 'platform_admin') {
+      await this.workshops.verifyUserAccess(id, user.sub);
+    }
     return this.workshops.removeUser(id, userId);
   }
 }

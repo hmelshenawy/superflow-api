@@ -273,8 +273,11 @@ export class AdminService {
   }
 
   // ─── Roles ─────────────────────────────────────────────
-  async getRoles() {
+  async getRoles(user?: any) {
     const roles = await this.prisma.raw.roles.findMany({ orderBy: { name: 'asc' } });
+    if (user?.role !== 'platform_admin') {
+      return roles.filter((r: typeof roles[number]) => r.name !== 'platform_admin').map((r: typeof roles[number]) => ({ ...r, permissions: r.permissions ? JSON.parse(r.permissions) : [] }));
+    }
     return roles.map((r: typeof roles[number]) => ({
       ...r,
       permissions: r.permissions ? JSON.parse(r.permissions) : [],

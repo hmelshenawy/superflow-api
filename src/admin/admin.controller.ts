@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Patch, Delete, UseGuards, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Patch, Delete, UseGuards, Param, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
@@ -81,7 +81,7 @@ export class AdminController {
   @Get('roles')
   @RequirePermission(ADMIN_ROLES)
   @ApiOperation({ summary: 'List all roles' })
-  getRoles() { return this.service.getRoles(); }
+  getRoles(@Request() req: any) { return this.service.getRoles(req.user); }
 
   @Post('roles')
   @RequirePermission(ADMIN_ROLES)
