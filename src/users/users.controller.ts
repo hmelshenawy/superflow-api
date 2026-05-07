@@ -7,7 +7,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE } from '../common/permissions';
+import { RequirePermission, ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE, JOBS_ASSIGN } from '../common/permissions';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -22,6 +22,14 @@ export class UsersController {
   findAll(@Request() req: any, @Query() pagination: PaginationDto) {
     const user = req.user;
     return this.service.findAll(pagination, user);
+  }
+
+  @Get('assignable')
+  @RequirePermission(JOBS_ASSIGN)
+  @ApiOperation({ summary: 'List technicians and advisors for job assignment (requires jobs:assign)' })
+  findAssignable(@Request() req: any) {
+    const user = req.user;
+    return this.service.findAssignable(user);
   }
 
   @Get(':id')

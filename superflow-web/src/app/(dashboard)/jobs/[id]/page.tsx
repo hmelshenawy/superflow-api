@@ -273,8 +273,9 @@ export default function JobDetailPage() {
     }
   };
 
-  const advisors = users.filter((u: any) => ["admin", "service_advisor"].includes(u.role?.name ?? ""));
-  const technicians = users.filter((u: any) => ["technician"].includes(u.role?.name ?? ""));
+  const roleName = (u: any) => typeof u.role === "string" ? u.role : u.role?.name ?? "";
+  const advisors = users.filter((u: any) => ["admin", "manager", "service_advisor", "workshop_teamleader"].includes(roleName(u)));
+  const technicians = users.filter((u: any) => ["technician"].includes(roleName(u)));
 
   const advisorName = (value: string | null | undefined) => {
     if (!value) return "Unassigned";
@@ -319,11 +320,11 @@ export default function JobDetailPage() {
 
   const loadUsers = async () => {
     try {
-      const { data } = await api.get("/users");
-      const list = data.items ?? data ?? [];
-      setUsers(list.filter((u: any) => u.is_active));
+      const { data } = await api.get("/users/assignable");
+      const list = Array.isArray(data) ? data : (data.items ?? []);
+      setUsers(list);
     } catch {
-      // ignore
+      // ignore — may not have permission
     }
   };
 
