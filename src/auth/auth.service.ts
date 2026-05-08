@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -24,6 +24,26 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  private slugify(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50) || 'workshop';
+  }
+
+  private async uniqueWorkshopSlug(name: string) {
+    const base = this.slugify(name);
+    let slug = base;
+    let i = 1;
+    while (await this.prisma.raw.workshops.findUnique({ where: { slug } })) {
+      i += 1;
+      slug = `${base}-${i}`;
+    }
+    return slug;
+  }
+
   private parsePermissions(raw: string | null | undefined): string[] {
     if (!raw) return [];
     try {
@@ -37,6 +57,83 @@ export class AuthService {
   // Access tokens are short-lived JWTs, but refresh tokens are treated like
   // durable session secrets. We store only their hash so a DB leak does not
   // expose reusable raw refresh tokens.
+
+  async signup(dto: { workshopName: string; name: string; email: string; password: string; phone?: string }) {
+    const email = dto.email.trim().toLowerCase();
+    const existingUser = await this.prisma.raw.users.findUnique({ where: { email } });
+    if (existingUser) throw new ConflictException('Email already exists');
+
+    const role = await this.prisma.raw.roles.findFirst({ where: { name: 'workshop_admin' } });
+    if (!role) throw new BadRequestException('Default workshop_admin role is missing');
+
+    const workshopId = uuid();
+    const userId = uuid();
+    const slug = await this.uniqueWorkshopSlug(dto.workshopName);
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    await this.prisma.raw.$transaction([
+      this.prisma.raw.workshops.create({
+        data: {
+          id: workshopId,
+          name: dto.workshopName.trim(),
+          slug,
+          phone: dto.phone || null,
+          email,
+          is_active: true,
+        },
+      }),
+      this.prisma.raw.users.create({
+        data: {
+          id: userId,
+          role_id: role.id,
+          name: dto.name.trim(),
+          email,
+          password_hash: passwordHash,
+          is_active: true,
+        },
+      }),
+      this.prisma.raw.user_workshop_access.create({
+        data: { id: uuid(), user_id: userId, workshop_id: workshopId, assigned_at: new Date() },
+      }),
+    ]);
+
+    await this.notifications.enqueue({
+      channel: 'email',
+      recipient: email,
+      subject: 'Welcome to PrioraFlow',
+      workshopId,
+      body: [
+        `Hi ${dto.name.trim()},`,
+        '',
+        `Your PrioraFlow workspace "${dto.workshopName.trim()}" is ready.`,
+        '',
+        'You can now log in and start setting up your workshop team, jobs, customers, and approvals.',
+      ].join('\n'),
+      provider: 'resend',
+    }).catch(() => {});
+
+    const rolePermissions = this.parsePermissions(role.permissions);
+    const accessToken = this.jwt.sign({ sub: userId, role: role.name || 'workshop_admin', permissions: rolePermissions, workshopId });
+    const refreshToken = uuid();
+    await this.prisma.raw.refresh_tokens.create({
+      data: {
+        id: uuid(),
+        user_id: userId,
+        token_hash: this.hashRefreshToken(refreshToken),
+        workshop_id: workshopId,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      workshopId,
+      workshop: { id: workshopId, name: dto.workshopName.trim(), slug },
+      user: { id: userId, name: dto.name.trim(), email, role: role.name || 'workshop_admin' },
+    };
+  }
+
   async validateUser(email: string, password: string) {
     const user = await this.prisma.raw.users.findUnique({ where: { email }, include: { roles: true } });
     if (!user || !user.is_active) return null;

@@ -6,6 +6,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
+import { SignupDto } from './dto/signup.dto';
 import { SelectWorkshopDto } from './dto/select-workshop.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -14,6 +15,15 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @Controller('auth')
 export class AuthController {
   constructor(private auth: AuthService) {}
+
+
+
+  @Post('signup')
+  @Throttle({ default: { limit: 3, ttl: 60_000, blockDuration: 300_000 } })
+  @ApiOperation({ summary: 'Create a trial workshop and owner account' })
+  signup(@Body() dto: SignupDto) {
+    return this.auth.signup(dto);
+  }
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60_000, blockDuration: 60_000 } })

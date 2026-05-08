@@ -112,9 +112,10 @@ _These are quick wins that unblock everything else._
 _Now users can sign up and get value from the app._
 
 - [x] **B3**: Wire real email delivery with Resend — notification worker sends emails and approval emails include portal links ✅
-- [ ] **B2**: Build self-service signup flow:
-  - Landing page "Start free trial" → email verification → create workshop → create admin user → redirect to dashboard
-  - Trial period (14 days) tracked in `workshops` table (add `trial_ends_at`, `plan_id`)
+- [~] **B2**: Build self-service signup flow:
+  - [x] Backend `POST /auth/signup` creates workshop + owner `workshop_admin`, returns tokens, sends welcome email
+  - [ ] Frontend landing page "Start free trial" form → redirect to dashboard
+  - [ ] Trial period (14 days) tracked in `workshops` table (add `trial_ends_at`, `plan_id`)
 - [ ] **M8**: Build job stage history service + timeline UI in job detail page
 - [ ] **M10**: (if not done in Phase 0)
 
