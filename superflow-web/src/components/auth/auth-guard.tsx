@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 import { useAuthStore } from "@/stores/auth";
 import { Wrench } from "lucide-react";
 
-const PUBLIC_ROUTES = ["/login"];
+const PUBLIC_ROUTES = ["/login", "/signup"];
 
 function LoadingShell() {
   return (
