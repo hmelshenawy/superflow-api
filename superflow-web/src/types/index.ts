@@ -116,6 +116,18 @@ export interface Job {
   estimate_lines?: EstimateLine[];
   inspection?: Inspection;
   media_files?: MediaFile[];
+  job_status_history?: JobStatusHistory[];
+}
+
+export interface JobStatusHistory {
+  id: string;
+  job_id: string | null;
+  from_status: JobStatus | null;
+  to_status: JobStatus | null;
+  changed_by: string | null;
+  reason: string | null;
+  changed_at: string | null;
+  users?: Pick<User, "id" | "name" | "email"> | null;
 }
 
 // ─── Customers ──────────────────────────────────────────

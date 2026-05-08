@@ -42,7 +42,7 @@ export class JobsController {
   @Patch(':id')
   @RequirePermission(JOBS_UPDATE)
   @ApiOperation({ summary: 'Update job' })
-  update(@Param('id') id: string, @Body() dto: UpdateJobDto) { return this.service.update(id, dto); }
+  update(@Param('id') id: string, @Body() dto: UpdateJobDto, @CurrentUser('sub') userId: string) { return this.service.update(id, dto, userId); }
 
   @Patch(':id/status')
   @RequirePermission(JOBS_TRANSITION)

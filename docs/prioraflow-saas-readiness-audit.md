@@ -116,7 +116,7 @@ _Now users can sign up and get value from the app._
   - [x] Backend `POST /auth/signup` creates workshop + owner `workshop_admin`, returns tokens, sends welcome email
   - [x] Frontend `/signup` page + landing CTA "Start free trial" → redirect to dashboard
   - [x] Trial period (14 days) tracked in `workshops.trial_ends_at`, with `plan_id='free_trial'`
-- [ ] **M8**: Build job stage history service + timeline UI in job detail page
+- [x] **M8**: Build job stage history service + timeline UI in job detail page — creation/status changes are recorded and shown in a Timeline tab
 - [ ] **M10**: (if not done in Phase 0)
 
 ### Phase 2: Billing (Week 5-7)
