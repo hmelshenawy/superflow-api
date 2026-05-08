@@ -181,10 +181,19 @@ export class AuthService {
     const appUrl = (this.config.get<string>('APP_URL') || this.config.get<string>('FRONTEND_URL') || `https://${this.config.get<string>('APP_DOMAIN', 'prioraflow.com')}`).replace(/\/$/, '');
     const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
+    const userWorkshop = await this.prisma.raw.user_workshop_access.findFirst({
+      where: { user_id: user.id },
+      select: { workshop_id: true },
+    });
+    const fallbackWorkshop = userWorkshop?.workshop_id
+      ? null
+      : await this.prisma.raw.workshops.findFirst({ where: { is_active: true }, select: { id: true } });
+
     await this.notifications.enqueue({
       channel: 'email',
       recipient: user.email || normalizedEmail,
       subject: 'Reset your PrioraFlow password',
+      workshopId: userWorkshop?.workshop_id || fallbackWorkshop?.id || null,
       body: [
         `Hi ${user.name || 'there'},`,
         '',

@@ -37,8 +37,10 @@ export class NotificationsService {
     templateId?: string | null;
     jobId?: string;
     customerId?: string;
+    workshopId?: string | null;
   }) {
-    const { workshopId } = getWorkshopContext();
+    const { workshopId: contextWorkshopId } = getWorkshopContext();
+    const workshopId = params.workshopId || contextWorkshopId;
     const notification = await this.prisma.raw.notifications.create({
       data: {
         id: uuid(),
