@@ -5,6 +5,7 @@ import IORedis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { RendererService } from './templates/renderer.service';
 import { REDIS_CONNECTION } from './redis.constants';
+import { getWorkshopContext } from '../prisma/workshop-context';
 
 @Injectable()
 export class NotificationsService {
@@ -37,12 +38,14 @@ export class NotificationsService {
     jobId?: string;
     customerId?: string;
   }) {
-    const notification = await this.prisma.tenant.notifications.create({
+    const { workshopId } = getWorkshopContext();
+    const notification = await this.prisma.raw.notifications.create({
       data: {
         id: uuid(),
         template_id: params.templateId || null,
         job_id: params.jobId,
         customer_id: params.customerId,
+        workshop_id: workshopId,
         channel: params.channel,
         recipient: params.recipient,
         subject: params.subject,
