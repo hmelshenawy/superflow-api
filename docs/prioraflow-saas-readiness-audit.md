@@ -41,7 +41,7 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 | B2 | **No self-service signup / onboarding** | New workshops must be created manually by a platform_admin | Medium |
 | B3 | **No email delivery** | Notification webhooks are empty strings — customer portal links, password resets, estimate emails all fail in production | Medium |
 | B4 | **No password reset flow** | Users who forget passwords are stuck — no `/auth/forgot-password` endpoint | Small |
-| B5 | **No rate limiting per tenant** | Global throttle only (120/min). One heavy workshop can starve others | Medium |
+| B5 | **Per-tenant rate limiting added** | Global throttle now keys authenticated traffic by JWT `workshopId`; platform admins by user; public traffic by IP | ✅ Done |
 | B6 | **No data isolation verification** | Multi-tenancy relies on ALS interceptor — no automated test proving cross-tenant leaks can't happen | Medium |
 | B7 | **CSP disabled** | Helmet CSP is off (`contentSecurityPolicy: false`) — XSS risk on a public SaaS | Small |
 
@@ -106,7 +106,7 @@ _These are quick wins that unblock everything else._
 - [ ] **B4**: Add `/auth/forgot-password` + `/auth/reset-password` endpoints + email flow
 - [x] **B6**: Write automated multi-tenant isolation tests (26 checks: read/count/findUnique/write/no-workshop/platform-admin/cross-model) ✅ Added `npm run test:tenant`
 - [x] **M10**: Add Sentry to API + Web — errors captured in production, 5xx only, PII redacted ✅ Deployed
-- [ ] **B5**: Add per-tenant rate limiting (key by `workshop_id` + IP, store counters in Redis)
+- [x] **B5**: Add per-tenant rate limiting (tenant bucket from JWT `workshopId`, platform admin by user, public fallback by IP) ✅ Added `npm run test:rate-limit`
 
 ### Phase 1: Comms & Onboarding (Week 3-4)
 _Now users can sign up and get value from the app._

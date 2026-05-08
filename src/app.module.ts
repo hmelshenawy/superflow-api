@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -23,6 +23,7 @@ import { BookingImportModule } from './booking-import/booking-import.module';
 import { PriorityModule } from './priority/priority.module';
 import { WorkshopsModule } from './workshops/workshops.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
+import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 
 @Module({
   imports: [
@@ -58,7 +59,7 @@ import { WorkshopContextInterceptor } from './common/interceptors/workshop-conte
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: TenantThrottlerGuard,
     },
     {
       provide: APP_INTERCEPTOR,
