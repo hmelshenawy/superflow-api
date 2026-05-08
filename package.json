@@ -1,7 +1,7 @@
 {
   "name": "super-service-app",
   "version": "0.1.0",
-  "description": "SuperFlow — Workshop Management API",
+  "description": "SuperFlow \u2014 Workshop Management API",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -41,7 +41,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "uuid": "^11.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@sentry/node": "^9.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.21",
