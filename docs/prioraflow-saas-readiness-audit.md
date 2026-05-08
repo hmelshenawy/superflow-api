@@ -104,7 +104,7 @@ _These are quick wins that unblock everything else._
 
 - [x] **B7**: Enable CSP (report-only mode with directives for Next.js + Sentry) ✅ Deployed
 - [ ] **B4**: Add `/auth/forgot-password` + `/auth/reset-password` endpoints + email flow
-- [ ] **B6**: Write automated multi-tenant isolation tests (create data in Workshop A, verify Workshop B API can't see it)
+- [x] **B6**: Write automated multi-tenant isolation tests (26 checks: read/count/findUnique/write/no-workshop/platform-admin/cross-model) ✅ Added `npm run test:tenant`
 - [x] **M10**: Add Sentry to API + Web — errors captured in production, 5xx only, PII redacted ✅ Deployed
 - [ ] **B5**: Add per-tenant rate limiting (key by `workshop_id` + IP, store counters in Redis)
 
