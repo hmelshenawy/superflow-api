@@ -40,7 +40,7 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 | B1 | **No billing / subscription system** | No way to charge customers, no plan tiers, no trial management | Large |
 | B2 | **No self-service signup / onboarding** | New workshops must be created manually by a platform_admin | Medium |
 | B3 | **Email delivery wired via Resend** | Notification worker sends email channel through Resend; approval emails include customer portal links | ✅ Done |
-| B4 | **No password reset flow** | Users who forget passwords are stuck — no `/auth/forgot-password` endpoint | Small |
+| B4 | **Password reset flow added** | `/auth/forgot-password` + `/auth/reset-password`, hashed one-time tokens, Resend email delivery | ✅ Done |
 | B5 | **Per-tenant rate limiting added** | Global throttle now keys authenticated traffic by JWT `workshopId`; platform admins by user; public traffic by IP | ✅ Done |
 | B6 | **No data isolation verification** | Multi-tenancy relies on ALS interceptor — no automated test proving cross-tenant leaks can't happen | Medium |
 | B7 | **CSP disabled** | Helmet CSP is off (`contentSecurityPolicy: false`) — XSS risk on a public SaaS | Small |
@@ -103,7 +103,7 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 _These are quick wins that unblock everything else._
 
 - [x] **B7**: Enable CSP (report-only mode with directives for Next.js + Sentry) ✅ Deployed
-- [ ] **B4**: Add `/auth/forgot-password` + `/auth/reset-password` endpoints + email flow
+- [x] **B4**: Add `/auth/forgot-password` + `/auth/reset-password` endpoints + email flow ✅
 - [x] **B6**: Write automated multi-tenant isolation tests (26 checks: read/count/findUnique/write/no-workshop/platform-admin/cross-model) ✅ Added `npm run test:tenant`
 - [x] **M10**: Add Sentry to API + Web — errors captured in production, 5xx only, PII redacted ✅ Deployed
 - [x] **B5**: Add per-tenant rate limiting (tenant bucket from JWT `workshopId`, platform admin by user, public fallback by IP) ✅ Added `npm run test:rate-limit`

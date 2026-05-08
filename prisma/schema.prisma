@@ -600,6 +600,19 @@ model notifications {
   @@index([workshop_id], map: "idx_n_workshop")
 }
 
+model password_reset_tokens {
+  id          String    @id @db.Char(36)
+  user_id     String?   @db.Char(36)
+  token_hash  String    @unique(map: "token_hash") @db.VarChar(255)
+  expires_at  DateTime  @db.DateTime(0)
+  used_at     DateTime? @db.DateTime(0)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_prt_user")
+
+  @@index([expires_at], map: "idx_prt_expires")
+  @@index([user_id], map: "idx_prt_user_id")
+}
+
 model refresh_tokens {
   id          String    @id @db.Char(36)
   user_id     String?   @db.Char(36)
@@ -665,6 +678,7 @@ model users {
   jobs_jobs_technician_idTousers jobs[]                  @relation("jobs_technician_idTousers")
   media_files                    media_files[]
   refresh_tokens                 refresh_tokens[]
+  password_reset_tokens          password_reset_tokens[]
   settings                       settings[]
   booking_import_templates       booking_import_templates[]
   roles                          roles?                  @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_users_role")

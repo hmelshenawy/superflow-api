@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -12,9 +13,14 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
+    private notifications: NotificationsService,
   ) {}
 
   private hashRefreshToken(token: string) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  private hashPasswordResetToken(token: string) {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
@@ -142,6 +148,78 @@ export class AuthService {
       accessToken,
       refreshToken: newRefresh,
     };
+  }
+
+
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.raw.users.findUnique({ where: { email: normalizedEmail } });
+
+    // Always return success to prevent email enumeration.
+    if (!user?.id || !user.is_active) {
+      return { success: true };
+    }
+
+    await this.prisma.raw.password_reset_tokens.updateMany({
+      where: { user_id: user.id, used_at: null, expires_at: { gt: new Date() } },
+      data: { used_at: new Date() },
+    }).catch(() => {});
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashPasswordResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.prisma.raw.password_reset_tokens.create({
+      data: {
+        id: uuid(),
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+      },
+    });
+
+    const appUrl = (this.config.get<string>('APP_URL') || this.config.get<string>('FRONTEND_URL') || `https://${this.config.get<string>('APP_DOMAIN', 'prioraflow.com')}`).replace(/\/$/, '');
+    const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+
+    await this.notifications.enqueue({
+      channel: 'email',
+      recipient: user.email || normalizedEmail,
+      subject: 'Reset your PrioraFlow password',
+      body: [
+        `Hi ${user.name || 'there'},`,
+        '',
+        'We received a request to reset your PrioraFlow password.',
+        '',
+        `Reset link: ${resetUrl}`,
+        '',
+        'This link expires in 1 hour. If you did not request this, you can ignore this email.',
+      ].join('\n'),
+      provider: 'resend',
+    });
+
+    return { success: true };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const tokenHash = this.hashPasswordResetToken(token);
+    const resetToken = await this.prisma.raw.password_reset_tokens.findUnique({ where: { token_hash: tokenHash } });
+
+    if (!resetToken?.user_id || resetToken.used_at || resetToken.expires_at <= new Date()) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.raw.$transaction([
+      this.prisma.raw.users.update({ where: { id: resetToken.user_id }, data: { password_hash: hashed } }),
+      this.prisma.raw.password_reset_tokens.update({ where: { id: resetToken.id }, data: { used_at: new Date() } }),
+      this.prisma.raw.refresh_tokens.updateMany({
+        where: { user_id: resetToken.user_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      }),
+    ]);
+
+    return { success: true };
   }
 
   async getProfile(userId: string) {
