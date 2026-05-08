@@ -47,6 +47,8 @@ export interface Workshop {
   phone?: string | null;
   email?: string | null;
   timezone?: string | null;
+  plan_id?: string | null;
+  trial_ends_at?: string | null;
 }
 // ─── Jobs ───────────────────────────────────────────────
 

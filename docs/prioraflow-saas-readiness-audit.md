@@ -38,7 +38,7 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 | # | Gap | Why it blocks SaaS | Effort |
 |---|---|---|---|
 | B1 | **No billing / subscription system** | No way to charge customers, no plan tiers, no trial management | Large |
-| B2 | **No self-service signup / onboarding** | New workshops must be created manually by a platform_admin | Medium |
+| B2 | **Self-service signup/onboarding backend + page added** | Public signup creates workshop + owner, sends welcome email, and starts 14-day trial | ✅ Mostly done |
 | B3 | **Email delivery wired via Resend** | Notification worker sends email channel through Resend; approval emails include customer portal links | ✅ Done |
 | B4 | **Password reset flow added** | `/auth/forgot-password` + `/auth/reset-password`, hashed one-time tokens, Resend email delivery | ✅ Done |
 | B5 | **Per-tenant rate limiting added** | Global throttle now keys authenticated traffic by JWT `workshopId`; platform admins by user; public traffic by IP | ✅ Done |
@@ -112,10 +112,10 @@ _These are quick wins that unblock everything else._
 _Now users can sign up and get value from the app._
 
 - [x] **B3**: Wire real email delivery with Resend — notification worker sends emails and approval emails include portal links ✅
-- [~] **B2**: Build self-service signup flow:
+- [x] **B2**: Build self-service signup flow:
   - [x] Backend `POST /auth/signup` creates workshop + owner `workshop_admin`, returns tokens, sends welcome email
-  - [ ] Frontend landing page "Start free trial" form → redirect to dashboard
-  - [ ] Trial period (14 days) tracked in `workshops` table (add `trial_ends_at`, `plan_id`)
+  - [x] Frontend `/signup` page + landing CTA "Start free trial" → redirect to dashboard
+  - [x] Trial period (14 days) tracked in `workshops.trial_ends_at`, with `plan_id='free_trial'`
 - [ ] **M8**: Build job stage history service + timeline UI in job detail page
 - [ ] **M10**: (if not done in Phase 0)
 

@@ -70,6 +70,7 @@ export class AuthService {
     const userId = uuid();
     const slug = await this.uniqueWorkshopSlug(dto.workshopName);
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
     await this.prisma.raw.$transaction([
       this.prisma.raw.workshops.create({
@@ -80,6 +81,8 @@ export class AuthService {
           phone: dto.phone || null,
           email,
           is_active: true,
+          plan_id: 'free_trial',
+          trial_ends_at: trialEndsAt,
         },
       }),
       this.prisma.raw.users.create({
@@ -108,6 +111,8 @@ export class AuthService {
         `Your PrioraFlow workspace "${dto.workshopName.trim()}" is ready.`,
         '',
         'You can now log in and start setting up your workshop team, jobs, customers, and approvals.',
+        '',
+        `Your 14-day free trial ends on ${trialEndsAt.toISOString().slice(0, 10)}.`,
       ].join('\n'),
       provider: 'resend',
     }).catch(() => {});
@@ -129,7 +134,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       workshopId,
-      workshop: { id: workshopId, name: dto.workshopName.trim(), slug },
+      workshop: { id: workshopId, name: dto.workshopName.trim(), slug, plan_id: 'free_trial', trial_ends_at: trialEndsAt.toISOString() },
       user: { id: userId, name: dto.name.trim(), email, role: role.name || 'workshop_admin' },
     };
   }
@@ -348,11 +353,11 @@ export class AuthService {
     const roleName = user?.roles?.name;
     // platform_admin sees all active workshops regardless of assignment
     if (roleName === 'platform_admin') {
-      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true } });
+      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true } });
     }
     const accesses = await this.prisma.raw.user_workshop_access.findMany({
       where: { user_id: userId },
-      include: { workshops: { select: { id: true, name: true, slug: true, is_active: true } } },
+      include: { workshops: { select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true } } },
     });
     return accesses.map((a: any) => a.workshops).filter((w: any) => w.is_active);
   }
