@@ -61,7 +61,7 @@ export class NotificationsService {
     // If it was already sent or failed, re-queueing would duplicate work.
     if (!this.queue) return null;
 
-    const notification = await this.prisma.tenant.notifications.findUnique({ where: { id: notificationId } });
+    const notification = await this.prisma.raw.notifications.findUnique({ where: { id: notificationId } });
     if (!notification) return null;
     if (notification.status !== 'queued') return notification;
 
@@ -77,7 +77,7 @@ export class NotificationsService {
       },
     );
 
-    await this.prisma.tenant.notifications.update({
+    await this.prisma.raw.notifications.update({
       where: { id: notificationId },
       data: { provider_message_id: job.id || notificationId },
     });
@@ -88,7 +88,7 @@ export class NotificationsService {
   async requeuePendingDbNotifications() {
     // Startup / periodic safety net: scans the DB for any notifications still
     // marked "queued" that are not currently in BullMQ, and re-adds them.
-    const pending = await this.prisma.tenant.notifications.findMany({
+    const pending = await this.prisma.raw.notifications.findMany({
       where: { status: 'queued' },
       orderBy: { queued_at: 'asc' },
       take: 100,

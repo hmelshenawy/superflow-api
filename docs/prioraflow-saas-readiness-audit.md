@@ -39,7 +39,7 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 |---|---|---|---|
 | B1 | **No billing / subscription system** | No way to charge customers, no plan tiers, no trial management | Large |
 | B2 | **No self-service signup / onboarding** | New workshops must be created manually by a platform_admin | Medium |
-| B3 | **No email delivery** | Notification webhooks are empty strings — customer portal links, password resets, estimate emails all fail in production | Medium |
+| B3 | **Email delivery wired via Resend** | Notification worker sends email channel through Resend; approval emails include customer portal links | ✅ Done |
 | B4 | **No password reset flow** | Users who forget passwords are stuck — no `/auth/forgot-password` endpoint | Small |
 | B5 | **Per-tenant rate limiting added** | Global throttle now keys authenticated traffic by JWT `workshopId`; platform admins by user; public traffic by IP | ✅ Done |
 | B6 | **No data isolation verification** | Multi-tenancy relies on ALS interceptor — no automated test proving cross-tenant leaks can't happen | Medium |
@@ -111,7 +111,7 @@ _These are quick wins that unblock everything else._
 ### Phase 1: Comms & Onboarding (Week 3-4)
 _Now users can sign up and get value from the app._
 
-- [ ] **B3**: Wire real email delivery (Resend / SendGrid / AWS SES) — portal links, estimates, password resets
+- [x] **B3**: Wire real email delivery with Resend — notification worker sends emails and approval emails include portal links ✅
 - [ ] **B2**: Build self-service signup flow:
   - Landing page "Start free trial" → email verification → create workshop → create admin user → redirect to dashboard
   - Trial period (14 days) tracked in `workshops` table (add `trial_ends_at`, `plan_id`)

@@ -144,17 +144,27 @@ export class AuthorisationService {
       ]).catch(() => {});
     }
 
+    const customerRecipient = sentTo || (channel === 'email' ? job.customers?.email : job.customers?.phone) || job.customers?.email || job.customers?.phone || 'customer';
+    const customerMessage = [
+      `Please review and approve the estimate for job ${job.job_number}.`,
+      `${job.vehicles?.make || ''} ${job.vehicles?.model || ''}`.trim(),
+      '',
+      `Approval link: ${portalUrl}`,
+      '',
+      'This link expires in 7 days.',
+    ].filter((line) => line !== undefined).join('\n');
+
     await this.prisma.tenant.notifications.create({
       data: {
         id: uuid(),
         job_id: job.id,
         customer_id: job.customer_id,
         channel: (channel === 'link' ? 'push' : channel) as any,
-        recipient: sentTo || job.customers?.email || job.customers?.phone || 'customer',
+        recipient: customerRecipient,
         subject: `Approval request for ${job.job_number}`,
-        body_rendered: `Please review and approve the estimate for ${job.vehicles?.make || ''} ${job.vehicles?.model || ''}. Approval link sent to customer.`,
+        body_rendered: customerMessage,
         status: 'queued',
-        provider: 'internal',
+        provider: channel === 'email' ? 'resend' : 'internal',
       },
     }).catch(() => {});
 
