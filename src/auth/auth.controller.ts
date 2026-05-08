@@ -55,6 +55,13 @@ export class AuthController {
     return this.auth.resetPassword(dto.token, dto.newPassword);
   }
 
+  @Get('subscription')
+  @UseGuards(JwtAuthGuard)
+  getSubscription(@CurrentUser('workshopId') workshopId: string) {
+    if (!workshopId) return null;
+    return this.auth.getSubscriptionStatus(workshopId);
+  }
+
   @Post('select-workshop')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

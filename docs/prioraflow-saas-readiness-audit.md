@@ -37,7 +37,7 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 
 | # | Gap | Why it blocks SaaS | Effort |
 |---|---|---|---|
-| B1 | **No billing / subscription system** | No way to charge customers, no plan tiers, no trial management | Large |
+| B1 | **Billing/subscription foundation started** | Plans + subscriptions now exist internally; Stripe checkout/webhooks and limit enforcement still pending | Large |
 | B2 | **Self-service signup/onboarding backend + page added** | Public signup creates workshop + owner, sends welcome email, and starts 14-day trial | ✅ Mostly done |
 | B3 | **Email delivery wired via Resend** | Notification worker sends email channel through Resend; approval emails include customer portal links | ✅ Done |
 | B4 | **Password reset flow added** | `/auth/forgot-password` + `/auth/reset-password`, hashed one-time tokens, Resend email delivery | ✅ Done |
@@ -122,13 +122,15 @@ _Now users can sign up and get value from the app._
 ### Phase 2: Billing (Week 5-7)
 _Monetization — the hardest gap but the one that makes it a real SaaS._
 
-- [ ] **B1**: Implement billing system:
-  - Add `plans` table (free_trial, starter, pro, enterprise) with limits (users, jobs/month, workshops)
-  - Add `subscriptions` table linking workshop → plan → Stripe customer/subscription ID
-  - Integrate Stripe Checkout for plan selection + payment
-  - Add Stripe webhook handler (payment success/failure/subscription cancelled)
-  - Enforce plan limits in API guards (e.g., reject job creation if over monthly limit)
-  - Add billing page in settings (current plan, usage, upgrade CTA)
+- [~] **B1**: Implement billing system:
+  - [x] Add `plans` table (free_trial, starter, pro, enterprise) with limits (users, jobs/month, workshops)
+  - [x] Add `subscriptions` table linking workshop → plan → Stripe customer/subscription ID
+  - [x] Create trial subscription automatically during signup
+  - [x] Expose `GET /auth/subscription` for the selected workshop
+  - [ ] Integrate Stripe Checkout for plan selection + payment
+  - [ ] Add Stripe webhook handler (payment success/failure/subscription cancelled)
+  - [ ] Enforce plan limits in API guards (e.g., reject job creation if over monthly limit)
+  - [ ] Add billing page in settings (current plan, usage, upgrade CTA)
 - [ ] **M3**: Add usage metering (jobs created/month, active users, API calls) — feed into billing enforcement
 
 ### Phase 3: Product Completeness (Week 8-10)

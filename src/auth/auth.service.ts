@@ -98,6 +98,17 @@ export class AuthService {
       this.prisma.raw.user_workshop_access.create({
         data: { id: uuid(), user_id: userId, workshop_id: workshopId, assigned_at: new Date() },
       }),
+      this.prisma.raw.subscriptions.create({
+        data: {
+          id: uuid(),
+          workshop_id: workshopId,
+          plan_id: 'free_trial',
+          status: 'trialing',
+          trial_ends_at: trialEndsAt,
+          current_period_starts_at: new Date(),
+          current_period_ends_at: trialEndsAt,
+        },
+      }),
     ]);
 
     await this.notifications.enqueue({
@@ -135,6 +146,7 @@ export class AuthService {
       refreshToken,
       workshopId,
       workshop: { id: workshopId, name: dto.workshopName.trim(), slug, plan_id: 'free_trial', trial_ends_at: trialEndsAt.toISOString() },
+      subscription: { plan_id: 'free_trial', status: 'trialing', trial_ends_at: trialEndsAt.toISOString() },
       user: { id: userId, name: dto.name.trim(), email, role: role.name || 'workshop_admin' },
     };
   }
@@ -353,13 +365,31 @@ export class AuthService {
     const roleName = user?.roles?.name;
     // platform_admin sees all active workshops regardless of assignment
     if (roleName === 'platform_admin') {
-      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true } });
+      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true, subscriptions: { orderBy: { created_at: 'desc' }, take: 1, include: { plans: true } } } });
     }
     const accesses = await this.prisma.raw.user_workshop_access.findMany({
       where: { user_id: userId },
-      include: { workshops: { select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true } } },
+      include: { workshops: { select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true, subscriptions: { orderBy: { created_at: 'desc' }, take: 1, include: { plans: true } } } } },
     });
     return accesses.map((a: any) => a.workshops).filter((w: any) => w.is_active);
+  }
+
+  async getSubscriptionStatus(workshopId: string) {
+    const subscription = await this.prisma.raw.subscriptions.findFirst({
+      where: { workshop_id: workshopId },
+      orderBy: { created_at: 'desc' },
+      include: { plans: true },
+    });
+    if (!subscription) return null;
+    return {
+      id: subscription.id,
+      status: subscription.status,
+      plan_id: subscription.plan_id,
+      trial_ends_at: subscription.trial_ends_at,
+      current_period_ends_at: subscription.current_period_ends_at,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      plan: subscription.plans,
+    };
   }
 
   async selectWorkshop(userId: string, workshopId: string) {
@@ -392,7 +422,7 @@ export class AuthService {
 
     return {
       accessToken,
-      workshop: { id: workshop.id, name: workshop.name, slug: workshop.slug },
+      workshop: { id: workshop.id, name: workshop.name, slug: workshop.slug, plan_id: workshop.plan_id, trial_ends_at: workshop.trial_ends_at },
     };
   }
 

@@ -23,6 +23,7 @@ model workshops {
   updated_at  DateTime? @default(now()) @db.DateTime(0)
 
   user_workshop_access   user_workshop_access[]
+  subscriptions          subscriptions[]
   approval_tokens        approval_tokens[]
   audit_logs             audit_logs[]
   authorisation_decisions authorisation_decisions[]
@@ -52,6 +53,46 @@ model workshops {
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
+}
+
+
+model plans {
+  id                    String          @id @db.VarChar(60)
+  name                  String          @db.VarChar(120)
+  description           String?         @db.Text
+  price_monthly_cents   Int?            @default(0)
+  currency              String?         @default("AED") @db.VarChar(3)
+  max_users             Int?
+  max_jobs_per_month    Int?
+  max_workshops         Int?            @default(1)
+  is_active             Boolean?        @default(true)
+  created_at            DateTime?       @default(now()) @db.DateTime(0)
+  updated_at            DateTime?       @default(now()) @db.DateTime(0)
+
+  subscriptions         subscriptions[]
+}
+
+model subscriptions {
+  id                         String     @id @db.Char(36)
+  workshop_id                String     @db.Char(36)
+  plan_id                    String     @db.VarChar(60)
+  status                     String     @default("trialing") @db.VarChar(40)
+  trial_ends_at              DateTime?  @db.DateTime(0)
+  current_period_starts_at   DateTime?  @db.DateTime(0)
+  current_period_ends_at     DateTime?  @db.DateTime(0)
+  stripe_customer_id         String?    @db.VarChar(120)
+  stripe_subscription_id     String?    @db.VarChar(120)
+  cancel_at_period_end       Boolean?   @default(false)
+  created_at                 DateTime?  @default(now()) @db.DateTime(0)
+  updated_at                 DateTime?  @default(now()) @db.DateTime(0)
+
+  workshops                  workshops  @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_subscriptions_workshop")
+  plans                      plans      @relation(fields: [plan_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_subscriptions_plan")
+
+  @@index([workshop_id], map: "idx_subscriptions_workshop")
+  @@index([plan_id], map: "idx_subscriptions_plan")
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([trial_ends_at], map: "idx_subscriptions_trial_ends")
 }
 
 model user_workshop_access {
