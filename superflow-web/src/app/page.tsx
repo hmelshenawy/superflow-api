@@ -156,10 +156,10 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/login"
+              href="/signup"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
             >
-              Open PrioraFlow <ArrowRight className="h-4 w-4" />
+              Start free trial <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="#tutorial"
@@ -330,7 +330,7 @@ export default function HomePage() {
         <div className="rounded-[2rem] bg-blue-600 p-8 text-center text-white shadow-2xl shadow-blue-600/20 sm:p-12">
           <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Ready to control the flow?</h2>
           <p className="mx-auto mt-4 max-w-2xl text-blue-50">Use PrioraFlow as the cockpit for every active job — from booking to handover.</p>
-          <Link href="/login" className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-blue-700 transition hover:bg-blue-50">
+          <Link href="/signup" className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-blue-700 transition hover:bg-blue-50">
             Sign in to PrioraFlow <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
