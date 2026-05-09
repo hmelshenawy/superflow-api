@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, Sparkles, Wrench } from "lucide-react";
+import { ArrowRight, CheckCircle2, CreditCard, ShieldCheck, Sparkles } from "lucide-react";
+import { PrioraFlowLogo } from "@/components/brand/prioraflow-logo";
 
 const plans = [
   {
@@ -69,14 +70,8 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent_32rem),linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)] text-slate-950">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
-        <Link href="/" className="flex items-center gap-3" aria-label="PrioraFlow home">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
-            <Wrench className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-base font-bold tracking-tight">PrioraFlow</p>
-            <p className="text-xs text-slate-500">Clarity in every step</p>
-          </div>
+        <Link href="/" aria-label="PrioraFlow home">
+          <PrioraFlowLogo />
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
           <Link href="/#features" className="hover:text-slate-950">Features</Link>

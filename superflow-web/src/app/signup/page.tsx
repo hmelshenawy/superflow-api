@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
-import { ArrowRight, Wrench } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { PrioraFlowLogo } from "@/components/brand/prioraflow-logo";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,10 +69,8 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-            <Wrench className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Start your PrioraFlow trial</h1>
+          <PrioraFlowLogo className="justify-center" iconClassName="h-16 w-16" showText={false} />
+          <h1 className="mt-3 text-2xl font-bold text-foreground">Start your PrioraFlow trial</h1>
           <p className="mt-1 text-sm text-muted-foreground">Create your workshop workspace in under a minute.</p>
         </div>
 
