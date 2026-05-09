@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -859,6 +860,10 @@ function BillingSection() {
 
 // ─── Main Page ────────────────────────────────────────
 export default function SettingsPage() {
+  const user = useAuthStore((state) => state.user);
+  const roleName = useMemo(() => user?.role?.name || "", [user?.role?.name]);
+  const canSeeBilling = ["workshop_admin", "platform_admin"].includes(roleName);
+
   return (
     <div className="space-y-6">
       <div>
@@ -882,10 +887,12 @@ export default function SettingsPage() {
             <Settings2 className="mr-1.5 h-4 w-4" />
             Priority Matrix
           </TabsTrigger>
-          <TabsTrigger value="billing">
-            <CreditCard className="mr-1.5 h-4 w-4" />
-            Billing
-          </TabsTrigger>
+          {canSeeBilling ? (
+            <TabsTrigger value="billing">
+              <CreditCard className="mr-1.5 h-4 w-4" />
+              Billing
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="notifications">
             <Bell className="mr-1.5 h-4 w-4" />
             Notifications
@@ -910,9 +917,11 @@ export default function SettingsPage() {
           <PriorityMatrixSection />
         </TabsContent>
 
-        <TabsContent value="billing" className="mt-6 space-y-6">
-          <BillingSection />
-        </TabsContent>
+        {canSeeBilling ? (
+          <TabsContent value="billing" className="mt-6 space-y-6">
+            <BillingSection />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="notifications" className="mt-6 space-y-6">
           <NotificationsSection />

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -57,7 +57,10 @@ export class AuthController {
 
   @Get('subscription')
   @UseGuards(JwtAuthGuard)
-  getSubscription(@CurrentUser('workshopId') workshopId: string) {
+  getSubscription(@CurrentUser('workshopId') workshopId: string, @CurrentUser('role') role: string) {
+    if (!['workshop_admin', 'platform_admin'].includes(role)) {
+      throw new ForbiddenException('Billing is only available to workshop admins and platform admins');
+    }
     if (!workshopId) return null;
     return this.auth.getSubscriptionStatus(workshopId);
   }
