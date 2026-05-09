@@ -49,7 +49,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        api.post("/auth/logout").catch(() => {});
+        // Access tokens are memory-only, so a refreshed/reloaded tab may not
+        // have a bearer token when the user logs out. Clear local state either way.
+        api.post("/auth/logout").catch(() => undefined);
         clearAccessToken();
         localStorage.removeItem("currentWorkshopId");
         set({ user: null, isAuthenticated: false, workshops: [], currentWorkshopId: null });

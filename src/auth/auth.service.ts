@@ -470,6 +470,16 @@ export class AuthService {
     });
   }
 
+  async logoutRefreshToken(refreshToken: string) {
+    if (!refreshToken) return;
+    const refreshHash = this.hashRefreshToken(refreshToken);
+    const session = await this.prisma.raw.refresh_tokens.findUnique({
+      where: { token_hash: refreshHash },
+    });
+    if (!session?.user_id) return;
+    await this.logout(session.user_id);
+  }
+
   async listSessions(userId: string) {
     const sessions = await this.prisma.raw.refresh_tokens.findMany({
       where: { user_id: userId, revoked_at: null, expires_at: { gt: new Date() } },
