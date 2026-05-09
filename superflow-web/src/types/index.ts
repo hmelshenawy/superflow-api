@@ -310,6 +310,7 @@ export interface MediaFile {
   original_filename: string | null;
   size_bytes: number | null;
   thumbnail_key: string | null;
+  scan_status?: string | null;
   uploaded_at: string;
 }
 

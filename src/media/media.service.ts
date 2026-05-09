@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { ALLOWED_MIME_TYPES, PresignUploadDto } from './dto/presign-upload.dto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3_CLIENT } from './media.constants';
 
@@ -348,5 +348,37 @@ export class MediaService {
       }).catch(() => {});
     }
     return deleted;
+  }
+
+  async cleanupAbandonedPendingUploads(cutoff: Date): Promise<number> {
+    const abandoned: Array<{ id: string; s3_bucket: string | null; s3_key: string | null }> = await this.prisma.tenant.media_files.findMany({
+      where: {
+        scan_status: 'pending',
+        is_deleted: false,
+        uploaded_at: { lt: cutoff },
+        size_bytes: null,
+        width_px: null,
+        height_px: null,
+        duration_sec: null,
+        thumbnail_key: null,
+      },
+      select: { id: true, s3_bucket: true, s3_key: true },
+      take: 100,
+    });
+
+    for (const file of abandoned) {
+      if (file.s3_bucket && file.s3_key) {
+        await this.s3.send(new DeleteObjectCommand({ Bucket: file.s3_bucket, Key: file.s3_key })).catch(() => {});
+      }
+    }
+
+    if (abandoned.length === 0) return 0;
+
+    const result = await this.prisma.tenant.media_files.updateMany({
+      where: { id: { in: abandoned.map((file) => file.id) } },
+      data: { is_deleted: true },
+    });
+
+    return result.count;
   }
 }
