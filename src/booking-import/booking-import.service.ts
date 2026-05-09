@@ -68,6 +68,8 @@ function resolveImportedVehicleFields(row: BookingRow): { make: string | null; m
 }
 
 const ALLOWED_IMPORT_EXTENSIONS = ['xlsx', 'xls', 'csv'];
+const MAX_IMPORT_ROWS = 1000;
+const MAX_IMPORT_HEADERS = 100;
 
 // Strip CSV/Excel formula injection characters from cell values.
 // Leading = + - @ \t \r characters can trigger formula execution
@@ -102,6 +104,10 @@ export class BookingImportService {
     }
 
     const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      throw new BadRequestException('File does not contain a worksheet');
+    }
+
     const sheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, {
       defval: '',
@@ -111,8 +117,15 @@ export class BookingImportService {
     if (!jsonData.length) {
       throw new BadRequestException('File contains no data rows');
     }
+    if (jsonData.length > MAX_IMPORT_ROWS) {
+      throw new BadRequestException(`Import file has ${jsonData.length} rows. Maximum allowed is ${MAX_IMPORT_ROWS}.`);
+    }
 
     const headers = Object.keys(jsonData[0]);
+    if (headers.length > MAX_IMPORT_HEADERS) {
+      throw new BadRequestException(`Import file has ${headers.length} columns. Maximum allowed is ${MAX_IMPORT_HEADERS}.`);
+    }
+
     const rows = jsonData.map((row) => {
       const clean: Record<string, string> = {};
       for (const h of headers) {
@@ -173,6 +186,10 @@ export class BookingImportService {
   // ─── Import Logic ──────────────────────────────────────
 
   async runImport(dto: RunImportDto, userId: string): Promise<ImportResult> {
+    if (dto.rows.length > MAX_IMPORT_ROWS) {
+      throw new BadRequestException(`Import has ${dto.rows.length} rows. Maximum allowed is ${MAX_IMPORT_ROWS}.`);
+    }
+
     let mappings: { source: string; target: string }[];
 
     if (dto.mappings?.length) {
