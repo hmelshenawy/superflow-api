@@ -133,6 +133,7 @@ export default function HomePage() {
           <a href="#engine" className="hover:text-slate-950">Priority engine</a>
           <a href="#tutorial" className="hover:text-slate-950">How it works</a>
           <a href="#value" className="hover:text-slate-950">Why it matters</a>
+          <Link href="/pricing" className="hover:text-slate-950">Pricing</Link>
         </nav>
         <Link
           href="/login"
@@ -156,10 +157,10 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/signup"
+              href="/pricing"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-blue-600 px-6 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
             >
-              Start free trial <ArrowRight className="h-4 w-4" />
+              View packages <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="#tutorial"
@@ -330,8 +331,8 @@ export default function HomePage() {
         <div className="rounded-[2rem] bg-blue-600 p-8 text-center text-white shadow-2xl shadow-blue-600/20 sm:p-12">
           <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Ready to control the flow?</h2>
           <p className="mx-auto mt-4 max-w-2xl text-blue-50">Use PrioraFlow as the cockpit for every active job — from booking to handover.</p>
-          <Link href="/signup" className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-blue-700 transition hover:bg-blue-50">
-            Sign in to PrioraFlow <ArrowRight className="h-4 w-4" />
+          <Link href="/pricing" className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-blue-700 transition hover:bg-blue-50">
+            View packages <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>
