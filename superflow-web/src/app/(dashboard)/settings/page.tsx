@@ -30,6 +30,8 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
+  CreditCard,
+  CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -765,6 +767,96 @@ function IntegrationsSection() {
   );
 }
 
+
+interface SubscriptionStatus {
+  id: string;
+  status: string;
+  plan_id: string;
+  trial_ends_at: string | null;
+  current_period_ends_at: string | null;
+  cancel_at_period_end: boolean | null;
+  plan?: {
+    id: string;
+    name: string;
+    description: string | null;
+    price_monthly_cents: number | null;
+    currency: string | null;
+    max_users: number | null;
+    max_jobs_per_month: number | null;
+    max_workshops: number | null;
+  } | null;
+}
+
+function daysRemaining(date: string | null) {
+  if (!date) return null;
+  return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
+function BillingSection() {
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get("/auth/subscription")
+      .then(({ data }) => setSubscription(data))
+      .catch(() => toast.error("Failed to load billing status"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <SectionCard title="Billing">
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </SectionCard>
+    );
+  }
+
+  if (!subscription) {
+    return (
+      <SectionCard title="Billing" description="No subscription is attached to this workshop yet.">
+        <p className="text-sm text-muted-foreground">This should only happen for old/manual workshops. New signups create a trial subscription automatically.</p>
+      </SectionCard>
+    );
+  }
+
+  const remaining = daysRemaining(subscription.trial_ends_at || subscription.current_period_ends_at);
+  const price = subscription.plan?.price_monthly_cents == null
+    ? "Custom"
+    : `${subscription.plan.currency || "AED"} ${(subscription.plan.price_monthly_cents / 100).toFixed(0)} / month`;
+
+  return (
+    <SectionCard title="Billing" description="Current plan, trial status, and upcoming upgrade controls.">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
+          <p className="mt-2 text-xl font-bold text-foreground">{subscription.plan?.name || subscription.plan_id}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{price}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Status</p>
+          <p className="mt-2 text-xl font-bold capitalize text-foreground">{subscription.status}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{remaining !== null ? `${remaining} days remaining` : "No end date"}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Period end</p>
+          <p className="mt-2 text-xl font-bold text-foreground">{subscription.current_period_ends_at ? new Date(subscription.current_period_ends_at).toLocaleDateString() : "—"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{subscription.cancel_at_period_end ? "Cancels at period end" : "Active"}</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-100">
+        <div className="flex gap-3">
+          <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Stripe checkout is the next billing step. For now, this page confirms trial/subscription tracking is working inside PrioraFlow.</p>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────
 export default function SettingsPage() {
   return (
@@ -790,6 +882,10 @@ export default function SettingsPage() {
             <Settings2 className="mr-1.5 h-4 w-4" />
             Priority Matrix
           </TabsTrigger>
+          <TabsTrigger value="billing">
+            <CreditCard className="mr-1.5 h-4 w-4" />
+            Billing
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="mr-1.5 h-4 w-4" />
             Notifications
@@ -812,6 +908,10 @@ export default function SettingsPage() {
 
         <TabsContent value="priority" className="mt-6 space-y-6">
           <PriorityMatrixSection />
+        </TabsContent>
+
+        <TabsContent value="billing" className="mt-6 space-y-6">
+          <BillingSection />
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6 space-y-6">
