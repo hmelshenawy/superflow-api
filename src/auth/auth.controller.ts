@@ -55,14 +55,26 @@ export class AuthController {
     return this.auth.resetPassword(dto.token, dto.newPassword);
   }
 
-  @Get('subscription')
-  @UseGuards(JwtAuthGuard)
-  getSubscription(@CurrentUser('workshopId') workshopId: string, @CurrentUser('role') role: string) {
+  private assertBillingAccess(role: string) {
     if (!['workshop_admin', 'platform_admin'].includes(role)) {
       throw new ForbiddenException('Billing is only available to workshop admins and platform admins');
     }
+  }
+
+  @Get('subscription')
+  @UseGuards(JwtAuthGuard)
+  getSubscription(@CurrentUser('workshopId') workshopId: string, @CurrentUser('role') role: string) {
+    this.assertBillingAccess(role);
     if (!workshopId) return null;
     return this.auth.getSubscriptionStatus(workshopId);
+  }
+
+  @Get('billing')
+  @UseGuards(JwtAuthGuard)
+  getBilling(@CurrentUser('workshopId') workshopId: string, @CurrentUser('role') role: string) {
+    this.assertBillingAccess(role);
+    if (!workshopId) return null;
+    return this.auth.getBillingOverview(workshopId);
   }
 
   @Post('select-workshop')

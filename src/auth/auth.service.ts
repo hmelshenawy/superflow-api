@@ -107,6 +107,7 @@ export class AuthService {
           trial_ends_at: trialEndsAt,
           current_period_starts_at: new Date(),
           current_period_ends_at: trialEndsAt,
+          billing_email: email,
         },
       }),
     ]);
@@ -387,8 +388,42 @@ export class AuthService {
       plan_id: subscription.plan_id,
       trial_ends_at: subscription.trial_ends_at,
       current_period_ends_at: subscription.current_period_ends_at,
+      provider_name: subscription.provider_name,
+      provider_customer_id: subscription.provider_customer_id,
+      provider_subscription_id: subscription.provider_subscription_id,
+      billing_email: subscription.billing_email,
       cancel_at_period_end: subscription.cancel_at_period_end,
       plan: subscription.plans,
+    };
+  }
+
+  async getBillingOverview(workshopId: string) {
+    const [subscription, invoices, payments, gateways] = await Promise.all([
+      this.getSubscriptionStatus(workshopId),
+      this.prisma.raw.invoices.findMany({
+        where: { workshop_id: workshopId },
+        orderBy: [{ issued_at: 'desc' }, { created_at: 'desc' }],
+        take: 10,
+        include: { invoice_items: true },
+      }),
+      this.prisma.raw.payments.findMany({
+        where: { workshop_id: workshopId },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+        include: { payment_gateways: true },
+      }),
+      this.prisma.raw.payment_gateways.findMany({
+        where: { is_active: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+
+    return {
+      subscription,
+      invoices,
+      payments,
+      gateways,
+      gateway_locked: false,
     };
   }
 
