@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { RunImportDto, SaveTemplateDto } from './dto/booking-import.dto';
 import * as XLSX from 'xlsx';
+import { getWorkshopContext } from '../prisma/workshop-context';
 
 /** Header-like customer names that should be skipped during import */
 const HEADER_LIKE_NAMES = new Set([
@@ -280,10 +281,11 @@ export class BookingImportService {
           }
         }
 
-        // 4. Resolve advisor by employee_code, name, or email
+        // 4. Resolve advisor by employee_code, name, or email, scoped to the selected workshop
         let advisorId: string | null = null;
         const ownerCode = row.advisor_id?.trim() || null;
         if (ownerCode) {
+          const { workshopId, isPlatformAdmin } = getWorkshopContext();
           const advisor = await this.prisma.raw.users.findFirst({
             where: {
               OR: [
@@ -293,7 +295,14 @@ export class BookingImportService {
               ],
             },
           });
-          if (advisor) advisorId = advisor.id;
+          if (advisor && (isPlatformAdmin || !workshopId)) {
+            advisorId = advisor.id;
+          } else if (advisor && workshopId) {
+            const access = await this.prisma.raw.user_workshop_access.findUnique({
+              where: { user_id_workshop_id: { user_id: advisor.id, workshop_id: workshopId } },
+            });
+            if (access) advisorId = advisor.id;
+          }
         }
 
         // 5. Create job

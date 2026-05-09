@@ -19,6 +19,18 @@ export class UsersService {
     return role?.id ?? null;
   }
 
+  private async assertManageableUser(id: string, requestingUser?: any) {
+    if (requestingUser?.role === 'platform_admin') return;
+
+    const workshopId = requestingUser?.workshopId;
+    if (!workshopId) throw new ForbiddenException('No workshop selected');
+
+    const access = await this.prisma.raw.user_workshop_access.findUnique({
+      where: { user_id_workshop_id: { user_id: id, workshop_id: workshopId } },
+    });
+    if (!access) throw new NotFoundException('User not found');
+  }
+
   async create(dto: CreateUserDto, requestingUser?: any) {
     // Non-platform-admins cannot assign platform_admin role
     if (dto.role_id) {
@@ -139,7 +151,8 @@ export class UsersService {
     return users.map((u: any) => ({ id: u.id, name: u.name, role: u.roles?.name ?? u.role_id }));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, requestingUser?: any) {
+    await this.assertManageableUser(id, requestingUser);
     const user = await this.prisma.raw.users.findUnique({
       where: { id },
       select: {
@@ -153,7 +166,7 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto, requestingUser?: any) {
-    await this.findOne(id);
+    await this.findOne(id, requestingUser);
 
     // Non-platform-admins cannot change someone to/from platform_admin role
     if (dto.role_id) {
@@ -172,13 +185,14 @@ export class UsersService {
     return result;
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, requestingUser?: any) {
+    await this.findOne(id, requestingUser);
     const { password_hash, ...result } = await this.prisma.raw.users.update({ where: { id }, data: { is_active: false } });
     return result;
   }
 
-  async resetPassword(id: string, newPassword: string) {
+  async resetPassword(id: string, newPassword: string, requestingUser?: any) {
+    await this.assertManageableUser(id, requestingUser);
     const user = await this.prisma.raw.users.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     const hash = await bcrypt.hash(newPassword, 10);
