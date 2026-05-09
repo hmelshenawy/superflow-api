@@ -15,7 +15,7 @@ export function PrioraFlowLogo({ className = "", iconClassName = "h-10 w-10", sh
         width={512}
         height={512}
         priority
-        className={`${iconClassName} rounded-2xl object-contain`}
+        className={`${iconClassName} rounded-[30%] object-contain shadow-sm ring-1 ring-black/5`}
       />
       {showText && (
         <div>

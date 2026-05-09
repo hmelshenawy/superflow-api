@@ -12,7 +12,7 @@ function LoadingShell() {
   return (
     <div className="flex h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-3">
-        <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={40} height={40} className="h-10 w-10 animate-pulse rounded-xl object-contain" />
+        <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={40} height={40} className="h-10 w-10 animate-pulse rounded-[30%] object-contain" />
         <div className="h-2 w-24 animate-pulse rounded-full bg-slate-200" />
       </div>
     </div>
