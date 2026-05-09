@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
@@ -119,16 +120,17 @@ export function Sidebar() {
   const navContent = (isCollapsed: boolean) => (
     <>
       <div className={cn("border-b border-slate-800 px-4 py-4", isCollapsed && "px-2")}>
-        <div className={cn("flex items-center gap-2.5", isCollapsed && "justify-center gap-0")}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600/15 ring-1 ring-blue-500/30">
-            <Wrench className="h-4.5 w-4.5 text-blue-400" />
+        <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-start")}>
+          <div className="rounded-2xl bg-white/95 p-1.5 shadow-sm ring-1 ring-white/10 dark:bg-slate-100">
+            <Image
+              src={isCollapsed ? "/prioraflow-icon.png" : "/prioraflow-logo.png"}
+              alt="PrioraFlow"
+              width={isCollapsed ? 512 : 409}
+              height={isCollapsed ? 512 : 288}
+              className={cn(isCollapsed ? "h-9 w-9" : "h-14 w-auto", "object-contain")}
+              priority
+            />
           </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <p className="text-[11px] text-slate-500">Clarity in every step</p>
-              <h2 className="text-base font-semibold tracking-tight text-white">PrioraFlow</h2>
-            </div>
-          )}
         </div>
       </div>
 
@@ -248,11 +250,8 @@ export function Sidebar() {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/15 ring-1 ring-blue-500/30">
-            <Wrench className="h-3.5 w-3.5 text-blue-400" />
-          </div>
-          <span className="text-sm font-semibold text-foreground">PrioraFlow</span>
+        <div className="flex items-center gap-2 rounded-xl bg-white/90 px-2 py-1 shadow-sm ring-1 ring-border dark:bg-slate-100">
+          <Image src="/prioraflow-logo.png" alt="PrioraFlow" width={409} height={288} className="h-8 w-auto object-contain" priority />
         </div>
         <div className="ml-auto">
           <ThemeToggle />
@@ -265,14 +264,8 @@ export function Sidebar() {
           <div className="absolute inset-0 bg-black/50" role="presentation" onClick={() => setMobileOpen(false)} />
           <aside className="relative flex h-full w-64 flex-col bg-slate-950 text-slate-100 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600/15 ring-1 ring-blue-500/30">
-                  <Wrench className="h-4.5 w-4.5 text-blue-400" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-slate-500">Clarity in every step</p>
-                  <h2 className="text-base font-semibold tracking-tight text-white">PrioraFlow</h2>
-                </div>
+              <div className="rounded-2xl bg-white/95 p-1.5 shadow-sm ring-1 ring-white/10 dark:bg-slate-100">
+                <Image src="/prioraflow-logo.png" alt="PrioraFlow" width={409} height={288} className="h-14 w-auto object-contain" priority />
               </div>
               <button
                 onClick={() => setMobileOpen(false)}

@@ -69,7 +69,7 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <PrioraFlowLogo className="justify-center" iconClassName="h-16 w-16" showText={false} />
+          <PrioraFlowLogo className="justify-center" imageClassName="h-24 w-auto" framed />
           <h1 className="mt-3 text-2xl font-bold text-foreground">Start your PrioraFlow trial</h1>
           <p className="mt-1 text-sm text-muted-foreground">Create your workshop workspace in under a minute.</p>
         </div>
