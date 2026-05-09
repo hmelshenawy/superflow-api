@@ -17,10 +17,15 @@ model workshops {
   email       String?   @db.VarChar(255)
   timezone    String?   @default("Asia/Dubai") @db.VarChar(50)
   is_active   Boolean?  @default(true)
+  plan_id     String?   @default("free_trial") @db.VarChar(60)
+  trial_ends_at DateTime? @db.DateTime(0)
   created_at  DateTime? @default(now()) @db.DateTime(0)
   updated_at  DateTime? @default(now()) @db.DateTime(0)
 
   user_workshop_access   user_workshop_access[]
+  subscriptions          subscriptions[]
+  invoices               invoices[]
+  payments               payments[]
   approval_tokens        approval_tokens[]
   audit_logs             audit_logs[]
   authorisation_decisions authorisation_decisions[]
@@ -50,6 +55,147 @@ model workshops {
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
+}
+
+
+model plans {
+  id                    String          @id @db.VarChar(60)
+  name                  String          @db.VarChar(120)
+  description           String?         @db.Text
+  price_monthly_cents   Int?            @default(0)
+  currency              String?         @default("AED") @db.VarChar(3)
+  max_users             Int?
+  max_jobs_per_month    Int?
+  max_workshops         Int?            @default(1)
+  is_active             Boolean?        @default(true)
+  created_at            DateTime?       @default(now()) @db.DateTime(0)
+  updated_at            DateTime?       @default(now()) @db.DateTime(0)
+
+  subscriptions         subscriptions[]
+}
+
+model subscriptions {
+  id                         String     @id @db.Char(36)
+  workshop_id                String     @db.Char(36)
+  plan_id                    String     @db.VarChar(60)
+  status                     String     @default("trialing") @db.VarChar(40)
+  trial_ends_at              DateTime?  @db.DateTime(0)
+  current_period_starts_at   DateTime?  @db.DateTime(0)
+  current_period_ends_at     DateTime?  @db.DateTime(0)
+  provider_name              String?    @db.VarChar(60)
+  provider_customer_id       String?    @db.VarChar(120)
+  provider_subscription_id   String?    @db.VarChar(120)
+  stripe_customer_id         String?    @db.VarChar(120)
+  stripe_subscription_id     String?    @db.VarChar(120)
+  billing_email              String?    @db.VarChar(255)
+  cancel_at_period_end       Boolean?   @default(false)
+  created_at                 DateTime?  @default(now()) @db.DateTime(0)
+  updated_at                 DateTime?  @default(now()) @db.DateTime(0)
+
+  workshops                  workshops  @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_subscriptions_workshop")
+  plans                      plans      @relation(fields: [plan_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_subscriptions_plan")
+  invoices                   invoices[]
+  payments                   payments[]
+
+  @@index([workshop_id], map: "idx_subscriptions_workshop")
+  @@index([plan_id], map: "idx_subscriptions_plan")
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([trial_ends_at], map: "idx_subscriptions_trial_ends")
+  @@index([provider_name], map: "idx_subscriptions_provider")
+}
+
+model payment_gateways {
+  id                    String    @id @db.VarChar(60)
+  name                  String    @db.VarChar(120)
+  status                String    @default("available") @db.VarChar(40)
+  supported_currencies  String?   @db.VarChar(255)
+  notes                 String?   @db.Text
+  is_active             Boolean?  @default(true)
+  created_at            DateTime? @default(now()) @db.DateTime(0)
+  updated_at            DateTime? @default(now()) @db.DateTime(0)
+
+  payments              payments[]
+
+  @@index([status], map: "idx_payment_gateways_status")
+  @@index([is_active], map: "idx_payment_gateways_active")
+}
+
+model invoices {
+  id                    String          @id @db.Char(36)
+  workshop_id           String          @db.Char(36)
+  subscription_id       String?         @db.Char(36)
+  invoice_number        String          @unique(map: "idx_invoices_number") @db.VarChar(40)
+  status                String          @default("draft") @db.VarChar(40)
+  currency              String?         @default("AED") @db.VarChar(3)
+  subtotal_cents        Int             @default(0)
+  tax_cents             Int             @default(0)
+  total_cents           Int             @default(0)
+  amount_paid_cents     Int             @default(0)
+  due_at                DateTime?       @db.DateTime(0)
+  issued_at             DateTime?       @db.DateTime(0)
+  paid_at               DateTime?       @db.DateTime(0)
+  provider_name         String?         @db.VarChar(60)
+  provider_invoice_id   String?         @db.VarChar(120)
+  provider_checkout_url String?         @db.Text
+  notes                 String?         @db.Text
+  created_at            DateTime?       @default(now()) @db.DateTime(0)
+  updated_at            DateTime?       @default(now()) @db.DateTime(0)
+
+  workshops             workshops       @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoices_workshop")
+  subscriptions         subscriptions?  @relation(fields: [subscription_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_invoices_subscription")
+  invoice_items         invoice_items[]
+  payments              payments[]
+
+  @@index([workshop_id], map: "idx_invoices_workshop")
+  @@index([subscription_id], map: "idx_invoices_subscription")
+  @@index([status], map: "idx_invoices_status")
+  @@index([due_at], map: "idx_invoices_due")
+}
+
+model invoice_items {
+  id                    String    @id @db.Char(36)
+  invoice_id            String    @db.Char(36)
+  description           String    @db.VarChar(255)
+  quantity              Int       @default(1)
+  unit_amount_cents     Int       @default(0)
+  total_cents           Int       @default(0)
+  created_at            DateTime? @default(now()) @db.DateTime(0)
+
+  invoices              invoices  @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_items_invoice")
+
+  @@index([invoice_id], map: "idx_invoice_items_invoice")
+}
+
+model payments {
+  id                    String            @id @db.Char(36)
+  workshop_id           String            @db.Char(36)
+  subscription_id       String?           @db.Char(36)
+  invoice_id            String?           @db.Char(36)
+  gateway_id            String?           @db.VarChar(60)
+  status                String            @default("pending") @db.VarChar(40)
+  amount_cents          Int               @default(0)
+  currency              String?           @default("AED") @db.VarChar(3)
+  method                String?           @db.VarChar(60)
+  provider_name         String?           @db.VarChar(60)
+  provider_payment_id   String?           @db.VarChar(120)
+  provider_reference    String?           @db.VarChar(120)
+  paid_at               DateTime?         @db.DateTime(0)
+  failed_at             DateTime?         @db.DateTime(0)
+  failure_reason        String?           @db.Text
+  created_at            DateTime?         @default(now()) @db.DateTime(0)
+  updated_at            DateTime?         @default(now()) @db.DateTime(0)
+
+  workshops             workshops         @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payments_workshop")
+  subscriptions         subscriptions?    @relation(fields: [subscription_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_subscription")
+  invoices              invoices?         @relation(fields: [invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_invoice")
+  payment_gateways      payment_gateways? @relation(fields: [gateway_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_gateway")
+
+  @@index([workshop_id], map: "idx_payments_workshop")
+  @@index([subscription_id], map: "idx_payments_subscription")
+  @@index([invoice_id], map: "idx_payments_invoice")
+  @@index([gateway_id], map: "idx_payments_gateway")
+  @@index([status], map: "idx_payments_status")
+  @@index([provider_name], map: "idx_payments_provider")
 }
 
 model user_workshop_access {
@@ -600,6 +746,19 @@ model notifications {
   @@index([workshop_id], map: "idx_n_workshop")
 }
 
+model password_reset_tokens {
+  id          String    @id @db.Char(36)
+  user_id     String?   @db.Char(36)
+  token_hash  String    @unique(map: "token_hash") @db.VarChar(255)
+  expires_at  DateTime  @db.DateTime(0)
+  used_at     DateTime? @db.DateTime(0)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  users       users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_prt_user")
+
+  @@index([expires_at], map: "idx_prt_expires")
+  @@index([user_id], map: "idx_prt_user_id")
+}
+
 model refresh_tokens {
   id          String    @id @db.Char(36)
   user_id     String?   @db.Char(36)
@@ -665,6 +824,7 @@ model users {
   jobs_jobs_technician_idTousers jobs[]                  @relation("jobs_technician_idTousers")
   media_files                    media_files[]
   refresh_tokens                 refresh_tokens[]
+  password_reset_tokens          password_reset_tokens[]
   settings                       settings[]
   booking_import_templates       booking_import_templates[]
   roles                          roles?                  @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_users_role")

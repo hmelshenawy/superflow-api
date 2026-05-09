@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,10 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
+  CreditCard,
+  CalendarDays,
+  FileText,
+  Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -765,8 +770,220 @@ function IntegrationsSection() {
   );
 }
 
+
+interface MoneyPlan {
+  id: string;
+  name: string;
+  description: string | null;
+  price_monthly_cents: number | null;
+  currency: string | null;
+  max_users: number | null;
+  max_jobs_per_month: number | null;
+  max_workshops: number | null;
+}
+
+interface SubscriptionStatus {
+  id: string;
+  status: string;
+  plan_id: string;
+  trial_ends_at: string | null;
+  current_period_ends_at: string | null;
+  provider_name?: string | null;
+  provider_customer_id?: string | null;
+  provider_subscription_id?: string | null;
+  billing_email?: string | null;
+  cancel_at_period_end: boolean | null;
+  plan?: MoneyPlan | null;
+}
+
+interface BillingInvoice {
+  id: string;
+  invoice_number: string;
+  status: string;
+  currency: string | null;
+  total_cents: number;
+  amount_paid_cents: number;
+  due_at: string | null;
+  issued_at: string | null;
+  paid_at: string | null;
+  provider_name: string | null;
+}
+
+interface BillingPayment {
+  id: string;
+  status: string;
+  amount_cents: number;
+  currency: string | null;
+  method: string | null;
+  provider_name: string | null;
+  paid_at: string | null;
+  created_at: string | null;
+}
+
+interface BillingGateway {
+  id: string;
+  name: string;
+  status: string;
+  supported_currencies: string | null;
+  notes: string | null;
+  is_active: boolean | null;
+}
+
+interface BillingOverview {
+  subscription: SubscriptionStatus | null;
+  invoices: BillingInvoice[];
+  payments: BillingPayment[];
+  gateways: BillingGateway[];
+  gateway_locked: boolean;
+}
+
+function daysRemaining(date: string | null) {
+  if (!date) return null;
+  return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+}
+
+function formatMoney(cents: number | null | undefined, currency = "AED") {
+  if (cents == null) return "Custom";
+  return `${currency} ${(cents / 100).toFixed(0)}`;
+}
+
+function EmptyBillingRow({ children }: { children: string }) {
+  return <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{children}</p>;
+}
+
+function BillingSection() {
+  const [billing, setBilling] = useState<BillingOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get("/auth/billing")
+      .then(({ data }) => setBilling(data))
+      .catch(() => toast.error("Failed to load billing status"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <SectionCard title="Billing">
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </SectionCard>
+    );
+  }
+
+  const subscription = billing?.subscription || null;
+
+  if (!subscription) {
+    return (
+      <SectionCard title="Billing" description="No subscription is attached to this workshop yet.">
+        <p className="text-sm text-muted-foreground">This should only happen for old/manual workshops. New signups create a trial subscription automatically.</p>
+      </SectionCard>
+    );
+  }
+
+  const remaining = daysRemaining(subscription.trial_ends_at || subscription.current_period_ends_at);
+  const planCurrency = subscription.plan?.currency || "AED";
+  const price = subscription.plan?.price_monthly_cents == null
+    ? "Custom"
+    : `${formatMoney(subscription.plan.price_monthly_cents, planCurrency)} / month`;
+  const invoices = billing?.invoices || [];
+  const payments = billing?.payments || [];
+  const gateways = billing?.gateways || [];
+
+  return (
+    <SectionCard title="Billing" description="Gateway-agnostic subscription, invoice, and payment tracking.">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
+          <p className="mt-2 text-xl font-bold text-foreground">{subscription.plan?.name || subscription.plan_id}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{price}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Subscription</p>
+          <p className="mt-2 text-xl font-bold capitalize text-foreground">{subscription.status}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{remaining !== null ? `${remaining} days remaining` : "No end date"}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gateway</p>
+          <p className="mt-2 text-xl font-bold text-foreground">{subscription.provider_name || "Not selected"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Can be connected later without changing billing data.</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-100">
+        <div className="flex gap-3">
+          <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Payment provider is intentionally generic. PrioraFlow can track subscriptions, invoices, and manual payments now; Tap, PayTabs, Network International, Stripe, or another gateway can be plugged in later.</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-border p-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-semibold text-foreground">Invoices</h3>
+          </div>
+          {invoices.length === 0 ? (
+            <EmptyBillingRow>No invoices yet. The ledger is ready for generated invoices once pricing/checkout rules are finalized.</EmptyBillingRow>
+          ) : invoices.map((invoice) => (
+            <div key={invoice.id} className="rounded-xl border border-border p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-foreground">{invoice.invoice_number}</span>
+                <span className="capitalize text-muted-foreground">{invoice.status}</span>
+              </div>
+              <p className="mt-1 text-muted-foreground">{formatMoney(invoice.total_cents, invoice.currency || "AED")} · due {invoice.due_at ? new Date(invoice.due_at).toLocaleDateString() : "—"}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-3 rounded-2xl border border-border p-4">
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-semibold text-foreground">Payments</h3>
+          </div>
+          {payments.length === 0 ? (
+            <EmptyBillingRow>No payments recorded yet. Manual/bank-transfer payments can be reconciled here before any online gateway is chosen.</EmptyBillingRow>
+          ) : payments.map((payment) => (
+            <div key={payment.id} className="rounded-xl border border-border p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-foreground">{formatMoney(payment.amount_cents, payment.currency || "AED")}</span>
+                <span className="capitalize text-muted-foreground">{payment.status}</span>
+              </div>
+              <p className="mt-1 text-muted-foreground">{payment.provider_name || payment.method || "Manual"} · {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString() : "not paid yet"}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-border p-4">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-foreground">Gateway candidates</h3>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {gateways.map((gateway) => (
+            <div key={gateway.id} className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-foreground">{gateway.name}</span>
+                <span className="capitalize text-muted-foreground">{gateway.status}</span>
+              </div>
+              <p className="mt-1 text-muted-foreground">{gateway.supported_currencies || "Currencies TBD"}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────
 export default function SettingsPage() {
+  const user = useAuthStore((state) => state.user);
+  const roleName = useMemo(() => user?.role?.name || "", [user?.role?.name]);
+  const canSeeBilling = ["workshop_admin", "platform_admin"].includes(roleName);
+
   return (
     <div className="space-y-6">
       <div>
@@ -790,6 +1007,12 @@ export default function SettingsPage() {
             <Settings2 className="mr-1.5 h-4 w-4" />
             Priority Matrix
           </TabsTrigger>
+          {canSeeBilling ? (
+            <TabsTrigger value="billing">
+              <CreditCard className="mr-1.5 h-4 w-4" />
+              Billing
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="notifications">
             <Bell className="mr-1.5 h-4 w-4" />
             Notifications
@@ -813,6 +1036,12 @@ export default function SettingsPage() {
         <TabsContent value="priority" className="mt-6 space-y-6">
           <PriorityMatrixSection />
         </TabsContent>
+
+        {canSeeBilling ? (
+          <TabsContent value="billing" className="mt-6 space-y-6">
+            <BillingSection />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="notifications" className="mt-6 space-y-6">
           <NotificationsSection />

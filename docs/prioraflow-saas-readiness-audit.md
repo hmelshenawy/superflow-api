@@ -37,11 +37,11 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 
 | # | Gap | Why it blocks SaaS | Effort |
 |---|---|---|---|
-| B1 | **No billing / subscription system** | No way to charge customers, no plan tiers, no trial management | Large |
-| B2 | **No self-service signup / onboarding** | New workshops must be created manually by a platform_admin | Medium |
-| B3 | **No email delivery** | Notification webhooks are empty strings — customer portal links, password resets, estimate emails all fail in production | Medium |
-| B4 | **No password reset flow** | Users who forget passwords are stuck — no `/auth/forgot-password` endpoint | Small |
-| B5 | **No rate limiting per tenant** | Global throttle only (120/min). One heavy workshop can starve others | Medium |
+| B1 | **Billing/subscription foundation started** | Plans + subscriptions now exist internally; Stripe checkout/webhooks and limit enforcement still pending | Large |
+| B2 | **Self-service signup/onboarding backend + page added** | Public signup creates workshop + owner, sends welcome email, and starts 14-day trial | ✅ Mostly done |
+| B3 | **Email delivery wired via Resend** | Notification worker sends email channel through Resend; approval emails include customer portal links | ✅ Done |
+| B4 | **Password reset flow added** | `/auth/forgot-password` + `/auth/reset-password`, hashed one-time tokens, Resend email delivery | ✅ Done |
+| B5 | **Per-tenant rate limiting added** | Global throttle now keys authenticated traffic by JWT `workshopId`; platform admins by user; public traffic by IP | ✅ Done |
 | B6 | **No data isolation verification** | Multi-tenancy relies on ALS interceptor — no automated test proving cross-tenant leaks can't happen | Medium |
 | B7 | **CSP disabled** | Helmet CSP is off (`contentSecurityPolicy: false`) — XSS risk on a public SaaS | Small |
 
@@ -103,31 +103,34 @@ PrioraFlow is a workshop operations platform built on NestJS (Prisma + MySQL) + 
 _These are quick wins that unblock everything else._
 
 - [x] **B7**: Enable CSP (report-only mode with directives for Next.js + Sentry) ✅ Deployed
-- [ ] **B4**: Add `/auth/forgot-password` + `/auth/reset-password` endpoints + email flow
-- [ ] **B6**: Write automated multi-tenant isolation tests (create data in Workshop A, verify Workshop B API can't see it)
+- [x] **B4**: Add `/auth/forgot-password` + `/auth/reset-password` endpoints + email flow ✅
+- [x] **B6**: Write automated multi-tenant isolation tests (26 checks: read/count/findUnique/write/no-workshop/platform-admin/cross-model) ✅ Added `npm run test:tenant`
 - [x] **M10**: Add Sentry to API + Web — errors captured in production, 5xx only, PII redacted ✅ Deployed
-- [ ] **B5**: Add per-tenant rate limiting (key by `workshop_id` + IP, store counters in Redis)
+- [x] **B5**: Add per-tenant rate limiting (tenant bucket from JWT `workshopId`, platform admin by user, public fallback by IP) ✅ Added `npm run test:rate-limit`
 
 ### Phase 1: Comms & Onboarding (Week 3-4)
 _Now users can sign up and get value from the app._
 
-- [ ] **B3**: Wire real email delivery (Resend / SendGrid / AWS SES) — portal links, estimates, password resets
-- [ ] **B2**: Build self-service signup flow:
-  - Landing page "Start free trial" → email verification → create workshop → create admin user → redirect to dashboard
-  - Trial period (14 days) tracked in `workshops` table (add `trial_ends_at`, `plan_id`)
-- [ ] **M8**: Build job stage history service + timeline UI in job detail page
+- [x] **B3**: Wire real email delivery with Resend — notification worker sends emails and approval emails include portal links ✅
+- [x] **B2**: Build self-service signup flow:
+  - [x] Backend `POST /auth/signup` creates workshop + owner `workshop_admin`, returns tokens, sends welcome email
+  - [x] Frontend `/signup` page + landing CTA "Start free trial" → redirect to dashboard
+  - [x] Trial period (14 days) tracked in `workshops.trial_ends_at`, with `plan_id='free_trial'`
+- [x] **M8**: Build job stage history service + timeline UI in job detail page — creation/status changes are recorded and shown in a Timeline tab
 - [ ] **M10**: (if not done in Phase 0)
 
 ### Phase 2: Billing (Week 5-7)
 _Monetization — the hardest gap but the one that makes it a real SaaS._
 
-- [ ] **B1**: Implement billing system:
-  - Add `plans` table (free_trial, starter, pro, enterprise) with limits (users, jobs/month, workshops)
-  - Add `subscriptions` table linking workshop → plan → Stripe customer/subscription ID
-  - Integrate Stripe Checkout for plan selection + payment
-  - Add Stripe webhook handler (payment success/failure/subscription cancelled)
-  - Enforce plan limits in API guards (e.g., reject job creation if over monthly limit)
-  - Add billing page in settings (current plan, usage, upgrade CTA)
+- [~] **B1**: Implement billing system:
+  - [x] Add `plans` table (free_trial, starter, pro, enterprise) with limits (users, jobs/month, workshops)
+  - [x] Add `subscriptions` table linking workshop → plan → Stripe customer/subscription ID
+  - [x] Create trial subscription automatically during signup
+  - [x] Expose `GET /auth/subscription` for the selected workshop
+  - [ ] Integrate Stripe Checkout for plan selection + payment
+  - [ ] Add Stripe webhook handler (payment success/failure/subscription cancelled)
+  - [ ] Enforce plan limits in API guards (e.g., reject job creation if over monthly limit)
+  - [ ] Add billing page in settings (current plan, usage, upgrade CTA)
 - [ ] **M3**: Add usage metering (jobs created/month, active users, API calls) — feed into billing enforcement
 
 ### Phase 3: Product Completeness (Week 8-10)

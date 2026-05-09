@@ -4,17 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Cookies from "js-cookie";
 import { useAuthStore } from "@/stores/auth";
-import { Wrench } from "lucide-react";
+import Image from "next/image";
 
-const PUBLIC_ROUTES = ["/login"];
+const PUBLIC_ROUTES = ["/login", "/signup"];
 
 function LoadingShell() {
   return (
     <div className="flex h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/15 ring-1 ring-blue-500/30">
-          <Wrench className="h-5 w-5 animate-pulse text-blue-400" />
-        </div>
+        <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={40} height={40} className="h-10 w-10 animate-pulse rounded-[30%] object-contain" />
         <div className="h-2 w-24 animate-pulse rounded-full bg-slate-200" />
       </div>
     </div>

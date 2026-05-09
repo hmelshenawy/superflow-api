@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
@@ -118,15 +119,15 @@ export function Sidebar() {
 
   const navContent = (isCollapsed: boolean) => (
     <>
-      <div className={cn("border-b border-slate-800 px-4 py-4", isCollapsed && "px-2")}>
-        <div className={cn("flex items-center gap-2.5", isCollapsed && "justify-center gap-0")}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600/15 ring-1 ring-blue-500/30">
-            <Wrench className="h-4.5 w-4.5 text-blue-400" />
+      <div className={cn("border-b border-border px-3 py-3 dark:border-slate-800", isCollapsed && "px-2")}>
+        <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2.5")}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-100 dark:ring-white/10">
+            <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={512} height={512} className="h-8 w-8 object-contain" priority />
           </div>
           {!isCollapsed && (
-            <div className="min-w-0">
-              <p className="text-[11px] text-slate-500">Clarity in every step</p>
-              <h2 className="text-base font-semibold tracking-tight text-white">PrioraFlow</h2>
+            <div className="min-w-0 leading-tight">
+              <h2 className="truncate text-[15px] font-bold tracking-tight text-foreground dark:text-white">PrioraFlow</h2>
+              <p className="truncate text-[11px] font-medium text-muted-foreground dark:text-slate-400">Clarity in every step</p>
             </div>
           )}
         </div>
@@ -138,7 +139,7 @@ export function Sidebar() {
           <select
             value={currentWorkshopId || ""}
             onChange={(e) => { selectWorkshop(e.target.value); }}
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
           >
             {!currentWorkshopId && <option value="" disabled>Select workshop...</option>}
             {workshops.map((w) => (
@@ -166,8 +167,8 @@ export function Sidebar() {
                 "flex items-center gap-2 rounded-xl py-2 text-[13px] font-medium transition",
                 isCollapsed ? "justify-center px-2" : "px-2.5",
                 active
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                  ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -177,15 +178,15 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className={cn("border-t border-slate-800 p-3", isCollapsed && "p-2")}>
+      <div className={cn("border-t border-border dark:border-slate-800 p-3", isCollapsed && "p-2")}>
         {isCollapsed ? (
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-[11px] font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground dark:bg-slate-800 dark:text-white">
               {user?.name?.charAt(0) || "U"}
             </div>
             <button
               onClick={logout}
-              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               aria-label="Sign out"
               title="Sign out"
             >
@@ -193,25 +194,25 @@ export function Sidebar() {
             </button>
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
+          <div className="rounded-xl border border-border bg-card p-3 dark:border-slate-800 dark:bg-slate-900/80">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">
+                <p className="truncate text-sm font-semibold text-foreground dark:text-white">
                   {user?.name || "User"}
                 </p>
-                <p className="truncate text-[11px] text-slate-400">{user?.email || "No email"}</p>
+                <p className="truncate text-[11px] text-muted-foreground dark:text-slate-400">{user?.email || "No email"}</p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
                 <BadgeCheck className="h-3 w-3" />
               </span>
             </div>
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-950/80 px-2 py-1.5 text-[11px] text-slate-400">
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-muted dark:bg-slate-950/80 px-2 py-1.5 text-[11px] text-slate-400">
               <span className="inline-flex items-center gap-1.5">
                 <Shield className="h-3 w-3" /> {admin ? "Admin" : "Internal"}
               </span>
               <button
                 onClick={logout}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-slate-300 hover:bg-slate-800 hover:text-white"
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-muted-foreground hover:bg-background hover:text-foreground dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                 aria-label="Sign out"
                 title="Sign out"
               >
@@ -224,14 +225,14 @@ export function Sidebar() {
 
       <button
         onClick={toggleCollapsed}
-        className="hidden md:flex items-center justify-center border-t border-slate-800 py-2.5 text-slate-400 transition hover:bg-slate-900 hover:text-white"
+        className="hidden md:flex items-center justify-center border-t border-border py-2.5 text-muted-foreground transition hover:bg-muted hover:text-foreground dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
 
-      <div className="hidden md:flex items-center justify-center border-t border-slate-800 py-2.5">
+      <div className="hidden md:flex items-center justify-center border-t border-border py-2.5 dark:border-slate-800">
         <ThemeToggle />
       </div>
     </>
@@ -249,10 +250,10 @@ export function Sidebar() {
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/15 ring-1 ring-blue-500/30">
-            <Wrench className="h-3.5 w-3.5 text-blue-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-border dark:bg-slate-100">
+            <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={512} height={512} className="h-6 w-6 object-contain" priority />
           </div>
-          <span className="text-sm font-semibold text-foreground">PrioraFlow</span>
+          <span className="text-sm font-bold text-foreground">PrioraFlow</span>
         </div>
         <div className="ml-auto">
           <ThemeToggle />
@@ -263,20 +264,20 @@ export function Sidebar() {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" role="presentation" onClick={() => setMobileOpen(false)} />
-          <aside className="relative flex h-full w-64 flex-col bg-slate-950 text-slate-100 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+          <aside className="relative flex h-full w-64 flex-col border-r border-border bg-background text-foreground shadow-xl dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600/15 ring-1 ring-blue-500/30">
-                  <Wrench className="h-4.5 w-4.5 text-blue-400" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-border dark:bg-slate-100 dark:ring-white/10">
+                  <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={512} height={512} className="h-8 w-8 object-contain" priority />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-slate-500">Clarity in every step</p>
-                  <h2 className="text-base font-semibold tracking-tight text-white">PrioraFlow</h2>
+                <div className="leading-tight">
+                  <h2 className="text-[15px] font-bold tracking-tight text-foreground dark:text-white">PrioraFlow</h2>
+                  <p className="text-[11px] font-medium text-muted-foreground dark:text-slate-400">Clarity in every step</p>
                 </div>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
@@ -293,8 +294,8 @@ export function Sidebar() {
                     className={cn(
                       "flex items-center gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium transition",
                       active
-                        ? "bg-white text-slate-950 shadow-sm"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                        ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
@@ -303,19 +304,19 @@ export function Sidebar() {
                 );
               })}
             </nav>
-            <div className="border-t border-slate-800 p-3">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
+            <div className="border-t border-border p-3 dark:border-slate-800">
+              <div className="rounded-xl border border-border bg-card p-3 dark:border-slate-800 dark:bg-slate-900/80">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{user?.name || "User"}</p>
-                    <p className="truncate text-[11px] text-slate-400">{user?.email || "No email"}</p>
+                    <p className="truncate text-sm font-semibold text-foreground dark:text-white">{user?.name || "User"}</p>
+                    <p className="truncate text-[11px] text-muted-foreground dark:text-slate-400">{user?.email || "No email"}</p>
                   </div>
                 </div>
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-950/80 px-2 py-1.5 text-[11px] text-slate-400">
+                <div className="mt-2 flex items-center justify-between rounded-lg bg-muted px-2 py-1.5 text-[11px] text-muted-foreground dark:bg-slate-950/80 dark:text-slate-400">
                   <span className="inline-flex items-center gap-1.5"><Shield className="h-3 w-3" /> {admin ? "Admin" : "Internal"}</span>
                   <button
                     onClick={logout}
-                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-slate-300 hover:bg-slate-800 hover:text-white"
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-muted-foreground hover:bg-background hover:text-foreground dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
                   >
                     <LogOut className="h-3 w-3" /> Sign out
                   </button>
@@ -329,8 +330,8 @@ export function Sidebar() {
       {/* Desktop sidebar — starts collapsed, user can toggle */}
       <aside
         className={cn(
-          "hidden h-screen shrink-0 flex-col border-r border-slate-800 bg-slate-950 text-slate-100 transition-all duration-200 md:flex",
-          collapsed ? "w-[60px]" : "w-52"
+          "hidden h-screen shrink-0 flex-col border-r border-border bg-background text-foreground transition-all duration-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex",
+          collapsed ? "w-[60px]" : "w-56"
         )}
       >
         {navContent(collapsed)}

@@ -32,10 +32,12 @@ import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
 import {
   ArrowLeft,
+  ArrowRight,
   Car,
   CheckCircle2,
   ClipboardList,
   Clock3,
+  History,
   FileText,
   Image as ImageIcon,
   Pencil,
@@ -775,6 +777,9 @@ export default function JobDetailPage() {
           <TabsTrigger value="media" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ImageIcon className="mr-2 h-4 w-4" /> Media
           </TabsTrigger>
+          <TabsTrigger value="timeline" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <History className="mr-2 h-4 w-4" /> Timeline
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -1045,6 +1050,48 @@ export default function JobDetailPage() {
           )}
         </TabsContent>
 
+
+
+
+        <TabsContent value="timeline" className="space-y-4">
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Status timeline</CardTitle>
+              <p className="text-sm text-muted-foreground">A chronological audit trail for this job’s overall status changes.</p>
+            </CardHeader>
+            <CardContent className="p-5">
+              {job.job_status_history?.length ? (
+                <div className="relative space-y-4 before:absolute before:left-3 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-border">
+                  {job.job_status_history.map((event) => (
+                    <div key={event.id} className="relative flex gap-4 pl-8">
+                      <span className="absolute left-0 top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-700">
+                        <Clock3 className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="flex-1 rounded-2xl border border-border bg-card p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {event.from_status ? <StatusBadge status={event.from_status} /> : <span className="rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">Created</span>}
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                            {event.to_status ? <StatusBadge status={event.to_status} /> : null}
+                          </div>
+                          <span className="text-xs font-medium text-muted-foreground">{formatDate(event.changed_at, true)}</span>
+                        </div>
+                        <div className="mt-3 text-sm text-muted-foreground">
+                          <span>By {event.users?.name || event.users?.email || "System"}</span>
+                          {event.reason ? <span> · {event.reason}</span> : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
+                  No status history yet. Future status changes will appear here.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="media" className="space-y-4" id="media">
           <Card className="rounded-2xl border-border shadow-sm">

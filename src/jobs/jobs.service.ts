@@ -16,25 +16,39 @@ export class JobsService {
     // Job numbers are derived from a base-36 timestamp so they are short,
     // unique, and human-readable without needing a separate sequence.
     const jobNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
-    return this.prisma.tenant.jobs.create({
-      data: {
-        id: uuid(),
-        job_number: jobNumber,
-        customer_id: dto.customer_id,
-        vehicle_id: dto.vehicle_id,
-        advisor_id: dto.advisor_id || userId,
-        owner_code: dto.owner_code || null,
-        technician_id: dto.technician_id,
-        workshop_stage: null,
-        parts_status: 'no_parts',
-        is_customer_waiting: false,
-        customer_sensitivity: 'normal',
-        customer_concern: dto.customer_concern,
-        odometer_in: dto.odometer_in,
-        promised_at: dto.promised_at ? new Date(dto.promised_at) : null,
-        dms_ro_number: dto.dms_ro_number,
-      },
-    });
+    const jobId = uuid();
+    const [job] = await this.prisma.$transaction([
+      this.prisma.tenant.jobs.create({
+        data: {
+          id: jobId,
+          job_number: jobNumber,
+          customer_id: dto.customer_id,
+          vehicle_id: dto.vehicle_id,
+          advisor_id: dto.advisor_id || userId,
+          owner_code: dto.owner_code || null,
+          technician_id: dto.technician_id,
+          workshop_stage: null,
+          parts_status: 'no_parts',
+          is_customer_waiting: false,
+          customer_sensitivity: 'normal',
+          customer_concern: dto.customer_concern,
+          odometer_in: dto.odometer_in,
+          promised_at: dto.promised_at ? new Date(dto.promised_at) : null,
+          dms_ro_number: dto.dms_ro_number,
+        },
+      }),
+      this.prisma.tenant.job_status_history.create({
+        data: {
+          id: uuid(),
+          job_id: jobId,
+          from_status: null,
+          to_status: 'booked',
+          changed_by: userId,
+          reason: 'Job created',
+        },
+      }),
+    ]);
+    return job;
   }
 
   async findAll(pagination: ListJobsDto, status?: string, search?: string, userId?: string, role?: string) {
@@ -123,7 +137,10 @@ export class JobsService {
         inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
         media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
-        job_status_history: { orderBy: { changed_at: 'desc' } },
+        job_status_history: {
+          orderBy: { changed_at: 'desc' },
+          include: { users: { select: { id: true, name: true, email: true } } },
+        },
       },
     });
     if (!job) throw new NotFoundException('Job not found');
@@ -138,7 +155,7 @@ export class JobsService {
     };
   }
 
-  async update(id: string, dto: UpdateJobDto) {
+  async update(id: string, dto: UpdateJobDto, userId?: string) {
     const job = await this.findOne(id);
 
     // If status is being changed, it must follow the state machine.
@@ -186,6 +203,23 @@ export class JobsService {
     // Allow clearing optional fields by sending empty string → null
     if (data.advisor_id === '') data.advisor_id = null;
     if (data.technician_id === '') data.technician_id = null;
+    if (data.status && data.status !== job.status) {
+      const [updated] = await this.prisma.$transaction([
+        this.prisma.tenant.jobs.update({ where: { id }, data }),
+        this.prisma.tenant.job_status_history.create({
+          data: {
+            id: uuid(),
+            job_id: id,
+            from_status: job.status,
+            to_status: data.status,
+            changed_by: userId || null,
+            reason: 'Status changed from job update',
+          },
+        }),
+      ]);
+      return updated;
+    }
+
     return this.prisma.tenant.jobs.update({ where: { id }, data });
   }
 

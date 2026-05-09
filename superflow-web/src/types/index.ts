@@ -47,6 +47,8 @@ export interface Workshop {
   phone?: string | null;
   email?: string | null;
   timezone?: string | null;
+  plan_id?: string | null;
+  trial_ends_at?: string | null;
 }
 // ─── Jobs ───────────────────────────────────────────────
 
@@ -114,6 +116,18 @@ export interface Job {
   estimate_lines?: EstimateLine[];
   inspection?: Inspection;
   media_files?: MediaFile[];
+  job_status_history?: JobStatusHistory[];
+}
+
+export interface JobStatusHistory {
+  id: string;
+  job_id: string | null;
+  from_status: JobStatus | null;
+  to_status: JobStatus | null;
+  changed_by: string | null;
+  reason: string | null;
+  changed_at: string | null;
+  users?: Pick<User, "id" | "name" | "email"> | null;
 }
 
 // ─── Customers ──────────────────────────────────────────
