@@ -108,6 +108,7 @@ const PARTS_STATUS_META: Record<PartsStatus, { label: string; hint: string }> = 
   waiting_warehouse: { label: "Waiting Warehouse", hint: "Waiting issue/receive from warehouse" },
   backorder: { label: "Backorder", hint: "Unavailable or no clear ETA" },
   parts_ready: { label: "Parts Ready", hint: "Parts available, workshop can continue" },
+  issued: { label: "Issued", hint: "Parts issued to technician / workshop" },
 };
 
 const PARTS_STATUSES = Object.keys(PARTS_STATUS_META) as PartsStatus[];

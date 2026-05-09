@@ -1046,6 +1046,7 @@ enum jobs_parts_status {
   waiting_warehouse
   backorder
   parts_ready
+  issued
 }
 
 enum media_files_file_type {

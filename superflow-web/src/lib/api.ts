@@ -12,6 +12,18 @@ export function clearAccessToken() {
   accessToken = null;
 }
 
+export function getAccessToken() {
+  return accessToken;
+}
+
+export async function refreshAccessToken() {
+  const { data } = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
+  const token = data.accessToken ?? data.access_token;
+  if (!token) throw new Error("Missing access token");
+  setAccessToken(token);
+  return token;
+}
+
 const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
@@ -42,9 +54,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       try {
-        const { data } = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
-        setAccessToken(data.accessToken);
-        original.headers.Authorization = `Bearer ${data.accessToken}`;
+        const token = await refreshAccessToken();
+        original.headers.Authorization = `Bearer ${token}`;
         return api(original);
       } catch {
         clearAccessToken();

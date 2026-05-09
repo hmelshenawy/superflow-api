@@ -59,7 +59,8 @@ export type PartsStatus =
   | "order_parts"
   | "waiting_warehouse"
   | "backorder"
-  | "parts_ready";
+  | "parts_ready"
+  | "issued";
 
 export type WorkshopStage =
   | "waiting_technician"

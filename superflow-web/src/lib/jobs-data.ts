@@ -94,6 +94,7 @@ export const PARTS_STATUS_META: Record<PartsStatus, { label: string; tone: strin
   waiting_warehouse: { label: "Waiting Warehouse", tone: "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200" },
   backorder: { label: "Backorder", tone: "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200" },
   parts_ready: { label: "Parts Ready", tone: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200" },
+  issued: { label: "Issued", tone: "bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200" },
 };
 
 export const WORKSHOP_STAGE_META: Record<WorkshopStage, { label: string; sub: string; tone: string }> = {

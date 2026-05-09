@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User, AuthTokens, Workshop } from "@/types";
-import api, { clearAccessToken, setAccessToken } from "@/lib/api";
+import api, { clearAccessToken, getAccessToken, refreshAccessToken, setAccessToken } from "@/lib/api";
 
 interface AuthState {
   user: User | null;
@@ -59,6 +59,9 @@ export const useAuthStore = create<AuthState>()(
 
       loadUser: async () => {
         try {
+          if (!getAccessToken()) {
+            await refreshAccessToken();
+          }
           const { data } = await api.get<User & { workshops?: Workshop[] }>("/auth/me");
           const savedWorkshopId = localStorage.getItem("currentWorkshopId");
           set({ user: data, isAuthenticated: true, currentWorkshopId: savedWorkshopId, workshops: data.workshops ?? get().workshops });
