@@ -1,16 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class RefreshTokenDto {
-  @ApiPropertyOptional()
-  @ValidateIf((o) => !o.refresh_token)
+  @ApiPropertyOptional({ description: 'Legacy body refresh token. Prefer the HttpOnly refresh cookie.' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   refreshToken?: string;
 
-  @ApiPropertyOptional()
-  @ValidateIf((o) => !o.refreshToken)
+  @ApiPropertyOptional({ description: 'Legacy snake_case body refresh token. Prefer the HttpOnly refresh cookie.' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   refresh_token?: string;
 }

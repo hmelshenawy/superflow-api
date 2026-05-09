@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import Cookies from "js-cookie";
 import { useAuthStore } from "@/stores/auth";
 import Image from "next/image";
 
@@ -34,11 +33,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (Cookies.get("access_token")) {
-      loadUser().finally(() => setChecking(false));
-    } else {
-      setChecking(false);
-    }
+    loadUser().finally(() => setChecking(false));
   }, [loadUser, pathname]);
 
   useEffect(() => {
