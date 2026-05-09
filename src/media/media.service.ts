@@ -1,10 +1,34 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
-import { PresignUploadDto } from './dto/presign-upload.dto';
+import { ALLOWED_MIME_TYPES, PresignUploadDto } from './dto/presign-upload.dto';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3_CLIENT } from './media.constants';
+
+const MEDIA_SIZE_LIMITS: Record<string, number> = {
+  photo: 10 * 1024 * 1024,
+  video: 50 * 1024 * 1024,
+  document: 15 * 1024 * 1024,
+};
+
+const EXTENSION_MIME_TYPES: Record<string, string[]> = {
+  jpg: ['image/jpeg'],
+  jpeg: ['image/jpeg'],
+  png: ['image/png'],
+  gif: ['image/gif'],
+  webp: ['image/webp'],
+  heic: ['image/heic', 'image/heif'],
+  heif: ['image/heic', 'image/heif'],
+  mp4: ['video/mp4'],
+  mov: ['video/quicktime'],
+  webm: ['video/webm'],
+  pdf: ['application/pdf'],
+  doc: ['application/msword'],
+  docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+  xls: ['application/vnd.ms-excel'],
+  xlsx: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+};
 
 @Injectable()
 export class MediaService {
@@ -55,13 +79,73 @@ export class MediaService {
     };
   }
 
+  private getExtension(filename: string) {
+    return (filename.split('.').pop() || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  }
+
+  private expectedFileTypeForMime(mimeType?: string | null): 'photo' | 'video' | 'document' | null {
+    if (!mimeType) return null;
+    if (mimeType.startsWith('image/')) return 'photo';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (ALLOWED_MIME_TYPES.includes(mimeType)) return 'document';
+    return null;
+  }
+
+  private validateMediaPolicy(params: { filename: string; fileType: string; mimeType?: string | null; sizeBytes?: number | null }) {
+    const ext = this.getExtension(params.filename);
+    const allowedByExtension = EXTENSION_MIME_TYPES[ext];
+    if (!allowedByExtension) {
+      throw new BadRequestException('File extension is not allowed');
+    }
+
+    if (!params.mimeType) {
+      throw new BadRequestException('MIME type is required');
+    }
+    if (!ALLOWED_MIME_TYPES.includes(params.mimeType)) {
+      throw new BadRequestException(`MIME type ${params.mimeType} is not allowed`);
+    }
+    if (!allowedByExtension.includes(params.mimeType)) {
+      throw new BadRequestException(`File extension .${ext} does not match MIME type ${params.mimeType}`);
+    }
+    const expectedType = this.expectedFileTypeForMime(params.mimeType);
+    if (expectedType && expectedType !== params.fileType) {
+      throw new BadRequestException(`File type ${params.fileType} does not match MIME type ${params.mimeType}`);
+    }
+
+    const maxSize = MEDIA_SIZE_LIMITS[params.fileType];
+    if (!maxSize) throw new BadRequestException('File type is not allowed');
+    if (params.sizeBytes !== undefined && params.sizeBytes !== null) {
+      if (!Number.isFinite(Number(params.sizeBytes)) || Number(params.sizeBytes) <= 0) {
+        throw new BadRequestException('File size must be a positive number');
+      }
+      if (Number(params.sizeBytes) > maxSize) {
+        throw new BadRequestException(`File is too large for ${params.fileType}. Maximum allowed is ${Math.round(maxSize / 1024 / 1024)} MB.`);
+      }
+    }
+  }
+
+  private assertDownloadAllowed(file: any) {
+    if (file.scan_status === 'infected' || file.scan_status === 'failed') {
+      throw new ForbiddenException('File is blocked by security scan status');
+    }
+    if (file.scan_status === 'pending' && file.file_type !== 'photo') {
+      throw new ForbiddenException('File is pending security scan');
+    }
+  }
+
   async presign(dto: PresignUploadDto, userId: string) {
     // Presign flow creates the DB record before the binary upload completes.
     // That keeps metadata and future confirmation tied to one stable media id.
     const bucket = process.env.S3_BUCKET || 'superflow-media';
     const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
-    const ext = (dto.filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    this.validateMediaPolicy({
+      filename: dto.filename,
+      fileType: dto.file_type,
+      mimeType: dto.mime_type,
+      sizeBytes: dto.size_bytes,
+    });
+    const ext = this.getExtension(dto.filename);
     const cleanName = await this.generateCleanFilename(dto.job_id, ext);
     const s3Key = `uploads/${dto.job_id}/${mediaId}/${cleanName}`;
 
@@ -82,6 +166,7 @@ export class MediaService {
         s3_key: s3Key,
         file_type: dto.file_type as any,
         mime_type: dto.mime_type,
+        size_bytes: dto.size_bytes,
         original_filename: cleanName,
         scan_status: 'pending',
       },
@@ -100,6 +185,23 @@ export class MediaService {
   async confirm(id: string, body: { size_bytes?: number; width_px?: number; height_px?: number; duration_sec?: number; thumbnail_key?: string }) {
     const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
+    if (body.size_bytes !== undefined) {
+      this.validateMediaPolicy({
+        filename: file.original_filename || 'file',
+        fileType: file.file_type || 'photo',
+        mimeType: file.mime_type,
+        sizeBytes: body.size_bytes,
+      });
+    }
+    for (const [key, value] of Object.entries({
+      width_px: body.width_px,
+      height_px: body.height_px,
+      duration_sec: body.duration_sec,
+    })) {
+      if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
+        throw new BadRequestException(`${key} must be a non-negative integer`);
+      }
+    }
 
     const updated = await this.prisma.tenant.media_files.update({
       where: { id },
@@ -124,12 +226,18 @@ export class MediaService {
     // Direct upload is the simpler fallback path when the client cannot or
     // should not upload straight to object storage.
     if (!file) throw new BadRequestException('File is required');
+    const rawName = dto.filename || file.originalname;
+    this.validateMediaPolicy({
+      filename: rawName,
+      fileType: dto.file_type,
+      mimeType: dto.mime_type || file.mimetype,
+      sizeBytes: file.size,
+    });
 
     const bucket = process.env.S3_BUCKET || 'superflow-media';
     const inspectionResponseId = await this.resolveInspectionResponseId(dto);
     const mediaId = uuid();
-    const rawName = dto.filename || file.originalname;
-    const ext = (rawName.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const ext = this.getExtension(rawName);
     const cleanName = await this.generateCleanFilename(dto.job_id, ext);
     const s3Key = `uploads/${dto.job_id}/${mediaId}/${cleanName}`;
 
@@ -175,6 +283,7 @@ export class MediaService {
     const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
+    this.assertDownloadAllowed(file);
 
     const command = new GetObjectCommand({
       Bucket: file.s3_bucket,
@@ -198,6 +307,7 @@ export class MediaService {
     const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
     if (!file || file.is_deleted) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
+    this.assertDownloadAllowed(file);
 
     const result = await this.s3.send(
       new GetObjectCommand({
