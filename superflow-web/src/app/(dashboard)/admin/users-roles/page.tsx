@@ -29,15 +29,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, RefreshCw, Pencil, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UsersRolesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -48,6 +51,7 @@ export default function UsersRolesPage() {
 
   const fetchUsers = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [u, r] = await Promise.all([
         api.get<PaginatedResponse<User>>("/users", { params: { limit: 100 } }),
@@ -57,6 +61,7 @@ export default function UsersRolesPage() {
       setRoles(r.data);
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Failed to load users";
+      setLoadError(Array.isArray(msg) ? msg.join(", ") : msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -90,6 +95,7 @@ export default function UsersRolesPage() {
       toast.error("Password is required for new users");
       return;
     }
+    setSaving(true);
     try {
       if (editingUser) {
         await api.patch(`/users/${editingUser.id}`, {
@@ -115,26 +121,33 @@ export default function UsersRolesPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.response?.data?.error || "Failed to save user";
       toast.error(msg);
+    } finally {
+      setSaving(false);
     }
   };
 
   const toggleActive = async (user: User) => {
+    const nextActive = !user.is_active;
+    if (!confirm(`${nextActive ? "Reactivate" : "Deactivate"} ${user.name || user.email}?`)) return;
+    setTogglingId(user.id);
     try {
-      await api.patch(`/users/${user.id}`, { is_active: !user.is_active });
+      await api.patch(`/users/${user.id}`, { is_active: nextActive });
       toast.success(user.is_active ? "User deactivated" : "User activated");
       fetchUsers();
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Failed to toggle user status";
       toast.error(msg);
+    } finally {
+      setTogglingId(null);
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Users & Roles</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchUsers} aria-label="Refresh users">
+          <Button variant="outline" size="icon" onClick={fetchUsers} aria-label="Refresh users" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={openCreate}>
@@ -142,6 +155,21 @@ export default function UsersRolesPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load users</p>
+                <p className="mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>Retry</Button>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border">
         <Table>
@@ -159,7 +187,11 @@ export default function UsersRolesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Loading…</TableCell>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Loading…</TableCell>
+              </TableRow>
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No users found yet.</TableCell>
               </TableRow>
             ) : (
               users.map((u) => (
@@ -180,11 +212,11 @@ export default function UsersRolesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)} aria-label="Edit user">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)} aria-label={`Edit ${u.name || u.email}`}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => toggleActive(u)} aria-label="Toggle user active">
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={() => toggleActive(u)} aria-label={u.is_active ? `Deactivate ${u.name || u.email}` : `Reactivate ${u.name || u.email}`} disabled={togglingId === u.id}>
+                        {u.is_active ? <Power className="h-4 w-4 text-red-600" /> : <RotateCcw className="h-4 w-4 text-emerald-600" />}
                       </Button>
                     </div>
                   </TableCell>
@@ -200,6 +232,7 @@ export default function UsersRolesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingUser ? "Edit User" : "New User"}</DialogTitle>
+            <DialogDescription>{editingUser ? "Update user profile, role, and staff ID." : "Create a new team member account."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
@@ -229,8 +262,8 @@ export default function UsersRolesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full" onClick={saveUser}>
-              {editingUser ? "Save Changes" : "Create User"}
+            <Button className="w-full" onClick={saveUser} disabled={saving || !formEmail.trim() || !formRoleId || (!editingUser && !formPassword)}>
+              {saving ? "Saving..." : editingUser ? "Save Changes" : "Create User"}
             </Button>
           </div>
         </DialogContent>

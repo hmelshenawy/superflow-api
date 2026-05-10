@@ -82,6 +82,7 @@ export default function JobsPage() {
     return "board";
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dropColumn, setDropColumn] = useState<JobStatus | null>(null);
@@ -123,6 +124,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params: Record<string, string | number> = { page, limit };
       if (status !== "all") params.status = status;
@@ -131,6 +133,10 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
       const { data } = await api.get<PaginatedResponse<Job>>("/jobs", { params });
       setJobs(data.data ?? data.items ?? []);
       setTotal(data.total);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to load jobs";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally { setLoading(false); fetchPriority(); }
   }, [page, limit, status, search, showArchived, fetchPriority]);
 
@@ -273,10 +279,25 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
           </div>
           <div className="flex items-center gap-2">
             <div className="rounded-lg border border-border bg-muted px-2 py-1.5 text-[13px] text-muted-foreground">Value: <span className="font-semibold text-foreground">{stats.totalEstimate.toFixed(0)}</span></div>
-            <Button variant="outline" className="h-9 rounded-lg text-[13px]" onClick={fetchJobs}><RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", loading && "animate-spin")} />Refresh</Button>
-            <Button variant={showArchived ? "default" : "outline"} className="h-9 rounded-lg text-[13px]" onClick={() => setShowArchived(!showArchived)}>{showArchived ? "Showing Archive" : "Archive"}</Button>
+            <Button variant="outline" className="h-9 rounded-lg text-[13px]" onClick={fetchJobs} disabled={loading}><RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", loading && "animate-spin")} />Refresh</Button>
+            <Button variant={showArchived ? "default" : "outline"} className="h-9 rounded-lg text-[13px]" onClick={() => setShowArchived(!showArchived)} disabled={loading}>{showArchived ? "Showing Archive" : "Archive"}</Button>
           </div>
         </div>
+
+        {loadError && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-medium">Could not load jobs</p>
+                  <p className="mt-1">{loadError}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>Retry</Button>
+            </div>
+          </div>
+        )}
 
         {dashboardView === "advisor" ? (
           <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">

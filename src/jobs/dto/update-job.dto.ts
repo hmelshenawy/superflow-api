@@ -9,7 +9,7 @@ export const WORKSHOP_STAGES = [
 ] as const;
 
 export const PARTS_STATUSES = [
-  'no_parts', 'order_parts', 'waiting_warehouse', 'backorder', 'parts_ready',
+  'no_parts', 'order_parts', 'waiting_warehouse', 'backorder', 'parts_ready', 'issued',
 ] as const;
 
 export class UpdateJobDto {

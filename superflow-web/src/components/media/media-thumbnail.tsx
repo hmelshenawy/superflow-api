@@ -10,6 +10,7 @@ interface MediaFile {
   file_type?: string;
   mime_type?: string;
   size_bytes?: number;
+  scan_status?: string;
 }
 
 export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted: () => void }) {
@@ -56,9 +57,10 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
       }
 
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    } catch {
+    } catch (err: any) {
       if (popup && !popup.closed) popup.close();
-      alert("Failed to open file");
+      const message = err?.response?.data?.message;
+      alert(Array.isArray(message) ? message.join(", ") : message || "Failed to open file");
     }
   };
 
@@ -84,6 +86,7 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
 
   const isPhoto = file.file_type === "photo";
   const isVideo = file.file_type === "video";
+  const isPendingScan = file.scan_status === "pending" && !isPhoto;
 
   return (
     <div className="group relative overflow-hidden rounded-[20px] border border-border bg-slate-50 transition-shadow hover:shadow-md">
@@ -132,6 +135,7 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <span className="uppercase tracking-wide">{file.file_type || "file"}</span>
           {file.size_bytes ? <span>· {formatSize(file.size_bytes)}</span> : null}
+          {isPendingScan ? <span>· Pending scan</span> : null}
         </div>
       </div>
     </div>

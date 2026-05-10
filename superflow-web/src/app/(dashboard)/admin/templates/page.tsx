@@ -32,7 +32,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, RefreshCw, Pencil, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 const VEHICLE_TYPES = [
@@ -49,19 +49,24 @@ export default function TemplatesPage() {
   const router = useRouter();
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [createDialog, setCreateDialog] = useState(false);
   const [newName, setNewName] = useState("");
   const [newVehicleType, setNewVehicleType] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [creating, setCreating] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchTemplates = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { data } = await api.get<InspectionTemplate[]>("/admin/templates");
       setTemplates(data);
-    } catch {
-      toast.error("Failed to load templates");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to load templates";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -94,21 +99,26 @@ export default function TemplatesPage() {
   };
 
   const toggleActive = async (t: InspectionTemplate) => {
+    const nextActive = !t.is_active;
+    if (!confirm(`${nextActive ? "Enable" : "Disable"} template "${t.name}"?`)) return;
+    setTogglingId(t.id);
     try {
-      await api.patch(`/admin/templates/${t.id}`, { is_active: !t.is_active });
+      await api.patch(`/admin/templates/${t.id}`, { is_active: nextActive });
       toast.success(t.is_active ? "Template disabled" : "Template enabled");
       fetchTemplates();
-    } catch {
-      toast.error("Failed to toggle template");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to toggle template");
+    } finally {
+      setTogglingId(null);
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Inspection Templates</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchTemplates} aria-label="Refresh templates">
+          <Button variant="outline" size="icon" onClick={fetchTemplates} aria-label="Refresh templates" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={() => setCreateDialog(true)}>
@@ -116,6 +126,21 @@ export default function TemplatesPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load templates</p>
+                <p className="mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchTemplates} disabled={loading}>Retry</Button>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border">
         <Table>
@@ -173,11 +198,13 @@ export default function TemplatesPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => router.push(`/admin/templates/${t.id}`)}
+                        aria-label={`Edit ${t.name}`}
+                        disabled={togglingId === t.id}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" aria-label="Toggle template" onClick={() => toggleActive(t)}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" aria-label={t.is_active ? `Disable ${t.name}` : `Enable ${t.name}`} onClick={() => toggleActive(t)} disabled={togglingId === t.id}>
+                        {t.is_active ? <Power className="h-4 w-4 text-red-600" /> : <RotateCcw className="h-4 w-4 text-emerald-600" />}
                       </Button>
                     </div>
                   </TableCell>
@@ -193,6 +220,7 @@ export default function TemplatesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>New Inspection Template</DialogTitle>
+            <DialogDescription>Create a reusable inspection checklist for all or selected vehicle types.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>

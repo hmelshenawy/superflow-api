@@ -12,9 +12,48 @@ import { canTransition } from './jobs.state-machine';
 export class JobsService {
   constructor(private prisma: PrismaService) {}
 
+  private async assertTenantCustomer(customerId: string) {
+    const customer = await this.prisma.tenant.customers.findUnique({ where: { id: customerId } });
+    if (!customer || customer.is_active === false) {
+      throw new BadRequestException('Customer not found in selected workshop');
+    }
+  }
+
+  private async assertTenantVehicle(vehicleId: string, customerId?: string) {
+    const vehicle = await this.prisma.tenant.vehicles.findUnique({ where: { id: vehicleId } });
+    if (!vehicle || vehicle.is_deleted === true) {
+      throw new BadRequestException('Vehicle not found in selected workshop');
+    }
+    if (customerId && vehicle.customer_id && vehicle.customer_id !== customerId) {
+      throw new BadRequestException('Vehicle does not belong to the selected customer');
+    }
+  }
+
+  private async assertWorkshopUser(userId: string, label: string) {
+    const { workshopId } = getWorkshopContext();
+    const user = await this.prisma.raw.users.findUnique({ where: { id: userId } });
+    if (!user || !user.is_active) throw new BadRequestException(`${label} not found or inactive`);
+    if (!workshopId) return;
+
+    const access = await this.prisma.raw.user_workshop_access.findUnique({
+      where: { user_id_workshop_id: { user_id: userId, workshop_id: workshopId } },
+    });
+    if (!access) throw new BadRequestException(`${label} is not assigned to the selected workshop`);
+  }
+
+  private async assertJobRelations(dto: Pick<CreateJobDto, 'customer_id' | 'vehicle_id' | 'advisor_id' | 'technician_id'>) {
+    await this.assertTenantCustomer(dto.customer_id);
+    await this.assertTenantVehicle(dto.vehicle_id, dto.customer_id);
+    if (dto.advisor_id) await this.assertWorkshopUser(dto.advisor_id, 'Advisor');
+    if (dto.technician_id) await this.assertWorkshopUser(dto.technician_id, 'Technician');
+  }
+
   async create(dto: CreateJobDto, userId: string) {
     // Job numbers are derived from a base-36 timestamp so they are short,
     // unique, and human-readable without needing a separate sequence.
+    await this.assertJobRelations(dto);
+    if (!dto.advisor_id) await this.assertWorkshopUser(userId, 'Advisor');
+
     const jobNumber = `SF-${Date.now().toString(36).toUpperCase()}`;
     const jobId = uuid();
     const [job] = await this.prisma.$transaction([
@@ -203,6 +242,8 @@ export class JobsService {
     // Allow clearing optional fields by sending empty string → null
     if (data.advisor_id === '') data.advisor_id = null;
     if (data.technician_id === '') data.technician_id = null;
+    if (data.advisor_id) await this.assertWorkshopUser(data.advisor_id, 'Advisor');
+    if (data.technician_id) await this.assertWorkshopUser(data.technician_id, 'Technician');
     if (data.status && data.status !== job.status) {
       const [updated] = await this.prisma.$transaction([
         this.prisma.tenant.jobs.update({ where: { id }, data }),
@@ -299,8 +340,7 @@ export class JobsService {
         data: { technician_id: null, workshop_stage: job.status === 'in_progress' ? 'waiting_technician' : job.workshop_stage },
       });
     }
-    const technician = await this.prisma.raw.users.findUnique({ where: { id: technicianId } });
-    if (!technician || !technician.is_active) throw new BadRequestException('Technician not found or inactive');
+    await this.assertWorkshopUser(technicianId, 'Technician');
 
     return this.prisma.tenant.jobs.update({
       where: { id },

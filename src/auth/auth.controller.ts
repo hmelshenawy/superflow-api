@@ -1,6 +1,7 @@
-import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Req, Res, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -16,27 +17,68 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class AuthController {
   constructor(private auth: AuthService) {}
 
+  private readonly refreshCookieName = 'prioraflow_refresh';
 
+  private refreshCookieOptions() {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/api/auth',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    };
+  }
+
+  private readCookie(req: Request, name: string) {
+    const header = req.headers.cookie;
+    if (!header) return undefined;
+    return header
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name}=`))
+      ?.slice(name.length + 1);
+  }
+
+  private setRefreshCookie(res: Response, refreshToken: string) {
+    res.cookie(this.refreshCookieName, refreshToken, this.refreshCookieOptions());
+  }
+
+  private clearRefreshCookie(res: Response) {
+    res.clearCookie(this.refreshCookieName, {
+      ...this.refreshCookieOptions(),
+      maxAge: undefined,
+    });
+  }
 
   @Post('signup')
   @Throttle({ default: { limit: 3, ttl: 60_000, blockDuration: 300_000 } })
   @ApiOperation({ summary: 'Create a trial workshop and owner account' })
-  signup(@Body() dto: SignupDto) {
-    return this.auth.signup(dto);
+  async signup(@Body() dto: SignupDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.signup(dto);
+    this.setRefreshCookie(res, result.refreshToken);
+    const { refreshToken, ...body } = result;
+    return body;
   }
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60_000, blockDuration: 60_000 } })
   @ApiOperation({ summary: 'Login with email & password' })
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.email, dto.password);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.login(dto.email, dto.password);
+    this.setRefreshCookie(res, result.refreshToken);
+    const { refreshToken, ...body } = result;
+    return body;
   }
 
   @Post('refresh')
   @Throttle({ default: { limit: 10, ttl: 60_000, blockDuration: 120_000 } })
   @ApiOperation({ summary: 'Refresh access token' })
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.auth.refresh(dto.refreshToken || dto.refresh_token || '');
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = dto.refreshToken || dto.refresh_token || this.readCookie(req, this.refreshCookieName) || '';
+    const result = await this.auth.refresh(refreshToken);
+    this.setRefreshCookie(res, result.refreshToken);
+    const { refreshToken: _refreshToken, ...body } = result;
+    return body;
   }
 
 
@@ -87,10 +129,16 @@ export class AuthController {
 
   @Post('logout')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Logout — revoke all refresh tokens' })
-  logout(@Req() req: any) {
-    return this.auth.logout(req.user.sub);
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = this.readCookie(req, this.refreshCookieName) || '';
+    if (req.user?.sub) {
+      await this.auth.logout(req.user.sub);
+    } else {
+      await this.auth.logoutRefreshToken(refreshToken);
+    }
+    this.clearRefreshCookie(res);
+    return { success: true };
   }
 
   @Get('me')

@@ -34,8 +34,8 @@ export class UsersController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Request() req: any, @Param('id') id: string) {
+    return this.service.findOne(id, req.user);
   }
 
   @Post()
@@ -64,14 +64,14 @@ export class UsersController {
   @Post(':id/reset-password')
   @RequirePermission(ADMIN_USERS_DELETE)
   @ApiOperation({ summary: 'Admin reset a user password' })
-  resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
-    return this.service.resetPassword(id, dto.newPassword);
+  resetPassword(@Request() req: any, @Param('id') id: string, @Body() dto: ResetPasswordDto) {
+    return this.service.resetPassword(id, dto.newPassword, req.user);
   }
 
   @Delete(':id')
   @RequirePermission(ADMIN_USERS_DELETE)
   @ApiOperation({ summary: 'Deactivate user (soft delete)' })
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  remove(@Request() req: any, @Param('id') id: string) {
+    return this.service.remove(id, req.user);
   }
 }

@@ -63,6 +63,16 @@ export class WorkshopsController {
     return this.workshops.remove(id);
   }
 
+  @Get(':id/export')
+  @RequirePermission(WORKSHOPS_READ)
+  @ApiOperation({ summary: 'Export workshop data as JSON (platform admin only)' })
+  exportData(@Request() req: any, @Param('id') id: string) {
+    if (req.user?.role !== 'platform_admin') {
+      throw new ForbiddenException('Workshop export is only available to platform administrators');
+    }
+    return this.workshops.exportData(id);
+  }
+
   @Get(':id/users')
   @RequirePermission(WORKSHOPS_READ)
   @ApiOperation({ summary: 'List users assigned to a workshop' })

@@ -1,18 +1,39 @@
 import axios from "axios";
-import Cookies from "js-cookie";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api";
+
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export function clearAccessToken() {
+  accessToken = null;
+}
+
+export function getAccessToken() {
+  return accessToken;
+}
+
+export async function refreshAccessToken() {
+  const { data } = await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
+  const token = data.accessToken ?? data.access_token;
+  if (!token) throw new Error("Missing access token");
+  setAccessToken(token);
+  return token;
+}
 
 const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
 // ─── Interceptors ────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const token = Cookies.get("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
@@ -32,23 +53,12 @@ api.interceptors.response.use(
     // Don't try to refresh on auth endpoints or non-401 errors
     if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
-      const refreshToken = Cookies.get("refresh_token");
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_BASE}/auth/refresh`, {
-            refreshToken,
-          });
-          Cookies.set("access_token", data.accessToken, { expires: 0.33, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
-          Cookies.set("refresh_token", data.refreshToken, { expires: 30, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
-          original.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(original);
-        } catch {
-          Cookies.remove("access_token", { path: "/" });
-          Cookies.remove("refresh_token", { path: "/" });
-          window.location.href = "/login";
-        }
-      } else {
-        Cookies.remove("access_token", { path: "/" });
+      try {
+        const token = await refreshAccessToken();
+        original.headers.Authorization = `Bearer ${token}`;
+        return api(original);
+      } catch {
+        clearAccessToken();
         window.location.href = "/login";
       }
     }

@@ -248,7 +248,13 @@ export class AuthService {
     await this.prisma.raw.refresh_tokens.update({ where: { id: matchedToken.id }, data: { revoked_at: new Date() } });
 
     const user = await this.prisma.raw.users.findUnique({ where: { id: matchedToken.user_id }, include: { roles: true } });
-    if (!user) throw new UnauthorizedException();
+    if (!user?.is_active) {
+      await this.prisma.raw.refresh_tokens.updateMany({
+        where: { user_id: matchedToken.user_id, revoked_at: null },
+        data: { revoked_at: new Date() },
+      });
+      throw new UnauthorizedException('User account is inactive');
+    }
 
     const rolePermissions = this.parsePermissions(user.roles?.permissions);
     const workshopId = matchedToken.workshop_id ?? null;
@@ -351,7 +357,7 @@ export class AuthService {
       where: { id: userId },
       select: { id: true, name: true, email: true, is_active: true, avatar_url: true, last_login_at: true, created_at: true, roles: { select: { id: true, name: true, permissions: true } } },
     });
-    if (!user) throw new UnauthorizedException();
+    if (!user?.is_active) throw new UnauthorizedException();
     const { roles, ...rest } = user;
     const workshops = await this.getUserWorkshops(userId);
     return {
@@ -429,7 +435,7 @@ export class AuthService {
 
   async selectWorkshop(userId: string, workshopId: string) {
     const user = await this.prisma.raw.users.findUnique({ where: { id: userId }, include: { roles: true } });
-    if (!user) throw new UnauthorizedException();
+    if (!user?.is_active) throw new UnauthorizedException();
 
     const roleName = user.roles?.name;
     // platform_admin can select any workshop; others must have explicit access
@@ -468,6 +474,16 @@ export class AuthService {
       where: { user_id: userId, revoked_at: null },
       data: { revoked_at: new Date() },
     });
+  }
+
+  async logoutRefreshToken(refreshToken: string) {
+    if (!refreshToken) return;
+    const refreshHash = this.hashRefreshToken(refreshToken);
+    const session = await this.prisma.raw.refresh_tokens.findUnique({
+      where: { token_hash: refreshHash },
+    });
+    if (!session?.user_id) return;
+    await this.logout(session.user_id);
   }
 
   async listSessions(userId: string) {

@@ -2,12 +2,16 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { runWithWorkshop } from '../prisma/workshop-context';
+import { MediaService } from '../media/media.service';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
   private readonly logger = new Logger(SchedulerService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private media: MediaService,
+  ) {}
 
   private async withAdvisoryLock(lockName: string, fn: () => Promise<void>) {
     const lockResult = await this.prisma.$queryRaw<Array<{ result: number | null }>>`
@@ -129,6 +133,24 @@ export class SchedulerService implements OnModuleInit {
         });
       } catch (error) {
         this.logger.error('Failed to cleanup audit logs', error);
+      }
+    });
+  }
+
+  @Cron('30 3 * * *')
+  async cleanupAbandonedMediaUploads() {
+    await this.withAdvisoryLock('scheduler_media_cleanup', async () => {
+      try {
+        await this.forEachWorkshop(async (workshopId) => {
+          const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const count = await this.media.cleanupAbandonedPendingUploads(cutoff);
+
+          if (count > 0) {
+            this.logger.log(`Workshop ${workshopId}: Soft-deleted ${count} abandoned pending media upload(s)`);
+          }
+        });
+      } catch (error) {
+        this.logger.error('Failed to cleanup abandoned media uploads', error);
       }
     });
   }

@@ -7,9 +7,13 @@ import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { initSentry } from './common/sentry/sentry.init';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 // ─── Initialize Sentry before anything else ─────────────────
 initSentry();
+
+const appVersion = process.env.APP_VERSION || '0.1.0';
+const isProduction = process.env.NODE_ENV === 'production';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,7 +27,7 @@ async function bootstrap() {
   // ─── Sentry request handler (must be before other middleware) ──
   Sentry.setupExpressErrorHandler(app.getHttpAdapter().getInstance());
 
-  // ─── Helmet + CSP (report-only for now) ──────────────────
+  // ─── Helmet + CSP ──────────────────
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -52,10 +56,9 @@ async function bootstrap() {
           baseUri: ["'self'"],
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
+          upgradeInsecureRequests: isProduction ? [] : null,
         },
-        // Report-only: violations logged but NOT blocked
-        // Once we verify no false positives, switch to enforcement
-        reportOnly: true,
+        reportOnly: !isProduction,
       },
       crossOriginEmbedderPolicy: false,
     }),
@@ -68,7 +71,16 @@ async function bootstrap() {
   });
 
   // Health check
-  app.use('/health', (_req: Request, res: Response) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.use('/health', (_req: Request, res: Response) => res.json({
+    status: 'ok',
+    service: 'superflow-api',
+    version: appVersion,
+    environment: process.env.NODE_ENV || 'development',
+    branch: process.env.GIT_BRANCH || 'unknown',
+    commit: process.env.GIT_COMMIT || 'unknown',
+    uptimeSeconds: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -77,6 +89,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(app.get(AuditInterceptor));
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Swagger docs only in non-production environments
   if (process.env.NODE_ENV !== 'production') {

@@ -6,7 +6,41 @@ on:
   workflow_dispatch:
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            superflow-web/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build API
+        run: npm run build
+
+      - name: Install web dependencies
+        working-directory: superflow-web
+        run: npm ci
+
+      - name: Build web
+        working-directory: superflow-web
+        run: npm run build
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +60,10 @@ jobs:
             git fetch --all
             git checkout main
             git pull origin main
+            export APP_VERSION="$(sed -n 's/.*"version": "\(.*\)".*/\1/p' package.json | head -n 1)"
+            export APP_VERSION="${APP_VERSION:-unknown}"
+            export GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            export GIT_COMMIT="$(git rev-parse --short HEAD)"
 
             if [ ! -f .env ] && [ -f .env.example ]; then
               echo "Missing .env on VPS. Copy .env.example and fill real values first."
@@ -36,6 +74,26 @@ jobs:
             docker compose build api web
             docker compose up -d redis api web
 
+            echo "Waiting for services to become healthy..."
+            sleep 10
+
+            API_URL="http://127.0.0.1:${API_BIND_PORT:-3000}/health"
+            WEB_URL="http://127.0.0.1:${WEB_BIND_PORT:-3001}"
+
+            if ! wget -qO- "$API_URL" >/dev/null 2>&1; then
+              echo "API smoke check failed: $API_URL"
+              docker compose ps
+              docker compose logs --tail=80 api
+              exit 1
+            fi
+
+            if ! wget -qO- "$WEB_URL" >/dev/null 2>&1; then
+              echo "Web smoke check failed: $WEB_URL"
+              docker compose ps
+              docker compose logs --tail=80 web
+              exit 1
+            fi
+
             docker image prune -f >/dev/null 2>&1 || true
 
-            echo "Deploy finished."
+            echo "Deploy finished: ${GIT_BRANCH}@${GIT_COMMIT} (${APP_VERSION})"

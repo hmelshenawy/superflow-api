@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, RefreshCw, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface WorkshopUser {
@@ -53,6 +53,13 @@ export default function WorkshopsPage() {
   const [workshopUsers, setWorkshopUsers] = useState<WorkshopUser[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [assignUserId, setAssignUserId] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const [formName, setFormName] = useState("");
   const [formSlug, setFormSlug] = useState("");
@@ -63,11 +70,14 @@ export default function WorkshopsPage() {
 
   const fetchWorkshops = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { data } = await api.get<WorkshopWithCount[]>("/workshops");
       setWorkshops(data);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to load workshops");
+      const message = err?.response?.data?.message || "Failed to load workshops";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -108,6 +118,7 @@ export default function WorkshopsPage() {
   };
 
   const handleSubmit = async () => {
+    setSaving(true);
     try {
       const payload: any = {
         name: formName,
@@ -128,27 +139,63 @@ export default function WorkshopsPage() {
       fetchWorkshops();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to save workshop");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this workshop? This will remove all associated data access.")) return;
+  const toggleWorkshopActive = async (workshop: WorkshopWithCount) => {
+    const nextActive = !workshop.is_active;
+    const action = nextActive ? "reactivate" : "deactivate";
+    const message = nextActive
+      ? `Reactivate ${workshop.name}? Users will be able to select it again.`
+      : `Deactivate ${workshop.name}? Users will lose active sessions for this workshop, but data will be retained.`;
+    if (!confirm(message)) return;
+    setTogglingId(workshop.id);
     try {
-      await api.delete(`/workshops/${id}`);
-      toast.success("Workshop deleted");
+      await api.patch(`/workshops/${workshop.id}`, { is_active: nextActive });
+      toast.success(nextActive ? "Workshop reactivated" : "Workshop deactivated");
       fetchWorkshops();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete workshop");
+      toast.error(err?.response?.data?.message || `Failed to ${action} workshop`);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const exportWorkshop = async (workshop: WorkshopWithCount) => {
+    setExportingId(workshop.id);
+    try {
+      const { data } = await api.get(`/workshops/${workshop.id}/export`);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const slug = (workshop.slug || workshop.name || workshop.id).replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `prioraflow-${slug || workshop.id}-export-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Workshop export downloaded");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to export workshop");
+    } finally {
+      setExportingId(null);
     }
   };
 
   const openUsers = async (w: WorkshopWithCount) => {
     setSelectedWorkshop(w);
+    setUsersError(null);
     try {
       const { data } = await api.get<WorkshopUser[]>(`/workshops/${w.id}/users`);
       setWorkshopUsers(data);
-    } catch {
+    } catch (err: any) {
       setWorkshopUsers([]);
+      const message = err?.response?.data?.message || "Failed to load workshop users";
+      setUsersError(Array.isArray(message) ? message.join(", ") : message);
     }
     setAssignUserId("");
     setUsersDialogOpen(true);
@@ -156,6 +203,7 @@ export default function WorkshopsPage() {
 
   const handleAssignUser = async () => {
     if (!selectedWorkshop || !assignUserId) return;
+    setAssigning(true);
     try {
       await api.post(`/workshops/${selectedWorkshop.id}/users`, { userId: assignUserId });
       toast.success("User assigned");
@@ -165,11 +213,14 @@ export default function WorkshopsPage() {
       fetchWorkshops();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to assign user");
+    } finally {
+      setAssigning(false);
     }
   };
 
   const handleRemoveUser = async (userId: string) => {
     if (!selectedWorkshop) return;
+    setRemovingUserId(userId);
     try {
       await api.delete(`/workshops/${selectedWorkshop.id}/users/${userId}`);
       toast.success("User removed");
@@ -177,6 +228,8 @@ export default function WorkshopsPage() {
       fetchWorkshops();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to remove user");
+    } finally {
+      setRemovingUserId(null);
     }
   };
 
@@ -189,11 +242,11 @@ export default function WorkshopsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Workshops</h1>
-          <p className="text-sm text-muted-foreground">Manage workshops and user assignments</p>
+          <p className="text-sm text-muted-foreground">Manage workshops, user assignments, and account activation</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchWorkshops}>
-            <RefreshCw className="mr-1 h-4 w-4" /> Refresh
+          <Button variant="outline" size="sm" onClick={fetchWorkshops} disabled={loading}>
+            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
           </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus className="mr-1 h-4 w-4" /> Add Workshop
@@ -201,7 +254,20 @@ export default function WorkshopsPage() {
         </div>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load workshops</p>
+                <p className="mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchWorkshops} disabled={loading}>Retry</Button>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="flex justify-center py-12">
           <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -245,8 +311,26 @@ export default function WorkshopsPage() {
                     <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDelete(w.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => exportWorkshop(w)}
+                      disabled={exportingId === w.id || togglingId === w.id}
+                      aria-label="Export workshop data"
+                      title="Export workshop data"
+                    >
+                      <Download className={`h-3.5 w-3.5 ${exportingId === w.id ? "animate-pulse" : ""}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={w.is_active ? "text-red-600" : "text-emerald-600"}
+                      onClick={() => toggleWorkshopActive(w)}
+                      disabled={togglingId === w.id || exportingId === w.id}
+                      aria-label={w.is_active ? "Deactivate workshop" : "Reactivate workshop"}
+                      title={w.is_active ? "Deactivate workshop" : "Reactivate workshop"}
+                    >
+                      {w.is_active ? <Power className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -299,8 +383,8 @@ export default function WorkshopsPage() {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={!formName || !formSlug}>
-              {editingWorkshop ? "Update" : "Create"}
+            <Button onClick={handleSubmit} disabled={!formName || !formSlug || saving}>
+              {saving ? "Saving..." : editingWorkshop ? "Update" : "Create"}
             </Button>
           </div>
         </DialogContent>
@@ -310,21 +394,29 @@ export default function WorkshopsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Users — {selectedWorkshop?.name}</DialogTitle>
-            <DialogDescription>Assign or remove users from this workshop</DialogDescription>
+            <DialogDescription>
+              {selectedWorkshop?.is_active ? "Assign or remove users from this workshop" : "This workshop is inactive. Existing users remain listed, but new assignments are disabled."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {usersError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{usersError}</div>
+            )}
             <div className="flex gap-2">
               <select
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={assignUserId}
                 onChange={(e) => setAssignUserId(e.target.value)}
+                disabled={!selectedWorkshop?.is_active || assigning}
               >
                 <option value="">Select user to assign...</option>
                 {availableUsers.map((u) => (
                   <option key={u.id} value={u.id}>{u.name || u.email}</option>
                 ))}
               </select>
-              <Button size="sm" onClick={handleAssignUser} disabled={!assignUserId}>Assign</Button>
+              <Button size="sm" onClick={handleAssignUser} disabled={!assignUserId || !selectedWorkshop?.is_active || assigning}>
+                {assigning ? "Assigning..." : "Assign"}
+              </Button>
             </div>
             {workshopUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No users assigned</p>
@@ -346,8 +438,8 @@ export default function WorkshopsPage() {
                         <TableCell className="text-muted-foreground">{wu.user?.email || "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{wu.user?.roles?.name || "—"}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleRemoveUser(wu.userId)}>
-                            Remove
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleRemoveUser(wu.userId)} disabled={removingUserId === wu.userId}>
+                            {removingUserId === wu.userId ? "Removing..." : "Remove"}
                           </Button>
                         </TableCell>
                       </TableRow>

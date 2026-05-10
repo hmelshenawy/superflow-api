@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import Cookies from "js-cookie";
 import type { User, AuthTokens, Workshop } from "@/types";
-import api from "@/lib/api";
+import api, { clearAccessToken, getAccessToken, refreshAccessToken, setAccessToken } from "@/lib/api";
 
 interface AuthState {
   user: User | null;
@@ -26,16 +25,13 @@ export const useAuthStore = create<AuthState>()(
       currentWorkshopId: null,
 
       login: async (email, password) => {
-        Cookies.remove("access_token", { path: "/" });
-        Cookies.remove("refresh_token", { path: "/" });
+        clearAccessToken();
         set({ isLoading: true });
         try {
           const { data } = await api.post<AuthTokens & { workshops?: Workshop[]; workshopId?: string }>("/auth/login", { email, password });
           const accessToken = data.access_token ?? data.accessToken;
-          const refreshToken = data.refresh_token ?? data.refreshToken;
-          if (!accessToken || !refreshToken) throw new Error("Missing auth tokens");
-          Cookies.set("access_token", accessToken, { expires: 0.33, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
-          Cookies.set("refresh_token", refreshToken, { expires: 30, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
+          if (!accessToken) throw new Error("Missing access token");
+          setAccessToken(accessToken);
 
           const workshops = data.workshops ?? [];
           const currentWorkshopId = data.workshopId ?? null;
@@ -53,20 +49,24 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        Cookies.remove("access_token", { path: "/" });
-        Cookies.remove("refresh_token", { path: "/" });
+        // Access tokens are memory-only, so a refreshed/reloaded tab may not
+        // have a bearer token when the user logs out. Clear local state either way.
+        api.post("/auth/logout").catch(() => undefined);
+        clearAccessToken();
         localStorage.removeItem("currentWorkshopId");
         set({ user: null, isAuthenticated: false, workshops: [], currentWorkshopId: null });
       },
 
       loadUser: async () => {
         try {
+          if (!getAccessToken()) {
+            await refreshAccessToken();
+          }
           const { data } = await api.get<User & { workshops?: Workshop[] }>("/auth/me");
           const savedWorkshopId = localStorage.getItem("currentWorkshopId");
           set({ user: data, isAuthenticated: true, currentWorkshopId: savedWorkshopId, workshops: data.workshops ?? get().workshops });
         } catch {
-          Cookies.remove("access_token", { path: "/" });
-          Cookies.remove("refresh_token", { path: "/" });
+          clearAccessToken();
           set({ user: null, isAuthenticated: false });
         }
       },
@@ -74,7 +74,7 @@ export const useAuthStore = create<AuthState>()(
       selectWorkshop: async (workshopId) => {
         try {
           const { data } = await api.post<{ accessToken: string; workshop: Workshop }>("/auth/select-workshop", { workshopId });
-          Cookies.set("access_token", data.accessToken, { expires: 0.33, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
+          setAccessToken(data.accessToken);
           localStorage.setItem("currentWorkshopId", workshopId);
           set({ currentWorkshopId: workshopId });
           window.location.reload();

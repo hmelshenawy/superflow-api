@@ -31,6 +31,7 @@ const TENANT_SCOPED_MODELS = new Set([
 ]);
 
 const READ_OPS = new Set(['findMany', 'findFirst', 'count', 'aggregate', 'groupBy']);
+const READ_OR_UNIQUE_OPS = new Set([...READ_OPS, 'findUnique']);
 
 export const workshopTenantExtension = Prisma.defineExtension({
   name: 'workshopTenant',
@@ -43,7 +44,7 @@ export const workshopTenantExtension = Prisma.defineExtension({
 
         const { workshopId, isPlatformAdmin } = getWorkshopContext();
 
-        if (isPlatformAdmin && !workshopId) {
+        if (isPlatformAdmin && !workshopId && READ_OR_UNIQUE_OPS.has(operation)) {
           return query(args);
         }
 
@@ -76,7 +77,7 @@ export const workshopTenantExtension = Prisma.defineExtension({
 
         if (operation === 'create') {
           const data = (args as any).data ?? {};
-          if (typeof data === 'object' && !data.workshop_id) {
+          if (typeof data === 'object') {
             (args as any).data = { ...data, workshop_id: workshopId };
           }
           return query(args);
@@ -85,7 +86,7 @@ export const workshopTenantExtension = Prisma.defineExtension({
         if (operation === 'createMany') {
           const data = (args as any).data ?? [];
           (args as any).data = data.map((item: any) =>
-            item.workshop_id ? item : { ...item, workshop_id: workshopId },
+            ({ ...item, workshop_id: workshopId }),
           );
           return query(args);
         }

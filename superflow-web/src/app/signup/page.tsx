@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { PrioraFlowLogo } from "@/components/brand/prioraflow-logo";
-import api from "@/lib/api";
+import api, { setAccessToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,11 +41,9 @@ export default function SignupPage() {
       });
 
       const accessToken = data.access_token ?? data.accessToken;
-      const refreshToken = data.refresh_token ?? data.refreshToken;
-      if (!accessToken || !refreshToken) throw new Error("Missing auth tokens");
+      if (!accessToken) throw new Error("Missing access token");
 
-      Cookies.set("access_token", accessToken, { expires: 0.33, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
-      Cookies.set("refresh_token", refreshToken, { expires: 30, path: "/", sameSite: "lax", secure: window.location.protocol === "https:" });
+      setAccessToken(accessToken);
       localStorage.setItem("currentWorkshopId", data.workshopId);
       setAuthState({
         user: data.user,

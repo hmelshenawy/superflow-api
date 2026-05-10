@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Clock, RefreshCw } from "lucide-react";
+import { AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<DeferredStatus, string> = {
@@ -45,9 +45,13 @@ export default function DeferredWorkPage() {
   const [status, setStatus] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState("AED");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
+  const [closingId, setClosingId] = useState<string | null>(null);
 
   const fetchItems = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params: Record<string, string> = {};
       if (status !== "all") params.status = status;
@@ -58,8 +62,10 @@ export default function DeferredWorkPage() {
       setItems(res.data.data ?? res.data.items ?? []);
       setTotal(res.data.total);
       setCurrency(defaultsRes.data.currency || "AED");
-    } catch {
-      toast.error("Failed to load deferred work");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to load deferred work";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -68,33 +74,40 @@ export default function DeferredWorkPage() {
   useEffect(() => { fetchItems(); }, [status]);
 
   const sendReminder = async (id: string) => {
+    setRemindingId(id);
     try {
       await api.post(`/deferred/${id}/remind`);
       toast.success("Reminder sent");
       fetchItems();
-    } catch {
-      toast.error("Failed to send reminder");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to send reminder");
+    } finally {
+      setRemindingId(null);
     }
   };
 
   const closeItem = async (id: string) => {
+    if (!confirm("Close this deferred work item?")) return;
+    setClosingId(id);
     try {
       await api.patch(`/deferred/${id}`, { status: "closed" });
       toast.success("Item closed");
       fetchItems();
-    } catch {
-      toast.error("Failed to close item");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to close item");
+    } finally {
+      setClosingId(null);
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Deferred Work</h1>
           <p className="text-sm text-muted-foreground">{total} items</p>
         </div>
-        <Button variant="outline" size="icon" onClick={fetchItems} aria-label="Refresh deferred items">
+        <Button variant="outline" size="icon" onClick={fetchItems} aria-label="Refresh deferred items" disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </div>
@@ -114,6 +127,21 @@ export default function DeferredWorkPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load deferred work</p>
+                <p className="mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchItems} disabled={loading}>Retry</Button>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border">
         <Table>
@@ -138,7 +166,7 @@ export default function DeferredWorkPage() {
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No deferred work items
+                  {status === "all" ? "No deferred work items yet." : `No ${status} deferred work items.`}
                 </TableCell>
               </TableRow>
             ) : (
@@ -169,15 +197,15 @@ export default function DeferredWorkPage() {
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex flex-wrap justify-end gap-1">
                       {(item.status === "pending" || item.status === "reminded") && (
-                        <Button size="sm" variant="outline" onClick={() => sendReminder(item.id)}>
-                          <Clock className="mr-1 h-3 w-3" /> Remind
+                        <Button size="sm" variant="outline" onClick={() => sendReminder(item.id)} disabled={remindingId === item.id || closingId === item.id}>
+                          <Clock className="mr-1 h-3 w-3" /> {remindingId === item.id ? "Sending..." : "Remind"}
                         </Button>
                       )}
                       {item.status !== "closed" && (
-                        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => closeItem(item.id)}>
-                          Close
+                        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => closeItem(item.id)} disabled={closingId === item.id || remindingId === item.id}>
+                          {closingId === item.id ? "Closing..." : "Close"}
                         </Button>
                       )}
                     </div>

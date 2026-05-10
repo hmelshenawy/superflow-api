@@ -31,7 +31,7 @@ let passed = 0;
 let failed = 0;
 
 
-async function runTenant<T>(ctx: WorkshopContext, fn: () => Promise<T>): Promise<T> {
+async function runTenant(ctx: WorkshopContext, fn: () => Promise<any>): Promise<any> {
   return workshopContext.run(ctx, async () => await fn());
 }
 
@@ -330,11 +330,11 @@ async function testCreateIsolation() {
 
   const newCust = await runTenant(ctxA, () =>
     tenant.customers.create({
-      data: { id: 'test-cust-a-created', name: 'Auto-Injected A', workshop_id: workshopA },
+      data: { id: 'test-cust-a-created', name: 'Spoof Attempt A', workshop_id: workshopB },
     })
   );
 
-  assert(newCust.workshop_id === workshopA, 'Created customer gets correct workshop_id');
+  assert(newCust.workshop_id === workshopA, 'Create with spoofed workshop_id is forced to current workshop');
 
   // Even if someone tries to spoof workshop_id in the data, the where clause on reads prevents access
   // But the create itself should auto-inject the current workshop
@@ -346,8 +346,24 @@ async function testCreateIsolation() {
 
   assert(newCustNoSpoof.workshop_id === workshopA, 'Create without explicit workshop_id auto-sets current workshop');
 
+  await runTenant(ctxA, () =>
+    tenant.customers.createMany({
+      data: [
+        { id: 'test-cust-a-many-1', name: 'Many A 1', workshop_id: workshopB },
+        { id: 'test-cust-a-many-2', name: 'Many A 2' },
+      ],
+    })
+  );
+  const createdMany = await raw.customers.findMany({
+    where: { id: { in: ['test-cust-a-many-1', 'test-cust-a-many-2'] } },
+  });
+  assert(
+    createdMany.length === 2 && createdMany.every((c: any) => c.workshop_id === workshopA),
+    'createMany forces every row to current workshop_id',
+  );
+
   // Clean up
-  await raw.customers.deleteMany({ where: { id: { in: ['test-cust-a-created', 'test-cust-a-nospoof'] } } });
+  await raw.customers.deleteMany({ where: { id: { in: ['test-cust-a-created', 'test-cust-a-nospoof', 'test-cust-a-many-1', 'test-cust-a-many-2'] } } });
 }
 
 async function testNoWorkshopContext() {
@@ -384,6 +400,22 @@ async function testPlatformAdminBypass() {
   const rawTotal = await raw.jobs.count();
 
   assert(allJobs.length === rawTotal, `Platform admin sees all jobs (${allJobs.length} === ${rawTotal})`);
+
+  try {
+    await runTenant(ctxPlatformAdmin, () =>
+      tenant.customers.create({
+        data: { id: 'test-platform-admin-no-workshop-write', name: 'Should Fail' },
+      })
+    );
+    assert(false, 'Platform admin without selected workshop should NOT create tenant records');
+  } catch (e: any) {
+    assert(
+      e.message?.includes('without workshop context') || e.message?.includes('workshop_id'),
+      'Platform admin without selected workshop cannot write tenant records'
+    );
+  } finally {
+    await raw.customers.deleteMany({ where: { id: 'test-platform-admin-no-workshop-write' } });
+  }
 }
 
 async function testCrossTenantModelIsolation() {

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiQuery, ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, PRIORITY_READ } from '../common/permissions';
@@ -22,7 +22,7 @@ export class PriorityController {
   findAll(
     @Query('status') status?: string,
     @Query('advisor_id') advisorId?: string,
-    @Query('limit') limit?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<BulkPriorityResultDto> {
     return this.priorityService.computeAll({ status, advisorId, limit });
   }

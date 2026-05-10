@@ -59,7 +59,8 @@ export type PartsStatus =
   | "order_parts"
   | "waiting_warehouse"
   | "backorder"
-  | "parts_ready";
+  | "parts_ready"
+  | "issued";
 
 export type WorkshopStage =
   | "waiting_technician"
@@ -309,6 +310,7 @@ export interface MediaFile {
   original_filename: string | null;
   size_bytes: number | null;
   thumbnail_key: string | null;
+  scan_status?: string | null;
   uploaded_at: string;
 }
 
