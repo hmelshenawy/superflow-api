@@ -1,8 +1,9 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
+import * as ExcelJS from 'exceljs';
+import { parse as parseCsv } from 'csv-parse/sync';
 import { PrismaService } from '../prisma/prisma.service';
 import { RunImportDto, SaveTemplateDto } from './dto/booking-import.dto';
-import * as XLSX from 'xlsx';
 import { getWorkshopContext } from '../prisma/workshop-context';
 
 /** Header-like customer names that should be skipped during import */
@@ -67,7 +68,7 @@ function resolveImportedVehicleFields(row: BookingRow): { make: string | null; m
   };
 }
 
-const ALLOWED_IMPORT_EXTENSIONS = ['xlsx', 'xls', 'csv'];
+const ALLOWED_IMPORT_EXTENSIONS = ['xlsx', 'csv'];
 const MAX_IMPORT_ROWS = 1000;
 const MAX_IMPORT_HEADERS = 100;
 
@@ -78,6 +79,104 @@ function sanitizeCell(value: string): string {
   return value
     .replace(/^[\t\r=+\-@]/, match => match === '\t' || match === '\r' ? '' : ` '${match.slice(1)}`)
     .replace(/\r/g, '');
+}
+
+function stringifyCellValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    const cellObject = value as any;
+    if ('result' in cellObject) return stringifyCellValue(cellObject.result);
+    if ('text' in cellObject) return stringifyCellValue(cellObject.text);
+    if ('hyperlink' in cellObject && 'text' in cellObject) return stringifyCellValue(cellObject.text);
+    if (Array.isArray(cellObject.richText)) {
+      return cellObject.richText.map((part: any) => stringifyCellValue(part.text)).join('');
+    }
+  }
+  return String(value);
+}
+
+function cleanCell(value: unknown): string {
+  return sanitizeCell(stringifyCellValue(value).trim());
+}
+
+function buildParseResult(rows: Record<string, string>[]): ParseResult {
+  if (!rows.length) {
+    throw new BadRequestException('File contains no data rows');
+  }
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new BadRequestException(`Import file has ${rows.length} rows. Maximum allowed is ${MAX_IMPORT_ROWS}.`);
+  }
+
+  const headers = Object.keys(rows[0]);
+  if (!headers.length) {
+    throw new BadRequestException('File does not contain a header row');
+  }
+  if (headers.length > MAX_IMPORT_HEADERS) {
+    throw new BadRequestException(`Import file has ${headers.length} columns. Maximum allowed is ${MAX_IMPORT_HEADERS}.`);
+  }
+
+  return {
+    headers,
+    rows,
+    preview: rows.slice(0, 5),
+    totalRows: rows.length,
+  };
+}
+
+function parseCsvRows(file: Express.Multer.File): Record<string, string>[] {
+  const records = parseCsv(file.buffer, {
+    bom: true,
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  }) as Record<string, unknown>[];
+
+  return records.map((row) => {
+    const clean: Record<string, string> = {};
+    for (const [header, value] of Object.entries(row)) {
+      clean[cleanCell(header)] = cleanCell(value);
+    }
+    return clean;
+  });
+}
+
+async function parseXlsxRows(file: Express.Multer.File): Promise<Record<string, string>[]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(file.buffer as any);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) {
+    throw new BadRequestException('File does not contain a worksheet');
+  }
+
+  const headerRow = sheet.getRow(1);
+  const headers: { column: number; name: string }[] = [];
+  headerRow.eachCell({ includeEmpty: false }, (cell, column) => {
+    const name = cleanCell(cell.value);
+    if (name) headers.push({ column, name });
+  });
+  if (!headers.length) {
+    throw new BadRequestException('File does not contain a header row');
+  }
+
+  const rows: Record<string, string>[] = [];
+  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
+    const sheetRow = sheet.getRow(rowNumber);
+    const clean: Record<string, string> = {};
+    let hasValue = false;
+
+    for (const header of headers) {
+      const value = cleanCell(sheetRow.getCell(header.column).value);
+      clean[header.name] = value;
+      if (value) hasValue = true;
+    }
+
+    if (hasValue) rows.push(clean);
+  }
+
+  return rows;
 }
 
 @Injectable()
@@ -92,60 +191,19 @@ export class BookingImportService {
       throw new BadRequestException(`File extension .${ext} is not allowed. Supported: ${ALLOWED_IMPORT_EXTENSIONS.join(', ')}`);
     }
 
-    let workbook: XLSX.WorkBook;
+    let rows: Record<string, string>[];
     try {
       if (ext === 'csv') {
-        workbook = XLSX.read(file.buffer, { type: 'buffer', raw: true });
+        rows = parseCsvRows(file);
       } else {
-        workbook = XLSX.read(file.buffer, { type: 'buffer', raw: true });
+        rows = await parseXlsxRows(file);
       }
-    } catch {
-      throw new BadRequestException('Could not parse file. Supported formats: .xlsx, .xls, .csv');
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException('Could not parse file. Supported formats: .xlsx, .csv');
     }
 
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) {
-      throw new BadRequestException('File does not contain a worksheet');
-    }
-
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, {
-      defval: '',
-      raw: true,  // get raw values so we can format numbers ourselves
-    });
-
-    if (!jsonData.length) {
-      throw new BadRequestException('File contains no data rows');
-    }
-    if (jsonData.length > MAX_IMPORT_ROWS) {
-      throw new BadRequestException(`Import file has ${jsonData.length} rows. Maximum allowed is ${MAX_IMPORT_ROWS}.`);
-    }
-
-    const headers = Object.keys(jsonData[0]);
-    if (headers.length > MAX_IMPORT_HEADERS) {
-      throw new BadRequestException(`Import file has ${headers.length} columns. Maximum allowed is ${MAX_IMPORT_HEADERS}.`);
-    }
-
-    const rows = jsonData.map((row) => {
-      const clean: Record<string, string> = {};
-      for (const h of headers) {
-        const val = row[h];
-        if (typeof val === 'number') {
-          // Numbers with 10+ digits are likely phone/VIN — format as integer string, no scientific notation
-          clean[h] = Number.isInteger(val) ? String(val) : String(val);
-        } else {
-          clean[h] = sanitizeCell(String(val ?? '').trim());
-        }
-      }
-      return clean;
-    });
-
-    return {
-      headers,
-      rows,
-      preview: rows.slice(0, 5),
-      totalRows: rows.length,
-    };
+    return buildParseResult(rows);
   }
 
   // ─── Template CRUD ─────────────────────────────────────

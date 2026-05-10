@@ -311,7 +311,7 @@ export default function BookingImportPage() {
               </p>
               <Input
                 type="file"
-                accept=".xlsx,.xls,.csv"
+                accept=".xlsx,.csv"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="max-w-sm mx-auto"
               />

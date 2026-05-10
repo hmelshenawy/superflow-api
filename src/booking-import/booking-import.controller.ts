@@ -15,7 +15,6 @@ const ALLOWED_IMPORT_MIME_TYPES = new Set([
   'text/csv',
   'application/csv',
   'application/octet-stream',
-  'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
 
@@ -34,7 +33,7 @@ export class BookingImportController {
     limits: { fileSize: MAX_IMPORT_FILE_SIZE_BYTES },
     fileFilter: (_req, file, cb) => {
       if (file.mimetype && !ALLOWED_IMPORT_MIME_TYPES.has(file.mimetype)) {
-        cb(new BadRequestException(`File type ${file.mimetype} is not allowed. Upload .xlsx, .xls, or .csv files.`), false);
+        cb(new BadRequestException(`File type ${file.mimetype} is not allowed. Upload .xlsx or .csv files.`), false);
         return;
       }
       cb(null, true);
