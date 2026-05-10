@@ -24,6 +24,26 @@ docker compose build api web
 docker compose up -d redis api web
 ```
 
+## Post-deploy smoke checks
+GitHub Actions now checks these local URLs on the VPS after containers restart:
+
+```bash
+wget -qO- http://127.0.0.1:${API_BIND_PORT:-3000}/health
+wget -qO- http://127.0.0.1:${WEB_BIND_PORT:-3001}
+```
+
+If either fails, the workflow prints `docker compose ps` plus the last API/web logs and marks deploy failed.
+
+## Simple rollback
+```bash
+cd /home/super-service-app
+git checkout <previous-good-commit>
+docker compose build api web
+docker compose up -d api web
+```
+
+After rollback, re-run the smoke checks above.
+
 ## GitHub Actions secrets needed
 - `VPS_HOST`
 - `VPS_USER`
