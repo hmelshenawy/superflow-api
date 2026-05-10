@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { initSentry } from './common/sentry/sentry.init';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 // ─── Initialize Sentry before anything else ─────────────────
 initSentry();
@@ -77,6 +78,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(app.get(AuditInterceptor));
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Swagger docs only in non-production environments
   if (process.env.NODE_ENV !== 'production') {
