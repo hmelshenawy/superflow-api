@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, RefreshCw, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface WorkshopUser {
@@ -131,14 +131,19 @@ export default function WorkshopsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this workshop? This will remove all associated data access.")) return;
+  const toggleWorkshopActive = async (workshop: WorkshopWithCount) => {
+    const nextActive = !workshop.is_active;
+    const action = nextActive ? "reactivate" : "deactivate";
+    const message = nextActive
+      ? `Reactivate ${workshop.name}? Users will be able to select it again.`
+      : `Deactivate ${workshop.name}? Users will lose active sessions for this workshop, but data will be retained.`;
+    if (!confirm(message)) return;
     try {
-      await api.delete(`/workshops/${id}`);
-      toast.success("Workshop deleted");
+      await api.patch(`/workshops/${workshop.id}`, { is_active: nextActive });
+      toast.success(nextActive ? "Workshop reactivated" : "Workshop deactivated");
       fetchWorkshops();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete workshop");
+      toast.error(err?.response?.data?.message || `Failed to ${action} workshop`);
     }
   };
 
@@ -189,7 +194,7 @@ export default function WorkshopsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Workshops</h1>
-          <p className="text-sm text-muted-foreground">Manage workshops and user assignments</p>
+          <p className="text-sm text-muted-foreground">Manage workshops, user assignments, and account activation</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchWorkshops}>
@@ -245,8 +250,15 @@ export default function WorkshopsPage() {
                     <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDelete(w.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={w.is_active ? "text-red-600" : "text-emerald-600"}
+                      onClick={() => toggleWorkshopActive(w)}
+                      aria-label={w.is_active ? "Deactivate workshop" : "Reactivate workshop"}
+                      title={w.is_active ? "Deactivate workshop" : "Reactivate workshop"}
+                    >
+                      {w.is_active ? <Power className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
                     </Button>
                   </TableCell>
                 </TableRow>

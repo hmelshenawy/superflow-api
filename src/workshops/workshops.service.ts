@@ -54,6 +54,13 @@ export class WorkshopsService {
     }
   }
 
+  private async revokeWorkshopSessions(workshopId: string) {
+    await this.prisma.raw.refresh_tokens.updateMany({
+      where: { workshop_id: workshopId, revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
+  }
+
   async findOne(id: string) {
     const workshop = await this.prisma.raw.workshops.findUnique({
       where: { id },
@@ -65,18 +72,24 @@ export class WorkshopsService {
 
   async update(id: string, dto: UpdateWorkshopDto) {
     await this.findOne(id);
-    return this.prisma.raw.workshops.update({
+    const updated = await this.prisma.raw.workshops.update({
       where: { id },
       data: dto,
     });
+    if (dto.is_active === false) {
+      await this.revokeWorkshopSessions(id);
+    }
+    return updated;
   }
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.raw.workshops.update({
+    const updated = await this.prisma.raw.workshops.update({
       where: { id },
       data: { is_active: false },
     });
+    await this.revokeWorkshopSessions(id);
+    return updated;
   }
 
   async getWorkshopUsers(workshopId: string) {
@@ -96,7 +109,8 @@ export class WorkshopsService {
   }
 
   async assignUser(workshopId: string, userId: string) {
-    await this.findOne(workshopId);
+    const workshop = await this.findOne(workshopId);
+    if (!workshop.is_active) throw new BadRequestException('Cannot assign users to an inactive workshop');
     const user = await this.prisma.raw.users.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
