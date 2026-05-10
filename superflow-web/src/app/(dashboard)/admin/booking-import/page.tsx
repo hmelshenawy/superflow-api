@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Upload, MapPin, Play, Save, ArrowLeft, ArrowRight, CheckCircle, XCircle, SkipForward, Trash2 } from "lucide-react";
+import { Upload, MapPin, Play, Save, ArrowLeft, ArrowRight, CheckCircle, XCircle, SkipForward, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────
@@ -309,6 +309,12 @@ export default function BookingImportPage() {
               <p className="text-sm text-muted-foreground mb-2">
                 Drop an Excel or CSV file here, or click to browse
               </p>
+              <div className="mx-auto mb-4 flex max-w-sm items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs text-amber-900">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  Supported formats are .xlsx and .csv. If you have an old .xls file, open it in Excel and save it as .xlsx or .csv before uploading.
+                </p>
+              </div>
               <Input
                 type="file"
                 accept=".xlsx,.csv"
