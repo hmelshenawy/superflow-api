@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users } from "lucide-react";
+import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download } from "lucide-react";
 import { toast } from "sonner";
 
 interface WorkshopUser {
@@ -147,6 +147,26 @@ export default function WorkshopsPage() {
     }
   };
 
+  const exportWorkshop = async (workshop: WorkshopWithCount) => {
+    try {
+      const { data } = await api.get(`/workshops/${workshop.id}/export`);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const slug = (workshop.slug || workshop.name || workshop.id).replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `prioraflow-${slug || workshop.id}-export-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Workshop export downloaded");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to export workshop");
+    }
+  };
+
   const openUsers = async (w: WorkshopWithCount) => {
     setSelectedWorkshop(w);
     try {
@@ -249,6 +269,15 @@ export default function WorkshopsPage() {
                   <TableCell className="text-right space-x-1">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
                       <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => exportWorkshop(w)}
+                      aria-label="Export workshop data"
+                      title="Export workshop data"
+                    >
+                      <Download className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
