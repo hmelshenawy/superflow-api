@@ -31,6 +31,13 @@ export class UsersService {
     if (!access) throw new NotFoundException('User not found');
   }
 
+  private async revokeUserSessions(userId: string) {
+    await this.prisma.raw.refresh_tokens.updateMany({
+      where: { user_id: userId, revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
+  }
+
   async create(dto: CreateUserDto, requestingUser?: any) {
     // Non-platform-admins cannot assign platform_admin role
     if (dto.role_id) {
@@ -182,12 +189,16 @@ export class UsersService {
       delete data.password;
     }
     const { password_hash, ...result } = await this.prisma.raw.users.update({ where: { id }, data });
+    if (dto.password || dto.is_active === false) {
+      await this.revokeUserSessions(id);
+    }
     return result;
   }
 
   async remove(id: string, requestingUser?: any) {
     await this.findOne(id, requestingUser);
     const { password_hash, ...result } = await this.prisma.raw.users.update({ where: { id }, data: { is_active: false } });
+    await this.revokeUserSessions(id);
     return result;
   }
 
@@ -197,6 +208,7 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
     const hash = await bcrypt.hash(newPassword, 10);
     await this.prisma.raw.users.update({ where: { id }, data: { password_hash: hash } });
+    await this.revokeUserSessions(id);
     return { id: user.id, name: user.name, email: user.email, message: 'Password reset successfully' };
   }
 }
