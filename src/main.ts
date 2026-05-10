@@ -12,6 +12,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 // ─── Initialize Sentry before anything else ─────────────────
 initSentry();
 
+const appVersion = process.env.APP_VERSION || '0.1.0';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const httpAdapter = app.getHttpAdapter().getInstance();
@@ -69,7 +71,16 @@ async function bootstrap() {
   });
 
   // Health check
-  app.use('/health', (_req: Request, res: Response) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.use('/health', (_req: Request, res: Response) => res.json({
+    status: 'ok',
+    service: 'superflow-api',
+    version: appVersion,
+    environment: process.env.NODE_ENV || 'development',
+    branch: process.env.GIT_BRANCH || 'unknown',
+    commit: process.env.GIT_COMMIT || 'unknown',
+    uptimeSeconds: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  }));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

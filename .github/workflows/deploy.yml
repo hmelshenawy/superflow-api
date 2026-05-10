@@ -60,6 +60,10 @@ jobs:
             git fetch --all
             git checkout main
             git pull origin main
+            export APP_VERSION="$(sed -n 's/.*"version": "\(.*\)".*/\1/p' package.json | head -n 1)"
+            export APP_VERSION="${APP_VERSION:-unknown}"
+            export GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            export GIT_COMMIT="$(git rev-parse --short HEAD)"
 
             if [ ! -f .env ] && [ -f .env.example ]; then
               echo "Missing .env on VPS. Copy .env.example and fill real values first."
@@ -92,4 +96,4 @@ jobs:
 
             docker image prune -f >/dev/null 2>&1 || true
 
-            echo "Deploy finished."
+            echo "Deploy finished: ${GIT_BRANCH}@${GIT_COMMIT} (${APP_VERSION})"

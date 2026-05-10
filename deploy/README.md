@@ -34,6 +34,21 @@ wget -qO- http://127.0.0.1:${WEB_BIND_PORT:-3001}
 
 If either fails, the workflow prints `docker compose ps` plus the last API/web logs and marks deploy failed.
 
+The API health response includes safe deploy metadata:
+
+```json
+{
+  "status": "ok",
+  "service": "superflow-api",
+  "version": "0.1.0",
+  "environment": "production",
+  "branch": "main",
+  "commit": "abc1234",
+  "uptimeSeconds": 123,
+  "timestamp": "2026-05-10T00:00:00.000Z"
+}
+```
+
 ## Simple rollback
 ```bash
 cd /home/super-service-app
