@@ -136,14 +136,33 @@ async function setup() {
 }
 
 async function cleanup() {
-  await raw.media_files.deleteMany({ where: { id: { startsWith: 'test-file-' } } });
-  await raw.jobs.deleteMany({ where: { id: { startsWith: 'test-file-job-' } } });
-  await raw.vehicles.deleteMany({ where: { id: { startsWith: 'test-file-veh-' } } });
-  await raw.customers.deleteMany({ where: { id: { startsWith: 'test-file-cust-' } } });
+  const workshopIds = [workshopA, workshopB];
+  await raw.media_files.deleteMany({ where: { OR: [{ id: { startsWith: 'test-file-' } }, { workshop_id: { in: workshopIds } }] } });
+  await raw.approval_tokens.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.authorisation_decisions.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.deferred_work_reminders.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.deferred_work.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.estimate_line_history.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.estimate_lines.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.inspection_responses.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.inspection_items.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.inspection_sections.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.inspections.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.inspection_templates.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.job_status_history.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.notifications.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.vehicle_service_history.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.jobs.deleteMany({ where: { OR: [{ id: { startsWith: 'test-file-job-' } }, { workshop_id: { in: workshopIds } }] } });
+  await raw.vehicles.deleteMany({ where: { OR: [{ id: { startsWith: 'test-file-veh-' } }, { workshop_id: { in: workshopIds } }] } });
+  await raw.customers.deleteMany({ where: { OR: [{ id: { startsWith: 'test-file-cust-' } }, { workshop_id: { in: workshopIds } }] } });
+  await raw.booking_import_templates.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.labour_rates.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.settings.deleteMany({ where: { workshop_id: { in: workshopIds } } });
+  await raw.audit_logs.deleteMany({ where: { workshop_id: { in: workshopIds } } });
   await raw.user_workshop_access.deleteMany({ where: { id: { startsWith: 'test-file-uwa-' } } });
   await raw.users.deleteMany({ where: { id: { startsWith: 'test-file-user-' } } });
   await raw.roles.deleteMany({ where: { id: roleId } });
-  await raw.workshops.deleteMany({ where: { id: { in: [workshopA, workshopB] } } });
+  await raw.workshops.deleteMany({ where: { id: { in: workshopIds } } });
 }
 
 async function testBookingImportParsing() {
