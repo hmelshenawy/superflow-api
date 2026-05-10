@@ -114,12 +114,21 @@ export default function BookingImportPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [clearing, setClearing] = useState(false);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [mappingError, setMappingError] = useState<string | null>(null);
+  const [resultError, setResultError] = useState<string | null>(null);
 
   // ─── Step 1: Upload & Parse ──────────────────────────
 
   const handleFileUpload = useCallback(async () => {
     if (!file) return;
+    const ext = file.name.toLowerCase().split(".").pop();
+    if (!["xlsx", "csv"].includes(ext || "")) {
+      setParseError("Unsupported file type. Please upload .xlsx or .csv. Save old .xls files as .xlsx or .csv first.");
+      return;
+    }
     setParsing(true);
+    setParseError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -130,7 +139,9 @@ export default function BookingImportPage() {
       setMappings(autoMap(data.headers));
       setStep("mapping");
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to parse file");
+      const message = err.response?.data?.message || "Failed to parse file";
+      setParseError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setParsing(false);
     }
@@ -145,6 +156,7 @@ export default function BookingImportPage() {
   const applyTemplate = async (templateId: string) => {
     if (!templateId) return;
     setSelectedTemplateId(templateId);
+    setMappingError(null);
     try {
       const { data } = await api.get<Template>(`/booking-import/templates/${templateId}`);
       // Apply template mappings by matching source header names
@@ -156,8 +168,10 @@ export default function BookingImportPage() {
         })
       );
       toast.success(`Applied template: ${data.name}`);
-    } catch {
-      toast.error("Failed to load template");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to load template";
+      setMappingError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     }
   };
 
@@ -167,6 +181,7 @@ export default function BookingImportPage() {
       return;
     }
     setSavingTemplate(true);
+    setMappingError(null);
     try {
       await api.post("/booking-import/templates", {
         name: templateName.trim(),
@@ -175,8 +190,10 @@ export default function BookingImportPage() {
       toast.success("Template saved!");
       setTemplateName("");
       loadTemplates();
-    } catch {
-      toast.error("Failed to save template");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to save template";
+      setMappingError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setSavingTemplate(false);
     }
@@ -192,13 +209,16 @@ export default function BookingImportPage() {
   const deleteTemplate = async (templateId: string, templateName: string) => {
     if (!confirm(`Delete template "${templateName}"? This cannot be undone.`)) return;
     setDeletingTemplateId(templateId);
+    setMappingError(null);
     try {
       await api.delete(`/booking-import/templates/${templateId}`);
       toast.success(`Template "${templateName}" deleted`);
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
       if (selectedTemplateId === templateId) setSelectedTemplateId("");
-    } catch {
-      toast.error("Failed to delete template");
+    } catch (err: any) {
+      const message = err?.response?.data?.message || "Failed to delete template";
+      setMappingError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setDeletingTemplateId(null);
     }
@@ -209,6 +229,8 @@ export default function BookingImportPage() {
   const runImport = async () => {
     if (!parsed) return;
     setImporting(true);
+    setMappingError(null);
+    setResultError(null);
     try {
       const { data } = await api.post<ImportResult>("/booking-import/run", {
         mappings: mappings.filter((m) => m.target !== "_ignore"),
@@ -218,7 +240,9 @@ export default function BookingImportPage() {
       setStep("result");
       if (data.created > 0) toast.success(`Imported ${data.created} bookings!`);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Import failed");
+      const message = err.response?.data?.message || "Import failed";
+      setMappingError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setImporting(false);
     }
@@ -230,16 +254,22 @@ export default function BookingImportPage() {
     setParsed(null);
     setMappings([]);
     setResult(null);
+    setParseError(null);
+    setMappingError(null);
+    setResultError(null);
   };
 
   const clearAllJobs = async () => {
     if (!confirm("This will delete all jobs still in 'Booked' status only. Jobs that have progressed (checking, estimate, etc.) will NOT be affected. Continue?")) return;
     setClearing(true);
+    setResultError(null);
     try {
       const { data } = await api.delete<{ deleted: number }>("/jobs");
       toast.success(`Cleared ${data.deleted} booked jobs`);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to clear jobs");
+      const message = err.response?.data?.message || "Failed to clear jobs";
+      setResultError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setClearing(false);
     }
@@ -248,24 +278,30 @@ export default function BookingImportPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Booking Import</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Upload your daily booking table and import it into PrioraFlow
           </p>
         </div>
-        {(step === "mapping" || step === "result") && (
-          <Button variant="outline" onClick={reset}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            New Import
+        <div className="flex flex-wrap gap-2">
+          {(step === "mapping" || step === "result") && (
+            <Button variant="outline" onClick={reset} disabled={parsing || importing}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              New Import
+            </Button>
+          )}
+          <Button variant="destructive" size="sm" onClick={clearAllJobs} disabled={clearing || parsing || importing}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            {clearing ? "Clearing…" : "Clear Booked Jobs"}
           </Button>
-        )}
-        <Button variant="destructive" size="sm" onClick={clearAllJobs} disabled={clearing}>
-          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-          {clearing ? "Clearing…" : "Clear Booked Jobs"}
-        </Button>
+        </div>
       </div>
+
+      {resultError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{resultError}</div>
+      )}
 
       {/* Step indicators */}
       <div className="flex items-center gap-2 text-sm">
@@ -318,14 +354,27 @@ export default function BookingImportPage() {
               <Input
                 type="file"
                 accept=".xlsx,.csv"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const selected = e.target.files?.[0] || null;
+                  setFile(selected);
+                  setParseError(null);
+                  if (selected) {
+                    const ext = selected.name.toLowerCase().split(".").pop();
+                    if (!["xlsx", "csv"].includes(ext || "")) {
+                      setParseError("Unsupported file type. Please upload .xlsx or .csv. Save old .xls files as .xlsx or .csv first.");
+                    }
+                  }
+                }}
                 className="max-w-sm mx-auto"
               />
             </div>
+            {parseError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{parseError}</div>
+            )}
             {file && (
               <div className="flex items-center justify-between bg-muted rounded p-3">
                 <span className="text-sm font-medium">{file.name}</span>
-                <Button onClick={handleFileUpload} disabled={parsing}>
+                <Button onClick={handleFileUpload} disabled={parsing || !!parseError}>
                   {parsing ? "Parsing…" : "Parse & Continue"}
                 </Button>
               </div>
@@ -344,6 +393,9 @@ export default function BookingImportPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {mappingError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{mappingError}</div>
+            )}
             {/* Template section */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">
@@ -353,9 +405,13 @@ export default function BookingImportPage() {
                 variant="outline"
                 size="sm"
                 onClick={loadTemplates}
+                disabled={savingTemplate || importing}
               >
                 Load Templates
               </Button>
+              {templates.length === 0 && (
+                <p className="text-xs text-muted-foreground">No saved templates loaded yet.</p>
+              )}
               {templates.length > 0 && (
                 <div className="space-y-1.5 mt-2">
                   {templates.map((t) => (
@@ -371,6 +427,7 @@ export default function BookingImportPage() {
                         type="button"
                         className="flex-1 text-left text-sm font-medium truncate"
                         onClick={() => applyTemplate(t.id)}
+                        disabled={importing || savingTemplate}
                         title={`Apply template: ${t.name}`}
                       >
                         {t.name}
@@ -380,7 +437,7 @@ export default function BookingImportPage() {
                         size="icon"
                         className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-500"
                         onClick={() => deleteTemplate(t.id, t.name)}
-                        disabled={deletingTemplateId === t.id}
+                        disabled={deletingTemplateId === t.id || importing}
                         title="Delete template"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -454,7 +511,7 @@ export default function BookingImportPage() {
 
             {/* Import button */}
             <div className="flex justify-end pt-2">
-              <Button onClick={runImport} disabled={importing} size="lg">
+              <Button onClick={runImport} disabled={importing || mappings.every((m) => m.target === "_ignore")} size="lg">
                 <Play className="mr-2 h-4 w-4" />
                 {importing ? "Importing…" : `Import ${parsed.totalRows} Rows`}
               </Button>

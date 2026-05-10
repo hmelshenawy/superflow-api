@@ -91,6 +91,7 @@ export default function AuditPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const emptyFilters = {
     action: "",
@@ -114,15 +115,23 @@ export default function AuditPage() {
     return params;
   }, [appliedFilters, page]);
 
+  const hasActiveFilters = useMemo(
+    () => Object.values(appliedFilters).some((value) => value.trim().length > 0),
+    [appliedFilters],
+  );
+
   const fetchAuditLogs = useCallback(async () => {
     if (!isPlatformAdmin) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const { data } = await api.get<PaginatedResponse<AuditLog>>("/audit-logs", { params: activeParams });
       setItems(data.items ?? data.data ?? []);
       setTotal(data.total ?? 0);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to load audit logs");
+      const message = err?.response?.data?.message || "Failed to load audit logs";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -141,6 +150,7 @@ export default function AuditPage() {
     setAppliedFilters(emptyFilters);
     setPage(1);
     setExpandedId(null);
+    setLoadError(null);
   };
 
   if (!isPlatformAdmin) {
@@ -182,16 +192,31 @@ export default function AuditPage() {
           <Input type="datetime-local" value={filters.dateFrom} onChange={(e) => updateFilter("dateFrom", e.target.value)} aria-label="Date from" />
           <Input type="datetime-local" value={filters.dateTo} onChange={(e) => updateFilter("dateTo", e.target.value)} aria-label="Date to" />
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={() => { setAppliedFilters(filters); setPage(1); }}>
+            <Button className="flex-1" onClick={() => { setAppliedFilters(filters); setPage(1); }} disabled={loading}>
               <Search className="mr-2 h-4 w-4" />
-              Search
+              {loading ? "Searching..." : "Search"}
             </Button>
-            <Button variant="outline" size="icon" onClick={clearFilters} aria-label="Clear filters">
+            <Button variant="outline" size="icon" onClick={clearFilters} aria-label="Clear filters" disabled={loading}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load audit logs</p>
+                <p className="mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchAuditLogs} disabled={loading}>Retry</Button>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-lg border">
         <Table>
@@ -214,7 +239,9 @@ export default function AuditPage() {
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">No audit events found.</TableCell>
+                <TableCell colSpan={8} className="h-28 text-center text-muted-foreground">
+                  {hasActiveFilters ? "No audit events match these filters." : "No audit events found yet."}
+                </TableCell>
               </TableRow>
             ) : (
               items.map((log) => {
