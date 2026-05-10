@@ -23,10 +23,11 @@ import {
   BarChart3,
   Upload,
   X,
+  ScrollText,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-type NavItem = { href: string; label: string; icon: typeof LayoutGrid; requirePermission?: string };
+type NavItem = { href: string; label: string; icon: typeof LayoutGrid; requirePermission?: string; platformOnly?: boolean };
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/insights", label: "Insights", icon: BarChart3, requirePermission: "insights:dashboard" },
@@ -37,9 +38,14 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },
   { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, requirePermission: "admin:templates" },
   { href: "/admin/booking-import", label: "Booking Import", icon: Upload, requirePermission: "import:parse" },
+  { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/admin/workshops", label: "Workshops", icon: Building2, requirePermission: "workshops:read" },
 ];
+
+function isPlatformAdmin(user: { role?: { name?: string | null } | null } | null): boolean {
+  return user?.role?.name?.toLowerCase() === "platform_admin";
+}
 
 function isAdmin(user: { role?: { name?: string | null } | null; role_id?: string | null } | null): boolean {
   if (!user) return false;
@@ -60,6 +66,7 @@ function getUserPermissions(user: { role?: { name?: string | null; permissions?:
 }
 
 function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
+  if (item.platformOnly && !isPlatformAdmin(user)) return false;
   if (!item.requirePermission) return true;
   if (isAdmin(user)) return true;
   return getUserPermissions(user).has(item.requirePermission);
