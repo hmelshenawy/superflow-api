@@ -39,6 +39,7 @@ import {
   Trash2,
   Check,
   X,
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -133,6 +134,9 @@ export default function RolesPermissionsPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [allPermissions, setAllPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -149,6 +153,7 @@ export default function RolesPermissionsPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [rolesRes, permsRes] = await Promise.all([
         api.get<Role[]>("/admin/roles"),
@@ -157,7 +162,9 @@ export default function RolesPermissionsPage() {
       setRoles(rolesRes.data);
       setAllPermissions(permsRes.data.permissions);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to load roles");
+      const message = err?.response?.data?.message || "Failed to load roles";
+      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -225,6 +232,7 @@ export default function RolesPermissionsPage() {
       toast.error("Role name is required");
       return;
     }
+    setSaving(true);
     try {
       const payload = {
         name: formName.trim().toLowerCase().replace(/\s+/g, "_"),
@@ -243,11 +251,14 @@ export default function RolesPermissionsPage() {
       fetchData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to save role");
+    } finally {
+      setSaving(false);
     }
   };
 
   const confirmDelete = async () => {
     if (!deletingRole) return;
+    setDeleting(true);
     try {
       await api.delete(`/admin/roles/${deletingRole.id}`);
       toast.success("Role deleted");
@@ -257,6 +268,8 @@ export default function RolesPermissionsPage() {
       fetchData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to delete role");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -265,13 +278,13 @@ export default function RolesPermissionsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Roles & Permissions</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage role-based access control. Admin always has full access.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchData} aria-label="Refresh">
+          <Button variant="outline" size="icon" onClick={fetchData} aria-label="Refresh" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button onClick={openCreate}>
@@ -279,6 +292,21 @@ export default function RolesPermissionsPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load roles</p>
+                <p className="mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>Retry</Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Role list */}
@@ -296,6 +324,10 @@ export default function RolesPermissionsPage() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">Loading…</TableCell>
+                  </TableRow>
+                ) : roles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">No roles found yet.</TableCell>
                   </TableRow>
                 ) : (
                   roles.map((role) => {
@@ -329,7 +361,8 @@ export default function RolesPermissionsPage() {
                               variant="ghost"
                               size="icon"
                               onClick={(e) => { e.stopPropagation(); openEdit(role); }}
-                              aria-label="Edit role"
+                              aria-label={`Edit ${role.name}`}
+                              disabled={deleting}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -338,7 +371,8 @@ export default function RolesPermissionsPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={(e) => { e.stopPropagation(); setDeletingRole(role); setDeleteDialogOpen(true); }}
-                                aria-label="Delete role"
+                                aria-label={`Delete ${role.name}`}
+                                disabled={deleting}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
@@ -565,10 +599,10 @@ export default function RolesPermissionsPage() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button className="flex-1" onClick={saveRole}>
-                {editingRole ? "Save Changes" : "Create Role"}
+              <Button className="flex-1" onClick={saveRole} disabled={saving || !formName.trim()}>
+                {saving ? "Saving..." : editingRole ? "Save Changes" : "Create Role"}
               </Button>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
             </div>
           </div>
         </DialogContent>
@@ -585,8 +619,8 @@ export default function RolesPermissionsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 pt-2">
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>{deleting ? "Deleting..." : "Delete"}</Button>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>Cancel</Button>
           </div>
         </DialogContent>
       </Dialog>
