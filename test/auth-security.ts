@@ -15,10 +15,12 @@
 
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { AuthService } from '../src/auth/auth.service';
+import { PermissionsGuard } from '../src/common/guards/permissions.guard';
 import { UsersService } from '../src/users/users.service';
 
 const green = (s: string) => `\x1b[32m✓ ${s}\x1b[0m`;
@@ -59,6 +61,10 @@ const auth = new AuthService(
   { enqueue: async () => undefined } as any,
 );
 const usersService = new UsersService(prisma);
+const trialGuard = new PermissionsGuard(
+  { getAllAndOverride: () => ['jobs:create'] } as unknown as Reflector,
+  prisma,
+);
 
 const workshopA = 'test-auth-ws-a-0001';
 const workshopB = 'test-auth-ws-b-0001';
@@ -273,6 +279,39 @@ async function testWorkshopUserManagementBoundary() {
   assert(activeSessions === 0, 'Deactivating a user revokes their active sessions');
 }
 
+function guardContext(method: string, user: any) {
+  return {
+    getHandler: () => ({}),
+    getClass: () => ({}),
+    switchToHttp: () => ({
+      getRequest: () => ({ method, user }),
+    }),
+  } as any;
+}
+
+async function testExpiredTrialBlocksMutations() {
+  console.log('\nTRIAL — expired trial blocks operational mutations\n');
+
+  await raw.workshops.update({
+    where: { id: workshopA },
+    data: { trial_ends_at: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  });
+
+  const userContext = { sub: activeUserA, role: 'test_auth_advisor', permissions: ['jobs:create'], workshopId: workshopA };
+
+  await assertRejects(
+    () => trialGuard.canActivate(guardContext('POST', userContext)),
+    'Expired trial blocks mutating API actions',
+    (err) => err?.status === 402,
+  );
+
+  const readAllowed = await trialGuard.canActivate(guardContext('GET', userContext));
+  assert(readAllowed === true, 'Expired trial still allows read-only access');
+
+  const platformAllowed = await trialGuard.canActivate(guardContext('POST', { ...userContext, role: 'platform_admin' }));
+  assert(platformAllowed === true, 'Platform admin bypasses trial gate');
+}
+
 async function main() {
   console.log('═══════════════════════════════════════════════════');
   console.log('  PrioraFlow — Auth Security Test Suite');
@@ -285,6 +324,7 @@ async function main() {
     await testInactiveRefreshRevokesSessions();
     await testLogoutRefreshToken();
     await testWorkshopUserManagementBoundary();
+    await testExpiredTrialBlocksMutations();
     await cleanup();
 
     console.log('\n═══════════════════════════════════════════════════');
