@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - improvement/**
+
+jobs:
+  api:
+    name: API build and audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build API
+        run: npm run build
+
+      - name: Audit API dependencies
+        run: npm audit --audit-level=high
+
+      - name: Run rate-limit regression tests
+        run: npm run test:rate-limit
+
+  web:
+    name: Web build and audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: superflow-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: superflow-web
+        run: npm ci
+
+      - name: Build web
+        working-directory: superflow-web
+        run: npm run build
+
+      - name: Audit web dependencies
+        working-directory: superflow-web
+        run: npm audit --audit-level=high
