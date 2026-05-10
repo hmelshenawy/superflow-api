@@ -13,6 +13,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 initSentry();
 
 const appVersion = process.env.APP_VERSION || '0.1.0';
+const isProduction = process.env.NODE_ENV === 'production';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -26,7 +27,7 @@ async function bootstrap() {
   // ─── Sentry request handler (must be before other middleware) ──
   Sentry.setupExpressErrorHandler(app.getHttpAdapter().getInstance());
 
-  // ─── Helmet + CSP (report-only for now) ──────────────────
+  // ─── Helmet + CSP ──────────────────
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -55,10 +56,9 @@ async function bootstrap() {
           baseUri: ["'self'"],
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
+          upgradeInsecureRequests: isProduction ? [] : null,
         },
-        // Report-only: violations logged but NOT blocked
-        // Once we verify no false positives, switch to enforcement
-        reportOnly: true,
+        reportOnly: !isProduction,
       },
       crossOriginEmbedderPolicy: false,
     }),
