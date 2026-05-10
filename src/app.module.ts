@@ -24,10 +24,11 @@ import { PriorityModule } from './priority/priority.module';
 import { WorkshopsModule } from './workshops/workshops.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
+import { validateEnvironment } from './config/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ThrottlerModule.forRoot([
       {
         name: 'default',
