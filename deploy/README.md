@@ -24,6 +24,20 @@ docker compose build api web
 docker compose up -d redis api web
 ```
 
+## Schema change checklist
+This project uses manual SQL migrations for now.
+
+Before deploying code that changes `prisma/schema.prisma` or expects new DB columns/tables/enums:
+
+- Add a dated SQL file under `scripts/sql/`.
+- Review the SQL for destructive changes.
+- Apply the SQL to the VPS database before or during the deploy window.
+- Record the applied file name, git commit, date, and operator.
+- Deploy the app.
+- Run the smoke checks below.
+
+Do not rely on deploy to mutate the database automatically. See `scripts/sql/README.md`.
+
 ## Post-deploy smoke checks
 GitHub Actions now checks these local URLs on the VPS after containers restart:
 
