@@ -15,6 +15,7 @@
     "prisma:pull": "prisma db pull",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
+    "test:auth-security": "./scripts/test-auth-security.sh",
     "test:tenant": "./scripts/test-tenant-isolation.sh",
     "test:rate-limit": "npx ts-node -r tsconfig-paths/register test/rate-limit-tracker.ts"
   },
