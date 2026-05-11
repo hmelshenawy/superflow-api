@@ -1,18 +1,31 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class WorkshopGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(private prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const { user } = context.switchToHttp().getRequest();
     if (!user) return true; // JwtAuthGuard handles missing user
 
-    // platform_admin and admin can operate without a workshop context
+    // platform_admin can operate without a workshop context
     if (user.role === 'platform_admin') return true;
 
-    // All other roles must have a workshopId in their token
-    if (!user.workshopId) {
-      throw new ForbiddenException('No workshop selected. Use POST /auth/select-workshop first.');
+    // If JWT has workshopId, it's already resolved
+    if (user.workshopId) return true;
+
+    // Fall back to DB: if user has exactly one workshop, set it on the request
+    if (user.sub) {
+      const access = await this.prisma.raw.user_workshop_access.findFirst({
+        where: { user_id: user.sub },
+      });
+      if (access) {
+        user.workshopId = access.workshop_id;
+        return true;
+      }
     }
-    return true;
+
+    throw new ForbiddenException('No workshop selected. Use POST /auth/select-workshop first.');
   }
 }
