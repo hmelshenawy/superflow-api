@@ -361,9 +361,16 @@ export class BookingImportService {
         const ownerCode = row.advisor_id?.trim() || null;
         if (ownerCode) {
           const { workshopId, isPlatformAdmin } = getWorkshopContext();
+
+          // If the value looks like a combined "Name Code" (e.g. "Emad Medhat Awad 4449"),
+          // try to extract the trailing numeric code first, as that's the employee_code.
+          const trailingCodeMatch = ownerCode.match(/\s(\d{3,6})$/);
+          const primarySearch = trailingCodeMatch ? trailingCodeMatch[1] : ownerCode;
+
           const advisor = await this.prisma.raw.users.findFirst({
             where: {
               OR: [
+                { employee_code: primarySearch },
                 { employee_code: ownerCode },
                 { name: { contains: ownerCode } },
                 { email: { contains: ownerCode } },
