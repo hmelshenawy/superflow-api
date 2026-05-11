@@ -26,7 +26,11 @@ export class PriorityController {
     @Query('advisor_id') advisorId?: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<BulkPriorityResultDto> {
-    return this.priorityService.computeAll({ status, advisorId, limit });
+    console.log('[PriorityController] findAll called, computing all priorities');
+    return this.priorityService.computeAll({ status, advisorId, limit }).catch(err => {
+      console.error('[PriorityController] Error computing priorities:', err.message, err.stack?.slice(0, 500));
+      throw err;
+    });
   }
 
   @Get(':id')

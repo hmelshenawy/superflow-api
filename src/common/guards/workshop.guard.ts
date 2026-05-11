@@ -6,7 +6,8 @@ export class WorkshopGuard implements CanActivate {
   constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const { user } = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest();
+    const { user } = req;
     if (!user) return true; // JwtAuthGuard handles missing user
 
     // platform_admin can operate without a workshop context
@@ -17,12 +18,17 @@ export class WorkshopGuard implements CanActivate {
 
     // Fall back to DB: if user has exactly one workshop, set it on the request
     if (user.sub) {
-      const access = await this.prisma.raw.user_workshop_access.findFirst({
-        where: { user_id: user.sub },
-      });
-      if (access) {
-        user.workshopId = access.workshop_id;
-        return true;
+      try {
+        const access = await this.prisma.raw.user_workshop_access.findFirst({
+          where: { user_id: user.sub },
+        });
+        if (access) {
+          user.workshopId = access.workshop_id;
+          console.log(`[WorkshopGuard] Resolved workshopId=${access.workshop_id} for user=${user.sub} via DB lookup`);
+          return true;
+        }
+      } catch (err: any) {
+        console.error('[WorkshopGuard] DB lookup failed:', err.message);
       }
     }
 
