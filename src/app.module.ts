@@ -26,6 +26,7 @@ import { BillingModule } from './billing/billing.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
+import { WorkshopGuard } from './common/guards/workshop.guard';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -64,6 +65,10 @@ import { validateEnvironment } from './config/env.validation';
     {
       provide: APP_GUARD,
       useClass: TenantThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: WorkshopGuard,
     },
     {
       provide: APP_GUARD,

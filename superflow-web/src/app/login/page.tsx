@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 import { Wrench, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,6 +77,9 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Signing in…" : "Sign in"}
           </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            <Link href="/forgot-password" className="text-blue-600 hover:underline">Forgot password?</Link>
+          </p>
         </form>
       </div>
     </div>

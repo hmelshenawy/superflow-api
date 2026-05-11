@@ -135,6 +135,38 @@ export class AdminService {
     const eventId = uuid();
     const start = new Date();
 
+    // SSRF protection: block internal/private network URLs
+    if (testUrl) {
+      try {
+        const parsed = new URL(testUrl);
+        const blockedProtocols = ['file:', 'ftp:', 'data:'];
+        if (blockedProtocols.includes(parsed.protocol)) {
+          throw new BadRequestException(`Protocol ${parsed.protocol} is not allowed`);
+        }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          throw new BadRequestException(`Protocol ${parsed.protocol} is not allowed. Only http: and https: are supported.`);
+        }
+        const hostname = parsed.hostname.toLowerCase();
+        const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'];
+        if (blockedHosts.includes(hostname)) {
+          throw new BadRequestException('Requests to localhost are not allowed');
+        }
+        if (hostname.endsWith('.internal') || hostname.endsWith('.local') || hostname.endsWith('.localhost')) {
+          throw new BadRequestException('Requests to internal domains are not allowed');
+        }
+        const ipMatch = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+        if (ipMatch) {
+          const [, a, b] = ipMatch.map(Number);
+          if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a === 127 || a === 0) {
+            throw new BadRequestException('Requests to private network addresses are not allowed');
+          }
+        }
+      } catch (e) {
+        if (e instanceof BadRequestException) throw e;
+        throw new BadRequestException('Invalid URL provided for integration test');
+      }
+    }
+
     if (!testUrl) {
       await this.prisma.tenant.integration_events.create({
         data: {

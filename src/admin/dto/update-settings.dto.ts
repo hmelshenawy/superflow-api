@@ -1,4 +1,4 @@
-import { Allow, IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, ValidateNested, IsNumber, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -18,8 +18,8 @@ export class SettingItemDto {
   description?: string;
 
   @ApiPropertyOptional()
-  @Allow()
-  value?: any;
+  @IsOptional()
+  value: string | number | boolean | Record<string, unknown>;
 }
 
 export class UpdateSettingsDto {

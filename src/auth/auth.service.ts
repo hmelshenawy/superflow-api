@@ -154,19 +154,61 @@ export class AuthService {
     };
   }
 
+  private MAX_LOGIN_ATTEMPTS = 5;
+  private LOCKOUT_MINUTES = 15;
+
   async validateUser(email: string, password: string) {
     const user = await this.prisma.raw.users.findUnique({ where: { email }, include: { roles: true } });
     if (!user || !user.is_active) return null;
+
+    // Check account lockout
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const remainingMin = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / 60000);
+      throw new UnauthorizedException(`Account temporarily locked. Try again in ${remainingMin} minute${remainingMin !== 1 ? 's' : ''}.`);
+    }
+
+    // Clear lockout if expired
+    if (user.locked_until && new Date(user.locked_until) <= new Date()) {
+      await this.prisma.raw.users.update({ where: { id: user.id }, data: { failed_login_attempts: 0, locked_until: null } });
+    }
+
     const valid = await bcrypt.compare(password, user.password_hash || '');
     if (!valid) return null;
     return user;
   }
 
   async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    // Check lockout before validation to give clear error message
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await this.prisma.raw.users.findUnique({ where: { email: normalizedEmail } });
+    if (existingUser?.locked_until && new Date(existingUser.locked_until) > new Date()) {
+      const remainingMin = Math.ceil((new Date(existingUser.locked_until).getTime() - Date.now()) / 60000);
+      throw new UnauthorizedException(`Account temporarily locked. Try again in ${remainingMin} minute${remainingMin !== 1 ? 's' : ''}.`);
+    }
 
-    await this.prisma.raw.users.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
+    const user = await this.validateUser(email, password);
+    if (!user) {
+      // Increment failed attempts
+      if (existingUser) {
+        const attempts = (existingUser.failed_login_attempts || 0) + 1;
+        if (attempts >= this.MAX_LOGIN_ATTEMPTS) {
+          const lockedUntil = new Date(Date.now() + this.LOCKOUT_MINUTES * 60 * 1000);
+          await this.prisma.raw.users.update({
+            where: { id: existingUser.id },
+            data: { failed_login_attempts: attempts, locked_until: lockedUntil },
+          });
+          throw new UnauthorizedException(`Account locked due to too many failed attempts. Try again in ${this.LOCKOUT_MINUTES} minutes.`);
+        }
+        await this.prisma.raw.users.update({
+          where: { id: existingUser.id },
+          data: { failed_login_attempts: attempts },
+        });
+      }
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Clear failed attempts on successful login
+    await this.prisma.raw.users.update({ where: { id: user.id }, data: { last_login_at: new Date(), failed_login_attempts: 0, locked_until: null } });
 
     await this.prisma.raw.refresh_tokens.deleteMany({
       where: { user_id: user.id, OR: [{ revoked_at: { not: null } }, { expires_at: { lte: new Date() } }] },
@@ -343,7 +385,7 @@ export class AuthService {
     const hashed = await bcrypt.hash(newPassword, 10);
 
     await this.prisma.raw.$transaction([
-      this.prisma.raw.users.update({ where: { id: resetToken.user_id }, data: { password_hash: hashed } }),
+      this.prisma.raw.users.update({ where: { id: resetToken.user_id }, data: { password_hash: hashed, failed_login_attempts: 0, locked_until: null } }),
       this.prisma.raw.password_reset_tokens.update({ where: { id: resetToken.id }, data: { used_at: new Date() } }),
       this.prisma.raw.refresh_tokens.updateMany({
         where: { user_id: resetToken.user_id, revoked_at: null },

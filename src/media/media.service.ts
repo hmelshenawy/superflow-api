@@ -40,7 +40,7 @@ export class MediaService {
   private async generateCleanFilename(jobId: string, ext: string): Promise<string> {
     // Media filenames are normalized up front because original phone/browser
     // filenames often contain characters that later break HTTP headers.
-    const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId }, select: { job_number: true } });
+    const job = await this.prisma.tenant.jobs.findFirst({ where: { id: jobId }, select: { job_number: true } });
     const jobNum = (job?.job_number || jobId.slice(0, 8)).replace(/[^a-zA-Z0-9._-]/g, '_');
     const ts = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').replace(/\..+/, '');
     // e.g. SF-MOGZ76J8_20260427_160100.jpg
@@ -183,8 +183,8 @@ export class MediaService {
   }
 
   async confirm(id: string, body: { size_bytes?: number; width_px?: number; height_px?: number; duration_sec?: number; thumbnail_key?: string }) {
-    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
-    if (!file || file.is_deleted) throw new NotFoundException('File not found');
+    const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
+    if (!file) throw new NotFoundException('File not found');
     if (body.size_bytes !== undefined) {
       this.validateMediaPolicy({
         filename: file.original_filename || 'file',
@@ -280,8 +280,8 @@ export class MediaService {
   }
 
   async getSignedDownloadUrl(id: string) {
-    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
-    if (!file || file.is_deleted) throw new NotFoundException('File not found');
+    const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
+    if (!file) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
     this.assertDownloadAllowed(file);
 
@@ -304,8 +304,8 @@ export class MediaService {
   async getDownloadStream(id: string) {
     // Stream-through download keeps storage private; callers do not need direct
     // bucket credentials or publicly reachable MinIO endpoints.
-    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
-    if (!file || file.is_deleted) throw new NotFoundException('File not found');
+    const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
+    if (!file) throw new NotFoundException('File not found');
     if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
     this.assertDownloadAllowed(file);
 
@@ -333,8 +333,8 @@ export class MediaService {
   }
 
   async findOne(id: string) {
-    const file = await this.prisma.tenant.media_files.findUnique({ where: { id } });
-    if (!file || file.is_deleted) throw new NotFoundException('File not found');
+    const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
+    if (!file) throw new NotFoundException('File not found');
     return this.normalizeMedia(file);
   }
 

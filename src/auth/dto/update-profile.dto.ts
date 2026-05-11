@@ -4,12 +4,12 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 export class ChangePasswordDto {
   @ApiPropertyOptional()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   currentPassword: string;
 
   @ApiPropertyOptional()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   newPassword: string;
 }
 
