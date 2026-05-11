@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Inject } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, ADMIN_USERS } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BillingService } from './billing.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('Billing')
 @Controller('billing')
 export class BillingController {
-  constructor(private billingService: BillingService) {}
+  constructor(
+    private billingService: BillingService,
+    @Inject(PrismaService) private prisma: PrismaService,
+  ) {}
 
   @Get('pricing')
   @ApiOperation({ summary: 'Get all plans with regional pricing and features' })
@@ -21,16 +25,32 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current subscription, plan features, and usage' })
-  getSubscription(@CurrentUser() user: any) {
-    return this.billingService.getSubscription(user.workshopId);
+  async getSubscription(@CurrentUser() user: any) {
+    const workshopId = await this.resolveWorkshopId(user);
+    if (!workshopId) return { subscription: null, plan: null, features: [], usage: {} };
+    return this.billingService.getSubscription(workshopId);
   }
 
   @Get('usage')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current month usage vs ceilings for all features' })
-  getUsage(@CurrentUser() user: any) {
-    return this.billingService.getUsage(user.workshopId);
+  async getUsage(@CurrentUser() user: any) {
+    const workshopId = await this.resolveWorkshopId(user);
+    if (!workshopId) return {};
+    return this.billingService.getUsage(workshopId);
+  }
+
+  /** Resolve workshop context: JWT claim → user's first assigned workshop */
+  private async resolveWorkshopId(user: any): Promise<string | null> {
+    if (user.workshopId) return user.workshopId;
+    if (user.role === 'platform_admin') {
+      // Admins: use whichever workshop the frontend has selected (via query) or the first active one
+      const first = await this.prisma.workshops.findFirst({ where: { is_active: true }, select: { id: true } });
+      return first?.id ?? null;
+    }
+    const access = await this.prisma.user_workshop_access.findFirst({ where: { user_id: user.sub } });
+    return access?.workshop_id ?? null;
   }
 
   // ── Admin endpoints ────────────────────────────────────

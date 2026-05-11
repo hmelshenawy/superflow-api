@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Req, Res, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Req, Res, ForbiddenException, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
@@ -11,11 +11,15 @@ import { SignupDto } from './dto/signup.dto';
 import { SelectWorkshopDto } from './dto/select-workshop.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(
+    private auth: AuthService,
+    @Inject(PrismaService) private prisma: PrismaService,
+  ) {}
 
   private readonly refreshCookieName = 'prioraflow_refresh';
 
@@ -103,18 +107,31 @@ export class AuthController {
     }
   }
 
+  /** Resolve workshop context: JWT claim → user's first assigned workshop */
+  private async resolveWorkshopId(user: any): Promise<string | null> {
+    if (user.workshopId) return user.workshopId;
+    if (user.role === 'platform_admin') {
+      const first = await this.prisma.workshops.findFirst({ where: { is_active: true }, select: { id: true } });
+      return first?.id ?? null;
+    }
+    const access = await this.prisma.user_workshop_access.findFirst({ where: { user_id: user.sub } });
+    return access?.workshop_id ?? null;
+  }
+
   @Get('subscription')
   @UseGuards(JwtAuthGuard)
-  getSubscription(@CurrentUser('workshopId') workshopId: string, @CurrentUser('role') role: string) {
-    this.assertBillingAccess(role);
+  async getSubscription(@CurrentUser() user: any) {
+    this.assertBillingAccess(user.role);
+    const workshopId = await this.resolveWorkshopId(user);
     if (!workshopId) return null;
     return this.auth.getSubscriptionStatus(workshopId);
   }
 
   @Get('billing')
   @UseGuards(JwtAuthGuard)
-  getBilling(@CurrentUser('workshopId') workshopId: string, @CurrentUser('role') role: string) {
-    this.assertBillingAccess(role);
+  async getBilling(@CurrentUser() user: any) {
+    this.assertBillingAccess(user.role);
+    const workshopId = await this.resolveWorkshopId(user);
     if (!workshopId) return null;
     return this.auth.getBillingOverview(workshopId);
   }

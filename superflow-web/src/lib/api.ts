@@ -44,8 +44,8 @@ api.interceptors.response.use(
     const original = error.config;
     const isAuthEndpoint = original.url?.includes("/auth/login") || original.url?.includes("/auth/refresh") || original.url?.includes("/auth/select-workshop");
 
-    // Redirect to workshop selector if no workshop is selected
-    if (error.response?.status === 403 && error.response?.data?.message?.includes("No workshop selected") && typeof window !== "undefined") {
+    // Redirect to workshop selector if no workshop context
+    if (error.response?.status === 403 && error.response?.data?.message?.includes("Workshop context required") && typeof window !== "undefined") {
       window.location.href = "/select-workshop";
       return Promise.reject(error);
     }

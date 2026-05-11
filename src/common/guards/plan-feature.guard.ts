@@ -20,12 +20,25 @@ export class PlanFeatureGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    if (!user?.workshopId) throw new ForbiddenException('Workshop context required');
+
+    // Platform admins bypass all feature gates regardless of workshop context
     if (user.role === 'platform_admin') return true;
+
+    if (!user?.sub) throw new ForbiddenException('Authentication required');
+
+    // Resolve workshopId: prefer JWT claim, fall back to the user's single workshop
+    let workshopId = user.workshopId;
+    if (!workshopId) {
+      const access = await this.prisma.raw.user_workshop_access.findFirst({
+        where: { user_id: user.sub },
+      });
+      if (!access) throw new ForbiddenException('No workshop assignment found');
+      workshopId = access.workshop_id;
+    }
 
     // Get the workshop's active subscription
     const subscription = await this.prisma.raw.subscriptions.findFirst({
-      where: { workshop_id: user.workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing'] } },
+      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing'] } },
       orderBy: { created_at: 'desc' },
       select: { id: true, plan_id: true, status: true, trial_ends_at: true },
     });

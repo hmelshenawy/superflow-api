@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import Image from "next/image";
 
-const PUBLIC_ROUTES = ["/login", "/signup"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/select-workshop"];
 
 function LoadingShell() {
   return (
@@ -19,7 +19,7 @@ function LoadingShell() {
 }
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loadUser } = useAuthStore();
+  const { isAuthenticated, loadUser, workshops, currentWorkshopId } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [hydrated, setHydrated] = useState(false);
@@ -40,8 +40,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!hydrated || checking) return;
     if (!isAuthenticated && !PUBLIC_ROUTES.includes(pathname)) {
       router.replace("/login");
+      return;
     }
-  }, [hydrated, checking, isAuthenticated, pathname, router]);
+    // Authenticated users with multiple workshops but no selection must pick one
+    if (isAuthenticated && !currentWorkshopId && workshops.length > 1 && !PUBLIC_ROUTES.includes(pathname)) {
+      router.replace("/select-workshop");
+    }
+  }, [hydrated, checking, isAuthenticated, currentWorkshopId, workshops.length, pathname, router]);
 
   if (!hydrated || checking) {
     return <LoadingShell />;
