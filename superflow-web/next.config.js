@@ -27,6 +27,7 @@ const cspDirectives = [
   "font-src 'self' data:",
   `connect-src ${connectSrc.join(" ")}`,
   "media-src 'self' blob:",
+  "worker-src 'self' blob:",
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
