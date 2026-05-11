@@ -211,6 +211,50 @@ export class BillingService {
     };
   }
 
+  /** Admin: Get full billing overview for a workshop (subscription + invoices + payments) */
+  async getWorkshopBillingOverview(workshopId: string) {
+    const base = await this.getSubscription(workshopId);
+
+    const invoices = await this.prisma.raw.invoices.findMany({
+      where: { workshop_id: workshopId },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+      include: { invoice_items: true, payments: true },
+    });
+
+    return {
+      ...base,
+      invoices: invoices.map(inv => ({
+        id: inv.id,
+        invoiceNumber: inv.invoice_number,
+        status: inv.status,
+        totalCents: inv.total_cents,
+        currency: inv.currency,
+        dueAt: inv.due_at,
+        issuedAt: inv.issued_at,
+        paidAt: inv.paid_at,
+        items: inv.invoice_items.map(ii => ({
+          id: ii.id,
+          description: ii.description,
+          quantity: ii.quantity,
+          unitAmountCents: ii.unit_amount_cents,
+          totalCents: ii.total_cents,
+          type: ii.type,
+          period: ii.period,
+        })),
+        payments: inv.payments.map(p => ({
+          id: p.id,
+          status: p.status,
+          amountCents: p.amount_cents,
+          currency: p.currency,
+          method: p.method,
+          providerName: p.provider_name,
+          paidAt: p.paid_at,
+        })),
+      })),
+    };
+  }
+
   /** Admin: Mark an invoice as paid (manual payment reconciliation) */
   async markInvoicePaid(invoiceId: string, method: string, reference?: string) {
     const invoice = await this.prisma.raw.invoices.findUnique({ where: { id: invoiceId } });

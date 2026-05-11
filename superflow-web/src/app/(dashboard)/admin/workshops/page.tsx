@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download, AlertTriangle } from "lucide-react";
+import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download, AlertTriangle, CreditCard } from "lucide-react";
+import SubscriptionManagerDialog from "./SubscriptionManagerDialog";
 import { toast } from "sonner";
 
 interface WorkshopUser {
@@ -60,6 +61,9 @@ export default function WorkshopsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [billingWorkshop, setBillingWorkshop] = useState<WorkshopWithCount | null>(null);
 
   const [formName, setFormName] = useState("");
   const [formSlug, setFormSlug] = useState("");
@@ -233,6 +237,11 @@ export default function WorkshopsPage() {
     }
   };
 
+  const openBilling = (w: WorkshopWithCount) => {
+    setBillingWorkshop(w);
+    setBillingDialogOpen(true);
+  };
+
   // Compare by userId (not access record id) to find who's not yet assigned
   const assignedUserIds = new Set(workshopUsers.map(wu => wu.userId));
   const availableUsers = allUsers.filter(u => !assignedUserIds.has(u.id));
@@ -308,6 +317,9 @@ export default function WorkshopsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button variant="ghost" size="sm" onClick={() => openBilling(w)} title="Manage subscription">
+                      <CreditCard className="h-3.5 w-3.5" />
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => openEdit(w)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -451,6 +463,14 @@ export default function WorkshopsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SubscriptionManagerDialog
+        open={billingDialogOpen}
+        onOpenChange={setBillingDialogOpen}
+        workshopId={billingWorkshop?.id ?? ""}
+        workshopName={billingWorkshop?.name ?? ""}
+        workshopRegion={billingWorkshop?.region ?? null}
+      />
     </div>
   );
 }

@@ -14,7 +14,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
     if (status >= 500) {
-      console.error(`[500 Error] ${request.method} ${request.originalUrl || request.url}`, exception instanceof Error ? exception.message : String(exception), exception instanceof Error ? exception.stack?.slice(0, 500) : '');
       captureSentryError(exception, {
         method: request.method,
         path: request.originalUrl || request.url,

@@ -24,11 +24,10 @@ export class WorkshopGuard implements CanActivate {
         });
         if (access) {
           user.workshopId = access.workshop_id;
-          console.log(`[WorkshopGuard] Resolved workshopId=${access.workshop_id} for user=${user.sub} via DB lookup`);
           return true;
         }
-      } catch (err: any) {
-        console.error('[WorkshopGuard] DB lookup failed:', err.message);
+      } catch {
+        // DB lookup failed — fall through to ForbiddenException
       }
     }
 

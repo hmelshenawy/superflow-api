@@ -96,6 +96,6 @@ export class BillingController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get billing overview for a specific workshop (admin)' })
   getWorkshopBilling(@Param('workshopId') workshopId: string) {
-    return this.billingService.getSubscription(workshopId);
+    return this.billingService.getWorkshopBillingOverview(workshopId);
   }
 }

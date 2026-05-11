@@ -88,6 +88,74 @@ export interface UsageRecord {
   isIncluded: boolean;
   overageUnitCents: number;
 }
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  displayName?: string;
+  features: PlanFeature[];
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitAmountCents: number;
+  totalCents: number;
+  type: string;
+  period: string | null;
+}
+
+export interface InvoicePayment {
+  id: string;
+  status: string;
+  amountCents: number;
+  currency: string | null;
+  method: string | null;
+  providerName: string | null;
+  paidAt: string | null;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  totalCents: number;
+  currency: string | null;
+  dueAt: string | null;
+  issuedAt: string | null;
+  paidAt: string | null;
+  items: InvoiceItem[];
+  payments: InvoicePayment[];
+}
+
+export interface WorkshopBillingOverview {
+  subscription: {
+    id: string;
+    status: string;
+    planId: string;
+    region: string;
+    additionalLocations: number;
+    billingModel: string;
+    trialEndsAt: string | null;
+    currentPeriodStartsAt: string | null;
+    currentPeriodEndsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+  plan: {
+    id: string | null;
+    name: string | null;
+    description: string | null;
+    price: number | null;
+    currency: string | null;
+  };
+  features: PlanFeature[];
+  usage: Record<string, UsageRecord>;
+  invoices: Invoice[];
+}
 // ─── Jobs ───────────────────────────────────────────────
 
 export type CustomerSensitivity = "normal" | "vip" | "angry" | "comeback";
