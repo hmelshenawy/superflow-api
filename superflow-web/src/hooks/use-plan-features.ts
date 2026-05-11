@@ -6,6 +6,7 @@ import type { Subscription, PlanFeature } from "@/types";
 
 interface PlanState {
   subscription: Subscription | null;
+  features: PlanFeature[];
   loading: boolean;
   error: string | null;
   fetchSubscription: () => Promise<void>;
@@ -16,6 +17,7 @@ interface PlanState {
 
 export const usePlanStore = create<PlanState>()((set, get) => ({
   subscription: null,
+  features: [],
   loading: false,
   error: null,
 
@@ -23,17 +25,31 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
     if (get().subscription) return; // Already loaded
     set({ loading: true, error: null });
     try {
-      const { data } = await api.get<Subscription>("/billing/subscription");
-      set({ subscription: data, loading: false });
+      const { data } = await api.get("/billing/subscription");
+      // API returns { subscription, plan, features, usage } — normalize
+      const sub = data.subscription || data;
+      const features = data.features || data.plan?.features || [];
+      set({
+        subscription: sub ? {
+          ...sub,
+          plan: {
+            ...sub.plan,
+            ...(data.plan || {}),
+            features,
+          },
+        } : null,
+        features,
+        loading: false,
+      });
     } catch (err: any) {
       set({ error: err.response?.data?.message || "Failed to load subscription", loading: false });
     }
   },
 
   hasFeature: (key: string) => {
-    const sub = get().subscription;
-    if (!sub) return true; // If not loaded yet, don't block
-    return sub.plan.features.some((f: PlanFeature) => f.key === key && f.isIncluded);
+    const features = get().features;
+    if (!features || features.length === 0) return true; // If not loaded yet, don't block
+    return features.some((f: PlanFeature) => f.key === key && f.isIncluded);
   },
 
   isPlan: (planId: string) => {
@@ -44,9 +60,11 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
   isTrialExpired: () => {
     const sub = get().subscription;
     if (!sub) return false;
-    if (sub.status !== "trialing") return false;
-    if (!sub.trial_ends_at) return false;
-    return new Date(sub.trial_ends_at) < new Date();
+    const status = sub.status || (sub as any).subscription?.status;
+    if (status !== "trialing") return false;
+    const trialEnd = sub.trial_ends_at || (sub as any).trialEndsAt;
+    if (!trialEnd) return false;
+    return new Date(trialEnd) < new Date();
   },
 }));
 
