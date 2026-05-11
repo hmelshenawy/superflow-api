@@ -5,9 +5,11 @@ import { REDIS_CONNECTION } from './redis.constants';
 import { NotificationsService } from './notifications.service';
 import { RendererService } from './templates/renderer.service';
 import { NotificationsProcessor } from './notifications.processor';
+import { UsageService } from '../common/plan-features';
 
 @Module({
   providers: [
+    UsageService,
     {
       provide: REDIS_CONNECTION,
       inject: [ConfigService],

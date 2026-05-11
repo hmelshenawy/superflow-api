@@ -786,6 +786,7 @@ interface SubscriptionStatus {
   id: string;
   status: string;
   plan_id: string;
+  region: string;
   trial_ends_at: string | null;
   current_period_ends_at: string | null;
   provider_name?: string | null;
@@ -793,7 +794,19 @@ interface SubscriptionStatus {
   provider_subscription_id?: string | null;
   billing_email?: string | null;
   cancel_at_period_end: boolean | null;
-  plan?: MoneyPlan | null;
+  plan?: {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    currency: string;
+    features: Array<{
+      key: string;
+      isIncluded: boolean;
+      ceiling: number | null;
+      overageUnitCents: number;
+    }>;
+  } | null;
 }
 
 interface BillingInvoice {
@@ -837,6 +850,14 @@ interface BillingOverview {
   gateway_locked: boolean;
 }
 
+interface UsageItem {
+  featureKey: string;
+  count: number;
+  ceiling: number | null;
+  isIncluded: boolean;
+  overageUnitCents: number;
+}
+
 function daysRemaining(date: string | null) {
   if (!date) return null;
   return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
@@ -851,16 +872,39 @@ function EmptyBillingRow({ children }: { children: string }) {
   return <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{children}</p>;
 }
 
+const FEATURE_LABELS: Record<string, string> = {
+  job_board: "Job Board",
+  stages: "Job Stages",
+  customer_approval: "Customer Approval",
+  dvi_reports: "DVI Reports",
+  estimates: "Estimates",
+  ai_scored_jobs: "AI-Scored Jobs",
+  customer_approval_sms: "Approval SMS",
+  priority_engine: "Priority Engine",
+  nba: "Next Best Actions",
+  delivery_risk: "Delivery Risk",
+  multi_shop: "Multi-Shop",
+  advisor_workload: "Advisor Workload",
+  ai_message_drafts: "AI Message Drafts",
+  analytics: "Analytics",
+};
+
 function BillingSection() {
   const [billing, setBilling] = useState<BillingOverview | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
+  const [usage, setUsage] = useState<UsageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/auth/billing")
-      .then(({ data }) => setBilling(data))
-      .catch(() => toast.error("Failed to load billing status"))
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get("/auth/billing").catch(() => ({ data: null })),
+      api.get("/billing/subscription").catch(() => ({ data: null })),
+      api.get("/billing/usage").catch(() => ({ data: { usage: [] } })),
+    ]).then(([billingRes, subRes, usageRes]) => {
+      setBilling(billingRes.data);
+      setSubscription(subRes.data);
+      setUsage(usageRes.data?.usage || []);
+    }).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -873,9 +917,9 @@ function BillingSection() {
     );
   }
 
-  const subscription = billing?.subscription || null;
+  const sub = subscription || billing?.subscription || null;
 
-  if (!subscription) {
+  if (!sub) {
     return (
       <SectionCard title="Billing" description="No subscription is attached to this workshop yet.">
         <p className="text-sm text-muted-foreground">This should only happen for old/manual workshops. New signups create a trial subscription automatically.</p>
@@ -883,98 +927,152 @@ function BillingSection() {
     );
   }
 
-  const remaining = daysRemaining(subscription.trial_ends_at || subscription.current_period_ends_at);
-  const planCurrency = subscription.plan?.currency || "AED";
-  const price = subscription.plan?.price_monthly_cents == null
-    ? "Custom"
-    : `${formatMoney(subscription.plan.price_monthly_cents, planCurrency)} / month`;
-  const invoices = billing?.invoices || [];
-  const payments = billing?.payments || [];
-  const gateways = billing?.gateways || [];
+  const remaining = daysRemaining(sub.trial_ends_at || sub.current_period_ends_at);
+  const isTrial = sub.status === "trialing";
+  const planName = sub.plan?.name || sub.plan_id;
+  const planPrice = sub.plan?.price
+    ? `${sub.plan.currency || "AED"} ${sub.plan.price / 100} / month`
+    : "Custom pricing";
+
+  const includedFeatures = (sub.plan?.features || []).filter((f) => f.isIncluded);
+  const excludedFeatures = (sub.plan?.features || []).filter((f) => !f.isIncluded);
 
   return (
-    <SectionCard title="Billing" description="Gateway-agnostic subscription, invoice, and payment tracking.">
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-muted/40 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
-          <p className="mt-2 text-xl font-bold text-foreground">{subscription.plan?.name || subscription.plan_id}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{price}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-muted/40 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Subscription</p>
-          <p className="mt-2 text-xl font-bold capitalize text-foreground">{subscription.status}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{remaining !== null ? `${remaining} days remaining` : "No end date"}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-muted/40 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gateway</p>
-          <p className="mt-2 text-xl font-bold text-foreground">{subscription.provider_name || "Not selected"}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Can be connected later without changing billing data.</p>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-100">
-        <div className="flex gap-3">
-          <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Payment provider is intentionally generic. PrioraFlow can track subscriptions, invoices, and manual payments now; Tap, PayTabs, Network International, Stripe, or another gateway can be plugged in later.</p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-3 rounded-2xl border border-border p-4">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-semibold text-foreground">Invoices</h3>
+    <div className="space-y-6">
+      {/* Plan overview cards */}
+      <SectionCard title="Subscription" description="Your current plan and subscription details.">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
+            <p className="mt-2 text-xl font-bold text-foreground">{planName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{planPrice}</p>
           </div>
-          {invoices.length === 0 ? (
-            <EmptyBillingRow>No invoices yet. The ledger is ready for generated invoices once pricing/checkout rules are finalized.</EmptyBillingRow>
-          ) : invoices.map((invoice) => (
-            <div key={invoice.id} className="rounded-xl border border-border p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-medium text-foreground">{invoice.invoice_number}</span>
-                <span className="capitalize text-muted-foreground">{invoice.status}</span>
-              </div>
-              <p className="mt-1 text-muted-foreground">{formatMoney(invoice.total_cents, invoice.currency || "AED")} · due {invoice.due_at ? new Date(invoice.due_at).toLocaleDateString() : "—"}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-3 rounded-2xl border border-border p-4">
-          <div className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-            <h3 className="font-semibold text-foreground">Payments</h3>
+          <div className="rounded-2xl border border-border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Status</p>
+            <p className="mt-2 text-xl font-bold capitalize text-foreground">{sub.status}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{remaining !== null ? `${remaining} days remaining` : "No end date"}</p>
           </div>
-          {payments.length === 0 ? (
-            <EmptyBillingRow>No payments recorded yet. Manual/bank-transfer payments can be reconciled here before any online gateway is chosen.</EmptyBillingRow>
-          ) : payments.map((payment) => (
-            <div key={payment.id} className="rounded-xl border border-border p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-medium text-foreground">{formatMoney(payment.amount_cents, payment.currency || "AED")}</span>
-                <span className="capitalize text-muted-foreground">{payment.status}</span>
-              </div>
-              <p className="mt-1 text-muted-foreground">{payment.provider_name || payment.method || "Manual"} · {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString() : "not paid yet"}</p>
-            </div>
-          ))}
+          <div className="rounded-2xl border border-border bg-muted/40 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Region</p>
+            <p className="mt-2 text-xl font-bold text-foreground">{(sub.region || "gcc").toUpperCase()}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{sub.region === "us" ? "US Dollar pricing" : "GCC/MENA pricing"}</p>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-3 rounded-2xl border border-border p-4">
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          <h3 className="font-semibold text-foreground">Gateway candidates</h3>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {gateways.map((gateway) => (
-            <div key={gateway.id} className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-medium text-foreground">{gateway.name}</span>
-                <span className="capitalize text-muted-foreground">{gateway.status}</span>
+        {isTrial && sub.trial_ends_at && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-100">
+            <div className="flex gap-3">
+              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Free Trial — {remaining} days remaining</p>
+                <p className="mt-1 text-amber-700 dark:text-amber-300">Upgrade to a paid plan before your trial ends to keep access to all features.</p>
               </div>
-              <p className="mt-1 text-muted-foreground">{gateway.supported_currencies || "Currencies TBD"}</p>
             </div>
-          ))}
-        </div>
-      </div>
-    </SectionCard>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Feature usage bars */}
+      {usage.length > 0 && (
+        <SectionCard title="Feature Usage" description="Current billing period usage for metered features.">
+          <div className="space-y-4">
+            {usage.map((item) => {
+              const label = FEATURE_LABELS[item.featureKey] || item.featureKey;
+              const pct = item.ceiling ? Math.min(100, Math.round((item.count / item.ceiling) * 100)) : 0;
+              const isOver = item.ceiling ? item.count >= item.ceiling : false;
+              return (
+                <div key={item.featureKey}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-foreground">{label}</span>
+                    <span className="text-muted-foreground">
+                      {item.count}{item.ceiling ? ` / ${item.ceiling}` : ""}
+                    </span>
+                  </div>
+                  {item.ceiling && (
+                    <div className="mt-1.5 h-2 w-full rounded-full bg-muted">
+                      <div
+                        className={`h-2 rounded-full transition-all ${isOver ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-blue-500"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Included / excluded features */}
+      {sub.plan && (
+        <SectionCard title="Plan Features" description="Features included and available with your current plan.">
+          <div className="space-y-3">
+            {includedFeatures.map((f) => (
+              <div key={f.key} className="flex items-center gap-3 text-sm">
+                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                <span className="text-foreground">{FEATURE_LABELS[f.key] || f.key}</span>
+                {f.ceiling && <span className="ml-auto text-muted-foreground">{f.ceiling}/mo</span>}
+              </div>
+            ))}
+            {excludedFeatures.length > 0 && (
+              <>
+                <Separator />
+                {excludedFeatures.map((f) => (
+                  <div key={f.key} className="flex items-center gap-3 text-sm opacity-50">
+                    <Lock className="h-4 w-4 shrink-0" />
+                    <span className="text-muted-foreground line-through">{FEATURE_LABELS[f.key] || f.key}</span>
+                    <a href="/pricing" className="ml-auto text-xs text-blue-600 hover:underline">Upgrade</a>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Legacy billing data (invoices/payments) */}
+      {billing && (billing.invoices.length > 0 || billing.payments.length > 0) && (
+        <SectionCard title="Invoices & Payments" description="Billing history and payment records.">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-border p-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-foreground">Invoices</h3>
+              </div>
+              {billing.invoices.length === 0 ? (
+                <EmptyBillingRow>No invoices yet.</EmptyBillingRow>
+              ) : billing.invoices.map((invoice) => (
+                <div key={invoice.id} className="rounded-xl border border-border p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground">{invoice.invoice_number}</span>
+                    <span className="capitalize text-muted-foreground">{invoice.status}</span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{formatMoney(invoice.total_cents, invoice.currency || "AED")} · due {invoice.due_at ? new Date(invoice.due_at).toLocaleDateString() : "—"}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-border p-4">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-foreground">Payments</h3>
+              </div>
+              {billing.payments.length === 0 ? (
+                <EmptyBillingRow>No payments recorded yet.</EmptyBillingRow>
+              ) : billing.payments.map((payment) => (
+                <div key={payment.id} className="rounded-xl border border-border p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground">{formatMoney(payment.amount_cents, payment.currency || "AED")}</span>
+                    <span className="capitalize text-muted-foreground">{payment.status}</span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{payment.provider_name || payment.method || "Manual"} · {payment.paid_at ? new Date(payment.paid_at).toLocaleDateString() : "not paid yet"}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+      )}
+    </div>
   );
 }
 

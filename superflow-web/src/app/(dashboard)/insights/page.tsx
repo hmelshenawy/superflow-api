@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import api from "@/lib/api";
+import { usePlanStore, FEATURES } from "@/hooks/use-plan-features";
+import { LockedFeatureOverlay } from "@/components/locked-feature-overlay";
 import {
   BarChart3,
   Users,
@@ -194,9 +196,16 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 export default function InsightsPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const { hasFeature, fetchSubscription } = usePlanStore();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { fetchSubscription(); }, [fetchSubscription]);
+
+  if (!hasFeature(FEATURES.ANALYTICS)) {
+    return <LockedFeatureOverlay featureKey={FEATURES.ANALYTICS} title="Analytics Locked" description="The Analytics Dashboard is available on the Enterprise plan. Upgrade to unlock insights, reporting, and advanced metrics." />;
+  }
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);

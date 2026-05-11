@@ -7,6 +7,7 @@ import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, AUTH_REQUEST, AUTH_STATUS } from '../common/permissions';
+import { RequirePlanFeature } from '../common/plan-features';
 import { MediaService } from '../media/media.service';
 import { Request, Response } from 'express';
 
@@ -18,6 +19,7 @@ export class AuthorisationController {
   constructor(private service: AuthorisationService) {}
 
   @Post(':id/auth-request')
+  @RequirePlanFeature('customer_approval')
   @RequirePermission(AUTH_REQUEST)
   @ApiOperation({ summary: 'Resend/create approval link for a job (staff)' })
   request(@Param('id') jobId: string, @Body() body: RequestAuthorisationDto) {

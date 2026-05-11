@@ -15,6 +15,7 @@ import {
   Clock3,
   LayoutGrid,
   LogOut,
+  Lock,
   Menu,
   Settings,
   Shield,
@@ -26,6 +27,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
 
 type NavItem = { href: string; label: string; icon: typeof LayoutGrid; requirePermission?: string; platformOnly?: boolean };
 
@@ -75,6 +77,7 @@ function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; per
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout, workshops, currentWorkshopId, selectWorkshop } = useAuthStore();
+  const { fetchSubscription, hasFeature } = usePlanStore();
   const [collapsed, setCollapsed] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,6 +91,11 @@ export function Sidebar() {
     }
     setMounted(true);
   }, []);
+
+  // Fetch subscription on mount for feature gating
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
 
   // Auto-collapse when resizing below 768px (md breakpoint)
   useEffect(() => {
@@ -165,21 +173,26 @@ export function Sidebar() {
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
+          const featureKey = NAV_FEATURE_MAP[item.href];
+          const locked = featureKey ? !hasFeature(featureKey) : false;
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={isCollapsed ? item.label : undefined}
+              title={isCollapsed ? (locked ? `${item.label} (Locked)` : item.label) : undefined}
               className={cn(
                 "flex items-center gap-2 rounded-xl py-2 text-[13px] font-medium transition",
                 isCollapsed ? "justify-center px-2" : "px-2.5",
-                active
-                  ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                locked
+                  ? "text-muted-foreground/50 hover:bg-muted/50 dark:text-slate-600"
+                  : active
+                    ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
               {!isCollapsed && <span>{item.label}</span>}
+              {locked && <Lock className="h-3 w-3 shrink-0 ml-auto text-muted-foreground/50" />}
             </Link>
           );
         })}
@@ -294,19 +307,24 @@ export function Sidebar() {
               {filteredItems.map((item) => {
                 const Icon = item.icon;
                 const active = pathname.startsWith(item.href);
+                const featureKey = NAV_FEATURE_MAP[item.href];
+                const locked = featureKey ? !hasFeature(featureKey) : false;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium transition",
-                      active
-                        ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                      locked
+                        ? "text-muted-foreground/50 hover:bg-muted/50 dark:text-slate-600"
+                        : active
+                          ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
+                    {locked && <Lock className="h-3 w-3 shrink-0 ml-auto text-muted-foreground/50" />}
                   </Link>
                 );
               })}

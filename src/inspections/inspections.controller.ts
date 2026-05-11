@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT, INSPECTIONS_REOPEN } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { RequirePlanFeature } from '../common/plan-features';
 
 @ApiTags('Inspections')
 @ApiBearerAuth()
@@ -26,6 +27,7 @@ export class InspectionsController {
   findOne(@Param('id') id: string) { return this.service.findOne(id); }
 
   @Post()
+  @RequirePlanFeature('dvi_reports')
   @RequirePermission(INSPECTIONS_CREATE)
   @ApiOperation({ summary: 'Start inspection session' })
   create(@Body() body: { jobId: string; templateId: string }, @CurrentUser('sub') userId: string) {
@@ -33,6 +35,7 @@ export class InspectionsController {
   }
 
   @Put(':id/responses')
+  @RequirePlanFeature('dvi_reports')
   @RequirePermission(INSPECTIONS_SUBMIT)
   @ApiOperation({ summary: 'Save answers in batch, supports offline draft payload' })
   saveResponses(@Param('id') id: string, @Body() dto: CreateResponseDto) {
@@ -40,6 +43,7 @@ export class InspectionsController {
   }
 
   @Post(':id/submit')
+  @RequirePlanFeature('dvi_reports')
   @RequirePermission(INSPECTIONS_SUBMIT)
   @ApiOperation({ summary: 'Lock and finalize inspection, queues advisor alert' })
   submit(@Param('id') id: string, @Body() dto: SubmitInspectionDto, @CurrentUser('sub') userId: string) {

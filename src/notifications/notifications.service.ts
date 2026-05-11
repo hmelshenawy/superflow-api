@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RendererService } from './templates/renderer.service';
 import { REDIS_CONNECTION } from './redis.constants';
 import { getWorkshopContext } from '../prisma/workshop-context';
+import { UsageService } from '../common/plan-features';
 
 @Injectable()
 export class NotificationsService {
@@ -16,6 +17,7 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private renderer: RendererService,
+    private usageService: UsageService,
     @Inject(REDIS_CONNECTION) private connection: IORedis,
   ) {
     // BullMQ is optional: if the queue cannot be created (e.g. Redis unavailable),
@@ -41,6 +43,12 @@ export class NotificationsService {
   }) {
     const { workshopId: contextWorkshopId } = getWorkshopContext();
     const workshopId = params.workshopId || contextWorkshopId;
+
+    // Track SMS usage for plan billing
+    if (params.channel === 'sms' && workshopId) {
+      this.usageService.increment(workshopId, 'customer_approval_sms').catch(() => {});
+    }
+
     const notification = await this.prisma.raw.notifications.create({
       data: {
         id: uuid(),

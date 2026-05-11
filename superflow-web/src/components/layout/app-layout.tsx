@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuthStore } from "@/stores/auth";
-import { AlertTriangle, Mail } from "lucide-react";
+import { AlertTriangle, Mail, ArrowRight } from "lucide-react";
 
 const TRIAL_CONTACT_EMAIL = "admin@prioraflow.com";
 
@@ -22,7 +23,7 @@ function TrialBanner() {
 
   const expired = remaining <= 0;
   return (
-    <div className={expired ? "border-b border-red-200 bg-red-50 px-4 py-3 text-red-950" : "border-b border-amber-200 bg-amber-50 px-4 py-3 text-amber-950"}>
+    <div className={expired ? "border-b border-red-200 bg-red-50 px-4 py-3 text-red-950 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200" : "border-b border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"}>
       <div className="mx-auto flex max-w-7xl flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -32,13 +33,21 @@ function TrialBanner() {
               : `Your PrioraFlow trial ends in ${remaining} day${remaining === 1 ? "" : "s"}.`}
           </p>
         </div>
-        <a
-          href={`mailto:${TRIAL_CONTACT_EMAIL}?subject=PrioraFlow trial activation - ${encodeURIComponent(workshop.name)}`}
-          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-current px-2.5 py-1 text-xs font-semibold"
-        >
-          <Mail className="h-3.5 w-3.5" />
-          Contact {TRIAL_CONTACT_EMAIL}
-        </a>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/pricing"
+            className="inline-flex w-fit items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+          >
+            View Plans <ArrowRight className="h-3 w-3" />
+          </Link>
+          <a
+            href={`mailto:${TRIAL_CONTACT_EMAIL}?subject=PrioraFlow trial activation - ${encodeURIComponent(workshop.name)}`}
+            className="inline-flex w-fit items-center gap-1.5 rounded-md border border-current px-2.5 py-1 text-xs font-semibold"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Contact us
+          </a>
+        </div>
       </div>
     </div>
   );
