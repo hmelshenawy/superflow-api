@@ -47,8 +47,46 @@ export interface Workshop {
   phone?: string | null;
   email?: string | null;
   timezone?: string | null;
+  region?: string | null;
   plan_id?: string | null;
   trial_ends_at?: string | null;
+}
+
+// ─── Billing ───────────────────────────────────────────────
+
+export interface PlanFeature {
+  key: string;
+  isIncluded: boolean;
+  ceiling: number | null;
+  overageUnitCents: number;
+}
+
+export interface Subscription {
+  id: string;
+  status: string;
+  plan_id: string;
+  region: string;
+  additional_locations: number;
+  billing_model: string;
+  trial_ends_at: string | null;
+  current_period_ends_at: string | null;
+  cancel_at_period_end: boolean;
+  plan: {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    currency: string;
+    features: PlanFeature[];
+  };
+}
+
+export interface UsageRecord {
+  featureKey: string;
+  count: number;
+  ceiling: number | null;
+  isIncluded: boolean;
+  overageUnitCents: number;
 }
 // ─── Jobs ───────────────────────────────────────────────
 

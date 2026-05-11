@@ -22,8 +22,10 @@ import { InsightsModule } from './insights/insights.module';
 import { BookingImportModule } from './booking-import/booking-import.module';
 import { PriorityModule } from './priority/priority.module';
 import { WorkshopsModule } from './workshops/workshops.module';
+import { BillingModule } from './billing/billing.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
+import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -56,11 +58,16 @@ import { validateEnvironment } from './config/env.validation';
     BookingImportModule,
     PriorityModule,
     WorkshopsModule,
+    BillingModule,
   ],
   providers: [
     {
       provide: APP_GUARD,
       useClass: TenantThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PlanFeatureGuard,
     },
     {
       provide: APP_INTERCEPTOR,

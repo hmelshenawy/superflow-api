@@ -58,7 +58,7 @@ export class AuthService {
   // durable session secrets. We store only their hash so a DB leak does not
   // expose reusable raw refresh tokens.
 
-  async signup(dto: { workshopName: string; name: string; email: string; password: string; phone?: string }) {
+  async signup(dto: { workshopName: string; name: string; email: string; password: string; phone?: string; region?: string }) {
     const email = dto.email.trim().toLowerCase();
     const existingUser = await this.prisma.raw.users.findUnique({ where: { email } });
     if (existingUser) throw new ConflictException('Email already exists');
@@ -80,6 +80,7 @@ export class AuthService {
           slug,
           phone: dto.phone || null,
           email,
+          region: dto.region || 'gcc',
           is_active: true,
           plan_id: 'free_trial',
           trial_ends_at: trialEndsAt,
@@ -103,6 +104,7 @@ export class AuthService {
           id: uuid(),
           workshop_id: workshopId,
           plan_id: 'free_trial',
+          region: dto.region || 'gcc',
           status: 'trialing',
           trial_ends_at: trialEndsAt,
           current_period_starts_at: new Date(),
@@ -388,10 +390,24 @@ export class AuthService {
       include: { plans: true },
     });
     if (!subscription) return null;
+
+    const planId = subscription.plan_id || 'free_trial';
+    const region = subscription.region || 'gcc';
+
+    const [features, regionPrice] = await Promise.all([
+      this.prisma.raw.plan_features.findMany({ where: { plan_id: planId } }),
+      this.prisma.raw.plan_regions.findUnique({
+        where: { plan_id_region: { plan_id: planId, region } },
+      }),
+    ]);
+
     return {
       id: subscription.id,
       status: subscription.status,
       plan_id: subscription.plan_id,
+      region: subscription.region,
+      additional_locations: subscription.additional_locations,
+      billing_model: subscription.billing_model,
       trial_ends_at: subscription.trial_ends_at,
       current_period_ends_at: subscription.current_period_ends_at,
       provider_name: subscription.provider_name,
@@ -399,7 +415,17 @@ export class AuthService {
       provider_subscription_id: subscription.provider_subscription_id,
       billing_email: subscription.billing_email,
       cancel_at_period_end: subscription.cancel_at_period_end,
-      plan: subscription.plans,
+      plan: {
+        ...subscription.plans,
+        price: regionPrice?.price_monthly_cents ?? subscription.plans.price_monthly_cents,
+        currency: regionPrice?.currency ?? subscription.plans.currency,
+        features: features.map(f => ({
+          key: f.feature_key,
+          isIncluded: f.is_included,
+          ceiling: f.ceiling,
+          overageUnitCents: f.overage_unit_cents,
+        })),
+      },
     };
   }
 

@@ -16,6 +16,7 @@ model workshops {
   phone       String?   @db.VarChar(30)
   email       String?   @db.VarChar(255)
   timezone    String?   @default("Asia/Dubai") @db.VarChar(50)
+  region      String?   @default("gcc") @db.VarChar(10)
   is_active   Boolean?  @default(true)
   plan_id     String?   @default("free_trial") @db.VarChar(60)
   trial_ends_at DateTime? @db.DateTime(0)
@@ -26,6 +27,7 @@ model workshops {
   subscriptions          subscriptions[]
   invoices               invoices[]
   payments               payments[]
+  usage_records          usage_records[]
   approval_tokens        approval_tokens[]
   audit_logs             audit_logs[]
   authorisation_decisions authorisation_decisions[]
@@ -72,12 +74,17 @@ model plans {
   updated_at            DateTime?       @default(now()) @db.DateTime(0)
 
   subscriptions         subscriptions[]
+  plan_features         plan_features[]
+  plan_regions          plan_regions[]
 }
 
 model subscriptions {
   id                         String     @id @db.Char(36)
   workshop_id                String     @db.Char(36)
   plan_id                    String     @db.VarChar(60)
+  region                     String?    @default("gcc") @db.VarChar(10)
+  additional_locations       Int?       @default(0)
+  billing_model              String?    @default("flat") @db.VarChar(20)
   status                     String     @default("trialing") @db.VarChar(40)
   trial_ends_at              DateTime?  @db.DateTime(0)
   current_period_starts_at   DateTime?  @db.DateTime(0)
@@ -159,6 +166,10 @@ model invoice_items {
   quantity              Int       @default(1)
   unit_amount_cents     Int       @default(0)
   total_cents           Int       @default(0)
+  feature_key           String?   @db.VarChar(80)
+  type                  String    @default("plan") @db.VarChar(20)
+  period                String?   @db.VarChar(7)
+  add_on_id             String?   @db.Char(36)
   created_at            DateTime? @default(now()) @db.DateTime(0)
 
   invoices              invoices  @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_items_invoice")
@@ -880,6 +891,81 @@ model vehicles {
   @@index([plate], map: "idx_vehicles_plate")
   @@index([is_deleted], map: "idx_vehicles_is_deleted")
   @@index([workshop_id], map: "idx_vehicles_workshop")
+}
+
+model plan_features {
+  id                  String    @id @db.Char(36)
+  plan_id             String    @db.VarChar(60)
+  feature_key         String    @db.VarChar(80)
+  is_included         Boolean   @default(false)
+  ceiling             Int?
+  overage_unit_cents  Int       @default(0)
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_at          DateTime? @default(now()) @db.DateTime(0)
+
+  plans               plans     @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pf_plan")
+
+  @@unique([plan_id, feature_key], map: "uk_plan_feature")
+  @@index([plan_id], map: "idx_pf_plan")
+  @@index([feature_key], map: "idx_pf_feature")
+}
+
+model plan_regions {
+  id                    String    @id @db.Char(36)
+  plan_id               String    @db.VarChar(60)
+  region                String    @db.VarChar(10)
+  currency              String    @default("USD") @db.Char(3)
+  price_monthly_cents   Int       @default(0)
+  display_name          String?   @db.VarChar(120)
+  created_at            DateTime? @default(now()) @db.DateTime(0)
+  updated_at            DateTime? @default(now()) @db.DateTime(0)
+
+  plans                 plans     @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pr_plan")
+
+  @@unique([plan_id, region], map: "uk_plan_region")
+  @@index([plan_id], map: "idx_pr_plan")
+}
+
+model plan_add_ons {
+  id              String    @id @db.Char(36)
+  slug            String    @unique(map: "uk_addon_slug") @db.VarChar(60)
+  name            String    @db.VarChar(120)
+  description     String?   @db.Text
+  pricing_model   String    @default("flat") @db.VarChar(20)
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  updated_at      DateTime? @default(now()) @db.DateTime(0)
+
+  plan_add_on_prices plan_add_on_prices[]
+}
+
+model plan_add_on_prices {
+  id                    String    @id @db.Char(36)
+  add_on_id             String    @db.Char(36)
+  region                String    @db.VarChar(10)
+  currency              String    @default("USD") @db.Char(3)
+  price_per_unit_cents  Int       @default(0)
+  created_at            DateTime? @default(now()) @db.DateTime(0)
+  updated_at            DateTime? @default(now()) @db.DateTime(0)
+
+  plan_add_ons          plan_add_ons @relation(fields: [add_on_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_aop_addon")
+
+  @@unique([add_on_id, region], map: "uk_addon_region")
+  @@index([add_on_id], map: "idx_aop_addon")
+}
+
+model usage_records {
+  id              String    @id @db.Char(36)
+  workshop_id     String    @db.Char(36)
+  feature_key     String    @db.VarChar(80)
+  period          String    @db.VarChar(7)
+  count           Int       @default(0)
+  created_at      DateTime? @default(now()) @db.DateTime(0)
+  updated_at      DateTime? @default(now()) @db.DateTime(0)
+
+  workshops       workshops @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ur_workshop")
+
+  @@unique([workshop_id, feature_key, period], map: "uk_usage_workshop_feature_period")
+  @@index([workshop_id, period], map: "idx_usage_workshop_period")
 }
 
 enum deferred_work_reminders_channel {
