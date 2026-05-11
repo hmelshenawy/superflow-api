@@ -21,6 +21,9 @@ export class PlanFeatureGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
+    // If no user yet (JwtAuthGuard hasn't run), skip — let auth guards handle it
+    if (!user) return true;
+
     // Platform admins bypass all feature gates regardless of workshop context
     if (user.role === 'platform_admin') return true;
 
