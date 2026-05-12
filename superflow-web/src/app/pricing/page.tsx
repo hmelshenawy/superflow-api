@@ -118,7 +118,7 @@ export default function PricingPage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent_32rem),linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)] text-slate-950">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
         <Link href="/" aria-label="PrioraFlow home">
-          <PrioraFlowLogo imageClassName="h-14 w-auto" />
+          <PrioraFlowLogo imageClassName="h-20 w-auto" />
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
           <Link href="/#features" className="hover:text-slate-950">Features</Link>
@@ -160,11 +160,11 @@ export default function PricingPage() {
       </section>
 
       {/* Plan cards */}
-      <section className="mx-auto grid w-full max-w-7xl gap-5 px-5 py-6 sm:px-8 lg:grid-cols-3">
+      <section className="mx-auto grid w-full max-w-7xl gap-5 px-5 py-6 sm:px-8 sm:grid-cols-2 xl:grid-cols-4">
         {loading ? (
-          <div className="col-span-3 py-20 text-center text-muted-foreground">Loading plans...</div>
+          <div className="col-span-4 py-20 text-center text-muted-foreground">Loading plans...</div>
         ) : (
-          plans.map((plan) => {
+          [...plans].sort((a, b) => a.price - b.price).map((plan) => {
             const isPro = plan.id === "professional";
             const featureMap = new Map(plan.features.map(f => [f.key, f]));
             return (

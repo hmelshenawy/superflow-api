@@ -14,8 +14,8 @@ export function PrioraFlowLogo({ className = "", imageClassName = "h-12 w-auto",
         <Image
           src={compact ? "/prioraflow-icon.png" : "/prioraflow-logo.png"}
           alt="PrioraFlow logo"
-          width={compact ? 512 : 409}
-          height={compact ? 512 : 288}
+          width={compact ? 194 : 375}
+          height={compact ? 195 : 267}
           priority
           className={`${imageClassName} object-contain`}
         />

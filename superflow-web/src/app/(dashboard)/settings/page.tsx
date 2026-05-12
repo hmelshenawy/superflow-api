@@ -785,15 +785,15 @@ interface MoneyPlan {
 interface SubscriptionStatus {
   id: string;
   status: string;
-  plan_id: string;
+  planId: string;
   region: string;
-  trial_ends_at: string | null;
-  current_period_ends_at: string | null;
-  provider_name?: string | null;
-  provider_customer_id?: string | null;
-  provider_subscription_id?: string | null;
-  billing_email?: string | null;
-  cancel_at_period_end: boolean | null;
+  trialEndsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  providerName?: string | null;
+  providerCustomerId?: string | null;
+  providerSubscriptionId?: string | null;
+  billingEmail?: string | null;
+  cancelAtPeriodEnd: boolean | null;
   plan?: {
     id: string;
     name: string;
@@ -902,8 +902,14 @@ function BillingSection() {
       api.get("/billing/usage").catch(() => ({ data: { usage: [] } })),
     ]).then(([billingRes, subRes, usageRes]) => {
       setBilling(billingRes.data);
-      setSubscription(subRes.data);
-      setUsage(usageRes.data?.usage || []);
+      // API returns { subscription, plan, features, usage } — flatten into SubscriptionStatus
+      const subData = subRes.data;
+      if (subData?.subscription) {
+        setSubscription({ ...subData.subscription, plan: subData.plan });
+      } else {
+        setSubscription(null);
+      }
+      setUsage(usageRes.data?.usage || subData?.usage || []);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -927,10 +933,10 @@ function BillingSection() {
     );
   }
 
-  const remaining = daysRemaining(sub.trial_ends_at || sub.current_period_ends_at);
+  const remaining = daysRemaining(sub.trialEndsAt || sub.currentPeriodEndsAt);
   const isTrial = sub.status === "trialing";
-  const planName = sub.plan?.name || sub.plan_id;
-  const planPrice = sub.plan?.price
+  const planName = sub.plan?.name || sub.planId;
+  const planPrice = sub.plan?.price != null
     ? `${sub.plan.currency || "AED"} ${sub.plan.price / 100} / month`
     : "Custom pricing";
 
@@ -959,7 +965,7 @@ function BillingSection() {
           </div>
         </div>
 
-        {isTrial && sub.trial_ends_at && (
+        {isTrial && sub.trialEndsAt && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-100">
             <div className="flex gap-3">
               <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" />

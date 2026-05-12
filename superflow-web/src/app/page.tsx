@@ -120,7 +120,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent_32rem),linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)] text-slate-950">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
         <Link href="/" aria-label="PrioraFlow home">
-          <PrioraFlowLogo imageClassName="h-14 w-auto" />
+          <PrioraFlowLogo imageClassName="h-20 w-auto" />
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
           <a href="#features" className="hover:text-slate-950">Features</a>
