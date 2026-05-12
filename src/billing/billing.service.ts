@@ -197,6 +197,7 @@ export class BillingService {
       data: {
         id: uuid(),
         workshop_id: workshopId,
+        subscription_id: subscription?.id ?? null,
         invoice_number: invoiceNumber,
         status: 'draft',
         currency: regionPrice.currency,

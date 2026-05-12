@@ -1,17 +1,20 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Inject } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Inject, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, ADMIN_USERS } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BillingService } from './billing.service';
+import { InvoicePdfService } from './invoice-pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Response } from 'express';
 
 @ApiTags('Billing')
 @Controller('billing')
 export class BillingController {
   constructor(
     private billingService: BillingService,
+    private invoicePdfService: InvoicePdfService,
     @Inject(PrismaService) private prisma: PrismaService,
   ) {}
 
@@ -93,6 +96,26 @@ export class BillingController {
     @Body() body: { method?: string; reference?: string },
   ) {
     return this.billingService.markInvoicePaid(invoiceId, body.method || 'manual', body.reference);
+  }
+
+  @Get('admin/invoices/:id/pdf')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission(ADMIN_USERS)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Download invoice as PDF' })
+  async downloadInvoicePdf(
+    @Param('id') invoiceId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const buffer = await this.invoicePdfService.generateInvoicePdf(invoiceId);
+    const invoice = await this.prisma.raw.invoices.findUnique({
+      where: { id: invoiceId },
+      select: { invoice_number: true },
+    });
+    const filename = `${invoice?.invoice_number || invoiceId}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return new StreamableFile(buffer);
   }
 
   @Get('admin/workshops/:workshopId/billing')

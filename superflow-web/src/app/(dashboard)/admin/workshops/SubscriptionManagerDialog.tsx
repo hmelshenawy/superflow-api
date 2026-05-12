@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, RefreshCw, FileText, CheckCircle2, Gift } from "lucide-react";
+import { CreditCard, RefreshCw, FileText, CheckCircle2, Gift, Download } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -184,6 +184,22 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
       toast.error(err?.response?.data?.message || "Failed to mark invoice as paid");
     } finally {
       setMarkingPaidId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (invoiceId: string, invoiceNumber: string) => {
+    try {
+      const res = await api.get(`/billing/admin/invoices/${invoiceId}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${invoiceNumber || invoiceId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to download invoice PDF");
     }
   };
 
@@ -413,26 +429,31 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
                           <TableCell>{formatCents(inv.totalCents, inv.currency)}</TableCell>
                           <TableCell className="text-sm">{inv.dueAt ? new Date(inv.dueAt).toLocaleDateString() : "—"}</TableCell>
                           <TableCell className="text-right">
-                            {inv.status !== "paid" ? (
-                              markingPaidId === inv.id ? (
-                                <div className="space-y-1">
-                                  <select className="w-full rounded border border-input bg-background px-2 py-1 text-xs" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                                    <option value="manual">Manual</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="cash">Cash</option>
-                                    <option value="check">Check</option>
-                                  </select>
-                                  <Input placeholder="Reference (optional)" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="h-7 text-xs" />
-                                  <Button size="sm" onClick={() => handleMarkPaid(inv.id)} className="w-full">Confirm Payment</Button>
-                                </div>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber)} title="Download PDF">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                              {inv.status !== "paid" ? (
+                                markingPaidId === inv.id ? (
+                                  <div className="space-y-1">
+                                    <select className="w-full rounded border border-input bg-background px-2 py-1 text-xs" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                                      <option value="manual">Manual</option>
+                                      <option value="bank_transfer">Bank Transfer</option>
+                                      <option value="cash">Cash</option>
+                                      <option value="check">Check</option>
+                                    </select>
+                                    <Input placeholder="Reference (optional)" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className="h-7 text-xs" />
+                                    <Button size="sm" onClick={() => handleMarkPaid(inv.id)} className="w-full">Confirm Payment</Button>
+                                  </div>
+                                ) : (
+                                  <Button variant="ghost" size="sm" onClick={() => { setMarkingPaidId(inv.id); setPaymentMethod("manual"); setPaymentReference(""); }}>
+                                    Mark Paid
+                                  </Button>
+                                )
                               ) : (
-                                <Button variant="ghost" size="sm" onClick={() => { setMarkingPaidId(inv.id); setPaymentMethod("manual"); setPaymentReference(""); }}>
-                                  Mark Paid
-                                </Button>
-                              )
-                            ) : (
-                              <Badge variant="default">Paid</Badge>
-                            )}
+                                <Badge variant="default">Paid</Badge>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

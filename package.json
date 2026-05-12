@@ -1,7 +1,7 @@
 {
   "name": "super-service-app",
   "version": "0.1.0",
-  "description": "SuperFlow \u2014 Workshop Management API",
+  "description": "SuperFlow — Workshop Management API",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -45,6 +45,7 @@
     "ioredis": "^5.7.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pdfkit": "^0.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "uuid": "^11.1.1"
@@ -56,6 +57,7 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pdfkit": "^0.17.6",
     "@types/uuid": "^10.0.0",
     "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
