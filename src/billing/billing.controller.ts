@@ -61,10 +61,15 @@ export class BillingController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually activate a subscription (mark as paid/active)' })
   activateSubscription(
-    @Body() body: { workshopId: string; planId: string; region?: string },
+    @Body() body: { workshopId: string; planId: string; region?: string; priceOverrideCents?: number; discountPct?: number; internalNotes?: string; status?: string },
     @CurrentUser() user: any,
   ) {
-    return this.billingService.activateSubscription(body.workshopId, body.planId, body.region || 'gcc', user.id);
+    return this.billingService.activateSubscription(body.workshopId, body.planId, body.region || 'gcc', user.id, {
+      priceOverrideCents: body.priceOverrideCents,
+      discountPct: body.discountPct,
+      internalNotes: body.internalNotes,
+      status: body.status,
+    });
   }
 
   @Post('admin/invoices')

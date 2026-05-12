@@ -144,6 +144,9 @@ export interface WorkshopBillingOverview {
     currentPeriodStartsAt: string | null;
     currentPeriodEndsAt: string | null;
     cancelAtPeriodEnd: boolean;
+    priceOverrideCents: number | null;
+    discountPct: number | null;
+    internalNotes: string | null;
   } | null;
   plan: {
     id: string | null;

@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, RefreshCw, FileText, CheckCircle2 } from "lucide-react";
+import { CreditCard, RefreshCw, FileText, CheckCircle2, Gift } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -45,13 +45,22 @@ function formatCents(cents: number | null, currency: string | null) {
 
 function statusColor(status: string) {
   switch (status) {
+    case "comped": return "secondary" as const;
     case "manual_active":
     case "active":
     case "paid": return "default" as const;
-    case "trialing": return "secondary" as const;
+    case "trialing": return "outline" as const;
     case "draft":
     case "pending": return "outline" as const;
     default: return "destructive" as const;
+  }
+}
+
+function statusLabel(status: string) {
+  switch (status) {
+    case "comped": return "Comped (Free)";
+    case "manual_active": return "Manual Active";
+    default: return status.replace(/_/g, " ");
   }
 }
 
@@ -61,6 +70,12 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
   const [loading, setLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [activating, setActivating] = useState(false);
+
+  // Custom pricing for activation
+  const [priceOverride, setPriceOverride] = useState("");
+  const [discountPct, setDiscountPct] = useState("");
+  const [internalNotes, setInternalNotes] = useState("");
+  const [comped, setComped] = useState(false);
 
   // Invoice creation
   const [creatingInvoice, setCreatingInvoice] = useState(false);
@@ -85,6 +100,10 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
       if (billingRes.data.subscription) {
         setSelectedPlanId(billingRes.data.subscription.planId);
         setInvoicePlanId(billingRes.data.subscription.planId);
+        setPriceOverride(billingRes.data.subscription.priceOverrideCents != null ? String(billingRes.data.subscription.priceOverrideCents / 100) : "");
+        setDiscountPct(billingRes.data.subscription.discountPct != null ? String(billingRes.data.subscription.discountPct) : "");
+        setInternalNotes(billingRes.data.subscription.internalNotes || "");
+        setComped(billingRes.data.subscription.status === "comped");
       } else if (pricingRes.data.length > 0) {
         setSelectedPlanId(pricingRes.data[0].id);
         setInvoicePlanId(pricingRes.data[0].id);
@@ -98,17 +117,27 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
 
   useEffect(() => {
     if (open && workshopId) refreshBilling();
-    if (!open) { setBilling(null); setPlans([]); }
+    if (!open) { setBilling(null); setPlans([]); setPriceOverride(""); setDiscountPct(""); setInternalNotes(""); setComped(false); }
   }, [open, workshopId, workshopRegion]);
 
   const handleActivate = async () => {
     if (!selectedPlanId) return;
     const plan = plans.find(p => p.id === selectedPlanId);
-    if (!confirm(`Activate ${plan?.name || selectedPlanId} for ${workshopName}? This will replace the current subscription.`)) return;
+    const statusText = comped ? "comp (free)" : "manual active";
+    if (!confirm(`Activate ${plan?.name || selectedPlanId} for ${workshopName} as ${statusText}? This will replace the current subscription.`)) return;
     setActivating(true);
     try {
-      await api.post("/billing/admin/activate", { workshopId, planId: selectedPlanId, region: workshopRegion || "gcc" });
-      toast.success("Subscription activated");
+      const payload: any = {
+        workshopId,
+        planId: selectedPlanId,
+        region: workshopRegion || "gcc",
+        status: comped ? "comped" : "manual_active",
+      };
+      if (priceOverride) payload.priceOverrideCents = Math.round(parseFloat(priceOverride) * 100);
+      if (discountPct) payload.discountPct = parseInt(discountPct, 10);
+      if (internalNotes) payload.internalNotes = internalNotes;
+      await api.post("/billing/admin/activate", payload);
+      toast.success(comped ? "Subscription activated (free)" : "Subscription activated");
       refreshBilling();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to activate subscription");
@@ -161,6 +190,15 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
   const sub = billing?.subscription;
   const invoices = billing?.invoices ?? [];
 
+  // Effective price display
+  const effectivePrice = sub?.priceOverrideCents != null
+    ? sub.priceOverrideCents
+    : billing?.plan?.price ?? null;
+  const effectiveDiscount = sub?.discountPct ?? 0;
+  const finalPrice = effectivePrice != null && effectiveDiscount
+    ? Math.round(effectivePrice * (1 - effectiveDiscount / 100))
+    : effectivePrice;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -187,7 +225,7 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Current Plan</span>
                   <Badge variant={sub ? statusColor(sub.status) : "outline"}>
-                    {sub ? sub.status.replace(/_/g, " ") : "No subscription"}
+                    {sub ? statusLabel(sub.status) : "No subscription"}
                   </Badge>
                 </div>
                 {sub ? (
@@ -196,7 +234,17 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
                       <span className="text-muted-foreground">Plan</span>
                       <span className="font-medium">{billing?.plan?.name || sub.planId}</span>
                       <span className="text-muted-foreground">Price</span>
-                      <span>{formatCents(billing?.plan?.price ?? null, billing?.plan?.currency ?? null)}/mo</span>
+                      <span>
+                        {effectiveDiscount > 0 ? (
+                          <span>
+                              <span className="line-through text-muted-foreground mr-1">{formatCents(effectivePrice, billing?.plan?.currency ?? null)}</span>
+                            {formatCents(finalPrice, billing?.plan?.currency ?? null)}
+                            <span className="text-xs text-muted-foreground ml-1">({effectiveDiscount}% off)</span>
+                          </span>
+                        ) : (
+                          <span>{formatCents(effectivePrice, billing?.plan?.currency ?? null)}/mo</span>
+                        )}
+                      </span>
                       <span className="text-muted-foreground">Region</span>
                       <span>{(sub.region || "gcc").toUpperCase()}</span>
                       <span className="text-muted-foreground">Period</span>
@@ -208,13 +256,18 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
                         </>
                       )}
                     </div>
+                    {sub.internalNotes && (
+                      <div className="text-xs text-muted-foreground mt-1 border-t pt-1">
+                        Notes: {sub.internalNotes}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">This workshop has no active subscription. Select a plan below to activate one.</p>
                 )}
               </div>
 
-              {/* Plan selector */}
+              {/* Plan selector with custom pricing */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Activate / Change Plan</label>
                 <select
@@ -227,8 +280,60 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
                     <option key={p.id} value={p.id}>{p.name} — {formatCents(p.price, p.currency)}/mo</option>
                   ))}
                 </select>
+
+                {/* Comped toggle */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="comped-toggle"
+                    checked={comped}
+                    onChange={(e) => setComped(e.target.checked)}
+                    className="rounded border-input"
+                  />
+                  <label htmlFor="comped-toggle" className="text-sm flex items-center gap-1">
+                    <Gift className="h-3.5 w-3.5" />
+                    Free / Comped (no payment required)
+                  </label>
+                </div>
+
+                {/* Custom pricing fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Custom price override ({billing?.plan?.currency?.toUpperCase() || "AED"}/mo)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Leave empty for plan price"
+                      value={priceOverride}
+                      onChange={(e) => setPriceOverride(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Discount (%)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="e.g. 20"
+                      value={discountPct}
+                      onChange={(e) => setDiscountPct(e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Internal notes (admin only)</label>
+                  <Input
+                    placeholder="e.g. Special pricing for launch partner"
+                    value={internalNotes}
+                    onChange={(e) => setInternalNotes(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+
                 <Button onClick={handleActivate} disabled={!selectedPlanId || activating} className="w-full">
-                  {activating ? "Activating..." : sub ? "Change Plan" : "Activate Subscription"}
+                  {activating ? "Activating..." : comped ? "Activate as Free" : sub ? "Change Plan" : "Activate Subscription"}
                 </Button>
               </div>
 

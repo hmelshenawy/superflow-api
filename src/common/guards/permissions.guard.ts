@@ -33,7 +33,7 @@ export class PermissionsGuard implements CanActivate {
       },
     });
 
-    const activeStatuses = new Set(['active', 'paid', 'manual_active']);
+    const activeStatuses = new Set(['active', 'paid', 'manual_active', 'comped']);
     if (subscription?.status && activeStatuses.has(subscription.status)) return;
 
     const workshop = subscription ? null : await this.prisma.raw.workshops.findUnique({

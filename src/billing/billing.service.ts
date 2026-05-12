@@ -51,7 +51,7 @@ export class BillingService {
   /** Get current subscription details including plan features and usage */
   async getSubscription(workshopId: string) {
     const subscription = await this.prisma.raw.subscriptions.findFirst({
-      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing'] } },
+      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing', 'comped'] } },
       orderBy: { created_at: 'desc' },
     });
 
@@ -77,6 +77,9 @@ export class BillingService {
         currentPeriodStartsAt: subscription.current_period_starts_at,
         currentPeriodEndsAt: subscription.current_period_ends_at,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        priceOverrideCents: subscription.price_override_cents,
+        discountPct: subscription.discount_pct,
+        internalNotes: subscription.internal_notes,
       } : null,
       plan: {
         id: plan?.id,
@@ -106,7 +109,10 @@ export class BillingService {
   }
 
   /** Admin: Manually activate a subscription for a workshop */
-  async activateSubscription(workshopId: string, planId: string, region: string, activatedBy: string) {
+  async activateSubscription(
+    workshopId: string, planId: string, region: string, activatedBy: string,
+    opts?: { priceOverrideCents?: number; discountPct?: number; internalNotes?: string; status?: string },
+  ) {
     const workshop = await this.prisma.raw.workshops.findUnique({ where: { id: workshopId } });
     if (!workshop) throw new NotFoundException('Workshop not found');
 
@@ -115,10 +121,11 @@ export class BillingService {
 
     const now = new Date();
     const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const status = opts?.status || 'manual_active';
 
     // Deactivate existing active subscriptions
     await this.prisma.raw.subscriptions.updateMany({
-      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing'] } },
+      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing', 'comped'] } },
       data: { status: 'replaced' },
     });
 
@@ -128,11 +135,14 @@ export class BillingService {
         workshop_id: workshopId,
         plan_id: planId,
         region,
-        status: 'manual_active',
+        status,
         current_period_starts_at: now,
         current_period_ends_at: periodEnd,
         billing_email: workshop.email,
         billing_model: 'manual',
+        price_override_cents: opts?.priceOverrideCents ?? null,
+        discount_pct: opts?.discountPct ?? null,
+        internal_notes: opts?.internalNotes ?? null,
       },
     });
 
@@ -149,6 +159,9 @@ export class BillingService {
       region: subscription.region,
       currentPeriodStartsAt: subscription.current_period_starts_at,
       currentPeriodEndsAt: subscription.current_period_ends_at,
+      priceOverrideCents: subscription.price_override_cents,
+      discountPct: subscription.discount_pct,
+      internalNotes: subscription.internal_notes,
       activatedBy,
     };
   }
@@ -162,6 +175,16 @@ export class BillingService {
       where: { plan_id_region: { plan_id: planId, region } },
     });
     if (!regionPrice) throw new BadRequestException('No pricing found for this plan/region combination');
+
+    // Look up subscription for custom pricing overrides
+    const subscription = await this.prisma.raw.subscriptions.findFirst({
+      where: { workshop_id: workshopId, plan_id: planId, status: { in: ['active', 'paid', 'manual_active', 'trialing', 'comped'] } },
+    });
+
+    const basePrice = subscription?.price_override_cents ?? regionPrice.price_monthly_cents;
+    const discountPct = subscription?.discount_pct ?? 0;
+    const discountCents = discountPct ? Math.round(basePrice * discountPct / 100) : 0;
+    const totalCents = basePrice - discountCents;
 
     const now = new Date();
     const startDate = periodStart ? new Date(periodStart) : now;
@@ -177,9 +200,9 @@ export class BillingService {
         invoice_number: invoiceNumber,
         status: 'draft',
         currency: regionPrice.currency,
-        subtotal_cents: regionPrice.price_monthly_cents,
+        subtotal_cents: basePrice,
         tax_cents: 0,
-        total_cents: regionPrice.price_monthly_cents,
+        total_cents: totalCents,
         amount_paid_cents: 0,
         due_at: dueDate,
         issued_at: now,
@@ -192,13 +215,30 @@ export class BillingService {
         invoice_id: invoice.id,
         type: 'plan',
         feature_key: planId,
-        description: `${planId} plan — ${region.toUpperCase()} — monthly`,
+        description: `${planId} plan — ${region.toUpperCase()} — monthly${discountPct ? ` (${discountPct}% discount)` : ''}`,
         quantity: 1,
-        unit_amount_cents: regionPrice.price_monthly_cents,
-        total_cents: regionPrice.price_monthly_cents,
+        unit_amount_cents: basePrice,
+        total_cents: totalCents,
         period: `${startDate.toISOString().slice(0, 7)}`,
       },
     });
+
+    // Add discount line if applicable
+    if (discountCents > 0) {
+      await this.prisma.raw.invoice_items.create({
+        data: {
+          id: uuid(),
+          invoice_id: invoice.id,
+          type: 'discount',
+          feature_key: 'discount',
+          description: `${discountPct}% discount`,
+          quantity: 1,
+          unit_amount_cents: -discountCents,
+          total_cents: -discountCents,
+          period: `${startDate.toISOString().slice(0, 7)}`,
+        },
+      });
+    }
 
     return {
       id: invoice.id,

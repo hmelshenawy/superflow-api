@@ -39,7 +39,8 @@ export class UsageService {
 
   /**
    * Check current usage against the plan ceiling for a feature.
-   * Returns usage data for dashboard display. Does NOT block — just reports.
+   * For ceiling-type features (max_users, max_locations), counts come from
+   * live DB counts rather than usage_records.
    */
   async checkCeiling(workshopId: string, featureKey: FeatureKey): Promise<{
     count: number;
@@ -47,21 +48,31 @@ export class UsageService {
     allowed: boolean;
     planId: string;
   }> {
-    const period = this.getCurrentPeriod();
-
-    const [usage, subscription] = await Promise.all([
-      this.prisma.raw.usage_records.findUnique({
-        where: { workshop_id_feature_key_period: { workshop_id: workshopId, feature_key: featureKey, period } },
-      }),
-      this.prisma.raw.subscriptions.findFirst({
-        where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing'] } },
-        orderBy: { created_at: 'desc' },
-        select: { plan_id: true },
-      }),
-    ]);
+    const subscription = await this.prisma.raw.subscriptions.findFirst({
+      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing', 'comped'] } },
+      orderBy: { created_at: 'desc' },
+      select: { plan_id: true },
+    });
 
     const planId = subscription?.plan_id || 'free_trial';
-    const count = usage?.count ?? 0;
+
+    // For capacity features, count live entities instead of usage_records
+    let count = 0;
+    if (featureKey === 'max_users') {
+      count = await this.prisma.raw.user_workshop_access.count({
+        where: { workshop_id: workshopId },
+      });
+    } else if (featureKey === 'max_locations') {
+      count = await this.prisma.raw.workshops.count({
+        where: { id: workshopId, is_active: true },
+      });
+    } else {
+      const period = this.getCurrentPeriod();
+      const usage = await this.prisma.raw.usage_records.findUnique({
+        where: { workshop_id_feature_key_period: { workshop_id: workshopId, feature_key: featureKey, period } },
+      });
+      count = usage?.count ?? 0;
+    }
 
     const planFeature = await this.prisma.raw.plan_features.findUnique({
       where: { plan_id_feature_key: { plan_id: planId, feature_key: featureKey } },
@@ -86,7 +97,7 @@ export class UsageService {
     const period = this.getCurrentPeriod();
 
     const subscription = await this.prisma.raw.subscriptions.findFirst({
-      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing'] } },
+      where: { workshop_id: workshopId, status: { in: ['active', 'paid', 'manual_active', 'trialing', 'comped'] } },
       orderBy: { created_at: 'desc' },
       select: { plan_id: true },
     });
@@ -102,9 +113,18 @@ export class UsageService {
 
     const usageMap = new Map(usageRecords.map(r => [r.feature_key, r.count]));
 
+    // Get live counts for capacity features
+    const [userCount] = await Promise.all([
+      this.prisma.raw.user_workshop_access.count({ where: { workshop_id: workshopId } }),
+    ]);
+    const liveCounts: Record<string, number> = {
+      max_users: userCount,
+      max_locations: 1,
+    };
+
     return planFeatures.map(pf => ({
       featureKey: pf.feature_key,
-      count: usageMap.get(pf.feature_key) ?? 0,
+      count: liveCounts[pf.feature_key] ?? usageMap.get(pf.feature_key) ?? 0,
       ceiling: pf.ceiling,
       isIncluded: pf.is_included,
       overageUnitCents: pf.overage_unit_cents,

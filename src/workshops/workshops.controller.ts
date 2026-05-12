@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission } from '../common/permissions/require-permission.decorator';
 import { WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS } from '../common/permissions/permissions';
+import { RequirePlanFeature } from '../common/plan-features/require-plan-feature.decorator';
 
 @ApiTags('Workshops')
 @Controller('workshops')
@@ -86,6 +87,7 @@ export class WorkshopsController {
 
   @Post(':id/users')
   @RequirePermission(WORKSHOPS_ASSIGN_USERS)
+  @RequirePlanFeature('max_users')
   @ApiOperation({ summary: 'Assign user to workshop' })
   async assignUser(@Request() req: any, @Param('id') id: string, @Body() dto: AssignUserDto) {
     const user = req.user;
