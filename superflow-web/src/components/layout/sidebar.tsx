@@ -25,6 +25,7 @@ import {
   Upload,
   X,
   ScrollText,
+  AlertTriangle,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/insights", label: "Insights", icon: BarChart3, requirePermission: "insights:dashboard" },
   { href: "/jobs", label: "Workshop Board", icon: LayoutGrid },
   { href: "/deferred", label: "Deferred Work", icon: Clock3, requirePermission: "deferred:read" },
+  { href: "/blockers", label: "Blockers", icon: AlertTriangle, requirePermission: "blockers:read" },
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users, requirePermission: "admin:users" },
   { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, requirePermission: "admin:roles" },
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },

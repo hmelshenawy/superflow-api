@@ -44,7 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowRight, ChevronDown, ChevronRight, CheckCircle2, Clock3, GripVertical,
   LayoutGrid, List, Plus, RefreshCw, Search, TriangleAlert, Package,
-  PhoneCall, TimerReset, Wrench,
+  PhoneCall, TimerReset, Wrench, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -90,6 +90,7 @@ export default function JobsPage() {
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const [priorityMap, setPriorityMap] = useState<Map<string, PriorityResult>>(new Map());
+  const [blockerCounts, setBlockerCounts] = useState<Map<string, number>>(new Map());
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
   const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopStage>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
@@ -120,7 +121,17 @@ export default function JobsPage() {
       setPriorityMap(map);
     } catch { /* fallback: client-side scoring will handle it */ }
   }, []);
-useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, mounted]);
+
+  const fetchBlockers = useCallback(async () => {
+    try {
+      const { data } = await api.get("/blockers?status=active&limit=200");
+      const items = data?.items || data?.data || [];
+      const counts = new Map<string, number>();
+      for (const b of items) counts.set(b.job_id, (counts.get(b.job_id) || 0) + 1);
+      setBlockerCounts(counts);
+    } catch { /* non-critical: just don't show badges */ }
+  }, []);
+useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fetchPriority, fetchBlockers, mounted]);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -137,7 +148,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
       const message = err?.response?.data?.message || "Failed to load jobs";
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
-    } finally { setLoading(false); fetchPriority(); }
+    } finally { setLoading(false); fetchPriority(); fetchBlockers(); }
   }, [page, limit, status, search, showArchived, fetchPriority]);
 
   useEffect(() => { setMounted(true); if (typeof window !== "undefined" && window.innerWidth < 768) switchOverallView("list"); }, []);
@@ -388,6 +399,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); }, [fetchPriority, moun
                                     className={cn("block rounded-xl border border-l-4 border-border bg-card p-2.5 text-xs shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md", WORKSHOP_STAGE_ACCENT[stage.key], overdue && "border-l-red-500 dark:border-l-red-500 bg-red-50/40 dark:bg-red-950/15", draggedJobId === job.id && "opacity-60", updatingJobId === job.id && "ring-2 ring-border")}>
                                     <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-start gap-1.5"><span className="mt-0.5 shrink-0 rounded-md border border-border bg-muted p-1 text-muted-foreground cursor-grab" title="Drag to move" onClick={(event) => event.preventDefault()}><GripVertical className="h-3 w-3" /></span><div className="min-w-0"><p className="inline-flex max-w-full rounded-md border border-blue-200 dark:border-blue-800/40 bg-blue-50/80 dark:bg-blue-950/40 px-2 py-0.5 text-[13px] font-black leading-none tracking-[0.08em] text-blue-950 dark:text-blue-200 shadow-sm"><span className="truncate tabular-nums">#{job.job_number || "Draft"}</span></p><p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{getVehicleLabel(job)}</p><p className="mt-0.5 truncate text-[12px] font-black tracking-[0.12em] text-foreground tabular-nums">{getPlate(job)}</p></div></div><span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-bold", overdue ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300" : (item?.priorityScore ?? 0) >= 40 ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground")}>{item?.priorityScore ?? 0}</span></div>
                                     {job.parts_status && job.parts_status !== "no_parts" ? (<div className={cn("mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold", PARTS_STATUS_META[job.parts_status]?.tone)}>{PARTS_STATUS_META[job.parts_status]?.label}</div>) : null}
+                                    {blockerCounts.get(job.id) ? (<div className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/50 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-300"><AlertTriangle className="h-3 w-3" />{blockerCounts.get(job.id)} blocker{blockerCounts.get(job.id)! > 1 ? "s" : ""}</div>) : null}
                                     <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-muted-foreground"><span className="truncate">Advisor: {job.advisor?.name || "—"}</span><span className="truncate">Tech: {job.technician?.name || "—"}</span><span className="truncate">Idle: {Math.round(item?.idleHours ?? 0)}h</span><span className={cn("truncate font-semibold", overdue ? "text-red-700 dark:text-red-300" : "text-muted-foreground")}>{overdue ? "Overdue" : job.promised_at ? getPromisedLabel(job.promised_at) : "No promise"}</span></div>
                                     <div className={cn("mt-2 rounded-lg border px-2 py-1 text-[11px] font-semibold", getActionUrgencyClass(item?.nextAction.urgency ?? "low"))}>{stage.key === "waiting_technician" ? "Assign technician" : stage.key === "customer_approval" ? "Advisor / customer approval" : item?.nextAction.title ?? "Review job"}</div>
                                   </Link>

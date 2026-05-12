@@ -23,6 +23,7 @@ import { BookingImportModule } from './booking-import/booking-import.module';
 import { PriorityModule } from './priority/priority.module';
 import { WorkshopsModule } from './workshops/workshops.module';
 import { BillingModule } from './billing/billing.module';
+import { BlockersModule } from './blockers/blockers.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
@@ -60,6 +61,7 @@ import { validateEnvironment } from './config/env.validation';
     PriorityModule,
     WorkshopsModule,
     BillingModule,
+    BlockersModule,
   ],
   providers: [
     {

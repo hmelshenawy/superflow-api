@@ -54,6 +54,7 @@ model workshops {
   settings               settings[]
   vehicle_service_history vehicle_service_history[]
   vehicles               vehicles[]
+  blockers                blockers[]
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
@@ -664,6 +665,7 @@ model jobs {
   @@index([archived_at], map: "idx_jobs_archived_at")
   @@index([is_deleted], map: "idx_jobs_is_deleted")
   @@index([workshop_id], map: "idx_jobs_workshop")
+  blockers blockers[]
 }
 
 model labour_rates {
@@ -845,6 +847,8 @@ model users {
   booking_import_templates       booking_import_templates[]
   roles                          roles?                  @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_users_role")
   user_workshop_access           user_workshop_access[]
+  blockers_blocked_by             blockers[]              @relation("blockers_blocked_by")
+  blockers_resolved_by           blockers[]              @relation("blockers_resolved_by")
 
   @@index([email], map: "idx_users_email")
   @@index([role_id], map: "idx_users_role_id")
@@ -1172,6 +1176,54 @@ enum media_files_scan_status {
   clean
   infected
   failed
+}
+
+enum blockers_type {
+  parts
+  customer_approval
+  workshop_approval
+  technician_unavailable
+  customer_decision
+  other
+}
+
+enum blockers_severity {
+  low
+  medium
+  high
+  critical
+}
+
+enum blockers_status {
+  active
+  resolved
+  dismissed
+}
+
+model blockers {
+  id              String          @id @db.Char(36)
+  job_id          String          @db.Char(36)
+  type            blockers_type   @default(other)
+  description     String          @db.Text
+  severity        blockers_severity @default(medium)
+  status          blockers_status @default(active)
+  blocked_by      String?         @db.Char(36)
+  resolved_by     String?         @db.Char(36)
+  resolved_at     DateTime?       @db.DateTime(0)
+  resolution_note String?         @db.Text
+  created_at      DateTime?       @default(now()) @db.DateTime(0)
+  updated_at      DateTime?       @default(now()) @db.DateTime(0)
+  workshop_id     String?         @db.Char(36)
+
+  jobs            jobs            @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_blockers_job")
+  users_blocked_by users?          @relation("blockers_blocked_by", fields: [blocked_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_blocked_by")
+  users_resolved_by users?        @relation("blockers_resolved_by", fields: [resolved_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_resolved_by")
+  workshops       workshops?     @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_workshop")
+
+  @@index([job_id], map: "idx_blockers_job")
+  @@index([status], map: "idx_blockers_status")
+  @@index([workshop_id], map: "idx_blockers_workshop")
+  @@index([severity], map: "idx_blockers_severity")
 }
 
 model booking_import_templates {

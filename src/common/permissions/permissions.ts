@@ -81,6 +81,10 @@ export const WORKSHOPS_ASSIGN_USERS = 'workshops:assign-users';
 export const PRIORITY_READ = 'priority:read';
 export const INSIGHTS_DASHBOARD = 'insights:dashboard';
 
+// ─── Blockers ───────────────────────────────────────────
+export const BLOCKERS_READ = 'blockers:read';
+export const BLOCKERS_MANAGE = 'blockers:manage';
+
 /**
  * Complete list of all defined permissions. Used for validation in role CRUD.
  */
@@ -100,6 +104,7 @@ export const ALL_PERMISSIONS: string[] = [
   ADMIN_LABOUR_RATES, ADMIN_STATS, ADMIN_BILLING,
   WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS,
   PRIORITY_READ, INSIGHTS_DASHBOARD,
+  BLOCKERS_READ, BLOCKERS_MANAGE,
 ];
 
 /**
@@ -140,6 +145,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       ADMIN_USERS, ADMIN_USERS_CREATE,
       ADMIN_INTEGRATIONS, ADMIN_TEMPLATES, ADMIN_LABOUR_RATES, ADMIN_STATS,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
+      BLOCKERS_READ, BLOCKERS_MANAGE,
     ],
   },
   service_advisor: {
@@ -156,6 +162,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       DEFERRED_READ, DEFERRED_MANAGE, DEFERRED_BOOK,
       ADMIN_SETTINGS,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
+      BLOCKERS_READ, BLOCKERS_MANAGE,
     ],
   },
   workshop_teamleader: {
@@ -170,6 +177,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       AUTH_STATUS,
       DEFERRED_READ,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
+      BLOCKERS_READ, BLOCKERS_MANAGE,
     ],
   },
   technician: {
@@ -183,6 +191,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       MEDIA_UPLOAD,
       AUTH_STATUS,
       DEFERRED_READ,
+      BLOCKERS_READ,
     ],
   },
   receptionist: {
