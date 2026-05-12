@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/admin/workshops", label: "Workshops", icon: Building2, requirePermission: "workshops:read" },
+  { href: "/admin/usage", label: "Usage Overview", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
 ];
 
 function isPlatformAdmin(user: { role?: { name?: string | null } | null } | null): boolean {

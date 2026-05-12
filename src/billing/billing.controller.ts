@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards, Inject, Res, Stre
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_USERS } from '../common/permissions';
+import { RequirePermission, ADMIN_USERS, ADMIN_BILLING } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BillingService } from './billing.service';
 import { InvoicePdfService } from './invoice-pdf.service';
@@ -120,7 +120,7 @@ export class BillingController {
 
   @Get('admin/usage-overview')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermission(ADMIN_USERS)
+  @RequirePermission(ADMIN_BILLING)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get usage overview for all workshops (admin)' })
   getUsageOverview() {

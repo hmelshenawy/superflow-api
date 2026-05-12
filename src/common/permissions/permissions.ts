@@ -68,6 +68,7 @@ export const ADMIN_INTEGRATIONS = 'admin:integrations';
 export const ADMIN_TEMPLATES = 'admin:templates';
 export const ADMIN_LABOUR_RATES = 'admin:labour-rates';
 export const ADMIN_STATS = 'admin:stats';
+export const ADMIN_BILLING = 'admin:billing';
 
 // ─── Workshops (platform_admin) ────────────────────────
 export const WORKSHOPS_READ = 'workshops:read';
@@ -96,7 +97,7 @@ export const ALL_PERMISSIONS: string[] = [
   ADMIN_SETTINGS, ADMIN_SETTINGS_EDIT, ADMIN_ROLES,
   ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE,
   ADMIN_AUDIT, ADMIN_INTEGRATIONS, ADMIN_TEMPLATES,
-  ADMIN_LABOUR_RATES, ADMIN_STATS,
+  ADMIN_LABOUR_RATES, ADMIN_STATS, ADMIN_BILLING,
   WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS,
   PRIORITY_READ, INSIGHTS_DASHBOARD,
 ];
@@ -114,7 +115,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       ADMIN_SETTINGS, ADMIN_SETTINGS_EDIT, ADMIN_ROLES,
       ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE,
       ADMIN_AUDIT, ADMIN_INTEGRATIONS, ADMIN_TEMPLATES,
-      ADMIN_LABOUR_RATES, ADMIN_STATS,
+      ADMIN_LABOUR_RATES, ADMIN_STATS, ADMIN_BILLING,
     ],
   },
   admin: {
