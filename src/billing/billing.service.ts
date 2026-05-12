@@ -296,6 +296,87 @@ export class BillingService {
     };
   }
 
+  /** Admin: Get usage overview for all workshops */
+  async getUsageOverview() {
+    const workshops = await this.prisma.raw.workshops.findMany({
+      where: { is_active: true },
+      select: { id: true, name: true, plan_id: true },
+      orderBy: { name: 'asc' },
+    });
+
+    const period = new Date().toISOString().slice(0, 7);
+
+    const [subscriptions, usageRecords, planFeatures] = await Promise.all([
+      this.prisma.raw.subscriptions.findMany({
+        where: { status: { in: ['active', 'paid', 'manual_active', 'trialing', 'comped'] } },
+        orderBy: { created_at: 'desc' },
+      }),
+      this.prisma.raw.usage_records.findMany({ where: { period } }),
+      this.prisma.raw.plan_features.findMany(),
+    ]);
+
+    // Index subscriptions by workshop_id (most recent per workshop)
+    const subByWorkshop = new Map<string, typeof subscriptions[0]>();
+    for (const sub of subscriptions) {
+      if (!subByWorkshop.has(sub.workshop_id)) {
+        subByWorkshop.set(sub.workshop_id, sub);
+      }
+    }
+
+    // Index usage records by workshop_id
+    const usageByWorkshop = new Map<string, Map<string, number>>();
+    for (const rec of usageRecords) {
+      if (!usageByWorkshop.has(rec.workshop_id)) usageByWorkshop.set(rec.workshop_id, new Map());
+      usageByWorkshop.get(rec.workshop_id)!.set(rec.feature_key, rec.count);
+    }
+
+    // Index plan features by plan_id
+    const featuresByPlan = new Map<string, typeof planFeatures>();
+    for (const pf of planFeatures) {
+      if (!featuresByPlan.has(pf.plan_id)) featuresByPlan.set(pf.plan_id, []);
+      featuresByPlan.get(pf.plan_id)!.push(pf);
+    }
+
+    // Get live user counts per workshop
+    const userCounts = await this.prisma.raw.user_workshop_access.groupBy({
+      by: ['workshop_id'],
+      _count: { workshop_id: true },
+    });
+    const userCountMap = new Map(userCounts.map(r => [r.workshop_id, r._count.workshop_id]));
+
+    return workshops.map(w => {
+      const sub = subByWorkshop.get(w.id);
+      const planId = sub?.plan_id || w.plan_id || 'free_trial';
+      const planFeatures = featuresByPlan.get(planId) || [];
+      const workshopUsage = usageByWorkshop.get(w.id) || new Map<string, number>();
+
+      // Build usage summary keyed by feature
+      const usage = planFeatures.map(pf => {
+        const liveCount = pf.feature_key === 'max_users'
+          ? (userCountMap.get(w.id) ?? 0)
+          : pf.feature_key === 'max_locations'
+            ? 1
+            : (workshopUsage.get(pf.feature_key) ?? 0);
+
+        return {
+          featureKey: pf.feature_key,
+          count: liveCount,
+          ceiling: pf.ceiling,
+          isIncluded: pf.is_included,
+        };
+      });
+
+      return {
+        workshopId: w.id,
+        workshopName: w.name,
+        planId,
+        subscriptionStatus: sub?.status || null,
+        trialEndsAt: sub?.trial_ends_at || null,
+        usage,
+      };
+    });
+  }
+
   /** Admin: Mark an invoice as paid (manual payment reconciliation) */
   async markInvoicePaid(invoiceId: string, method: string, reference?: string) {
     const invoice = await this.prisma.raw.invoices.findUnique({ where: { id: invoiceId } });

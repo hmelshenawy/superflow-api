@@ -118,6 +118,15 @@ export class BillingController {
     return new StreamableFile(buffer);
   }
 
+  @Get('admin/usage-overview')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission(ADMIN_USERS)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get usage overview for all workshops (admin)' })
+  getUsageOverview() {
+    return this.billingService.getUsageOverview();
+  }
+
   @Get('admin/workshops/:workshopId/billing')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermission(ADMIN_USERS)
