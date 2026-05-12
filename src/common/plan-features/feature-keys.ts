@@ -24,6 +24,7 @@ export const FEATURE_KEYS = {
   ANALYTICS:             'analytics',
 
   // Limits (is_included=TRUE, ceiling=N)
+  JOBS:                  'jobs',
   MAX_USERS:             'max_users',
   MAX_LOCATIONS:        'max_locations',
 } as const;
@@ -45,6 +46,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   advisor_workload:      'Advisor Workload',
   ai_message_drafts:    'AI Message Drafts',
   analytics:             'Analytics Dashboard',
+  jobs:                  'Jobs Created',
   max_users:             'Max Users',
   max_locations:        'Max Locations',
 };

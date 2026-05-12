@@ -9,6 +9,8 @@ import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION } from '../common/permissions';
+import { PlanFeatureGuard } from '../common/guards/plan-feature.guard';
+import { RequirePlanFeature } from '../common/plan-features/require-plan-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Jobs')
@@ -36,6 +38,8 @@ export class JobsController {
 
   @Post()
   @RequirePermission(JOBS_CREATE)
+  @UseGuards(PlanFeatureGuard)
+  @RequirePlanFeature('jobs')
   @ApiOperation({ summary: 'Create job' })
   create(@Body() dto: CreateJobDto, @CurrentUser('sub') userId: string) { return this.service.create(dto, userId); }
 

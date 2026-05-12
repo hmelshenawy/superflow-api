@@ -7,10 +7,14 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
+import { UsageService } from '../common/plan-features/usage.service';
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private usageService: UsageService,
+  ) {}
 
   private async assertTenantCustomer(customerId: string) {
     const customer = await this.prisma.tenant.customers.findUnique({ where: { id: customerId } });
@@ -87,6 +91,12 @@ export class JobsService {
         },
       }),
     ]);
+
+    const { workshopId } = getWorkshopContext();
+    if (workshopId) {
+      this.usageService.increment(workshopId, 'jobs').catch(() => {});
+    }
+
     return job;
   }
 
