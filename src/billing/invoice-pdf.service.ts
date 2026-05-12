@@ -44,21 +44,33 @@ export class InvoicePdfService {
     if (!invoice) throw new NotFoundException('Invoice not found');
 
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: 'A4', margin: 50 });
+      let doc: PDFDoc;
+      try {
+        doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+      } catch (err) {
+        console.error('[InvoicePdf] PDFDocument create error:', err);
+        throw err;
+      }
       const chunks: Buffer[] = [];
       doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+      doc.on('error', (err) => { console.error('[InvoicePdf] PDF stream error:', err); reject(err); });
 
-      let y = 50;
-      y = this.renderHeader(doc, invoice.invoice_number, y);
-      y = this.renderFromBillTo(doc, invoice, y);
-      y = this.renderInvoiceMeta(doc, invoice, y);
-      y = this.renderLineItems(doc, invoice, y);
-      y = this.renderTotals(doc, invoice, y);
-      if (invoice.payments.length > 0) y = this.renderPayments(doc, invoice, y);
-      if (invoice.notes) y = this.renderNotes(doc, invoice.notes, y);
-      this.renderFooter(doc, y);
+      try {
+        let y = 50;
+        y = this.renderHeader(doc, invoice.invoice_number, y);
+        y = this.renderFromBillTo(doc, invoice, y);
+        y = this.renderInvoiceMeta(doc, invoice, y);
+        y = this.renderLineItems(doc, invoice, y);
+        y = this.renderTotals(doc, invoice, y);
+        if (invoice.payments.length > 0) y = this.renderPayments(doc, invoice, y);
+        if (invoice.notes) y = this.renderNotes(doc, invoice.notes, y);
+        this.renderFooter(doc, y);
+      } catch (err) {
+        console.error('[InvoicePdf] Render error:', err);
+        reject(err);
+        return;
+      }
 
       doc.end();
     });
