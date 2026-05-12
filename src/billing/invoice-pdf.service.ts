@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import PDFDocument from 'pdfkit';
+import PDFDocument = require('pdfkit');
 import { PrismaService } from '../prisma/prisma.service';
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
