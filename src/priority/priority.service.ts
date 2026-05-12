@@ -314,4 +314,64 @@ export class PriorityService {
       signals,
     };
   }
+
+  /** Advisor cockpit dashboard — urgent jobs, pending approvals, promises at risk */
+  async getAdvisorDashboard(userId: string, roleName: string, workshopId?: string) {
+    const opts: any = {};
+    if (roleName !== 'platform_admin' && roleName !== 'admin' && roleName !== 'workshop_admin') {
+      opts.advisorId = userId;
+    }
+
+    const { results } = await this.computeAll(opts);
+
+    const now = Date.now();
+    const urgentJobs = results.filter((r: any) => r.score >= 40);
+    const pendingApprovals = results.filter((r: any) =>
+      r.factors.some((f: any) => f.key === 'waitingCustomerDecision')
+    );
+    const promisesAtRisk = results.filter((r: any) => r.isOverdue || (r.hoursToPromise !== null && r.hoursToPromise <= 6));
+
+    const nextBestActions = results
+      .filter((r: any) => r.nextAction.owner === 'advisor' || r.nextAction.owner === 'customer')
+      .slice(0, 10)
+      .map((r: any) => ({
+        jobId: r.jobId,
+        jobNumber: r.jobNumber,
+        title: r.nextAction.title,
+        reason: r.nextAction.reason,
+        urgency: r.nextAction.urgency,
+        score: r.score,
+      }));
+
+    return {
+      critical: results.filter((r: any) => r.level === 'critical').length,
+      high: results.filter((r: any) => r.level === 'high').length,
+      awaitingApproval: pendingApprovals.length,
+      atRisk: promisesAtRisk.length,
+      urgentJobs: urgentJobs.slice(0, 15).map((r: any) => ({
+        jobId: r.jobId,
+        jobNumber: r.jobNumber,
+        score: r.score,
+        level: r.level,
+        idleHours: r.idleHours,
+        isOverdue: r.isOverdue,
+        hoursToPromise: r.hoursToPromise,
+        nextAction: r.nextAction.title,
+      })),
+      pendingApprovals: pendingApprovals.slice(0, 10).map((r: any) => ({
+        jobId: r.jobId,
+        jobNumber: r.jobNumber,
+        score: r.score,
+        nextAction: r.nextAction.title,
+      })),
+      promisesAtRisk: promisesAtRisk.slice(0, 10).map((r: any) => ({
+        jobId: r.jobId,
+        jobNumber: r.jobNumber,
+        score: r.score,
+        isOverdue: r.isOverdue,
+        hoursToPromise: r.hoursToPromise,
+      })),
+      nextBestActions,
+    };
+  }
 }

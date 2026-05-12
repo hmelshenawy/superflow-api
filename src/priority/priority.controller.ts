@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, PRIORITY_READ } from '../common/permissions';
 import { RequirePlanFeature } from '../common/plan-features';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PriorityService } from './priority.service';
 import { PriorityResultDto, BulkPriorityResultDto } from './dto/priority-result.dto';
 
@@ -27,6 +28,14 @@ export class PriorityController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<BulkPriorityResultDto> {
     return this.priorityService.computeAll({ status, advisorId, limit });
+  }
+
+  @Get('advisor-dashboard')
+  @RequirePlanFeature('priority_engine')
+  @RequirePermission(PRIORITY_READ)
+  @ApiOperation({ summary: 'Get advisor cockpit data: urgent jobs, pending approvals, promises at risk, next best actions' })
+  getAdvisorDashboard(@CurrentUser() user: any) {
+    return this.priorityService.getAdvisorDashboard(user.sub, user.role?.name, user.workshopId);
   }
 
   @Get(':id')

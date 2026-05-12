@@ -89,6 +89,7 @@ export const FEATURES = {
 // Map nav items to feature keys for lock display
 export const NAV_FEATURE_MAP: Record<string, string> = {
   "/insights": FEATURES.ANALYTICS,
+  "/advisor": FEATURES.PRIORITY_ENGINE,
 };
 
 // Map feature keys to upgrade plan suggestions

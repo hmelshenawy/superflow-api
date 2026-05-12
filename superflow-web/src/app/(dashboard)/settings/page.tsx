@@ -1098,7 +1098,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="account" className="w-full">
-        <TabsList>
+        <TabsList className="w-full overflow-x-auto">
           <TabsTrigger value="account">
             <User className="mr-1.5 h-4 w-4" />
             Account

@@ -26,6 +26,7 @@ import {
   X,
   ScrollText,
   AlertTriangle,
+  Crosshair,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
@@ -34,6 +35,7 @@ type NavItem = { href: string; label: string; icon: typeof LayoutGrid; requirePe
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/insights", label: "Insights", icon: BarChart3, requirePermission: "insights:dashboard" },
+  { href: "/advisor", label: "My Cockpit", icon: Crosshair, requirePermission: "priority:read" },
   { href: "/jobs", label: "Workshop Board", icon: LayoutGrid },
   { href: "/deferred", label: "Deferred Work", icon: Clock3, requirePermission: "deferred:read" },
   { href: "/blockers", label: "Blockers", icon: AlertTriangle, requirePermission: "blockers:read" },

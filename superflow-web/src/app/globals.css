@@ -127,4 +127,11 @@
   html {
     @apply font-sans;
   }
+  /* Minimum touch target for interactive elements on mobile */
+  @media (max-width: 767px) {
+    button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
 }
