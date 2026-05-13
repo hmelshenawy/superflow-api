@@ -6,6 +6,7 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
+import { BulkDeleteJobsDto } from './dto/bulk-delete.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION } from '../common/permissions';
@@ -84,5 +85,10 @@ export class JobsController {
   @Delete()
   @RequirePermission(JOBS_DELETE)
   @ApiOperation({ summary: 'Delete ALL jobs (bulk clear)' })
-  removeAll() { return this.service.removeAll(); }
+  removeAll(@Body() dto: BulkDeleteJobsDto) {
+    if (!dto.confirm) {
+      throw new Error('Bulk delete requires confirm: true');
+    }
+    return this.service.removeAll();
+  }
 }

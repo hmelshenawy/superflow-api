@@ -4,7 +4,6 @@ import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { SignupDto } from './dto/signup.dto';
@@ -77,8 +76,8 @@ export class AuthController {
   @Post('refresh')
   @Throttle({ default: { limit: 10, ttl: 60_000, blockDuration: 120_000 } })
   @ApiOperation({ summary: 'Refresh access token' })
-  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = dto.refreshToken || dto.refresh_token || this.readCookie(req, this.refreshCookieName) || '';
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = this.readCookie(req, this.refreshCookieName) || '';
     const result = await this.auth.refresh(refreshToken);
     this.setRefreshCookie(res, result.refreshToken);
     const { refreshToken: _refreshToken, ...body } = result;

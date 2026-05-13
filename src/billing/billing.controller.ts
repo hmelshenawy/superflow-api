@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BillingService } from './billing.service';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivateSubscriptionDto, CreateInvoiceDto, MarkPaidDto } from './dto/billing.dto';
 import type { Response } from 'express';
 
 @ApiTags('Billing')
@@ -19,6 +20,8 @@ export class BillingController {
   ) {}
 
   @Get('pricing')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all plans with regional pricing and features' })
   getPricing(@Query('region') region: string = 'gcc') {
     return this.billingService.getPricing(region);
@@ -64,7 +67,7 @@ export class BillingController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually activate a subscription (mark as paid/active)' })
   activateSubscription(
-    @Body() body: { workshopId: string; planId: string; region?: string; priceOverrideCents?: number; discountPct?: number; internalNotes?: string; status?: string },
+    @Body() body: ActivateSubscriptionDto,
     @CurrentUser() user: any,
   ) {
     return this.billingService.activateSubscription(body.workshopId, body.planId, body.region || 'gcc', user.id, {
@@ -81,7 +84,7 @@ export class BillingController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a manual invoice for a workshop' })
   createInvoice(
-    @Body() body: { workshopId: string; planId: string; region?: string; periodStart?: string; periodEnd?: string },
+    @Body() body: CreateInvoiceDto,
   ) {
     return this.billingService.createInvoice(body.workshopId, body.planId, body.region || 'gcc', body.periodStart, body.periodEnd);
   }
@@ -93,7 +96,7 @@ export class BillingController {
   @ApiOperation({ summary: 'Mark an invoice as paid (manual payment reconciliation)' })
   markInvoicePaid(
     @Param('id') invoiceId: string,
-    @Body() body: { method?: string; reference?: string },
+    @Body() body: MarkPaidDto,
   ) {
     return this.billingService.markInvoicePaid(invoiceId, body.method || 'manual', body.reference);
   }

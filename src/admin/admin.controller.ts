@@ -6,6 +6,7 @@ import { CreateAdminTemplateDto } from './dto/create-template.dto';
 import { UpdateAdminTemplateDto } from './dto/update-template.dto';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { CreateItemDto, UpdateItemDto } from './dto/item.dto';
+import { CreateLabourRateDto, UpdateLabourRateDto } from './dto/labour-rate.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -52,7 +53,7 @@ export class AdminController {
   @Post('labour-rates')
   @RequirePermission(ADMIN_LABOUR_RATES)
   @ApiOperation({ summary: 'Add labour rate' })
-  addLabourRate(@Body() body: { name: string; rate_per_hour: number; currency?: string; is_active?: boolean }) {
+  addLabourRate(@Body() body: CreateLabourRateDto) {
     return this.service.addLabourRate(body);
   }
 
@@ -61,7 +62,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Update labour rate' })
   updateLabourRate(
     @Param('id') id: string,
-    @Body() body: { name?: string; rate_per_hour?: number; currency?: string; is_active?: boolean },
+    @Body() body: UpdateLabourRateDto,
   ) { return this.service.updateLabourRate(id, body); }
 
   @Delete('labour-rates/:id')

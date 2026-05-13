@@ -37,7 +37,6 @@ async function bootstrap() {
             "'self'",
             // Next.js needs inline scripts for hydration
             "'unsafe-inline'",
-            "'unsafe-eval'",
           ],
           styleSrc: [
             "'self'",
@@ -70,15 +69,9 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Health check
+  // Health check — minimal response, no version/fingerprint info
   app.use('/health', (_req: Request, res: Response) => res.json({
     status: 'ok',
-    service: 'superflow-api',
-    version: appVersion,
-    environment: process.env.NODE_ENV || 'development',
-    branch: process.env.GIT_BRANCH || 'unknown',
-    commit: process.env.GIT_COMMIT || 'unknown',
-    uptimeSeconds: Math.round(process.uptime()),
     timestamp: new Date().toISOString(),
   }));
   app.useGlobalPipes(
