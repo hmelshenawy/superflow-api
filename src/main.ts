@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { initSentry } from './common/sentry/sentry.init';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { PrismaService } from './prisma/prisma.service';
 
 // ─── Initialize Sentry before anything else ─────────────────
 initSentry();
@@ -69,11 +70,31 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Health check — minimal response, no version/fingerprint info
-  app.use('/health', (_req: Request, res: Response) => res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  }));
+  // Health check — verifies DB and Redis connectivity
+  const prisma = app.get(PrismaService);
+  app.use('/health', async (_req: Request, res: Response) => {
+    const checks: Record<string, string> = {};
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.database = 'ok';
+    } catch {
+      checks.database = 'error';
+    }
+    // Redis is optional — degraded mode without it
+    try {
+      const redis = app.get('REDIS_CONNECTION') as import('ioredis').default;
+      const pong = await redis.ping();
+      checks.redis = pong === 'PONG' ? 'ok' : 'error';
+    } catch {
+      checks.redis = 'unavailable';
+    }
+    const healthy = checks.database === 'ok';
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      ...checks,
+      timestamp: new Date().toISOString(),
+    });
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -95,6 +116,9 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
   }
+
+  // Ensure Prisma/Redis connections are closed gracefully on SIGTERM
+  app.enableShutdownHooks();
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
