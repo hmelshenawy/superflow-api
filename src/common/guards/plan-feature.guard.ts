@@ -1,9 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PLAN_FEATURE_KEY } from '../plan-features/require-plan-feature.decorator';
 import { FeatureKey } from '../plan-features/feature-keys';
 import { UsageService } from '../plan-features/usage.service';
+import { ForbiddenError, PlanFeatureRequiredError, PlanLimitReachedError } from '../errors/app-errors';
 
 @Injectable()
 export class PlanFeatureGuard implements CanActivate {
@@ -29,7 +30,7 @@ export class PlanFeatureGuard implements CanActivate {
     // Platform admins bypass all feature gates regardless of workshop context
     if (user.role === 'platform_admin') return true;
 
-    if (!user?.sub) throw new ForbiddenException('Authentication required');
+    if (!user?.sub) throw new ForbiddenError('Authentication required');
 
     // Resolve workshopId: prefer JWT claim, fall back to the user's single workshop
     let workshopId = user.workshopId;
@@ -37,7 +38,7 @@ export class PlanFeatureGuard implements CanActivate {
       const access = await this.prisma.raw.user_workshop_access.findFirst({
         where: { user_id: user.sub },
       });
-      if (!access) throw new ForbiddenException('No workshop assignment found');
+      if (!access) throw new ForbiddenError('No workshop assignment found');
       workshopId = access.workshop_id;
     }
 
@@ -57,34 +58,14 @@ export class PlanFeatureGuard implements CanActivate {
     });
 
     if (!planFeature?.is_included) {
-      throw new HttpException(
-        {
-          statusCode: 403,
-          message: `This feature requires a higher plan. Upgrade to access ${requiredFeature}.`,
-          error: 'Plan Feature Required',
-          featureKey: requiredFeature,
-          currentPlan: planId,
-        },
-        HttpStatus.FORBIDDEN,
-      );
+      throw new PlanFeatureRequiredError(requiredFeature, planId);
     }
 
     // Enforce ceiling if the feature has one
     if (planFeature.ceiling != null) {
       const usage = await this.usageService.checkCeiling(workshopId, requiredFeature as FeatureKey);
       if (!usage.allowed) {
-        throw new HttpException(
-          {
-            statusCode: 402,
-            message: `Plan limit reached: ${requiredFeature} ceiling is ${usage.ceiling} (current: ${usage.count}). Upgrade your plan for more.`,
-            error: 'Plan Limit Reached',
-            featureKey: requiredFeature,
-            ceiling: usage.ceiling,
-            current: usage.count,
-            planId,
-          },
-          HttpStatus.PAYMENT_REQUIRED,
-        );
+        throw new PlanLimitReachedError(requiredFeature, usage.ceiling ?? 0, usage.count, planId);
       }
     }
 

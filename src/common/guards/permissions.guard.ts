@@ -1,7 +1,8 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../permissions/require-permission.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PermissionDeniedError, TrialExpiredError } from '../errors/app-errors';
 
 /**
  * Permission-based guard that replaces the old role-name-only RolesGuard.
@@ -43,10 +44,7 @@ export class PermissionsGuard implements CanActivate {
     const expiry = subscription?.trial_ends_at || subscription?.current_period_ends_at || workshop?.trial_ends_at;
     if (!expiry || expiry > new Date()) return;
 
-    throw new HttpException(
-      'Your PrioraFlow trial has expired. Contact admin@prioraflow.com to activate your workspace.',
-      HttpStatus.PAYMENT_REQUIRED,
-    );
+    throw new TrialExpiredError('Your PrioraFlow trial has expired. Contact admin@prioraflow.com to activate your workspace.');
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -59,7 +57,7 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const { user } = request;
     if (!user) {
-      throw new ForbiddenException('Missing permission: authentication required');
+      throw new PermissionDeniedError('Missing permission: authentication required');
     }
 
     // Admin and platform_admin always pass
@@ -70,7 +68,7 @@ export class PermissionsGuard implements CanActivate {
     const userPermissions: string[] = user.permissions ?? [];
     const hasPermission = requiredPermissions.some((p) => userPermissions.includes(p));
     if (!hasPermission) {
-      throw new ForbiddenException(
+      throw new PermissionDeniedError(
         `Missing permission: ${requiredPermissions.join(', ')} — contact your admin to update your role`,
       );
     }

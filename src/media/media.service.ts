@@ -1,10 +1,11 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { ALLOWED_MIME_TYPES, PresignUploadDto } from './dto/presign-upload.dto';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3_CLIENT } from './media.constants';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../common/errors/app-errors';
 
 const MEDIA_SIZE_LIMITS: Record<string, number> = {
   photo: 10 * 1024 * 1024,
@@ -95,41 +96,41 @@ export class MediaService {
     const ext = this.getExtension(params.filename);
     const allowedByExtension = EXTENSION_MIME_TYPES[ext];
     if (!allowedByExtension) {
-      throw new BadRequestException('File extension is not allowed');
+      throw new BadRequestError('File extension is not allowed');
     }
 
     if (!params.mimeType) {
-      throw new BadRequestException('MIME type is required');
+      throw new BadRequestError('MIME type is required');
     }
     if (!ALLOWED_MIME_TYPES.includes(params.mimeType)) {
-      throw new BadRequestException(`MIME type ${params.mimeType} is not allowed`);
+      throw new BadRequestError(`MIME type ${params.mimeType} is not allowed`);
     }
     if (!allowedByExtension.includes(params.mimeType)) {
-      throw new BadRequestException(`File extension .${ext} does not match MIME type ${params.mimeType}`);
+      throw new BadRequestError(`File extension .${ext} does not match MIME type ${params.mimeType}`);
     }
     const expectedType = this.expectedFileTypeForMime(params.mimeType);
     if (expectedType && expectedType !== params.fileType) {
-      throw new BadRequestException(`File type ${params.fileType} does not match MIME type ${params.mimeType}`);
+      throw new BadRequestError(`File type ${params.fileType} does not match MIME type ${params.mimeType}`);
     }
 
     const maxSize = MEDIA_SIZE_LIMITS[params.fileType];
-    if (!maxSize) throw new BadRequestException('File type is not allowed');
+    if (!maxSize) throw new BadRequestError('File type is not allowed');
     if (params.sizeBytes !== undefined && params.sizeBytes !== null) {
       if (!Number.isFinite(Number(params.sizeBytes)) || Number(params.sizeBytes) <= 0) {
-        throw new BadRequestException('File size must be a positive number');
+        throw new BadRequestError('File size must be a positive number');
       }
       if (Number(params.sizeBytes) > maxSize) {
-        throw new BadRequestException(`File is too large for ${params.fileType}. Maximum allowed is ${Math.round(maxSize / 1024 / 1024)} MB.`);
+        throw new BadRequestError(`File is too large for ${params.fileType}. Maximum allowed is ${Math.round(maxSize / 1024 / 1024)} MB.`);
       }
     }
   }
 
   private assertDownloadAllowed(file: any) {
     if (file.scan_status === 'infected' || file.scan_status === 'failed') {
-      throw new ForbiddenException('File is blocked by security scan status');
+      throw new ForbiddenError('File is blocked by security scan status', { code: 'MEDIA_FILE_BLOCKED' });
     }
     if (file.scan_status === 'pending' && file.file_type !== 'photo') {
-      throw new ForbiddenException('File is pending security scan');
+      throw new ForbiddenError('File is pending security scan', { code: 'MEDIA_FILE_PENDING' });
     }
   }
 
@@ -184,7 +185,7 @@ export class MediaService {
 
   async confirm(id: string, body: { size_bytes?: number; width_px?: number; height_px?: number; duration_sec?: number; thumbnail_key?: string }) {
     const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
-    if (!file) throw new NotFoundException('File not found');
+    if (!file) throw new NotFoundError('File not found');
     if (body.size_bytes !== undefined) {
       this.validateMediaPolicy({
         filename: file.original_filename || 'file',
@@ -199,7 +200,7 @@ export class MediaService {
       duration_sec: body.duration_sec,
     })) {
       if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
-        throw new BadRequestException(`${key} must be a non-negative integer`);
+        throw new BadRequestError(`${key} must be a non-negative integer`);
       }
     }
 
@@ -225,7 +226,7 @@ export class MediaService {
   ) {
     // Direct upload is the simpler fallback path when the client cannot or
     // should not upload straight to object storage.
-    if (!file) throw new BadRequestException('File is required');
+    if (!file) throw new BadRequestError('File is required');
     const rawName = dto.filename || file.originalname;
     this.validateMediaPolicy({
       filename: rawName,
@@ -281,8 +282,8 @@ export class MediaService {
 
   async getSignedDownloadUrl(id: string) {
     const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
-    if (!file) throw new NotFoundException('File not found');
-    if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
+    if (!file) throw new NotFoundError('File not found');
+    if (!file.s3_bucket || !file.s3_key) throw new BadRequestError('File storage details missing');
     this.assertDownloadAllowed(file);
 
     const command = new GetObjectCommand({
@@ -305,8 +306,8 @@ export class MediaService {
     // Stream-through download keeps storage private; callers do not need direct
     // bucket credentials or publicly reachable MinIO endpoints.
     const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
-    if (!file) throw new NotFoundException('File not found');
-    if (!file.s3_bucket || !file.s3_key) throw new BadRequestException('File storage details missing');
+    if (!file) throw new NotFoundError('File not found');
+    if (!file.s3_bucket || !file.s3_key) throw new BadRequestError('File storage details missing');
     this.assertDownloadAllowed(file);
 
     const result = await this.s3.send(
@@ -334,7 +335,7 @@ export class MediaService {
 
   async findOne(id: string) {
     const file = await this.prisma.tenant.media_files.findFirst({ where: { id, is_deleted: false } });
-    if (!file) throw new NotFoundException('File not found');
+    if (!file) throw new NotFoundError('File not found');
     return this.normalizeMedia(file);
   }
 

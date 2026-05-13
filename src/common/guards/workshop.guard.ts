@@ -1,5 +1,6 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ForbiddenError } from '../errors/app-errors';
 
 @Injectable()
 export class WorkshopGuard implements CanActivate {
@@ -27,10 +28,10 @@ export class WorkshopGuard implements CanActivate {
           return true;
         }
       } catch {
-        // DB lookup failed — fall through to ForbiddenException
+        // DB lookup failed — fall through to error
       }
     }
 
-    throw new ForbiddenException('No workshop selected. Use POST /auth/select-workshop first.');
+    throw new ForbiddenError('No workshop selected. Use POST /auth/select-workshop first.', { code: 'AUTH_WORKSHOP_REQUIRED' });
   }
 }
