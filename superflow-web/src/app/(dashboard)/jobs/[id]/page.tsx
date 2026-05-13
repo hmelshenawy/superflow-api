@@ -30,6 +30,7 @@ const InspectionWorkspace = dynamic(() => import("@/components/inspections/inspe
 import { SendApprovalButton } from "@/components/estimates/send-approval-button";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
+import { ComponentErrorBoundary } from "@/components/error-boundary";
 import {
   ArrowLeft,
   ArrowRight,
@@ -1001,7 +1002,9 @@ export default function JobDetailPage() {
               ) : null}
             </CardHeader>
             <CardContent>
-              <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
+              <ComponentErrorBoundary label="Quote builder">
+                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
+              </ComponentErrorBoundary>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1031,7 +1034,9 @@ export default function JobDetailPage() {
                 ) : null}
               </CardHeader>
               <CardContent>
+<ComponentErrorBoundary label="Inspection">
                 <InspectionWorkspace key={inspectionRev} inspection={inspectionDetail} onChanged={refreshJob} />
+                </ComponentErrorBoundary>
               </CardContent>
             </Card>
           ) : (
@@ -1101,7 +1106,9 @@ export default function JobDetailPage() {
                 <CardTitle className="text-lg">Media evidence</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">Attach photos, videos, or documents that support the quote and inspection.</p>
               </div>
-              <MediaUploader jobId={job.id} onUploaded={refreshJob} />
+              <ComponentErrorBoundary label="Media upload">
+                <MediaUploader jobId={job.id} onUploaded={refreshJob} />
+              </ComponentErrorBoundary>
             </CardHeader>
             <CardContent>
               {job.media_files && job.media_files.length > 0 ? (
