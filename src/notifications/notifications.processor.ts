@@ -46,7 +46,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
           status: terminal ? 'failed' : 'queued',
           error_message: error?.message || 'Unknown notification failure',
         },
-      }).catch(() => {});
+      }).catch((e) => this.logger.error(`Failed to update notification ${notificationId} status: ${e?.message}`));
 
       this.logger.warn(`Notification ${notificationId} failed (${attemptsMade}/${maxAttempts}): ${error?.message}`);
     });
@@ -55,7 +55,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     // Poll-based requeue is a safety net for cases where the worker or queue was
     // unavailable earlier but the DB still contains queued notifications.
     this.pollTimer = setInterval(() => {
-      this.notificationsService.requeuePendingDbNotifications().catch(() => {});
+      this.notificationsService.requeuePendingDbNotifications().catch((e) => this.logger.warn(`Requeue poll failed: ${e?.message}`));
     }, 5000);
   }
 
@@ -104,6 +104,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
         text: body,
         html,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const text = await response.text();
@@ -164,6 +165,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
         jobId: notification.job_id,
         customerId: notification.customer_id,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const text = await response.text();
