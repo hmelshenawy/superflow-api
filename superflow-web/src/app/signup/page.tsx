@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { PrioraFlowLogo } from "@/components/brand/prioraflow-logo";
-import api, { setAccessToken } from "@/lib/api";
+import api, { setAccessToken, getApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,8 +55,14 @@ export default function SignupPage() {
       toast.success("Workspace created — welcome to PrioraFlow");
       router.push("/jobs");
     } catch (error: any) {
-      const message = error?.response?.data?.message || "Could not create workspace";
-      toast.error(Array.isArray(message) ? message[0] : message);
+      const { code, message } = getApiError(error);
+      if (code === "CONFLICT") {
+        toast.error("An account with this email already exists.");
+      } else if (code === "VALIDATION_ERROR") {
+        toast.error(Array.isArray(message) ? message[0] : message);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }

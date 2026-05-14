@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { Subscription, PlanFeature } from "@/types";
 
 interface PlanState {
@@ -42,7 +42,8 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
         loading: false,
       });
     } catch (err: any) {
-      set({ error: err.response?.data?.message || "Failed to load subscription", loading: false });
+      const { code, message } = getApiError(err);
+      set({ error: code === "AUTH_TRIAL_EXPIRED" ? "Your trial has expired. Please upgrade to continue." : message, loading: false });
     }
   },
 

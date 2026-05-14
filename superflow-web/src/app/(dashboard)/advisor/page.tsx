@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -83,7 +83,7 @@ export default function AdvisorCockpitPage() {
       const { data: res } = await api.get("/priority/advisor-dashboard");
       setData(res);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load dashboard");
+      setError(getApiError(err).message);
     } finally {
       setLoading(false);
     }

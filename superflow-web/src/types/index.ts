@@ -480,3 +480,35 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
 }
+
+// ─── API Errors ─────────────────────────────────────────
+export type ErrorCode =
+  | 'AUTH_INVALID_CREDENTIALS'
+  | 'AUTH_TOKEN_EXPIRED'
+  | 'AUTH_TOKEN_INVALID'
+  | 'AUTH_FORBIDDEN'
+  | 'AUTH_PERMISSION_DENIED'
+  | 'AUTH_TRIAL_EXPIRED'
+  | 'AUTH_WORKSHOP_REQUIRED'
+  | 'PLAN_FEATURE_REQUIRED'
+  | 'PLAN_LIMIT_REACHED'
+  | 'NOT_FOUND'
+  | 'VALIDATION_ERROR'
+  | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'BAD_REQUEST'
+  | 'MEDIA_FILE_BLOCKED'
+  | 'MEDIA_FILE_PENDING'
+  | 'MEDIA_FILE_TYPE_NOT_ALLOWED'
+  | 'MEDIA_FILE_TOO_LARGE'
+  | 'INTERNAL_ERROR';
+
+export interface ApiErrorResponse {
+  statusCode: number;
+  code: ErrorCode;
+  message: string;
+  details?: Record<string, unknown>;
+  method: string;
+  path: string;
+  timestamp: string;
+}

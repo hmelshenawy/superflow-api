@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { Trash2, Eye, FileText, Film, Image as ImageIcon } from "lucide-react";
 
 interface MediaFile {
@@ -59,8 +59,8 @@ export function MediaThumbnail({ file, onDeleted }: { file: MediaFile; onDeleted
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     } catch (err: any) {
       if (popup && !popup.closed) popup.close();
-      const message = err?.response?.data?.message;
-      alert(Array.isArray(message) ? message.join(", ") : message || "Failed to open file");
+      const { message } = getApiError(err);
+      alert(message);
     }
   };
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { usePlanStore, FEATURES } from "@/hooks/use-plan-features";
 import { LockedFeatureOverlay } from "@/components/locked-feature-overlay";
 import {
@@ -214,7 +214,7 @@ export default function InsightsPage() {
       const { data } = await api.get<DashboardData>("/insights/dashboard");
       setData(data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load insights");
+      setError(getApiError(err).message);
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,7 +128,7 @@ export default function BlockersPage() {
       setBlockers(blockersData?.items || blockersData?.data || []);
       setSummary(summaryData);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load blockers");
+      setError(getApiError(err).message);
     } finally {
       setLoading(false);
     }
@@ -153,7 +153,7 @@ export default function BlockersPage() {
       setNewDescription("");
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create blocker");
+      setError(getApiError(err).message);
     } finally {
       setCreating(false);
     }
@@ -170,7 +170,7 @@ export default function BlockersPage() {
       setResolveNote("");
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to resolve blocker");
+      setError(getApiError(err).message);
     } finally {
       setResolving(false);
     }
@@ -181,7 +181,7 @@ export default function BlockersPage() {
       await api.delete(`/blockers/${id}`);
       fetchData();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to dismiss blocker");
+      setError(getApiError(err).message);
     }
   };
 

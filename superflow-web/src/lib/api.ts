@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
+import type { ApiErrorResponse, ErrorCode } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002/api";
 
@@ -24,6 +25,16 @@ export async function refreshAccessToken() {
   return token;
 }
 
+export function getApiError(err: unknown): { code: ErrorCode; message: string; statusCode: number; details?: Record<string, unknown> } {
+  if (axios.isAxiosError(err)) {
+    const d = (err as AxiosError<ApiErrorResponse>).response?.data;
+    if (d?.code) {
+      return { code: d.code, message: d.message, statusCode: d.statusCode, details: d.details };
+    }
+  }
+  return { code: "INTERNAL_ERROR", message: err instanceof Error ? err.message : "An unexpected error occurred", statusCode: 500 };
+}
+
 const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
@@ -43,9 +54,10 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
     const isAuthEndpoint = original.url?.includes("/auth/login") || original.url?.includes("/auth/refresh") || original.url?.includes("/auth/select-workshop");
+    const apiErr = getApiError(error);
 
     // Redirect to workshop selector if no workshop context
-    if (error.response?.status === 403 && error.response?.data?.message?.includes("Workshop context required") && typeof window !== "undefined") {
+    if (apiErr.code === "AUTH_WORKSHOP_REQUIRED" && typeof window !== "undefined") {
       window.location.href = "/select-workshop";
       return Promise.reject(error);
     }

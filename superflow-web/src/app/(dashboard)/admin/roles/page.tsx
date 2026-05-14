@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import type { Role } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,7 @@ export default function RolesPermissionsPage() {
       setRoles(rolesRes.data);
       setAllPermissions(permsRes.data.permissions);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load roles";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -250,7 +250,7 @@ export default function RolesPermissionsPage() {
       setDialogOpen(false);
       fetchData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save role");
+      toast.error(getApiError(err).message);
     } finally {
       setSaving(false);
     }
@@ -267,7 +267,7 @@ export default function RolesPermissionsPage() {
       setSelectedRoleId(null);
       fetchData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete role");
+      toast.error(getApiError(err).message);
     } finally {
       setDeleting(false);
     }

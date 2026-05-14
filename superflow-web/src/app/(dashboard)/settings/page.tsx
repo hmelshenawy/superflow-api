@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -264,7 +264,7 @@ function PasswordSection() {
       setNext("");
       setConfirm("");
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Failed to change password";
+      const msg = getApiError(err).message;
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -717,7 +717,7 @@ function IntegrationsSection() {
     } catch (err: any) {
       setTestResult((prev) => ({
         ...prev,
-        [name]: { ok: false, msg: err.response?.data?.message || "Connection failed" },
+        [name]: { ok: false, msg: getApiError(err).message },
       }));
     } finally {
       setTesting(null);

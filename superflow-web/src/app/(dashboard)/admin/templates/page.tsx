@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { InspectionTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,7 @@ export default function TemplatesPage() {
       const { data } = await api.get<InspectionTemplate[]>("/admin/templates");
       setTemplates(data);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load templates";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -107,7 +107,7 @@ export default function TemplatesPage() {
       toast.success(t.is_active ? "Template disabled" : "Template enabled");
       fetchTemplates();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to toggle template");
+      toast.error(getApiError(err).message);
     } finally {
       setTogglingId(null);
     }

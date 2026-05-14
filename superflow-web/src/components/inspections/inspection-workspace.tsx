@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,8 +207,8 @@ export function InspectionWorkspace({
       toast.success("Inspection saved");
       onChanged();
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to save inspection");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -238,8 +238,8 @@ export function InspectionWorkspace({
       toast.success("Inspection submitted");
       onChanged();
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to submit inspection");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -285,8 +285,8 @@ export function InspectionWorkspace({
 
       toast.success(`${files.length} file${files.length > 1 ? "s" : ""} uploaded`);
     } catch (err: any) {
-      console.error('Upload error:', err?.response?.data || err?.message || err);
-      toast.error(`Upload failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+      console.error('Upload error:', getApiError(err));
+      toast.error(`Upload failed: ${getApiError(err).message}`);
     } finally {
       setUploadingFor(null);
       const inputEl = fileInputRefs.current[itemId];
@@ -311,8 +311,8 @@ export function InspectionWorkspace({
       });
       toast.success("Media removed");
     } catch (err: any) {
-      console.error('Remove media error:', err?.response?.data || err?.message || err);
-      toast.error(`Failed to remove: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+      console.error('Remove media error:', getApiError(err));
+      toast.error(`Failed to remove: ${getApiError(err).message}`);
     }
   };
 

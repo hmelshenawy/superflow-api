@@ -4,7 +4,12 @@ import { workshopTenantExtension } from './prisma-tenant.extension';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  readonly raw = new PrismaClient();
+  // Unextended base client — same connection pool, no tenant filters.
+  // Use for auth guards, billing, admin, and raw SQL queries that must
+  // bypass tenant scoping. Previously a separate PrismaClient which
+  // doubled the connection pool; now just an alias to `this`.
+  readonly raw: PrismaClient = this;
+
   // Lazy-initialized tenant-scoped client; can't create during class field init
   // because PrismaClient must be connected first
   private _tenant: any = null;
@@ -18,11 +23,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     await this.$connect();
-    await this.raw.$connect();
   }
 
   async onModuleDestroy() {
     await this.$disconnect();
-    await this.raw.$disconnect();
   }
 }

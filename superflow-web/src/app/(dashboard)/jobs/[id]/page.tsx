@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getValidTransitions, getPriorityTone, getActionUrgencyClass } from "@/lib/jobs-data";
 import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
@@ -412,8 +412,8 @@ export default function JobDetailPage() {
       await refreshJob();
       toast.success("Inspection reopened");
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to reopen inspection");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setReopeningInspection(false);
     }

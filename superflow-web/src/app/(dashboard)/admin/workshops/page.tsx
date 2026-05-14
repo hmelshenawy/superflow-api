@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { Workshop, User } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +79,7 @@ export default function WorkshopsPage() {
       const { data } = await api.get<WorkshopWithCount[]>("/workshops");
       setWorkshops(data);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load workshops";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -142,7 +142,7 @@ export default function WorkshopsPage() {
       setDialogOpen(false);
       fetchWorkshops();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save workshop");
+      toast.error(getApiError(err).message);
     } finally {
       setSaving(false);
     }
@@ -161,7 +161,7 @@ export default function WorkshopsPage() {
       toast.success(nextActive ? "Workshop reactivated" : "Workshop deactivated");
       fetchWorkshops();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || `Failed to ${action} workshop`);
+      toast.error(getApiError(err).message);
     } finally {
       setTogglingId(null);
     }
@@ -184,7 +184,7 @@ export default function WorkshopsPage() {
       URL.revokeObjectURL(url);
       toast.success("Workshop export downloaded");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to export workshop");
+      toast.error(getApiError(err).message);
     } finally {
       setExportingId(null);
     }
@@ -198,7 +198,7 @@ export default function WorkshopsPage() {
       setWorkshopUsers(data);
     } catch (err: any) {
       setWorkshopUsers([]);
-      const message = err?.response?.data?.message || "Failed to load workshop users";
+      const message = getApiError(err).message;
       setUsersError(Array.isArray(message) ? message.join(", ") : message);
     }
     setAssignUserId("");
@@ -216,7 +216,7 @@ export default function WorkshopsPage() {
       setAssignUserId("");
       fetchWorkshops();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to assign user");
+      toast.error(getApiError(err).message);
     } finally {
       setAssigning(false);
     }
@@ -231,7 +231,7 @@ export default function WorkshopsPage() {
       setWorkshopUsers(prev => prev.filter(wu => wu.userId !== userId));
       fetchWorkshops();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to remove user");
+      toast.error(getApiError(err).message);
     } finally {
       setRemovingUserId(null);
     }

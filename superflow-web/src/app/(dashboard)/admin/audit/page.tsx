@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import type { PaginatedResponse } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -129,7 +129,7 @@ export default function AuditPage() {
       setItems(data.items ?? data.data ?? []);
       setTotal(data.total ?? 0);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load audit logs";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { DeferredWork, DeferredStatus, PaginatedResponse } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export default function DeferredWorkPage() {
       setTotal(res.data.total);
       setCurrency(defaultsRes.data.currency || "AED");
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load deferred work";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -80,7 +80,7 @@ export default function DeferredWorkPage() {
       toast.success("Reminder sent");
       fetchItems();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to send reminder");
+      toast.error(getApiError(err).message);
     } finally {
       setRemindingId(null);
     }
@@ -94,7 +94,7 @@ export default function DeferredWorkPage() {
       toast.success("Item closed");
       fetchItems();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to close item");
+      toast.error(getApiError(err).message);
     } finally {
       setClosingId(null);
     }
