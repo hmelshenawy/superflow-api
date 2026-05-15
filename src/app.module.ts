@@ -24,6 +24,13 @@ import { PriorityModule } from './priority/priority.module';
 import { WorkshopsModule } from './workshops/workshops.module';
 import { BillingModule } from './billing/billing.module';
 import { BlockersModule } from './blockers/blockers.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { WarehousesModule } from './warehouses/warehouses.module';
+import { PartsModule } from './parts/parts.module';
+import { StockMovementsModule } from './stock-movements/stock-movements.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { JobPartsModule } from './job-parts/job-parts.module';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
@@ -62,6 +69,13 @@ import { validateEnvironment } from './config/env.validation';
     WorkshopsModule,
     BillingModule,
     BlockersModule,
+    SuppliersModule,
+    WarehousesModule,
+    PartsModule,
+    StockMovementsModule,
+    InventoryModule,
+    JobPartsModule,
+    PurchaseOrdersModule,
   ],
   providers: [
     {

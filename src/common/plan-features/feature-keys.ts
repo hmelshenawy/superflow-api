@@ -27,6 +27,10 @@ export const FEATURE_KEYS = {
   JOBS:                  'jobs',
   MAX_USERS:             'max_users',
   MAX_LOCATIONS:        'max_locations',
+
+  // Inventory & Purchasing
+  INVENTORY:             'inventory',
+  PURCHASE_ORDERS:       'purchase_orders',
 } as const;
 
 export type FeatureKey = typeof FEATURE_KEYS[keyof typeof FEATURE_KEYS];
@@ -49,4 +53,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   jobs:                  'Jobs Created',
   max_users:             'Max Users',
   max_locations:        'Max Locations',
+  inventory:             'Parts & Inventory',
+  purchase_orders:       'Purchase Orders',
 };

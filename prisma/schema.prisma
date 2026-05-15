@@ -55,6 +55,14 @@ model workshops {
   vehicle_service_history vehicle_service_history[]
   vehicles               vehicles[]
   blockers                blockers[]
+  suppliers              suppliers[]
+  warehouses            warehouses[]
+  parts                  parts[]
+  inventory              inventory[]
+  stock_movements        stock_movements[]
+  job_parts              job_parts[]
+  purchase_orders        purchase_orders[]
+  purchase_order_items   purchase_order_items[]
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
@@ -650,6 +658,7 @@ model jobs {
   media_files                                       media_files[]
   notifications                                     notifications[]
   vehicle_service_history                           vehicle_service_history[]
+  job_parts                                         job_parts[]
 
   @@unique([job_number, workshop_id], map: "idx_jobs_number_workshop")
   @@index([advisor_id], map: "idx_jobs_advisor")
@@ -849,6 +858,7 @@ model users {
   user_workshop_access           user_workshop_access[]
   blockers_blocked_by             blockers[]              @relation("blockers_blocked_by")
   blockers_resolved_by           blockers[]              @relation("blockers_resolved_by")
+  stock_movements                 stock_movements[]
 
   @@index([email], map: "idx_users_email")
   @@index([role_id], map: "idx_users_role_id")
@@ -1200,6 +1210,32 @@ enum blockers_status {
   dismissed
 }
 
+enum stock_movements_type {
+  purchase_in
+  job_reserve
+  job_consume
+  job_return
+  adjustment_in
+  adjustment_out
+  transfer_in
+  transfer_out
+}
+
+enum job_parts_status {
+  reserved
+  used
+  returned
+  cancelled
+}
+
+enum purchase_orders_status {
+  draft
+  ordered
+  partially_received
+  received
+  cancelled
+}
+
 model blockers {
   id              String          @id @db.Char(36)
   job_id          String          @db.Char(36)
@@ -1241,5 +1277,187 @@ model booking_import_templates {
   @@index([created_by], map: "fk_bit_created_by")
   @@index([is_active], map: "idx_bit_active")
   @@index([workshop_id], map: "idx_bit_workshop")
+}
+
+model suppliers {
+  id            String    @id @db.Char(36)
+  name          String    @db.VarChar(120)
+  phone         String?   @db.VarChar(30)
+  email         String?   @db.VarChar(255)
+  address       String?   @db.Text
+  payment_terms String?   @db.VarChar(120)
+  workshop_id   String?   @db.Char(36)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+
+  purchase_orders   purchase_orders[]
+  parts             parts[]
+
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_suppliers_workshop")
+
+  @@index([workshop_id], map: "idx_suppliers_workshop")
+  @@index([name], map: "idx_suppliers_name")
+}
+
+model warehouses {
+  id          String    @id @db.Char(36)
+  name        String    @db.VarChar(120)
+  location    String?   @db.VarChar(255)
+  is_default  Boolean?  @default(false)
+  workshop_id String?   @db.Char(36)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+
+  inventory        inventory[]
+  job_parts        job_parts[]
+  stock_movements  stock_movements[]
+
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_warehouses_workshop")
+
+  @@index([workshop_id], map: "idx_warehouses_workshop")
+}
+
+model parts {
+  id           String    @id @db.Char(36)
+  part_number  String?   @db.VarChar(60)
+  name         String    @db.VarChar(180)
+  brand        String?   @db.VarChar(80)
+  category     String?   @db.VarChar(60)
+  unit          String?   @db.VarChar(20)
+  cost_price   Decimal?  @db.Decimal(10, 2)
+  selling_price Decimal?  @db.Decimal(10, 2)
+  barcode      String?   @db.VarChar(80)
+  supplier_id  String?   @db.Char(36)
+  min_stock    Int?      @default(0) @db.Int
+  is_active    Boolean?  @default(true)
+  workshop_id  String?   @db.Char(36)
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+  updated_at   DateTime? @default(now()) @db.DateTime(0)
+
+  inventory             inventory[]
+  job_parts             job_parts[]
+  stock_movements       stock_movements[]
+  purchase_order_items  purchase_order_items[]
+
+  suppliers suppliers? @relation(fields: [supplier_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_parts_supplier")
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_parts_workshop")
+
+  @@index([supplier_id], map: "fk_parts_supplier")
+  @@index([workshop_id], map: "idx_parts_workshop")
+  @@index([category], map: "idx_parts_category")
+  @@index([part_number], map: "idx_parts_part_number")
+  @@index([is_active], map: "idx_parts_active")
+}
+
+model inventory {
+  id                  String    @id @db.Char(36)
+  part_id             String    @db.Char(36)
+  warehouse_id        String    @db.Char(36)
+  quantity_on_hand    Int       @default(0) @db.Int
+  reserved_quantity   Int       @default(0) @db.Int
+  available_quantity  Int       @default(0) @db.Int
+  workshop_id         String?   @db.Char(36)
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_at          DateTime? @default(now()) @db.DateTime(0)
+
+  parts       parts       @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventory_part")
+  warehouses  warehouses  @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventory_warehouse")
+  workshops   workshops?  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventory_workshop")
+
+  @@unique([part_id, warehouse_id], map: "uk_inventory_part_warehouse")
+  @@index([part_id], map: "idx_inventory_part")
+  @@index([warehouse_id], map: "idx_inventory_warehouse")
+  @@index([workshop_id], map: "idx_inventory_workshop")
+}
+
+model stock_movements {
+  id             String               @id @db.Char(36)
+  part_id        String               @db.Char(36)
+  warehouse_id   String               @db.Char(36)
+  type           stock_movements_type
+  quantity       Int                  @db.Int
+  unit_cost      Decimal?             @db.Decimal(10, 2)
+  reference_type String?              @db.VarChar(40)
+  reference_id   String?              @db.Char(36)
+  notes          String?              @db.Text
+  created_by     String?              @db.Char(36)
+  workshop_id    String?              @db.Char(36)
+  created_at     DateTime?            @default(now()) @db.DateTime(0)
+
+  parts       parts      @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_part")
+  warehouses  warehouses @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_warehouse")
+  users       users?     @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_user")
+  workshops   workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_workshop")
+
+  @@index([part_id], map: "idx_sm_part")
+  @@index([warehouse_id], map: "idx_sm_warehouse")
+  @@index([created_by], map: "fk_sm_user")
+  @@index([type], map: "idx_sm_type")
+  @@index([created_at], map: "idx_sm_created")
+  @@index([reference_type, reference_id], map: "idx_sm_reference")
+  @@index([workshop_id], map: "idx_sm_workshop")
+}
+
+model job_parts {
+  id           String          @id @db.Char(36)
+  job_id       String          @db.Char(36)
+  part_id      String          @db.Char(36)
+  warehouse_id String          @db.Char(36)
+  quantity     Int             @db.Int
+  unit_cost    Decimal?        @db.Decimal(10, 2)
+  unit_price   Decimal?        @db.Decimal(10, 2)
+  status       job_parts_status @default(reserved)
+  workshop_id  String?         @db.Char(36)
+  created_at   DateTime?       @default(now()) @db.DateTime(0)
+  updated_at   DateTime?       @default(now()) @db.DateTime(0)
+
+  jobs        jobs        @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_job")
+  parts       parts       @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_part")
+  warehouses  warehouses @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_warehouse")
+  workshops   workshops?  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_workshop")
+
+  @@index([job_id], map: "idx_jp_job")
+  @@index([part_id], map: "idx_jp_part")
+  @@index([warehouse_id], map: "idx_jp_warehouse")
+  @@index([status], map: "idx_jp_status")
+  @@index([workshop_id], map: "idx_jp_workshop")
+}
+
+model purchase_orders {
+  id          String                @id @db.Char(36)
+  supplier_id String?               @db.Char(36)
+  status      purchase_orders_status @default(draft)
+  total_cost  Decimal?              @db.Decimal(12, 2)
+  workshop_id String?               @db.Char(36)
+  created_at  DateTime?             @default(now()) @db.DateTime(0)
+  updated_at  DateTime?             @default(now()) @db.DateTime(0)
+
+  suppliers suppliers?          @relation(fields: [supplier_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_po_supplier")
+  workshops workshops?          @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_po_workshop")
+  purchase_order_items purchase_order_items[]
+
+  @@index([supplier_id], map: "fk_po_supplier")
+  @@index([status], map: "idx_po_status")
+  @@index([workshop_id], map: "idx_po_workshop")
+}
+
+model purchase_order_items {
+  id                String    @id @db.Char(36)
+  purchase_order_id String    @db.Char(36)
+  part_id           String    @db.Char(36)
+  ordered_qty       Int       @db.Int
+  received_qty      Int       @default(0) @db.Int
+  unit_cost         Decimal?  @db.Decimal(10, 2)
+  workshop_id       String?   @db.Char(36)
+  created_at        DateTime? @default(now()) @db.DateTime(0)
+  updated_at        DateTime? @default(now()) @db.DateTime(0)
+
+  purchase_orders purchase_orders @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_poi_purchase_order")
+  parts           parts           @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_poi_part")
+  workshops       workshops?      @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_poi_workshop")
+
+  @@index([purchase_order_id], map: "idx_poi_purchase_order")
+  @@index([part_id], map: "idx_poi_part")
+  @@index([workshop_id], map: "idx_poi_workshop")
 }
 

@@ -28,6 +28,14 @@ const TENANT_SCOPED_MODELS = new Set([
   'authorisation_decisions',
   'integrations',
   'integration_events',
+  'suppliers',
+  'warehouses',
+  'parts',
+  'inventory',
+  'stock_movements',
+  'job_parts',
+  'purchase_orders',
+  'purchase_order_items',
 ]);
 
 const READ_OPS = new Set(['findMany', 'findFirst', 'count', 'aggregate', 'groupBy']);

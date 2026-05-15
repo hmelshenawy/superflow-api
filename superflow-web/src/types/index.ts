@@ -512,3 +512,135 @@ export interface ApiErrorResponse {
   path: string;
   timestamp: string;
 }
+
+// ─── Parts & Stock ───────────────────────────────────────
+export interface Part {
+  id: string;
+  part_number: string | null;
+  name: string;
+  brand: string | null;
+  category: string | null;
+  unit: string | null;
+  cost_price: number | null;
+  selling_price: number | null;
+  barcode: string | null;
+  supplier_id: string | null;
+  min_stock: number | null;
+  is_active: boolean | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  suppliers?: Supplier;
+  inventory?: Inventory[];
+  _count?: { inventory: number };
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  payment_terms: string | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Warehouse {
+  id: string;
+  name: string;
+  location: string | null;
+  is_default: boolean | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Inventory {
+  id: string;
+  part_id: string;
+  warehouse_id: string;
+  quantity_on_hand: number;
+  reserved_quantity: number;
+  available_quantity: number;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  parts?: Part;
+  warehouses?: Warehouse;
+}
+
+export type StockMovementType =
+  | 'purchase_in'
+  | 'job_reserve'
+  | 'job_consume'
+  | 'job_return'
+  | 'adjustment_in'
+  | 'adjustment_out'
+  | 'transfer_in'
+  | 'transfer_out';
+
+export interface StockMovement {
+  id: string;
+  part_id: string;
+  warehouse_id: string;
+  type: StockMovementType;
+  quantity: number;
+  unit_cost: number | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  workshop_id: string | null;
+  created_at: string;
+  parts?: Part;
+  warehouses?: Warehouse;
+  users?: User;
+}
+
+export type JobPartStatus = 'reserved' | 'used' | 'returned' | 'cancelled';
+
+export interface JobPart {
+  id: string;
+  job_id: string;
+  part_id: string;
+  warehouse_id: string;
+  quantity: number;
+  unit_cost: number | null;
+  unit_price: number | null;
+  status: JobPartStatus;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  parts?: Part;
+  warehouses?: Warehouse;
+}
+
+export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
+
+export interface PurchaseOrder {
+  id: string;
+  supplier_id: string | null;
+  status: PurchaseOrderStatus;
+  total_cost: number | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  suppliers?: Supplier;
+  purchase_order_items?: PurchaseOrderItem[];
+  _count?: { purchase_order_items: number };
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  part_id: string;
+  ordered_qty: number;
+  received_qty: number;
+  unit_cost: number | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  parts?: Part;
+}

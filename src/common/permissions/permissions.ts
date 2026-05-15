@@ -85,6 +85,28 @@ export const INSIGHTS_DASHBOARD = 'insights:dashboard';
 export const BLOCKERS_READ = 'blockers:read';
 export const BLOCKERS_MANAGE = 'blockers:manage';
 
+// ─── Parts & Stock ──────────────────────────────────────
+export const PARTS_READ = 'parts:read';
+export const PARTS_CREATE = 'parts:create';
+export const PARTS_UPDATE = 'parts:update';
+export const PARTS_DELETE = 'parts:delete';
+export const SUPPLIERS_READ = 'suppliers:read';
+export const SUPPLIERS_CREATE = 'suppliers:create';
+export const SUPPLIERS_UPDATE = 'suppliers:update';
+export const WAREHOUSES_READ = 'warehouses:read';
+export const WAREHOUSES_CREATE = 'warehouses:create';
+export const WAREHOUSES_UPDATE = 'warehouses:update';
+export const STOCK_ADJUST = 'stock:adjust';
+export const STOCK_TRANSFER = 'stock:transfer';
+export const PURCHASE_ORDERS_READ = 'purchase_orders:read';
+export const PURCHASE_ORDERS_CREATE = 'purchase_orders:create';
+export const PURCHASE_ORDERS_UPDATE = 'purchase_orders:update';
+export const JOB_PARTS_READ = 'job_parts:read';
+export const JOB_PARTS_RESERVE = 'job_parts:reserve';
+export const JOB_PARTS_CONSUME = 'job_parts:consume';
+export const JOB_PARTS_RETURN = 'job_parts:return';
+export const STOCK_ANALYTICS = 'stock:analytics';
+
 /**
  * Complete list of all defined permissions. Used for validation in role CRUD.
  */
@@ -105,6 +127,12 @@ export const ALL_PERMISSIONS: string[] = [
   WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS,
   PRIORITY_READ, INSIGHTS_DASHBOARD,
   BLOCKERS_READ, BLOCKERS_MANAGE,
+  PARTS_READ, PARTS_CREATE, PARTS_UPDATE, PARTS_DELETE,
+  SUPPLIERS_READ, SUPPLIERS_CREATE, SUPPLIERS_UPDATE,
+  WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE,
+  STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
+  PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
+  JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
 ];
 
 /**
@@ -146,6 +174,12 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       ADMIN_INTEGRATIONS, ADMIN_TEMPLATES, ADMIN_LABOUR_RATES, ADMIN_STATS,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
+      PARTS_READ, PARTS_CREATE, PARTS_UPDATE,
+      SUPPLIERS_READ, SUPPLIERS_CREATE, SUPPLIERS_UPDATE,
+      WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE,
+      STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
+      PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
+      JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
     ],
   },
   service_advisor: {
@@ -163,6 +197,11 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       ADMIN_SETTINGS,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
+      PARTS_READ,
+      SUPPLIERS_READ,
+      WAREHOUSES_READ,
+      JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+      PURCHASE_ORDERS_READ,
     ],
   },
   workshop_teamleader: {
@@ -178,6 +217,9 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       DEFERRED_READ,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
+      PARTS_READ,
+      WAREHOUSES_READ,
+      JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
     ],
   },
   technician: {
@@ -192,6 +234,9 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       AUTH_STATUS,
       DEFERRED_READ,
       BLOCKERS_READ,
+      PARTS_READ,
+      WAREHOUSES_READ,
+      JOB_PARTS_READ,
     ],
   },
   receptionist: {
