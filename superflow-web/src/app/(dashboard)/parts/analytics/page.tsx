@@ -48,6 +48,7 @@ import {
   Package,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 // ─── Permission helpers ──────────────────────────────────
 function isAdmin(user: { role?: { name?: string | null } | null; role_id?: string | null } | null): boolean {
@@ -152,6 +153,7 @@ export default function PartsAnalyticsPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">

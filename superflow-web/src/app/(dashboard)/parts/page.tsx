@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, Loader2, Plus, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 const CATEGORY_OPTIONS = [
   "Engine",
@@ -88,6 +89,7 @@ export default function PartsPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Parts</h1>

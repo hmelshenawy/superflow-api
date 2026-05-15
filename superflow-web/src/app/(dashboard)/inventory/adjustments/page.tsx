@@ -16,6 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 export default function StockAdjustmentPage() {
   // Form state
@@ -141,6 +142,7 @@ export default function StockAdjustmentPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div>
         <h1 className="text-2xl font-bold text-foreground">Stock Adjustment</h1>
         <p className="text-sm text-muted-foreground mt-1">

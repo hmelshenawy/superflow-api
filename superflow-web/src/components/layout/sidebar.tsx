@@ -28,7 +28,6 @@ import {
   AlertTriangle,
   Crosshair,
   Package,
-  Truck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
@@ -42,9 +41,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/deferred", label: "Deferred Work", icon: Clock3, requirePermission: "deferred:read" },
   { href: "/blockers", label: "Blockers", icon: AlertTriangle, requirePermission: "blockers:read" },
   { href: "/parts", label: "Parts & Stock", icon: Package, requirePermission: "parts:read" },
-  { href: "/suppliers", label: "Suppliers", icon: Truck, requirePermission: "suppliers:read" },
-  { href: "/purchase-orders", label: "Purchase Orders", icon: ScrollText, requirePermission: "purchase_orders:read" },
-  { href: "/inventory/warehouses", label: "Warehouses", icon: Building2, requirePermission: "warehouses:read" },
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users, requirePermission: "admin:users" },
   { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, requirePermission: "admin:roles" },
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },

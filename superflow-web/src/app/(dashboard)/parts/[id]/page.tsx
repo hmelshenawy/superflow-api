@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, ArrowLeft, Loader2, Pencil, Package, ArrowRightLeft, Wrench } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   purchase_in: "Purchase In",
@@ -172,6 +173,7 @@ export default function PartDetailPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" aria-label="Back to parts" onClick={() => router.push("/parts")}>

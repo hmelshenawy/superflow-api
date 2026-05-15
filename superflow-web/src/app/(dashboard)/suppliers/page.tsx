@@ -29,6 +29,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -139,6 +140,7 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-4">
+      <PartsStockNav />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Suppliers</h1>
         <div className="flex gap-2">

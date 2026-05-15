@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 const CATEGORY_OPTIONS = [
   "Engine",
@@ -110,6 +111,7 @@ export default function NewPartPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" aria-label="Back to parts" onClick={() => router.push("/parts")}>
           <ArrowLeft className="h-5 w-5" />

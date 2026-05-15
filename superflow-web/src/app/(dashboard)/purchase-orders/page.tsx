@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, Plus, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 const STATUS_OPTIONS: { value: PurchaseOrderStatus | "all"; label: string }[] = [
   { value: "all", label: "All statuses" },
@@ -97,6 +98,7 @@ export default function PurchaseOrdersPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Purchase Orders</h1>

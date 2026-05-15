@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertTriangle, Loader2, Pencil, Plus, RefreshCw, Warehouse as WarehouseIcon } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -98,6 +99,7 @@ export default function WarehousesPage() {
 
   return (
     <div className="space-y-4">
+      <PartsStockNav />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <WarehouseIcon className="h-6 w-6 text-muted-foreground" />

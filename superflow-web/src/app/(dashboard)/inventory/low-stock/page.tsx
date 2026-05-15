@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, Loader2, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 interface LowStockItem {
   id: string;
@@ -82,6 +83,7 @@ export default function LowStockPage() {
 
   return (
     <div className="space-y-4">
+      <PartsStockNav />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Low Stock Alert</h1>

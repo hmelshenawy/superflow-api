@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, CheckCircle2, Loader2, PackagePlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 const STATUS_BADGE: Record<PurchaseOrderStatus, { label: string; tone: string }> = {
   draft: { label: "Draft", tone: "bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300" },
@@ -179,6 +180,7 @@ export default function PurchaseOrderDetailPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" aria-label="Back to purchase orders" onClick={() => router.push("/purchase-orders")}>
           <ArrowLeft className="h-5 w-5" />

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { PartsStockNav } from "@/components/parts-stock-nav";
 
 interface LineItem {
   key: string;
@@ -134,6 +135,7 @@ export default function NewPurchaseOrderPage() {
 
   return (
     <div className="space-y-6">
+      <PartsStockNav />
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" aria-label="Back to purchase orders" onClick={() => router.push("/purchase-orders")}>
           <ArrowLeft className="h-5 w-5" />
