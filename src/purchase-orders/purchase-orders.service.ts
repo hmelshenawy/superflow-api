@@ -145,6 +145,7 @@ export class PurchaseOrdersService {
             quantity_on_hand: 0,
             reserved_quantity: 0,
             available_quantity: 0,
+            workshop_id: po.workshop_id,
           },
         });
       }

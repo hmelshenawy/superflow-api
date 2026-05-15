@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { TransferStockDto } from './dto/transfer-stock.dto';
+import { getWorkshopContext } from '../prisma/workshop-context';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -31,6 +32,7 @@ export class InventoryService {
 
   // Manual stock adjustment
   async adjustStock(dto: AdjustStockDto, userId: string) {
+    const { workshopId } = getWorkshopContext();
     return this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       // Verify part exists
       const part = await tx.parts.findFirst({ where: { id: dto.part_id } });
@@ -50,6 +52,7 @@ export class InventoryService {
             quantity_on_hand: 0,
             reserved_quantity: 0,
             available_quantity: 0,
+            workshop_id: workshopId,
           },
         });
       }
@@ -101,6 +104,7 @@ export class InventoryService {
       throw new BadRequestException('Source and destination warehouses must be different');
     }
 
+    const { workshopId } = getWorkshopContext();
     return this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       // Verify part exists
       const part = await tx.parts.findFirst({ where: { id: dto.part_id } });
@@ -130,6 +134,7 @@ export class InventoryService {
             quantity_on_hand: 0,
             reserved_quantity: 0,
             available_quantity: 0,
+            workshop_id: workshopId,
           },
         });
       }

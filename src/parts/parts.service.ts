@@ -76,7 +76,7 @@ export class PartsService {
         where,
         include: {
           suppliers: true,
-          _count: { select: { inventory: true } },
+          inventory: { include: { warehouses: true } },
         },
         orderBy: { created_at: 'desc' },
       }),
