@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/parts", label: "Parts & Stock", icon: Package, requirePermission: "parts:read" },
   { href: "/suppliers", label: "Suppliers", icon: Truck, requirePermission: "suppliers:read" },
   { href: "/purchase-orders", label: "Purchase Orders", icon: ScrollText, requirePermission: "purchase_orders:read" },
+  { href: "/inventory/warehouses", label: "Warehouses", icon: Building2, requirePermission: "warehouses:read" },
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users, requirePermission: "admin:users" },
   { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, requirePermission: "admin:roles" },
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },
@@ -179,7 +180,7 @@ export function Sidebar() {
         </div>
       )}
 
-      <nav className={cn("flex-1 space-y-1 px-2 py-3", isCollapsed && "px-1.5")}>
+      <nav className={cn("flex-1 space-y-1 overflow-y-auto px-2 py-3 scrollbar-hide", isCollapsed && "px-1.5")}>
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
@@ -313,7 +314,7 @@ export function Sidebar() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 space-y-1 px-2 py-3">
+            <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3 scrollbar-hide">
               {filteredItems.map((item) => {
                 const Icon = item.icon;
                 const active = pathname.startsWith(item.href);
