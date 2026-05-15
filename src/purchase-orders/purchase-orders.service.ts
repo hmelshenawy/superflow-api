@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ReceivePoItemDto } from './dto/receive-po-item.dto';
 import { ListPurchaseOrdersDto } from './dto/list-purchase-orders.dto';
+import { getWorkshopContext } from '../prisma/workshop-context';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreatePurchaseOrderDto) {
+    const { workshopId } = getWorkshopContext();
     // Calculate total_cost from items
     let totalCost = 0;
     const items = dto.items.map(item => {
@@ -22,6 +24,7 @@ export class PurchaseOrdersService {
         ordered_qty: item.ordered_qty,
         received_qty: 0,
         unit_cost: item.unit_cost ?? null,
+        workshop_id: workshopId,
       };
     });
 
