@@ -5,12 +5,35 @@ import { useParams, useRouter } from "next/navigation";
 import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getValidTransitions, getPriorityTone, getActionUrgencyClass } from "@/lib/jobs-data";
-import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
+import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity, User as UserType } from "@/types";
 
 // ─── Priority API result shape (mirrors backend) ──────────
 interface PriorityFactor { key: string; weight: number; description: string; category: string; }
 interface NextActionResult { title: string; reason: string; urgency: "low"|"normal"|"high"|"critical"; owner: string; actionType: string; score: number; signals: string[]; }
 interface PriorityResult { jobId: string; jobNumber: string | null; score: number; level: "low"|"normal"|"high"|"critical"; factors: PriorityFactor[]; idleHours: number; hoursToPromise: number | null; isOverdue: boolean; nextAction: NextActionResult; }
+interface VehicleServiceHistoryLine { id: string; type: string; description: string | null; quantity: number | null; line_total: number | string | null; is_recommended: boolean | null; }
+interface VehicleServiceHistoryEntry {
+  id: string;
+  type: "job" | "manual";
+  job_id: string | null;
+  job_number: string | null;
+  status: JobStatus | null;
+  odometer_km: number | null;
+  summary: string | null;
+  service_date: string | null;
+  completed_at: string | null;
+  estimate_total: number | null;
+  estimate_lines: VehicleServiceHistoryLine[];
+  media_count: number;
+  dms_ro_number: string | null;
+  advisor?: Pick<UserType, "id" | "name" | "email"> | null;
+  technician?: Pick<UserType, "id" | "name" | "email"> | null;
+  inspection?: { id: string; status: string | null } | null;
+}
+interface VehicleServiceHistoryResponse {
+  totals: { jobs: number; closedJobs: number; revenue: number };
+  entries: VehicleServiceHistoryEntry[];
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -187,6 +210,8 @@ export default function JobDetailPage() {
   const [priority, setPriority] = useState<PriorityResult | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
   const [authStatus, setAuthStatus] = useState<JobAuthorisationStatus | null>(null);
+  const [serviceHistory, setServiceHistory] = useState<VehicleServiceHistoryResponse | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [inspectionRev, setInspectionRev] = useState(0);
   const [loading, setLoading] = useState(true);
   const [startingInspection, setStartingInspection] = useState(false);
@@ -313,6 +338,15 @@ export default function JobDetailPage() {
 
     setJob(data); fetchPriority(data.id);
     setAuthStatus(authRes?.data ?? null);
+    if (data.vehicle_id) {
+      setHistoryLoading(true);
+      api.get<VehicleServiceHistoryResponse>(`/vehicles/${data.vehicle_id}/service-history`)
+        .then((res) => setServiceHistory(res.data))
+        .catch(() => setServiceHistory(null))
+        .finally(() => setHistoryLoading(false));
+    } else {
+      setServiceHistory(null);
+    }
     if (data.inspection?.id) {
       const inspectionRes = await api.get(`/inspections/${data.inspection.id}`);
       setInspectionDetail(inspectionRes.data);
@@ -770,6 +804,9 @@ export default function JobDetailPage() {
           <TabsTrigger value="customer" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <User className="mr-2 h-4 w-4" /> Customer
           </TabsTrigger>
+          <TabsTrigger value="service-history" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <History className="mr-2 h-4 w-4" /> Service history
+          </TabsTrigger>
           <TabsTrigger value="estimate" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <Wrench className="mr-2 h-4 w-4" /> Quote & authorization
           </TabsTrigger>
@@ -936,6 +973,94 @@ export default function JobDetailPage() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="service-history" className="space-y-4">
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle className="text-lg">Vehicle service history</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  All previous jobs recorded for this vehicle, including concerns, odometer, quote value, inspection and media count.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[480px]">
+                <StatCard label="Visits" value={String(serviceHistory?.totals.jobs ?? 0)} />
+                <StatCard label="Closed jobs" value={String(serviceHistory?.totals.closedJobs ?? 0)} />
+                <StatCard label="Total quoted" value={`AED ${Number(serviceHistory?.totals.revenue ?? 0).toFixed(2)}`} />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 p-5">
+              {historyLoading ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">Loading service history...</div>
+              ) : serviceHistory?.entries?.length ? (
+                <div className="space-y-4">
+                  {serviceHistory.entries.map((entry) => (
+                    <div key={`${entry.type}-${entry.id}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-bold text-foreground">{entry.job_number || (entry.type === "manual" ? "Manual history" : "Job")}</span>
+                            {entry.status ? <StatusBadge status={entry.status} /> : null}
+                            {entry.dms_ro_number ? <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">RO {entry.dms_ro_number}</span> : null}
+                          </div>
+                          <p className="mt-3 text-base font-semibold text-foreground">{entry.summary || "No concern / summary recorded"}</p>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <span>Service date: {formatDate(entry.service_date, true)}</span>
+                            <span>Odometer: {entry.odometer_km ? `${new Intl.NumberFormat("en-GB").format(Number(entry.odometer_km))} km` : "-"}</span>
+                            <span>Advisor: {entry.advisor?.name || "-"}</span>
+                            <span>Technician: {entry.technician?.name || "-"}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center lg:min-w-[300px]">
+                          <div className="rounded-xl bg-muted p-3">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Quote</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{typeof entry.estimate_total === "number" ? `AED ${entry.estimate_total.toFixed(2)}` : "-"}</p>
+                          </div>
+                          <div className="rounded-xl bg-muted p-3">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Lines</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{entry.estimate_lines?.length ?? 0}</p>
+                          </div>
+                          <div className="rounded-xl bg-muted p-3">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Media</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{entry.media_count ?? 0}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {entry.estimate_lines?.length ? (
+                        <div className="mt-4 overflow-hidden rounded-xl border border-border">
+                          <div className="grid grid-cols-[1fr_90px_110px] bg-muted px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                            <span>Description</span><span className="text-right">Qty</span><span className="text-right">Total</span>
+                          </div>
+                          <div className="divide-y divide-border">
+                            {entry.estimate_lines.slice(0, 6).map((line) => (
+                              <div key={line.id} className="grid grid-cols-[1fr_90px_110px] gap-3 px-3 py-2 text-sm">
+                                <span className="truncate text-foreground">{line.description || line.type}</span>
+                                <span className="text-right text-muted-foreground">{line.quantity ?? "-"}</span>
+                                <span className="text-right font-semibold text-foreground">AED {Number(line.line_total ?? 0).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {entry.estimate_lines.length > 6 ? <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">+{entry.estimate_lines.length - 6} more lines</p> : null}
+                        </div>
+                      ) : null}
+
+                      {entry.job_id ? (
+                        <Button variant="outline" size="sm" className="mt-4 rounded-xl" onClick={() => router.push(`/jobs/${entry.job_id}`)}>
+                          Open job card
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
+                  No previous service history found for this vehicle yet.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
 
