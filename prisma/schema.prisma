@@ -1286,6 +1286,7 @@ model suppliers {
   email         String?   @db.VarChar(255)
   address       String?   @db.Text
   payment_terms String?   @db.VarChar(120)
+  is_active     Boolean?  @default(true)
   workshop_id   String?   @db.Char(36)
   created_at    DateTime? @default(now()) @db.DateTime(0)
   updated_at    DateTime? @default(now()) @db.DateTime(0)
@@ -1297,6 +1298,7 @@ model suppliers {
 
   @@index([workshop_id], map: "idx_suppliers_workshop")
   @@index([name], map: "idx_suppliers_name")
+  @@index([is_active], map: "idx_suppliers_active")
 }
 
 model warehouses {
