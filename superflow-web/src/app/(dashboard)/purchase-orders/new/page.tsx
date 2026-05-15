@@ -40,7 +40,7 @@ export default function NewPurchaseOrderPage() {
 
   const fetchSuppliers = useCallback(async () => {
     try {
-      const { data } = await api.get<PaginatedResponse<Supplier>>("/suppliers", { params: { limit: 200 } });
+      const { data } = await api.get<PaginatedResponse<Supplier>>("/suppliers", { params: { limit: 100 } });
       setSuppliers(data.data ?? data.items ?? []);
     } catch {
       toast.error("Failed to load suppliers");

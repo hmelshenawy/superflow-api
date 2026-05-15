@@ -98,7 +98,7 @@ export default function EditPartPage() {
   }, [fetchPart]);
 
   useEffect(() => {
-    api.get("/suppliers", { params: { limit: 200 } })
+    api.get("/suppliers", { params: { limit: 100 } })
       .then(({ data }) => {
         const list = Array.isArray(data) ? data : (data.data ?? data.items ?? []);
         setSuppliers(list);
