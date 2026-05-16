@@ -118,6 +118,58 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private normalizeWhatsAppRecipient(recipient?: string | null) {
+    const normalized = String(recipient || '')
+      .trim()
+      .replace(/^00/, '')
+      .replace(/\D/g, '');
+
+    if (!normalized) throw new Error('WhatsApp notification is missing recipient');
+
+    return normalized;
+  }
+
+  private async sendWhatsAppWithMeta(notification: any) {
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const version = process.env.WHATSAPP_API_VERSION || 'v21.0';
+
+    if (!phoneNumberId || !accessToken) return null;
+
+    const recipient = this.normalizeWhatsAppRecipient(notification.recipient);
+    const body = String(notification.body_rendered || notification.subject || 'PrioraFlow notification').slice(0, 4096);
+    const apiVersion = version.startsWith('v') ? version : `v${version}`;
+
+    const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: recipient,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body,
+        },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const text = await response.text();
+    if (!response.ok) throw new Error(`WhatsApp Cloud API ${response.status}: ${text}`);
+
+    try {
+      const json = JSON.parse(text || '{}');
+      return json.messages?.[0]?.id || null;
+    } catch {
+      return null;
+    }
+  }
+
   private async markSent(notification: any, provider: string, providerMessageId: string | null) {
     await this.prisma.raw.notifications.update({
       where: { id: notification.id },
@@ -141,6 +193,14 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
       if (resendMessageId !== null) {
         await this.markSent(notification, 'resend', resendMessageId);
         return { delivered: true, provider: 'resend', providerMessageId: resendMessageId };
+      }
+    }
+
+    if (notification.channel === 'whatsapp') {
+      const metaMessageId = await this.sendWhatsAppWithMeta(notification);
+      if (metaMessageId !== null) {
+        await this.markSent(notification, 'whatsapp_cloud', metaMessageId);
+        return { delivered: true, provider: 'whatsapp_cloud', providerMessageId: metaMessageId };
       }
     }
 
