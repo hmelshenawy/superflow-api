@@ -132,7 +132,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
   private async sendWhatsAppWithMeta(notification: any) {
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-    const version = process.env.WHATSAPP_API_VERSION || 'v21.0';
+    const version = process.env.WHATSAPP_API_VERSION || 'v25.0';
 
     if (!phoneNumberId || !accessToken) return null;
 
