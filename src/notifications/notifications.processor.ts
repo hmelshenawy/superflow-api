@@ -133,41 +133,86 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
     const version = process.env.WHATSAPP_API_VERSION || 'v25.0';
+    const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
 
     if (!phoneNumberId || !accessToken) return null;
 
     const recipient = this.normalizeWhatsAppRecipient(notification.recipient);
-    const body = String(notification.body_rendered || notification.subject || 'PrioraFlow notification').slice(0, 4096);
+    const body = String(notification.body_rendered || notification.subject || 'PrioraFlow notification');
     const apiVersion = version.startsWith('v') ? version : `v${version}`;
+    const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
 
-    const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    // Try template message first (required for numbers outside the 24-hour window),
+    // then fall back to text message if no template is configured.
+    const attempts: { type: string; payload: any }[] = [];
+
+    if (templateName) {
+      // Use the body text as a single parameter in the template.
+      // The template must have exactly one body variable: {{1}}
+      attempts.push({
+        type: 'template',
+        payload: {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: recipient,
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: 'en' },
+            components: [
+              {
+                type: 'body',
+                parameters: [{ type: 'text', text: body.slice(0, 3000) }],
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    // Free-form text only works within the 24-hour customer service window
+    attempts.push({
+      type: 'text',
+      payload: {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: recipient,
         type: 'text',
-        text: {
-          preview_url: false,
-          body,
-        },
-      }),
-      signal: AbortSignal.timeout(10_000),
+        text: { preview_url: false, body: body.slice(0, 4096) },
+      },
     });
 
-    const text = await response.text();
-    if (!response.ok) throw new Error(`WhatsApp Cloud API ${response.status}: ${text}`);
+    let lastError: string | null = null;
+    for (const attempt of attempts) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(attempt.payload),
+        signal: AbortSignal.timeout(10_000),
+      });
 
-    try {
-      const json = JSON.parse(text || '{}');
-      return json.messages?.[0]?.id || null;
-    } catch {
-      return null;
+      const text = await response.text();
+      if (response.ok) {
+        try {
+          const json = JSON.parse(text || '{}');
+          this.logger.log(`WhatsApp ${attempt.type} message sent to ${recipient}`);
+          return json.messages?.[0]?.id || null;
+        } catch {
+          return null;
+        }
+      }
+
+      lastError = `WhatsApp Cloud API ${attempt.type} ${response.status}: ${text}`;
+      this.logger.warn(lastError);
+
+      // If template fails, continue to text attempt. If text fails, throw.
+      if (attempt.type === 'template') continue;
     }
+
+    throw new Error(lastError || 'WhatsApp delivery failed');
   }
 
   private async markSent(notification: any, provider: string, providerMessageId: string | null) {
