@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Part, Inventory, StockMovement, JobPart, PaginatedResponse } from "@/types";
+import type { Part, PartFitment, Inventory, StockMovement, JobPart, PaginatedResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -24,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, ArrowLeft, Loader2, Pencil, Package, ArrowRightLeft, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, Pencil, Package, ArrowRightLeft, Wrench, Car, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PartsStockNav } from "@/components/parts-stock-nav";
 
@@ -79,6 +81,20 @@ export default function PartDetailPage() {
   const [movementsLimit] = useState(10);
   const [movementsLoading, setMovementsLoading] = useState(false);
 
+  // Fitments tab
+  const [fitments, setFitments] = useState<PartFitment[]>([]);
+  const [fitmentsLoading, setFitmentsLoading] = useState(false);
+  const [savingFitment, setSavingFitment] = useState(false);
+  const [fitmentForm, setFitmentForm] = useState({
+    make: "Mercedes-Benz",
+    model: "",
+    variant: "",
+    engine: "",
+    year_from: "",
+    year_to: "",
+    notes: "",
+  });
+
   // Jobs tab
   const [jobParts, setJobParts] = useState<JobPart[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -122,6 +138,59 @@ export default function PartDetailPage() {
     }
   }, [id, movementsPage, movementsLimit]);
 
+  const fetchFitments = useCallback(async () => {
+    setFitmentsLoading(true);
+    try {
+      const { data } = await api.get<PartFitment[]>(`/parts/${id}/fitments`);
+      setFitments(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Failed to load fitments");
+    } finally {
+      setFitmentsLoading(false);
+    }
+  }, [id]);
+
+  const addFitment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fitmentForm.make.trim()) {
+      toast.error("Vehicle make is required");
+      return;
+    }
+    setSavingFitment(true);
+    try {
+      await api.post(`/parts/${id}/fitments`, {
+        make: fitmentForm.make.trim(),
+        model: fitmentForm.model.trim() || undefined,
+        variant: fitmentForm.variant.trim() || undefined,
+        engine: fitmentForm.engine.trim() || undefined,
+        year_from: fitmentForm.year_from ? Number(fitmentForm.year_from) : undefined,
+        year_to: fitmentForm.year_to ? Number(fitmentForm.year_to) : undefined,
+        notes: fitmentForm.notes.trim() || undefined,
+      });
+      toast.success("Fitment added");
+      setFitmentForm({ make: "Mercedes-Benz", model: "", variant: "", engine: "", year_from: "", year_to: "", notes: "" });
+      fetchFitments();
+      fetchPart();
+    } catch (err: unknown) {
+      const { message } = getApiError(err);
+      toast.error(typeof message === "string" ? message : "Failed to add fitment");
+    } finally {
+      setSavingFitment(false);
+    }
+  };
+
+  const deleteFitment = async (fitmentId: string) => {
+    try {
+      await api.delete(`/parts/${id}/fitments/${fitmentId}`);
+      toast.success("Fitment removed");
+      fetchFitments();
+      fetchPart();
+    } catch (err: unknown) {
+      const { message } = getApiError(err);
+      toast.error(typeof message === "string" ? message : "Failed to remove fitment");
+    }
+  };
+
   const fetchJobParts = useCallback(async () => {
     setJobsLoading(true);
     try {
@@ -139,7 +208,8 @@ export default function PartDetailPage() {
   useEffect(() => {
     fetchPart();
     fetchInventory();
-  }, [fetchPart, fetchInventory]);
+    fetchFitments();
+  }, [fetchPart, fetchInventory, fetchFitments]);
 
   useEffect(() => {
     fetchMovements();
@@ -170,6 +240,7 @@ export default function PartDetailPage() {
   const totalReserved = (part.inventory ?? inventory).reduce((sum, inv) => sum + (inv.reserved_quantity ?? 0), 0);
   const isLowStock = part.min_stock != null && totalAvailable <= (part.min_stock ?? 0);
   const movementsTotalPages = Math.ceil(movementsTotal / movementsLimit);
+  const displayedFitments = fitments.length ? fitments : (part.part_fitments ?? []);
 
   return (
     <div className="space-y-6">
@@ -255,6 +326,9 @@ export default function PartDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="movements" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ArrowRightLeft className="mr-2 h-4 w-4" /> Movements
+          </TabsTrigger>
+          <TabsTrigger value="fitments" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <Car className="mr-2 h-4 w-4" /> Fitments
           </TabsTrigger>
           <TabsTrigger value="jobs" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <Wrench className="mr-2 h-4 w-4" /> Jobs
@@ -395,6 +469,148 @@ export default function PartDetailPage() {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        {/* Fitments tab */}
+        <TabsContent value="fitments" className="space-y-4">
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Vehicle Compatibility</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <form className="grid gap-4 lg:grid-cols-6" onSubmit={addFitment}>
+                <div className="space-y-1 lg:col-span-1">
+                  <Label htmlFor="fitmentMake">Make *</Label>
+                  <Input
+                    id="fitmentMake"
+                    value={fitmentForm.make}
+                    onChange={(e) => setFitmentForm((prev) => ({ ...prev, make: e.target.value }))}
+                    placeholder="Mercedes-Benz"
+                    required
+                  />
+                </div>
+                <div className="space-y-1 lg:col-span-1">
+                  <Label htmlFor="fitmentModel">Model</Label>
+                  <Input
+                    id="fitmentModel"
+                    value={fitmentForm.model}
+                    onChange={(e) => setFitmentForm((prev) => ({ ...prev, model: e.target.value }))}
+                    placeholder="C-Class"
+                  />
+                </div>
+                <div className="space-y-1 lg:col-span-1">
+                  <Label htmlFor="fitmentVariant">Variant / Chassis</Label>
+                  <Input
+                    id="fitmentVariant"
+                    value={fitmentForm.variant}
+                    onChange={(e) => setFitmentForm((prev) => ({ ...prev, variant: e.target.value }))}
+                    placeholder="W205 C200"
+                  />
+                </div>
+                <div className="space-y-1 lg:col-span-1">
+                  <Label htmlFor="fitmentEngine">Engine</Label>
+                  <Input
+                    id="fitmentEngine"
+                    value={fitmentForm.engine}
+                    onChange={(e) => setFitmentForm((prev) => ({ ...prev, engine: e.target.value }))}
+                    placeholder="M274 2.0L"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2 lg:col-span-1">
+                  <div className="space-y-1">
+                    <Label htmlFor="fitmentYearFrom">From</Label>
+                    <Input
+                      id="fitmentYearFrom"
+                      type="number"
+                      min="1900"
+                      max="2100"
+                      value={fitmentForm.year_from}
+                      onChange={(e) => setFitmentForm((prev) => ({ ...prev, year_from: e.target.value }))}
+                      placeholder="2015"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="fitmentYearTo">To</Label>
+                    <Input
+                      id="fitmentYearTo"
+                      type="number"
+                      min="1900"
+                      max="2100"
+                      value={fitmentForm.year_to}
+                      onChange={(e) => setFitmentForm((prev) => ({ ...prev, year_to: e.target.value }))}
+                      placeholder="2021"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end lg:col-span-1">
+                  <Button type="submit" className="w-full" disabled={savingFitment}>
+                    {savingFitment ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    Add
+                  </Button>
+                </div>
+                <div className="space-y-1 lg:col-span-6">
+                  <Label htmlFor="fitmentNotes">Notes</Label>
+                  <Input
+                    id="fitmentNotes"
+                    value={fitmentForm.notes}
+                    onChange={(e) => setFitmentForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Optional: front axle only, AMG package excluded, etc."
+                  />
+                </div>
+              </form>
+
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Make</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Variant / Chassis</TableHead>
+                      <TableHead>Engine</TableHead>
+                      <TableHead>Years</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fitmentsLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading fitments...
+                        </TableCell>
+                      </TableRow>
+                    ) : displayedFitments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                          No fitment rules yet. Keep generic parts empty, and add compatibility only when it matters.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      displayedFitments.map((fitment) => (
+                        <TableRow key={fitment.id}>
+                          <TableCell className="font-medium">{fitment.make}</TableCell>
+                          <TableCell>{fitment.model || "—"}</TableCell>
+                          <TableCell>{fitment.variant || "—"}</TableCell>
+                          <TableCell>{fitment.engine || "—"}</TableCell>
+                          <TableCell>
+                            {fitment.year_from || fitment.year_to
+                              ? `${fitment.year_from ?? "?"}–${fitment.year_to ?? "Present"}`
+                              : "—"}
+                          </TableCell>
+                          <TableCell className="max-w-[220px] truncate text-sm text-muted-foreground">{fitment.notes || "—"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" aria-label="Remove fitment" onClick={() => deleteFitment(fitment.id)}>
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Jobs tab */}

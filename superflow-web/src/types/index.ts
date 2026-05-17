@@ -227,6 +227,37 @@ export interface Job {
   inspection?: Inspection;
   media_files?: MediaFile[];
   job_status_history?: JobStatusHistory[];
+  job_concerns?: JobConcern[];
+  latest_portal_snapshot?: CustomerPortalSnapshot | null;
+}
+
+
+export interface JobConcern {
+  id: string;
+  job_id: string;
+  code: string | null;
+  title: string;
+  description: string | null;
+  status: string | null;
+  technician_finding: string | null;
+  work_note: string | null;
+  qc_note: string | null;
+  customer_decision: string | null;
+  sort_order: number | null;
+  inspection_response_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  media_files?: MediaFile[];
+  photos?: MediaFile[];
+}
+
+export interface CustomerPortalSnapshot {
+  id: string;
+  job_id: string;
+  version: number;
+  stage: string | null;
+  release_note: string | null;
+  released_at: string | null;
 }
 
 export interface JobStatusHistory {
@@ -304,7 +335,9 @@ export interface EstimateLine {
   job_id: string | null;
   inspection_response_id: string | null;
   quote_group_id: string | null;
+  concern_id?: string | null;
   quote_group?: QuoteGroup | null;
+  concern?: JobConcern | null;
   type: EstimateLineType;
   description: string | null;
   part_number: string | null;
@@ -341,6 +374,7 @@ export interface JobAuthorisationStatus {
     pending: number;
   };
   hasActiveToken: boolean;
+  latestSnapshot?: CustomerPortalSnapshot | null;
   latestToken: {
     id: string;
     issued_at: string | null;
@@ -514,6 +548,21 @@ export interface ApiErrorResponse {
 }
 
 // ─── Parts & Stock ───────────────────────────────────────
+export interface PartFitment {
+  id: string;
+  part_id: string;
+  make: string;
+  model: string | null;
+  variant: string | null;
+  engine: string | null;
+  year_from: number | null;
+  year_to: number | null;
+  notes: string | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Part {
   id: string;
   part_number: string | null;
@@ -532,6 +581,7 @@ export interface Part {
   updated_at: string;
   suppliers?: Supplier;
   inventory?: Inventory[];
+  part_fitments?: PartFitment[];
   _count?: { inventory: number };
 }
 

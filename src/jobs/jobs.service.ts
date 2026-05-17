@@ -182,7 +182,9 @@ export class JobsService {
         vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true, color: true } },
         users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
         users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
-        estimate_lines: { include: { quote_groups: true } },
+        estimate_lines: { include: { quote_groups: true, job_concerns: true } },
+        job_concerns: { include: { media_files: { where: { is_deleted: false }, orderBy: { uploaded_at: 'desc' } } }, orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
+        customer_portal_snapshots: { orderBy: { version: 'desc' }, take: 1 },
         inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
         media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
@@ -200,8 +202,51 @@ export class JobsService {
       advisor: job.users_jobs_advisor_idTousers,
       technician: job.users_jobs_technician_idTousers,
       inspection: job.inspections ? { ...job.inspections, responses: job.inspections.inspection_responses } : null,
-      estimate_lines: (job.estimate_lines ?? []).map((l: any) => ({ ...l, quote_group: l.quote_groups })),
+      estimate_lines: (job.estimate_lines ?? []).map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns })),
+      latest_portal_snapshot: job.customer_portal_snapshots?.[0] ?? null,
     };
+  }
+
+
+  async createConcern(jobId: string, dto: any) {
+    await this.findOne(jobId);
+    const count = await this.prisma.tenant.job_concerns.count({ where: { job_id: jobId } }).catch(() => 0);
+    return this.prisma.tenant.job_concerns.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        code: dto.code || `C${count + 1}`,
+        title: dto.title || 'Customer concern',
+        description: dto.description || null,
+        status: dto.status || 'reviewing',
+        technician_finding: dto.technician_finding || null,
+        work_note: dto.work_note || null,
+        qc_note: dto.qc_note || null,
+        sort_order: dto.sort_order ?? count,
+        inspection_response_id: dto.inspection_response_id || null,
+      },
+    });
+  }
+
+  async updateConcern(jobId: string, concernId: string, dto: any) {
+    await this.findOne(jobId);
+    const existing = await this.prisma.tenant.job_concerns.findFirst({ where: { id: concernId, job_id: jobId } });
+    if (!existing) throw new NotFoundException('Concern not found');
+    const data: any = { ...dto };
+    if (data.description === '') data.description = null;
+    if (data.technician_finding === '') data.technician_finding = null;
+    if (data.work_note === '') data.work_note = null;
+    if (data.qc_note === '') data.qc_note = null;
+    if (data.inspection_response_id === '') data.inspection_response_id = null;
+    return this.prisma.tenant.job_concerns.update({ where: { id: concernId }, data });
+  }
+
+  async removeConcern(jobId: string, concernId: string) {
+    await this.findOne(jobId);
+    const existing = await this.prisma.tenant.job_concerns.findFirst({ where: { id: concernId, job_id: jobId } });
+    if (!existing) throw new NotFoundException('Concern not found');
+    await this.prisma.tenant.estimate_lines.updateMany({ where: { concern_id: concernId }, data: { concern_id: null } });
+    return this.prisma.tenant.job_concerns.delete({ where: { id: concernId } });
   }
 
   async update(id: string, dto: UpdateJobDto, userId?: string) {
@@ -276,6 +321,7 @@ export class JobsService {
 
   async transition(id: string, dto: TransitionStatusDto, userId: string) {
     const job = await this.findOne(id);
+    if (job.status === dto.to_status) return job;
     if (!canTransition(job.status as any, dto.to_status as any)) {
       throw new BadRequestException(`Cannot transition from ${job.status} to ${dto.to_status}`);
     }

@@ -5,6 +5,7 @@ import { PartsAnalyticsService } from './parts-analytics.service';
 import { CreatePartDto } from './dto/create-part.dto';
 import { UpdatePartDto } from './dto/update-part.dto';
 import { ListPartsDto } from './dto/list-parts.dto';
+import { CreatePartFitmentDto, UpdatePartFitmentDto } from './dto/part-fitment.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, PARTS_READ, PARTS_CREATE, PARTS_UPDATE, PARTS_DELETE, STOCK_ANALYTICS } from '../common/permissions';
@@ -59,6 +60,28 @@ export class PartsController {
   @Get()
   @RequirePermission(PARTS_READ)
   findAll(@Query() query: ListPartsDto) { return this.service.findAll(query); }
+
+  @Get(':id/fitments')
+  @RequirePermission(PARTS_READ)
+  @ApiOperation({ summary: 'List vehicle fitments for a part' })
+  listFitments(@Param('id') id: string) { return this.service.listFitments(id); }
+
+  @Post(':id/fitments')
+  @RequirePermission(PARTS_UPDATE)
+  @ApiOperation({ summary: 'Add vehicle fitment to a part' })
+  createFitment(@Param('id') id: string, @Body() dto: CreatePartFitmentDto) { return this.service.createFitment(id, dto); }
+
+  @Patch(':id/fitments/:fitmentId')
+  @RequirePermission(PARTS_UPDATE)
+  @ApiOperation({ summary: 'Update vehicle fitment for a part' })
+  updateFitment(@Param('id') id: string, @Param('fitmentId') fitmentId: string, @Body() dto: UpdatePartFitmentDto) {
+    return this.service.updateFitment(id, fitmentId, dto);
+  }
+
+  @Delete(':id/fitments/:fitmentId')
+  @RequirePermission(PARTS_UPDATE)
+  @ApiOperation({ summary: 'Remove vehicle fitment from a part' })
+  removeFitment(@Param('id') id: string, @Param('fitmentId') fitmentId: string) { return this.service.removeFitment(id, fitmentId); }
 
   @Get(':id')
   @RequirePermission(PARTS_READ)

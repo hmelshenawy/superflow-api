@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import type { EstimateLine, EstimateLineType, JobAuthorisationDecision, QuoteGroup } from "@/types";
+import type { EstimateLine, EstimateLineType, JobAuthorisationDecision, JobConcern, QuoteGroup } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ChevronDown, ChevronRight, Plus, Trash2, XCircle } from "lucide-react";
+import { MediaUploader } from "@/components/media/media-uploader";
+import { MediaThumbnail } from "@/components/media/media-thumbnail";
+import { AlertTriangle, ChevronDown, ChevronRight, Image as ImageIcon, Plus, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_COLORS: Record<EstimateLineType, string> = {
@@ -27,6 +30,7 @@ interface Props {
   lines: EstimateLine[];
   onUpdate: () => void;
   inspection?: any | null;
+  jobConcerns?: JobConcern[];
   decisionByLine?: Record<string, JobAuthorisationDecision>;
 }
 
@@ -53,6 +57,8 @@ interface ConcernGroup {
   detail?: string;
   responseId: string | null;
   quoteGroupId: string | null;
+  concernId: string | null;
+  concern?: JobConcern | null;
   severity: ConcernSeverity;
   lines: EstimateLine[];
 }
@@ -114,11 +120,12 @@ function summarizeGroupDecision(lines: EstimateLine[], decisionByLine: Record<st
   return { decision: "mixed", comment, decidedAt };
 }
 
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, decisionByLine = {} }: Props) {
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [], decisionByLine = {} }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
   const [draftGroupTitle, setDraftGroupTitle] = useState("");
+  const [openMediaGroups, setOpenMediaGroups] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem(`estimate-collapsed-${jobId}`);
@@ -143,7 +150,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   // refresh after save), not on every parent re-render that creates a new array ref.
   // We compare a serialised fingerprint so optimistic local edits (e.g. group
   // rename) are not overwritten by the same server data re-rendering.
-  const incomingFingerprint = useMemo(() => JSON.stringify(initialLines.map((l: EstimateLine) => `${l.id}:${l.updated_at ?? l.created_at ?? ""}:${l.quote_group?.title ?? ""}`)), [initialLines]);
+  const incomingFingerprint = useMemo(() => JSON.stringify(initialLines.map((l: EstimateLine) => `${l.id}:${l.updated_at ?? l.created_at ?? ""}:${l.quote_group?.title ?? ""}:${l.concern_id ?? ""}`)), [initialLines]);
   useEffect(() => { setLines(normalizeLines(initialLines)); }, [incomingFingerprint]);
 
   useEffect(() => {
@@ -166,12 +173,21 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     setCollapsedGroups((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); try { localStorage.setItem(`estimate-collapsed-${jobId}`, JSON.stringify([...next])); } catch {} return next; });
   };
 
-  const addLine = (type: EstimateLineType = "labour", opts?: { inspectionResponseId?: string | null; quoteGroupId?: string | null }) => {
+  const toggleMediaGroup = (key: string) => {
+    setOpenMediaGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const addLine = (type: EstimateLineType = "labour", opts?: { inspectionResponseId?: string | null; quoteGroupId?: string | null; concernId?: string | null }) => {
     const isLabour = type === "labour";
     const newLine: EstimateLine = {
       id: crypto.randomUUID(), job_id: jobId,
       inspection_response_id: opts?.inspectionResponseId ?? null,
       quote_group_id: opts?.quoteGroupId ?? null,
+      concern_id: opts?.concernId ?? null,
       type, description: "", part_number: null, quantity: 1,
       unit_price: isLabour ? defaults.standard_labour_rate : 0,
       discount_pct: 0, tax_rate_pct: defaults.default_tax_rate,
@@ -208,21 +224,24 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
 
   const createCustomGroup = async () => {
     try {
-      const { data } = await api.post<QuoteGroup>("/estimates/groups", { job_id: jobId, title: "New group" });
-      const groupId = data.id;
+      const title = window.prompt("Customer concern name", "New customer concern");
+      if (!title) return;
+      const { data: concern } = await api.post<JobConcern>(`/jobs/${jobId}/concerns`, { title });
       const newLine: EstimateLine = {
         id: crypto.randomUUID(), job_id: jobId,
-        inspection_response_id: null, quote_group_id: groupId,
-        quote_group: { ...data },
-        type: "labour", description: "", part_number: null, quantity: 1,
+        inspection_response_id: null, quote_group_id: null, concern_id: concern.id,
+        concern,
+        type: "labour", description: "Initial checking / diagnosis", part_number: null, quantity: 1,
         unit_price: defaults.standard_labour_rate, discount_pct: 0,
         tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,
         is_recommended: false, sort_order: lines.length, added_by: null,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       };
       setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
+      toast.success("Customer concern group created with labour line");
+      onUpdate();
     } catch {
-      toast.error("Failed to create group");
+      toast.error("Failed to create concern group");
     }
   };
 
@@ -248,16 +267,35 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     }
   };
 
+  const updateConcernFeedback = async (concernId: string, form: HTMLFormElement) => {
+    const values = new FormData(form);
+    try {
+      await api.patch(`/jobs/${jobId}/concerns/${concernId}`, {
+        status: values.get("status") || undefined,
+        technician_finding: values.get("technician_finding") || "",
+        work_note: values.get("work_note") || "",
+        qc_note: values.get("qc_note") || "",
+      });
+      toast.success("Feedback saved inside quote group");
+      onUpdate();
+    } catch {
+      toast.error("Failed to save feedback");
+    }
+  };
+
   const concernGroups = useMemo(() => {
     const allResponses = inspection?.inspection_responses ?? inspection?.responses ?? [];
     const flaggedResponses = allResponses.filter((r: any) => { const s = resultToSeverity(r?.value, r?.urgency); return s === "amber" || s === "red"; });
 
+    const byConcernId = new Map<string, EstimateLine[]>();
     const byResponseId = new Map<string, EstimateLine[]>();
     const byQuoteGroupId = new Map<string, EstimateLine[]>();
     const generalLines: EstimateLine[] = [];
 
     for (const line of lines) {
-      if (line.inspection_response_id) {
+      if (line.concern_id) {
+        const b = byConcernId.get(line.concern_id) ?? []; b.push(line); byConcernId.set(line.concern_id, b);
+      } else if (line.inspection_response_id) {
         const b = byResponseId.get(line.inspection_response_id) ?? []; b.push(line); byResponseId.set(line.inspection_response_id, b);
       } else if (line.quote_group_id) {
         const b = byQuoteGroupId.get(line.quote_group_id) ?? []; b.push(line); byQuoteGroupId.set(line.quote_group_id, b);
@@ -266,11 +304,23 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       }
     }
 
-    const groups: ConcernGroup[] = flaggedResponses.map((r: any) => {
+    const groups: ConcernGroup[] = jobConcerns.map((c) => ({
+      key: c.id,
+      title: c.title || c.code || "Customer concern",
+      detail: c.technician_finding || c.description || undefined,
+      responseId: c.inspection_response_id ?? null,
+      quoteGroupId: null,
+      concernId: c.id,
+      concern: c,
+      severity: "other",
+      lines: byConcernId.get(c.id) ?? [],
+    }));
+
+    groups.push(...flaggedResponses.map((r: any) => {
       const severity = resultToSeverity(r?.value, r?.urgency) ?? "amber";
       const detail = [r?.tech_notes, r?.value ? `Result: ${r.value}` : null, r?.urgency && r.urgency !== "none" ? `Urgency: ${r.urgency}` : null].filter(Boolean).join(" • ");
-      return { key: r.id, title: r?.inspection_items?.label || "Inspection concern", detail, responseId: r.id, quoteGroupId: null, severity, lines: byResponseId.get(r.id) ?? [] };
-    });
+      return { key: r.id, title: r?.inspection_items?.label || "Inspection concern", detail, responseId: r.id, quoteGroupId: null, concernId: null, concern: null, severity, lines: byResponseId.get(r.id) ?? [] };
+    }));
 
     const seenGroupIds = new Set<string>();
     for (const line of lines) {
@@ -281,6 +331,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
           title: line.quote_group?.title || "Custom group",
           responseId: null,
           quoteGroupId: line.quote_group_id,
+          concernId: null,
+          concern: null,
           severity: "other",
           lines: byQuoteGroupId.get(line.quote_group_id) ?? [],
         });
@@ -294,7 +346,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       groups.push({
         key: "general", title: "General / Other",
         detail: groups.length === 0 ? "Add manual estimate items here." : "Items not linked to a checklist concern.",
-        responseId: null, quoteGroupId: null, severity: "other",
+        responseId: null, quoteGroupId: null, concernId: null, concern: null, severity: "other",
         lines: [...orphanLinkedLines, ...generalLines],
       });
     }
@@ -308,7 +360,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     });
 
     return groups;
-  }, [inspection, lines]);
+  }, [inspection, lines, jobConcerns]);
 
   const save = async () => {
     setSaving(true);
@@ -326,6 +378,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         is_recommended: Boolean(line.is_recommended),
         inspection_response_id: line.inspection_response_id ?? undefined,
         quote_group_id: line.quote_group_id ?? undefined,
+        concern_id: line.concern_id ?? undefined,
       }));
 
       await api.put(`/estimates/job/${jobId}/bulk`, { lines: payloadLines });
@@ -412,13 +465,13 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   </div>
                   {!isCollapsed && (
                   <>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId }); }}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId }); }}>
                       <Plus className="mr-1 h-4 w-4" /> Labour
                     </Button>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId }); }}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId }); }}>
                       <Plus className="mr-1 h-4 w-4" /> Part
                     </Button>
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId }); }}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId }); }}>
                       <Plus className="mr-1 h-4 w-4" /> Sublet
                     </Button>
                     {isCustom ? (
@@ -440,6 +493,53 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   {groupDecision.decidedAt ? <span>Reply: {new Date(groupDecision.decidedAt).toLocaleString("en-GB")}</span> : null}
                   {groupDecision.comment ? <p className="mt-1">Comment: {groupDecision.comment}</p> : null}
                 </div>
+              ) : null}
+              {!isCollapsed && group.concern ? (
+                <form className="mt-3 rounded-xl border border-border bg-card/80 p-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); updateConcernFeedback(group.concernId as string, event.currentTarget); }}>
+                  <div className="grid gap-3 lg:grid-cols-[160px_1fr_1fr_auto]">
+                    <div>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Concern status</p>
+                      <select name="status" defaultValue={group.concern.status || "reviewing"} className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm">
+                        <option value="reviewing">Initial checking</option>
+                        <option value="finding_ready">Tech feedback ready</option>
+                        <option value="priced">Needs approval</option>
+                        <option value="approved">Approved</option>
+                        <option value="declined">Declined</option>
+                        <option value="in_progress">Work in progress</option>
+                        <option value="qc_complete">QC complete</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Technician feedback</p>
+                      <Textarea name="technician_finding" defaultValue={group.concern.technician_finding || ""} placeholder="Finding / diagnosis for this concern" className="min-h-[72px] bg-background" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Work / QC note</p>
+                      <Textarea name="work_note" defaultValue={group.concern.work_note || ""} placeholder="Progress note" className="min-h-[72px] bg-background" />
+                      <input type="hidden" name="qc_note" value={group.concern.qc_note || ""} />
+                    </div>
+                    <div className="flex items-end justify-end gap-2">
+                      <MediaUploader jobId={jobId} concernId={group.concernId || undefined} onUploaded={onUpdate} compact label="Upload photo/video" />
+                      <Button type="button" variant="outline" size="sm" className="h-8 rounded-full px-3" onClick={(event) => { event.stopPropagation(); toggleMediaGroup(group.key); }}>
+                        <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> {group.concern.media_files?.length ?? 0}
+                      </Button>
+                      <Button type="submit" size="sm" className="h-8 rounded-lg bg-slate-950 text-white hover:bg-slate-800" onClick={(event) => event.stopPropagation()}>Save</Button>
+                    </div>
+                  </div>
+                  {openMediaGroups.has(group.key) ? (
+                    <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+                      {group.concern.media_files?.length ? (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                          {group.concern.media_files.map((file) => (
+                            <MediaThumbnail key={file.id} file={{ ...file, original_filename: file.original_filename || undefined, file_type: file.file_type || undefined, mime_type: file.mime_type || undefined, size_bytes: file.size_bytes == null ? undefined : Number(file.size_bytes), scan_status: file.scan_status || undefined }} onDeleted={onUpdate} />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No media uploaded for this concern yet.</p>
+                      )}
+                    </div>
+                  ) : null}
+                </form>
               ) : null}
             </div>
 
@@ -527,7 +627,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={createCustomGroup}>
-            <Plus className="mr-1 h-4 w-4" /> New group
+            <Plus className="mr-1 h-4 w-4" /> New customer concern
           </Button>
           <p className="ml-2 text-sm text-muted-foreground">
             Total: <span className="text-lg font-bold text-foreground">{defaults.currency} {total.toFixed(2)}</span>

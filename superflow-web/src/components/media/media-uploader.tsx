@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
 
-export function MediaUploader({ jobId, onUploaded }: { jobId: string; onUploaded: () => void }) {
+export function MediaUploader({ jobId, concernId, onUploaded, compact = false, label }: { jobId: string; concernId?: string; onUploaded: () => void; compact?: boolean; label?: string }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -18,6 +18,7 @@ export function MediaUploader({ jobId, onUploaded }: { jobId: string; onUploaded
         const form = new FormData();
         form.append("file", file);
         form.append("job_id", jobId);
+        if (concernId) form.append("concern_id", concernId);
         form.append("filename", file.name);
         form.append("mime_type", file.type || "application/octet-stream");
         form.append("file_type", file.type.startsWith("image/") ? "photo" : file.type.startsWith("video/") ? "video" : "document");
@@ -44,9 +45,9 @@ export function MediaUploader({ jobId, onUploaded }: { jobId: string; onUploaded
         className="hidden"
         onChange={(e) => uploadFiles(e.target.files)}
       />
-      <Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-        <Upload className="mr-2 h-4 w-4" />
-        {uploading ? "Uploading…" : "Upload Media"}
+      <Button size="sm" variant={compact ? "outline" : "default"} className={compact ? "h-8 w-8 rounded-full p-0" : undefined} onClick={() => inputRef.current?.click()} disabled={uploading} title={label || "Upload media"}>
+        <Upload className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+        {compact ? null : (uploading ? "Uploading…" : (label || "Upload Media"))}
       </Button>
     </div>
   );

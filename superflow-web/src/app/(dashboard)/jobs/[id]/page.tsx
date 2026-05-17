@@ -210,6 +210,7 @@ export default function JobDetailPage() {
   const [priority, setPriority] = useState<PriorityResult | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
   const [authStatus, setAuthStatus] = useState<JobAuthorisationStatus | null>(null);
+  const [releasingPortal, setReleasingPortal] = useState(false);
   const [serviceHistory, setServiceHistory] = useState<VehicleServiceHistoryResponse | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [inspectionRev, setInspectionRev] = useState(0);
@@ -250,12 +251,19 @@ export default function JobDetailPage() {
   const [editingConcern, setEditingConcern] = useState(false);
   const [draftConcern, setDraftConcern] = useState("");
   const [savingConcern, setSavingConcern] = useState(false);
+  const [newConcernTitle, setNewConcernTitle] = useState("");
+  const [newConcernFinding, setNewConcernFinding] = useState("");
+  const [savingStructuredConcern, setSavingStructuredConcern] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [editingPromise, setEditingPromise] = useState(false);
   const [draftPromise, setDraftPromise] = useState("");
   const [savingPromise, setSavingPromise] = useState(false);
+  const [editingCustomerContact, setEditingCustomerContact] = useState(false);
+  const [draftCustomerEmail, setDraftCustomerEmail] = useState("");
+  const [draftCustomerPhone, setDraftCustomerPhone] = useState("");
+  const [savingCustomerContact, setSavingCustomerContact] = useState(false);
 
   const saveConcern = async () => {
     if (!job) return;
@@ -269,6 +277,42 @@ export default function JobDetailPage() {
       toast.error("Failed to update concern");
     } finally {
       setSavingConcern(false);
+    }
+  };
+
+  const addStructuredConcern = async () => {
+    if (!job || !newConcernTitle.trim()) return;
+    setSavingStructuredConcern(true);
+    try {
+      await api.post(`/jobs/${job.id}/concerns`, {
+        title: newConcernTitle.trim(),
+        technician_finding: newConcernFinding.trim() || undefined,
+      });
+      setNewConcernTitle("");
+      setNewConcernFinding("");
+      await refreshJob();
+      toast.success("Concern added to portal draft");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to add concern");
+    } finally {
+      setSavingStructuredConcern(false);
+    }
+  };
+
+  const updateStructuredConcern = async (concernId: string, form: HTMLFormElement) => {
+    if (!job) return;
+    const values = new FormData(form);
+    try {
+      await api.patch(`/jobs/${job.id}/concerns/${concernId}`, {
+        status: values.get("status") || undefined,
+        technician_finding: values.get("technician_finding") || "",
+        work_note: values.get("work_note") || "",
+        qc_note: values.get("qc_note") || "",
+      });
+      await refreshJob();
+      toast.success("Technician feedback saved");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to save feedback");
     }
   };
 
@@ -299,6 +343,46 @@ export default function JobDetailPage() {
       toast.error("Failed to update promise time");
     } finally {
       setSavingPromise(false);
+    }
+  };
+
+  const saveCustomerContact = async () => {
+    if (!job?.customer?.id) return;
+    const email = draftCustomerEmail.trim();
+    const phone = draftCustomerPhone.trim();
+
+    setSavingCustomerContact(true);
+    try {
+      await api.patch(`/customers/${job.customer.id}`, {
+        email: email || undefined,
+        phone: phone || undefined,
+      });
+      await refreshJob();
+      setEditingCustomerContact(false);
+      toast.success("Customer contact updated");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to update customer contact");
+    } finally {
+      setSavingCustomerContact(false);
+    }
+  };
+
+
+  const releasePortalUpdate = async () => {
+    if (!job) return;
+    setReleasingPortal(true);
+    try {
+      const { data } = await api.post(`/jobs/${job.id}/portal-release`, { note: `Released from job workspace` });
+      await refreshJob();
+      const url = data?.portalUrl;
+      if (url && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url).catch(() => undefined);
+      }
+      toast.success(url ? "Portal update released. Link copied." : "Portal update released");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to release portal update");
+    } finally {
+      setReleasingPortal(false);
     }
   };
 
@@ -378,6 +462,11 @@ export default function JobDetailPage() {
     })();
     loadUsers();
   }, [id]);
+
+  useEffect(() => {
+    setDraftCustomerEmail(job?.customer?.email || "");
+    setDraftCustomerPhone(job?.customer?.phone || "");
+  }, [job?.customer?.email, job?.customer?.phone]);
 
   /* ── Auto-poll auth status only while active token exists ── */
   const prevAuthCounts = useRef<{ approved: number; declined: number; deferred: number } | null>(null);
@@ -527,8 +616,8 @@ export default function JobDetailPage() {
                     await api.patch(`/jobs/${job.id}/status`, { to_status: to });
                     await refreshJob();
                     toast.success(`Status changed to ${STATUS_META[to].label}`);
-                  } catch {
-                    toast.error("Failed to change status");
+                  } catch (err: any) {
+                    toast.error(getApiError(err).message || "Failed to change status");
                   } finally {
                     setChangingStatus(false);
                   }
@@ -551,8 +640,8 @@ export default function JobDetailPage() {
                       await api.patch(`/jobs/${job.id}/status`, { to_status: nextFlowStatus });
                       await refreshJob();
                       toast.success(`Status changed to ${STATUS_META[nextFlowStatus].label}`);
-                    } catch {
-                      toast.error("Failed to change status");
+                    } catch (err: any) {
+                      toast.error(getApiError(err).message || "Failed to change status");
                     } finally {
                       setChangingStatus(false);
                     }
@@ -677,12 +766,15 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
                 <ClipboardList className="mr-2 h-4 w-4" /> Inspection
               </Button>
               <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#media`)}>
                 <ImageIcon className="mr-2 h-4 w-4" /> Media
+              </Button>
+              <Button variant="outline" className="h-12 rounded-2xl border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100" onClick={releasePortalUpdate} disabled={releasingPortal}>
+                <Send className="mr-2 h-4 w-4" /> {releasingPortal ? "Releasing..." : "Release portal"}
               </Button>
               {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-12 rounded-2xl">Approval link</Button>}
             </div>
@@ -919,11 +1011,66 @@ export default function JobDetailPage() {
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
                   <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Phone</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.phone || "No phone"}</p>
+                  {editingCustomerContact ? (
+                    <Input
+                      className="h-9 text-right text-sm"
+                      placeholder="Customer phone / WhatsApp"
+                      value={draftCustomerPhone}
+                      onChange={(event) => setDraftCustomerPhone(event.target.value)}
+                    />
+                  ) : (
+                    <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.phone || "No phone"}</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
                   <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Email</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.email || "No email"}</p>
+                  {editingCustomerContact ? (
+                    <Input
+                      className="h-9 text-right text-sm"
+                      placeholder="customer@example.com"
+                      type="email"
+                      value={draftCustomerEmail}
+                      onChange={(event) => setDraftCustomerEmail(event.target.value)}
+                    />
+                  ) : (
+                    <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.email || "No email"}</p>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 py-3">
+                  {editingCustomerContact ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 rounded-lg"
+                        onClick={() => {
+                          setDraftCustomerEmail(job.customer?.email || "");
+                          setDraftCustomerPhone(job.customer?.phone || "");
+                          setEditingCustomerContact(false);
+                        }}
+                        disabled={savingCustomerContact}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="button" size="sm" className="h-8 rounded-lg" onClick={saveCustomerContact} disabled={savingCustomerContact || !job.customer?.id}>
+                        {savingCustomerContact ? "Saving…" : "Save contact"}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg"
+                      onClick={() => setEditingCustomerContact(true)}
+                      disabled={!job.customer?.id}
+                      title={!job.customer?.id ? "No customer is linked to this job" : undefined}
+                    >
+                      <Pencil className="mr-2 h-3.5 w-3.5" />
+                      Edit email / phone
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -972,6 +1119,83 @@ export default function JobDetailPage() {
                 </div>
               </div>
             </div>
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Customer portal concerns</CardTitle>
+              <p className="text-sm text-muted-foreground">Build the structured customer journey. These stay draft until you release the portal update.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+                <Input placeholder="Concern title e.g. Brake noise" value={newConcernTitle} onChange={(e) => setNewConcernTitle(e.target.value)} />
+                <Input placeholder="Technician finding (optional)" value={newConcernFinding} onChange={(e) => setNewConcernFinding(e.target.value)} />
+                <Button className="rounded-xl" onClick={addStructuredConcern} disabled={savingStructuredConcern || !newConcernTitle.trim()}>
+                  {savingStructuredConcern ? "Adding…" : "Add concern"}
+                </Button>
+              </div>
+              {job.job_concerns?.length ? (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {job.job_concerns.map((concern) => (
+                    <div key={concern.id} className="rounded-2xl border border-border bg-muted/40 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{concern.code || "Concern"}</p>
+                          <p className="mt-1 font-semibold text-foreground">{concern.title}</p>
+                        </div>
+                        <span className="rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">{concern.status || "reviewing"}</span>
+                      </div>
+
+                      <form className="mt-4 space-y-3" onSubmit={(event) => { event.preventDefault(); updateStructuredConcern(concern.id, event.currentTarget); }}>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Status</p>
+                            <Select name="status" defaultValue={concern.status || "reviewing"}>
+                              <SelectTrigger className="h-10 rounded-xl bg-card"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="reviewing">Reviewing</SelectItem>
+                                <SelectItem value="finding_ready">Finding ready</SelectItem>
+                                <SelectItem value="priced">Priced</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="declined">Declined</SelectItem>
+                                <SelectItem value="in_progress">In progress</SelectItem>
+                                <SelectItem value="qc_complete">QC complete</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-end justify-end">
+                            <MediaUploader jobId={job.id} concernId={concern.id} onUploaded={refreshJob} />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Technician finding / feedback</p>
+                          <Textarea name="technician_finding" defaultValue={concern.technician_finding || ""} placeholder="What did the technician find?" className="min-h-[80px] bg-card" />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Work progress note</p>
+                            <Textarea name="work_note" defaultValue={concern.work_note || ""} placeholder="What work is being done / progress update" className="min-h-[70px] bg-card" />
+                          </div>
+                          <div>
+                            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">QC / final note</p>
+                            <Textarea name="qc_note" defaultValue={concern.qc_note || ""} placeholder="QC result or final report note" className="min-h-[70px] bg-card" />
+                          </div>
+                        </div>
+                        {concern.media_files?.length ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {concern.media_files.map((file) => (
+                              <MediaThumbnail key={file.id} file={{ ...file, original_filename: file.original_filename || undefined, file_type: file.file_type || undefined, mime_type: file.mime_type || undefined, size_bytes: file.size_bytes == null ? undefined : Number(file.size_bytes), scan_status: file.scan_status || undefined }} onDeleted={refreshJob} />
+                            ))}
+                          </div>
+                        ) : null}
+                        <Button type="submit" size="sm" className="rounded-xl bg-slate-950 text-white hover:bg-slate-800">Save feedback</Button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">No structured concerns yet. Add one from customer complaint or technician finding.</div>
+              )}
+            </CardContent>
+          </Card>
           </div>
         </TabsContent>
 
@@ -1128,7 +1352,23 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent>
               <ComponentErrorBoundary label="Quote builder">
-                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
+                <div className="mb-4 rounded-2xl border border-border bg-muted/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Portal release control</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Customer sees the last released snapshot, not every draft change.</p>
+                    </div>
+                    <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={releasePortalUpdate} disabled={releasingPortal}>
+                      <Send className="mr-2 h-4 w-4" /> {releasingPortal ? "Releasing..." : "Release update"}
+                    </Button>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                    <div className="rounded-xl bg-card p-3"><span className="text-muted-foreground">Published version</span><p className="font-semibold">{job.latest_portal_snapshot?.version ? `v${job.latest_portal_snapshot.version}` : "Not released"}</p></div>
+                    <div className="rounded-xl bg-card p-3"><span className="text-muted-foreground">Stage</span><p className="font-semibold">{job.latest_portal_snapshot?.stage || "Draft"}</p></div>
+                    <div className="rounded-xl bg-card p-3"><span className="text-muted-foreground">Released</span><p className="font-semibold">{job.latest_portal_snapshot?.released_at ? formatDate(job.latest_portal_snapshot.released_at, true) : "—"}</p></div>
+                  </div>
+                </div>
+                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
               </ComponentErrorBoundary>
             </CardContent>
           </Card>
@@ -1239,7 +1479,7 @@ export default function JobDetailPage() {
               {job.media_files && job.media_files.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   {job.media_files.map((file: any) => (
-                    <MediaThumbnail key={file.id} file={file} onDeleted={refreshJob} />
+                    <MediaThumbnail key={file.id} file={{ ...file, original_filename: file.original_filename || undefined, file_type: file.file_type || undefined, mime_type: file.mime_type || undefined, size_bytes: file.size_bytes == null ? undefined : Number(file.size_bytes), scan_status: file.scan_status || undefined }} onDeleted={refreshJob} />
                   ))}
                 </div>
               ) : (

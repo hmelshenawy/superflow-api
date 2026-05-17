@@ -44,6 +44,21 @@ export class JobsController {
   @ApiOperation({ summary: 'Create job' })
   create(@Body() dto: CreateJobDto, @CurrentUser('sub') userId: string) { return this.service.create(dto, userId); }
 
+  @Post(':id/concerns')
+  @RequirePermission(JOBS_UPDATE)
+  @ApiOperation({ summary: 'Create a customer/job concern' })
+  createConcern(@Param('id') id: string, @Body() dto: any) { return this.service.createConcern(id, dto); }
+
+  @Patch(':id/concerns/:concernId')
+  @RequirePermission(JOBS_UPDATE)
+  @ApiOperation({ summary: 'Update a customer/job concern' })
+  updateConcern(@Param('id') id: string, @Param('concernId') concernId: string, @Body() dto: any) { return this.service.updateConcern(id, concernId, dto); }
+
+  @Delete(':id/concerns/:concernId')
+  @RequirePermission(JOBS_UPDATE)
+  @ApiOperation({ summary: 'Delete a customer/job concern' })
+  removeConcern(@Param('id') id: string, @Param('concernId') concernId: string) { return this.service.removeConcern(id, concernId); }
+
   @Patch(':id')
   @RequirePermission(JOBS_UPDATE)
   @ApiOperation({ summary: 'Update job' })

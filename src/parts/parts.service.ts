@@ -5,6 +5,7 @@ import { getWorkshopContext } from '../prisma/workshop-context';
 import { CreatePartDto } from './dto/create-part.dto';
 import { UpdatePartDto } from './dto/update-part.dto';
 import { ListPartsDto } from './dto/list-parts.dto';
+import { CreatePartFitmentDto, UpdatePartFitmentDto } from './dto/part-fitment.dto';
 
 @Injectable()
 export class PartsService {
@@ -77,6 +78,7 @@ export class PartsService {
         include: {
           suppliers: true,
           inventory: { include: { warehouses: true } },
+          part_fitments: true,
         },
         orderBy: { created_at: 'desc' },
       }),
@@ -92,6 +94,7 @@ export class PartsService {
       include: {
         suppliers: true,
         inventory: { include: { warehouses: true } },
+        part_fitments: { orderBy: [{ make: 'asc' }, { model: 'asc' }, { year_from: 'asc' }] },
       },
     });
     if (!part) throw new NotFoundException('Part not found');
@@ -104,6 +107,52 @@ export class PartsService {
       where: { id },
       data: dto,
     });
+  }
+
+  async listFitments(partId: string) {
+    await this.findOne(partId);
+    return this.prisma.tenant.part_fitments.findMany({
+      where: { part_id: partId },
+      orderBy: [{ make: 'asc' }, { model: 'asc' }, { year_from: 'asc' }],
+    });
+  }
+
+  async createFitment(partId: string, dto: CreatePartFitmentDto) {
+    await this.findOne(partId);
+    return this.prisma.tenant.part_fitments.create({
+      data: {
+        id: uuid(),
+        part_id: partId,
+        make: dto.make.trim(),
+        model: dto.model?.trim() || null,
+        variant: dto.variant?.trim() || null,
+        engine: dto.engine?.trim() || null,
+        year_from: dto.year_from ?? null,
+        year_to: dto.year_to ?? null,
+        notes: dto.notes?.trim() || null,
+      },
+    });
+  }
+
+  async updateFitment(partId: string, fitmentId: string, dto: UpdatePartFitmentDto) {
+    await this.findOne(partId);
+    return this.prisma.tenant.part_fitments.update({
+      where: { id: fitmentId },
+      data: {
+        make: dto.make?.trim(),
+        model: dto.model?.trim() || null,
+        variant: dto.variant?.trim() || null,
+        engine: dto.engine?.trim() || null,
+        year_from: dto.year_from ?? null,
+        year_to: dto.year_to ?? null,
+        notes: dto.notes?.trim() || null,
+      },
+    });
+  }
+
+  async removeFitment(partId: string, fitmentId: string) {
+    await this.findOne(partId);
+    return this.prisma.tenant.part_fitments.delete({ where: { id: fitmentId } });
   }
 
   async remove(id: string) {
@@ -127,6 +176,18 @@ export class PartsService {
           OR LOWER(COALESCE(p.part_number, '')) LIKE ${term}
           OR LOWER(COALESCE(p.barcode, '')) LIKE ${term}
           OR LOWER(COALESCE(p.brand, '')) LIKE ${term}
+          OR EXISTS (
+            SELECT 1
+            FROM part_fitments pf
+            WHERE pf.part_id = p.id
+              AND pf.workshop_id = ${workshopId}
+              AND (
+                LOWER(COALESCE(pf.make, '')) LIKE ${term}
+                OR LOWER(COALESCE(pf.model, '')) LIKE ${term}
+                OR LOWER(COALESCE(pf.variant, '')) LIKE ${term}
+                OR LOWER(COALESCE(pf.engine, '')) LIKE ${term}
+              )
+          )
         )
       ORDER BY p.created_at DESC
       LIMIT 20

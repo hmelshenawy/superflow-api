@@ -28,7 +28,8 @@ export class AuthorisationService {
           include: {
             customers: true,
             vehicles: true,
-            estimate_lines: { include: { quote_groups: true }, orderBy: { created_at: 'asc' } },
+            estimate_lines: { include: { quote_groups: true, job_concerns: true }, orderBy: { created_at: 'asc' } },
+            job_concerns: { include: { media_files: { where: { is_deleted: false }, orderBy: { uploaded_at: 'desc' } } }, orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
             users_jobs_advisor_idTousers: true,
             inspections: {
               include: {
@@ -77,6 +78,7 @@ export class AuthorisationService {
       }
     }
     rewriteMediaUrls(token.jobs?.media_files ?? []);
+    for (const concern of token.jobs?.job_concerns ?? []) rewriteMediaUrls((concern as any).media_files ?? []);
 
     return token;
   }
@@ -84,6 +86,7 @@ export class AuthorisationService {
   async validatePortalToken(rawToken: string) {
     const token = await this.prisma.raw.approval_tokens.findUnique({
       where: { token_hash: this.hashToken(rawToken) },
+      include: { jobs: { select: { id: true, workshop_id: true } } },
     });
     if (!token) throw new NotFoundException('Approval link not found');
     if (token.is_revoked) throw new BadRequestException('Approval link revoked');
@@ -193,6 +196,58 @@ export class AuthorisationService {
     };
   }
 
+
+  async releasePortalUpdate(jobId: string, releasedBy?: string, releaseNote?: string) {
+    const job = await this.prisma.tenant.jobs.findUnique({
+      where: { id: jobId },
+      include: { customers: true, vehicles: true, estimate_lines: true },
+    });
+    if (!job) throw new NotFoundException('Job not found');
+
+    const raw = crypto.randomBytes(32).toString('hex');
+    const token = await this.prisma.tenant.approval_tokens.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        token_hash: this.hashToken(raw),
+        channel: 'link' as any,
+        sent_to: job.customers?.email || job.customers?.phone || null,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const payload = await this.loadPortal(raw, false);
+    const latest = await this.prisma.tenant.customer_portal_snapshots.findFirst({
+      where: { job_id: jobId },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    }).catch(() => null);
+    const version = (latest?.version ?? 0) + 1;
+    const stage = (payload as any).stage || this.portalStageForStatus(job.status as any);
+
+    const snapshot = await this.prisma.tenant.customer_portal_snapshots.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        version,
+        stage,
+        payload_json: JSON.stringify(payload),
+        release_note: releaseNote || null,
+        released_by: releasedBy || null,
+      },
+    });
+
+    const baseUrl = process.env.CUSTOMER_PORTAL_URL || 'http://127.0.0.1:3002';
+    return {
+      tokenId: token.id,
+      snapshotId: snapshot.id,
+      version: snapshot.version,
+      stage: snapshot.stage,
+      releasedAt: snapshot.released_at,
+      portalUrl: `${baseUrl.replace(/\/$/, '')}/portal/${raw}`,
+    };
+  }
+
   async getAuthStatus(jobId: string) {
     const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
@@ -202,16 +257,28 @@ export class AuthorisationService {
           orderBy: { issued_at: 'desc' },
           include: { authorisation_decisions: true },
         },
+        customer_portal_snapshots: { orderBy: { version: 'desc' }, take: 1 },
       },
     });
     if (!job) throw new NotFoundException('Job not found');
 
     const latestToken = job.approval_tokens[0] ?? null;
-    const latestDecisions = latestToken?.authorisation_decisions ?? [];
+    // Customer decisions are immutable per estimate line across portal links.
+    // A job can have multiple released tokens over time, so staff status must
+    // aggregate decisions from all tokens, not only the newest link.
     const activeLineIds = new Set(job.estimate_lines.map((line: (typeof job.estimate_lines)[number]) => line.id));
-    const activeDecisions = latestDecisions.filter((decision: (typeof latestDecisions)[number]) =>
-      Boolean(decision.estimate_line_id) && activeLineIds.has(decision.estimate_line_id as string),
-    );
+    const allTokenDecisions = job.approval_tokens.flatMap((token: any) => token.authorisation_decisions ?? []);
+    const decisionByActiveLine = new Map<string, any>();
+    for (const decision of allTokenDecisions) {
+      if (!decision.estimate_line_id || !activeLineIds.has(decision.estimate_line_id)) continue;
+      const existing = decisionByActiveLine.get(decision.estimate_line_id);
+      if (!existing || new Date(decision.decided_at ?? 0).getTime() < new Date(existing.decided_at ?? 0).getTime()) {
+        decisionByActiveLine.set(decision.estimate_line_id, decision);
+      }
+    }
+    const activeDecisions = Array.from(decisionByActiveLine.values());
+    const latestDecisionToken = job.approval_tokens.find((token: any) => (token.authorisation_decisions ?? []).length > 0) ?? latestToken;
+    const latestDecisions = activeDecisions;
     const counts = {
       totalLines: job.estimate_lines.length,
       approved: activeDecisions.filter((d: (typeof activeDecisions)[number]) => d.decision === 'approved').length,
@@ -237,14 +304,15 @@ export class AuthorisationService {
 
     // The frontend polls with this flag instead of raw job status because a job
     // can still be estimate_sent while the latest portal token is expired/used.
-    const hasActiveToken = latestToken
-      ? !latestToken.is_revoked && (!latestToken.expires_at || new Date(latestToken.expires_at) > new Date()) && !latestToken.used_at
-      : false;
+    const hasActiveToken = job.approval_tokens.some((token: any) =>
+      !token.is_revoked && (!token.expires_at || new Date(token.expires_at) > new Date()) && !token.used_at,
+    );
 
     return {
       jobId,
       counts,
       hasActiveToken,
+      latestSnapshot: job.customer_portal_snapshots?.[0] ?? null,
       latestToken: latestToken
         ? {
             id: latestToken.id,
@@ -257,10 +325,57 @@ export class AuthorisationService {
         : null,
       decisions: latestDecisions,
       decisionByLine,
+      decisionToken: latestDecisionToken
+        ? {
+            id: latestDecisionToken.id,
+            issued_at: latestDecisionToken.issued_at,
+            expires_at: latestDecisionToken.expires_at,
+            first_opened_at: latestDecisionToken.first_opened_at,
+            used_at: latestDecisionToken.used_at,
+            is_revoked: latestDecisionToken.is_revoked,
+          }
+        : null,
     };
   }
 
-  async loadPortal(rawToken: string) {
+
+  private rewriteSnapshotMediaUrls(payload: any, rawToken: string) {
+    const visit = (value: any) => {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      if (value.id && ('mime_type' in value || 'filename' in value) && ('url' in value)) {
+        value.url = `/api/portal/${rawToken}/media/${value.id}`;
+      }
+      Object.values(value).forEach(visit);
+    };
+    visit(payload);
+  }
+
+  private portalStageForStatus(status?: string | null) {
+    if (status === 'estimate_sent') return 'approval_needed';
+    if (status === 'approved' || status === 'in_progress' || status === 'waiting_parts') return 'work_in_progress';
+    if (status === 'quality_check' || status === 'ready' || status === 'closed') return 'final_report';
+    return 'initial_findings';
+  }
+
+  private async getImmutableLineDecisions(jobId?: string | null) {
+    if (!jobId) return [];
+    const rows = await this.prisma.tenant.authorisation_decisions.findMany({
+      where: { approval_tokens: { job_id: jobId } },
+      orderBy: { decided_at: 'asc' },
+    });
+    const byLine = new Map<string, any>();
+    for (const row of rows) {
+      if (!row.estimate_line_id || byLine.has(row.estimate_line_id)) continue;
+      byLine.set(row.estimate_line_id, row);
+    }
+    return Array.from(byLine.values());
+  }
+
+  async loadPortal(rawToken: string, preferSnapshot = true) {
     const token = await this.getValidTokenByRaw(rawToken);
 
     // Portal requests have no JWT, so the workshop context is not set by the
@@ -273,7 +388,42 @@ export class AuthorisationService {
         ? await this.prisma.tenant.settings.findFirst({ where: { key: 'currency' } }).catch(() => null)
         : null;
 
-      if (!token.first_opened_at) {
+      if (preferSnapshot && token.job_id) {
+        const snapshot = await this.prisma.tenant.customer_portal_snapshots.findFirst({
+          where: { job_id: token.job_id },
+          orderBy: { version: 'desc' },
+        }).catch(() => null);
+        if (snapshot?.payload_json) {
+          if (!token.first_opened_at) {
+            await this.prisma.tenant.approval_tokens.update({
+              where: { id: token.id },
+              data: { first_opened_at: new Date() },
+            }).catch(() => {});
+          }
+          const payload = JSON.parse(snapshot.payload_json);
+          this.rewriteSnapshotMediaUrls(payload, rawToken);
+          const existingDecisions = await this.getImmutableLineDecisions(token.job_id);
+          return {
+            ...payload,
+            token: {
+              expires_at: token.expires_at,
+              first_opened_at: token.first_opened_at,
+              used_at: token.used_at,
+              is_revoked: token.is_revoked,
+            },
+            existing_decisions: existingDecisions,
+            released_snapshot: {
+              id: snapshot.id,
+              version: snapshot.version,
+              stage: snapshot.stage,
+              released_at: snapshot.released_at,
+              release_note: snapshot.release_note,
+            },
+          };
+        }
+      }
+
+      if (preferSnapshot && !token.first_opened_at) {
         await this.prisma.tenant.approval_tokens.update({
           where: { id: token.id },
           data: { first_opened_at: new Date() },
@@ -322,7 +472,7 @@ export class AuthorisationService {
     const byGroup = new Map<string, any[]>();
     const generalLines: any[] = [];
     for (const line of lines) {
-      const gid = line.quote_group_id || line.inspection_response_id;
+      const gid = line.concern_id || line.quote_group_id || line.inspection_response_id;
       if (gid) {
         if (!byGroup.has(gid)) byGroup.set(gid, []);
         byGroup.get(gid)!.push(line);
@@ -330,22 +480,61 @@ export class AuthorisationService {
         generalLines.push(line);
       }
     }
-    // Link groups to findings
+    // Link groups to customer concerns first, then inspection findings.
     const findingMap = new Map(inspectionFindings.map((f) => [f.id, f]));
+    const concernMap = new Map((token.jobs?.job_concerns ?? []).map((c: any) => [c.id, c]));
     for (const [gid, gLines] of byGroup) {
-      const finding = findingMap.get(gid);
+      const concern: any = concernMap.get(gid);
+      const finding = concern ? {
+        id: concern.id,
+        label: concern.title || concern.code || 'Customer concern',
+        value: concern.status,
+        urgency: null,
+        severity: null,
+        tech_notes: concern.technician_finding || concern.description || null,
+        photos: (concern.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
+      } : findingMap.get(gid);
       const typeOrder: Record<string, number> = { labour: 0, part: 1, sublet: 2 };
       gLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
       grouped.push({
         key: gid,
-        title: gLines[0]?.quote_groups?.title || finding?.label || 'Quote items',
+        title: concern?.title || gLines[0]?.quote_groups?.title || finding?.label || 'Quote items',
         severity: finding?.severity || null,
         finding: finding || null,
-        isCustom: Boolean(gLines[0]?.quote_group_id),
+        concern: concern ? {
+          id: concern.id, code: concern.code, title: concern.title, status: concern.status,
+          technician_finding: concern.technician_finding, work_note: concern.work_note, qc_note: concern.qc_note,
+        } : null,
+        isCustom: Boolean(gLines[0]?.quote_group_id || concern),
         lines: gLines,
         total: gLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
       });
     }
+    for (const concern of token.jobs?.job_concerns ?? []) {
+      if (byGroup.has(concern.id)) continue;
+      grouped.push({
+        key: concern.id,
+        title: concern.title || concern.code || 'Customer concern',
+        severity: null,
+        finding: {
+          id: concern.id,
+          label: concern.title || concern.code || 'Customer concern',
+          value: concern.status,
+          urgency: null,
+          severity: null,
+          tech_notes: concern.technician_finding || concern.description || null,
+          photos: (concern.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
+        },
+        concern: {
+          id: concern.id, code: concern.code, title: concern.title, status: concern.status,
+          technician_finding: concern.technician_finding, work_note: concern.work_note, qc_note: concern.qc_note,
+        },
+        isCustom: true,
+        lines: [],
+        total: 0,
+      });
+    }
+
     if (generalLines.length > 0) {
       const typeOrder: Record<string, number> = { labour: 0, part: 1, sublet: 2 };
       generalLines.sort((a, b) => (typeOrder[a.type] ?? 3) - (typeOrder[b.type] ?? 3));
@@ -386,11 +575,24 @@ export class AuthorisationService {
         customer: token.jobs?.customers,
         vehicle: token.jobs?.vehicles,
       },
+      stage: this.portalStageForStatus(token.jobs?.status),
+      concerns: (token.jobs?.job_concerns ?? []).map((c: any) => ({
+        id: c.id,
+        code: c.code,
+        title: c.title,
+        description: c.description,
+        status: c.status,
+        technician_finding: c.technician_finding,
+        work_note: c.work_note,
+        qc_note: c.qc_note,
+        customer_decision: c.customer_decision,
+        photos: (c.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
+      })),
       findings: inspectionFindings.length ? inspectionFindings : undefined,
       job_photos: (token.jobs?.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
       grouped_estimate: grouped,
       grand_total: lines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
-      existing_decisions: token.authorisation_decisions,
+      existing_decisions: await this.getImmutableLineDecisions(token.job_id),
       currency: currencyRow?.value || 'AED',
     };
     });
@@ -398,7 +600,6 @@ export class AuthorisationService {
 
   async decideFromPortal(rawToken: string, dto: DecideDto, ip: string, userAgent?: string) {
     const token = await this.getValidTokenByRaw(rawToken);
-    if (token.used_at) throw new BadRequestException('Approval link already used');
     if (!dto.decisions.length) throw new BadRequestException('No decisions provided');
 
     const portalLines = token.jobs?.estimate_lines || [];
@@ -407,6 +608,20 @@ export class AuthorisationService {
       if (!allowedLineIds.has(item.estimate_line_id)) {
         throw new BadRequestException(`Estimate line ${item.estimate_line_id} does not belong to this job`);
       }
+    }
+
+    // A customer's decision for an estimate line is final. New portal releases
+    // can ask for decisions on newly added lines, but they must not overwrite
+    // previously approved/rejected/deferred items from older links.
+    const existingLineDecision = await this.prisma.raw.authorisation_decisions.findFirst({
+      where: {
+        estimate_line_id: { in: dto.decisions.map((item) => item.estimate_line_id) },
+        approval_tokens: { job_id: token.job_id },
+      },
+      select: { estimate_line_id: true },
+    });
+    if (existingLineDecision?.estimate_line_id) {
+      throw new BadRequestException('One or more estimate lines were already decided and cannot be changed. Please refresh the portal.');
     }
 
     // Portal requests have no JWT, so the workshop context is not set by the

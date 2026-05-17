@@ -36,6 +36,7 @@ import {
   getPromisedLabel,
   getPriorityTone,
   getActionUrgencyClass,
+  getValidTransitions,
 } from "@/lib/jobs-data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -223,11 +224,16 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
   const moveJobToStatus = async (jobId: string, nextStatus: JobStatus) => {
     const currentJob = jobs.find((job) => job.id === jobId);
     if (!currentJob || currentJob.status === nextStatus) return;
+    if (!getValidTransitions(currentJob.status).includes(nextStatus)) {
+      toast.error(`Cannot move from ${STATUS_META[currentJob.status].label} to ${STATUS_META[nextStatus].label}`);
+      setDraggedJobId(null); setDropColumn(null);
+      return;
+    }
     const previousJobs = jobs;
     setJobs(jobs.map((job) => job.id === jobId ? { ...job, status: nextStatus } : job));
     setUpdatingJobId(jobId); setDraggedJobId(null); setDropColumn(null);
     try { await api.patch(`/jobs/${jobId}/status`, { to_status: nextStatus }); toast.success(`${currentJob.job_number || "Job"} moved to ${STATUS_META[nextStatus].label}`); await fetchJobs(); }
-    catch { setJobs(previousJobs); toast.error("Failed to update job status"); }
+    catch (err: any) { setJobs(previousJobs); toast.error(getApiError(err).message || "Failed to update job status"); }
     finally { setUpdatingJobId(null); }
   };
 

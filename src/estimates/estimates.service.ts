@@ -34,6 +34,7 @@ export class EstimatesService {
         tax_amount: taxAmount, is_recommended: dto.is_recommended ?? false,
         inspection_response_id: dto.inspection_response_id,
         quote_group_id: dto.quote_group_id,
+        concern_id: dto.concern_id,
         added_by: userId,
       },
     });
@@ -42,10 +43,10 @@ export class EstimatesService {
   async findByJob(jobId: string) {
     const lines = await this.prisma.tenant.estimate_lines.findMany({
       where: { job_id: jobId },
-      include: { quote_groups: true },
+      include: { quote_groups: true, job_concerns: true },
       orderBy: { sort_order: 'asc' },
     });
-    return lines.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
+    return lines.map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns }));
   }
 
   async getDefaults() {
@@ -178,6 +179,7 @@ export class EstimatesService {
           added_by: userId,
           inspection_response_id: l.inspection_response_id || null,
           quote_group_id: l.quote_group_id || null,
+          concern_id: l.concern_id || null,
         };
 
         if (l.id && existingIds.has(l.id)) {
@@ -218,6 +220,7 @@ export class EstimatesService {
               job_id: null,
               inspection_response_id: null,
               quote_group_id: null,
+              concern_id: null,
               sort_order: preservedSortOrder++,
             },
           });
@@ -230,10 +233,10 @@ export class EstimatesService {
 
       const saved = await tx.estimate_lines.findMany({
         where: { job_id: jobId },
-        include: { quote_groups: true },
+        include: { quote_groups: true, job_concerns: true },
         orderBy: { sort_order: 'asc' },
       });
-      return saved.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
+      return saved.map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns }));
     });
   }
 

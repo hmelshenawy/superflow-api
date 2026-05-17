@@ -19,3 +19,6 @@ scripts
 reset-pwd.js
 .claude
 coverage
+src/_parts-root-backup-fitments-*
+prisma/migrations.root-backup-fitments-*
+.openclaw-backups

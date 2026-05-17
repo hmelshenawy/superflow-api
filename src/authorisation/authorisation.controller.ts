@@ -7,9 +7,11 @@ import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, AUTH_REQUEST, AUTH_STATUS } from '../common/permissions';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequirePlanFeature } from '../common/plan-features';
 import { MediaService } from '../media/media.service';
 import { Request, Response } from 'express';
+import { runWithWorkshop } from '../prisma/workshop-context';
 
 @ApiTags('Authorisation')
 @ApiBearerAuth()
@@ -31,6 +33,14 @@ export class AuthorisationController {
   @ApiOperation({ summary: 'Check authorisation status for a job (staff)' })
   status(@Param('id') jobId: string) {
     return this.service.getAuthStatus(jobId);
+  }
+
+  @Post(':id/portal-release')
+  @RequirePlanFeature('customer_approval')
+  @RequirePermission(AUTH_REQUEST)
+  @ApiOperation({ summary: 'Publish the current customer portal snapshot for a job' })
+  releasePortal(@Param('id') jobId: string, @Body() body: { note?: string }, @CurrentUser('sub') userId: string) {
+    return this.service.releasePortalUpdate(jobId, userId, body?.note);
   }
 }
 
@@ -59,8 +69,9 @@ export class PortalAuthorisationController {
   @Get(':token/media/:mediaId')
   @ApiOperation({ summary: 'Proxy media file for customer portal (no JWT)' })
   async proxyMedia(@Param('token') token: string, @Param('mediaId') mediaId: string, @Res() res: Response) {
-    await this.service.validatePortalToken(token);
-    const file = await this.mediaService.getDownloadStream(mediaId);
+    const portalToken = await this.service.validatePortalToken(token);
+    const workshopId = (portalToken as any).jobs?.workshop_id;
+    const file = await runWithWorkshop({ workshopId, isPlatformAdmin: false }, () => this.mediaService.getDownloadStream(mediaId));
     res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${(file.filename || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')}"`);
     const { Readable } = await import('stream');

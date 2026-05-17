@@ -33,6 +33,8 @@ model workshops {
   authorisation_decisions authorisation_decisions[]
   booking_import_templates booking_import_templates[]
   customers              customers[]
+  job_concerns           job_concerns[]
+  customer_portal_snapshots customer_portal_snapshots[]
   deferred_work          deferred_work[]
   deferred_work_reminders deferred_work_reminders[]
   estimate_line_history  estimate_line_history[]
@@ -58,6 +60,7 @@ model workshops {
   suppliers              suppliers[]
   warehouses            warehouses[]
   parts                  parts[]
+  part_fitments          part_fitments[]
   inventory              inventory[]
   stock_movements        stock_movements[]
   job_parts              job_parts[]
@@ -395,11 +398,61 @@ model estimate_line_history {
   @@index([workshop_id], map: "idx_elh_workshop")
 }
 
+model job_concerns {
+  id                     String                  @id @db.Char(36)
+  job_id                 String                  @db.Char(36)
+  code                   String?                 @db.VarChar(10)
+  title                  String                  @db.VarChar(180)
+  description            String?                 @db.Text
+  status                 String?                 @default("reviewing") @db.VarChar(40)
+  technician_finding     String?                 @db.Text
+  work_note              String?                 @db.Text
+  qc_note                String?                 @db.Text
+  customer_decision      String?                 @db.VarChar(20)
+  sort_order             Int?                    @default(0) @db.SmallInt
+  inspection_response_id String?                 @db.Char(36)
+  workshop_id            String?                 @db.Char(36)
+  created_at             DateTime?               @default(now()) @db.DateTime(0)
+  updated_at             DateTime?               @default(now()) @db.DateTime(0)
+
+  jobs                   jobs                    @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_jc_job")
+  inspection_responses   inspection_responses?   @relation(fields: [inspection_response_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jc_response")
+  estimate_lines         estimate_lines[]
+  workshops              workshops?              @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jc_workshop")
+  media_files            media_files[]
+
+  @@index([job_id], map: "idx_jc_job")
+  @@index([inspection_response_id], map: "idx_jc_response")
+  @@index([workshop_id], map: "idx_jc_workshop")
+}
+
+model customer_portal_snapshots {
+  id            String    @id @db.Char(36)
+  job_id        String    @db.Char(36)
+  version       Int       @db.Int
+  stage         String?   @db.VarChar(40)
+  payload_json  String    @db.LongText
+  release_note  String?   @db.Text
+  released_by   String?   @db.Char(36)
+  workshop_id   String?   @db.Char(36)
+  released_at   DateTime? @default(now()) @db.DateTime(0)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+
+  jobs          jobs      @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_cps_job")
+  workshops     workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_cps_workshop")
+
+  @@unique([job_id, version], map: "uk_cps_job_version")
+  @@index([job_id], map: "idx_cps_job")
+  @@index([workshop_id], map: "idx_cps_workshop")
+  @@index([released_at], map: "idx_cps_released_at")
+}
+
 model estimate_lines {
   id                      String                    @id @db.Char(36)
   job_id                  String?                   @db.Char(36)
   inspection_response_id  String?                   @db.Char(36)
   quote_group_id          String?                   @db.Char(36)
+  concern_id              String?                   @db.Char(36)
   type                    estimate_lines_type
   description             String?                   @db.Text
   part_number             String?                   @db.VarChar(60)
@@ -421,10 +474,12 @@ model estimate_lines {
   users                   users?                    @relation(fields: [added_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_added_by")
   jobs                    jobs?                     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_job")
   inspection_responses    inspection_responses?     @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_response")
+  job_concerns            job_concerns?             @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_el_concern")
   quote_groups            quote_groups?             @relation(fields: [quote_group_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_el_quote_group")
   workshops               workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_workshop")
 
   @@index([added_by], map: "fk_el_added_by")
+  @@index([concern_id], map: "idx_el_concern")
   @@index([inspection_response_id], map: "fk_el_response")
   @@index([job_id], map: "idx_el_job")
   @@index([is_recommended], map: "idx_el_recommended")
@@ -482,6 +537,7 @@ model inspection_responses {
   media_count      Int?                          @default(0) @db.TinyInt
   recorded_at      DateTime?                     @default(now()) @db.DateTime(0)
   estimate_lines   estimate_lines[]
+  job_concerns     job_concerns[]
   inspections      inspections?                  @relation(fields: [inspection_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_inspection")
   inspection_items inspection_items?             @relation(fields: [item_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_item")
   media_files      media_files[]
@@ -648,6 +704,8 @@ model jobs {
   deferred_work_deferred_work_original_job_idTojobs deferred_work[]           @relation("deferred_work_original_job_idTojobs")
   estimate_lines                                    estimate_lines[]
   quote_groups                                      quote_groups[]
+  job_concerns                                      job_concerns[]
+  customer_portal_snapshots                         customer_portal_snapshots[]
   inspections                                       inspections?
   job_status_history                                job_status_history[]
   users_jobs_advisor_idTousers                      users?                    @relation("jobs_advisor_idTousers", fields: [advisor_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_advisor")
@@ -695,6 +753,7 @@ model media_files {
   id                     String                   @id @db.Char(36)
   job_id                 String?                  @db.Char(36)
   inspection_response_id String?                  @db.Char(36)
+  concern_id             String?                  @db.Char(36)
   uploaded_by            String?                  @db.Char(36)
   workshop_id            String?                  @db.Char(36)
   s3_bucket              String?                  @db.VarChar(100)
@@ -712,11 +771,13 @@ model media_files {
   uploaded_at            DateTime?                @default(now()) @db.DateTime(0)
   jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_job")
   inspection_responses   inspection_responses?    @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_response")
+  job_concerns           job_concerns?            @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_mf_concern")
   users                  users?                   @relation(fields: [uploaded_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_uploaded_by")
   workshops              workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_workshop")
 
   @@index([uploaded_by], map: "fk_mf_uploaded_by")
   @@index([job_id], map: "idx_media_job")
+  @@index([concern_id], map: "idx_media_concern")
   @@index([inspection_response_id], map: "idx_media_response")
   @@index([scan_status], map: "idx_media_scan")
   @@index([workshop_id], map: "idx_media_workshop")
@@ -1340,6 +1401,7 @@ model parts {
   job_parts             job_parts[]
   stock_movements       stock_movements[]
   purchase_order_items  purchase_order_items[]
+  part_fitments         part_fitments[]
 
   suppliers suppliers? @relation(fields: [supplier_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_parts_supplier")
   workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_parts_workshop")
@@ -1349,6 +1411,29 @@ model parts {
   @@index([category], map: "idx_parts_category")
   @@index([part_number], map: "idx_parts_part_number")
   @@index([is_active], map: "idx_parts_active")
+}
+
+model part_fitments {
+  id            String    @id @db.Char(36)
+  part_id       String    @db.Char(36)
+  make          String    @db.VarChar(80)
+  model         String?   @db.VarChar(120)
+  variant       String?   @db.VarChar(120)
+  engine        String?   @db.VarChar(120)
+  year_from     Int?      @db.SmallInt
+  year_to       Int?      @db.SmallInt
+  notes         String?   @db.Text
+  workshop_id   String?   @db.Char(36)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+
+  parts     parts      @relation(fields: [part_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_part_fitments_part")
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_part_fitments_workshop")
+
+  @@index([part_id], map: "idx_part_fitments_part")
+  @@index([workshop_id], map: "idx_part_fitments_workshop")
+  @@index([make, model], map: "idx_part_fitments_make_model")
+  @@index([year_from, year_to], map: "idx_part_fitments_years")
 }
 
 model inventory {

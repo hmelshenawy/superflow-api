@@ -3,6 +3,8 @@ import { getWorkshopContext } from './workshop-context';
 
 const TENANT_SCOPED_MODELS = new Set([
   'jobs',
+  'job_concerns',
+  'customer_portal_snapshots',
   'customers',
   'vehicles',
   'estimate_lines',
@@ -31,6 +33,7 @@ const TENANT_SCOPED_MODELS = new Set([
   'suppliers',
   'warehouses',
   'parts',
+  'part_fitments',
   'inventory',
   'stock_movements',
   'job_parts',
