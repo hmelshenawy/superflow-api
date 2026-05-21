@@ -37,6 +37,8 @@ import {
   FileText,
   Receipt,
   Wrench,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -1214,6 +1216,18 @@ function WorkflowSection() {
     setStages((prev) => prev.filter((stage) => stage.key !== key || stage.isRequired));
   };
 
+  const moveStage = (key: string, direction: -1 | 1) => {
+    setStages((prev) => {
+      const index = prev.findIndex((stage) => stage.key === key);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [stage] = next.splice(index, 1);
+      next.splice(nextIndex, 0, stage);
+      return next;
+    });
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -1267,8 +1281,16 @@ function WorkflowSection() {
       <Separator />
       <div className="space-y-3">
         {stages.map((stage, index) => (
-          <div key={stage.key} className="grid gap-2 rounded-2xl border border-border bg-muted/40 p-3 lg:grid-cols-[42px_1.2fr_1fr_1fr_90px] lg:items-center">
-            <div className="text-sm font-semibold text-muted-foreground">{index + 1}</div>
+          <div key={stage.key} className="grid gap-2 rounded-2xl border border-border bg-muted/40 p-3 lg:grid-cols-[96px_1.2fr_1fr_1fr_90px] lg:items-center">
+            <div className="flex items-center gap-1">
+              <span className="w-6 text-sm font-semibold text-muted-foreground">{index + 1}</span>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={index === 0 || saving} onClick={() => moveStage(stage.key, -1)} aria-label={`Move ${stage.label} up`}>
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={index === stages.length - 1 || saving} onClick={() => moveStage(stage.key, 1)} aria-label={`Move ${stage.label} down`}>
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </div>
             <Input value={stage.label} onChange={(e) => updateStage(stage.key, { label: e.target.value })} />
             <select value={stage.systemStatus} onChange={(e) => updateStage(stage.key, { systemStatus: e.target.value as WorkflowStageConfig["systemStatus"] })} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
               {["booked", "checking", "estimate_sent", "approved", "in_progress", "waiting_parts", "quality_check", "ready", "closed", "no_show"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
