@@ -529,6 +529,73 @@ export interface InspectionTemplate {
   created_by?: string;
 }
 
+// ─── QC Checklists ────────────────────────────────────────
+export type QcChecklistStatus = "draft" | "in_progress" | "submitted" | "approved";
+export type QcChecklistResult = "pass" | "fail" | "na";
+export type QcChecklistItemInputType = "pass_fail" | "yes_no" | "ok_fail" | "photo" | "text";
+
+export interface QcChecklistTemplate {
+  id: string;
+  name: string | null;
+  description: string | null;
+  is_default: boolean | null;
+  is_active: boolean | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  qc_checklist_sections?: QcChecklistSection[];
+}
+
+export interface QcChecklistSection {
+  id: string;
+  template_id: string;
+  name: string | null;
+  icon: string | null;
+  sort_order: number | null;
+  is_active: boolean | null;
+  qc_checklist_items: QcChecklistItem[];
+}
+
+export interface QcChecklistItem {
+  id: string;
+  section_id: string;
+  label: string | null;
+  input_type: QcChecklistItemInputType | null;
+  requires_photo: boolean | null;
+  requires_note_on_fail: boolean | null;
+  help_text: string | null;
+  sort_order: number | null;
+  is_active: boolean | null;
+}
+
+export interface QcChecklist {
+  id: string;
+  job_id: string | null;
+  template_id: string | null;
+  checker_id: string | null;
+  status: QcChecklistStatus | null;
+  overall_result: QcChecklistResult | null;
+  started_at: string | null;
+  submitted_at: string | null;
+  created_at: string;
+  qc_checklist_responses?: QcChecklistResponse[];
+  qc_checklist_templates?: QcChecklistTemplate;
+  jobs?: any;
+  users?: any;
+}
+
+export interface QcChecklistResponse {
+  id: string;
+  checklist_id: string | null;
+  item_id: string | null;
+  value: string | null;
+  notes: string | null;
+  media_count: number | null;
+  recorded_at: string | null;
+  qc_checklist_items?: QcChecklistItem;
+  media_files?: any[];
+}
+
 // ─── API Envelope ───────────────────────────────────────
 export interface PaginatedResponse<T> {
   data?: T[];

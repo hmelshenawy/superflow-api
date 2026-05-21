@@ -85,12 +85,14 @@ export const FEATURES = {
   ADVISOR_WORKLOAD: "advisor_workload",
   AI_MESSAGE_DRAFTS: "ai_message_drafts",
   ANALYTICS: "analytics",
+  QC_CHECKLISTS: "qc_checklists",
 } as const;
 
 // Map nav items to feature keys for lock display
 export const NAV_FEATURE_MAP: Record<string, string> = {
   "/insights": FEATURES.ANALYTICS,
   "/advisor": FEATURES.PRIORITY_ENGINE,
+  "/admin/qc-templates": FEATURES.QC_CHECKLISTS,
 };
 
 // Map feature keys to upgrade plan suggestions
@@ -104,4 +106,5 @@ export const FEATURE_UPGRADE_MAP: Record<string, { plan: string; label: string }
   [FEATURES.AI_MESSAGE_DRAFTS]: { plan: "enterprise", label: "Enterprise" },
   [FEATURES.DVI_REPORTS]: { plan: "starter", label: "Starter" },
   [FEATURES.CUSTOMER_APPROVAL]: { plan: "starter", label: "Starter" },
+  [FEATURES.QC_CHECKLISTS]: { plan: "starter", label: "Starter" },
 };

@@ -50,6 +50,7 @@ import dynamic from "next/dynamic";
 
 const EstimateBuilder = dynamic(() => import("@/components/estimates/estimate-builder").then((m) => ({ default: m.EstimateBuilder })), { ssr: false });
 const InspectionWorkspace = dynamic(() => import("@/components/inspections/inspection-workspace").then((m) => ({ default: m.InspectionWorkspace })), { ssr: false });
+const QcChecklistWorkspace = dynamic(() => import("@/components/qc-checklists/qc-checklist-workspace").then((m) => ({ default: m.QcChecklistWorkspace })), { ssr: false });
 import { SendApprovalButton } from "@/components/estimates/send-approval-button";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
@@ -70,6 +71,7 @@ import {
   Send,
   User,
   Wrench,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -218,6 +220,10 @@ export default function JobDetailPage() {
   const [startingInspection, setStartingInspection] = useState(false);
   const [reopeningInspection, setReopeningInspection] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [qcChecklistDetail, setQcChecklistDetail] = useState<any | null>(null);
+  const [qcRev, setQcRev] = useState(0);
+  const [startingQc, setStartingQc] = useState(false);
+  const [reopeningQc, setReopeningQc] = useState(false);
 
   /** Most logical next status in the forward flow */
   const nextFlowStatus = useMemo(() => {
@@ -445,6 +451,13 @@ export default function JobDetailPage() {
     } else {
       setInspectionDetail(null);
     }
+    if (data.qc_checklists?.id) {
+      const qcRes = await api.get(`/qc-checklists/${data.qc_checklists.id}`);
+      setQcChecklistDetail(qcRes.data);
+      setQcRev((r) => r + 1);
+    } else {
+      setQcChecklistDetail(null);
+    }
   };
 
   const refreshWorkflow = async () => {
@@ -551,6 +564,43 @@ export default function JobDetailPage() {
       toast.error(message);
     } finally {
       setReopeningInspection(false);
+    }
+  };
+
+  const startQcChecklist = async () => {
+    if (!job) return;
+    setStartingQc(true);
+    try {
+      const templateRes = await api.get<any[]>("/qc-checklist-templates");
+      const templates = templateRes.data || [];
+      const template = templates.find((entry: any) => entry.is_default) || templates[0];
+      if (!template) {
+        toast.error("No QC checklist template available");
+        return;
+      }
+      await api.post("/qc-checklists", { jobId: job.id, templateId: template.id });
+      await refreshJob();
+      toast.success("QC checklist started");
+    } catch (err: any) {
+      toast.error(getApiError(err).message || "Failed to start QC checklist");
+    } finally {
+      setStartingQc(false);
+    }
+  };
+
+  const reopenQcChecklist = async () => {
+    if (!qcChecklistDetail?.id && !job?.qc_checklists?.id) return;
+    const checklistId = qcChecklistDetail?.id || job?.qc_checklists?.id;
+    setReopeningQc(true);
+    try {
+      await api.post(`/qc-checklists/${checklistId}/reopen`);
+      await refreshJob();
+      toast.success("QC checklist reopened");
+    } catch (err: any) {
+      const { message } = getApiError(err);
+      toast.error(message);
+    } finally {
+      setReopeningQc(false);
     }
   };
 
@@ -916,6 +966,9 @@ export default function JobDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="inspection" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ClipboardList className="mr-2 h-4 w-4" /> Inspection
+          </TabsTrigger>
+          <TabsTrigger value="qc" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <ShieldCheck className="mr-2 h-4 w-4" /> QC
           </TabsTrigger>
           <TabsTrigger value="media" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ImageIcon className="mr-2 h-4 w-4" /> Media
@@ -1433,8 +1486,53 @@ export default function JobDetailPage() {
           )}
         </TabsContent>
 
-
-
+        <TabsContent value="qc" className="space-y-4" id="qc">
+          {qcChecklistDetail ? (
+            <Card className="rounded-2xl border-border shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg">Quality Control</CardTitle>
+                  {["submitted", "approved"].includes(qcChecklistDetail.status) ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      This QC checklist is locked. Re-open it to continue editing.
+                    </p>
+                  ) : null}
+                </div>
+                {["submitted", "approved"].includes(qcChecklistDetail.status) ? (
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={reopenQcChecklist}
+                    disabled={reopeningQc}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    {reopeningQc ? "Re-opening..." : "Re-open QC checklist"}
+                  </Button>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                <ComponentErrorBoundary label="QC Checklist">
+                  <QcChecklistWorkspace key={qcRev} checklist={qcChecklistDetail} onChanged={refreshJob} />
+                </ComponentErrorBoundary>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border-border shadow-sm">
+              <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+                <div>
+                  <p className="text-lg font-semibold text-foreground">No QC checklist started yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Start a quality control checklist to verify the work that was done on this job.
+                  </p>
+                </div>
+                <Button className="rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" onClick={startQcChecklist} disabled={startingQc}>
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {startingQc ? "Starting..." : "Start QC Checklist"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4">
           <Card className="rounded-2xl border-border shadow-sm">

@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Crosshair,
   Package,
+  ShieldCheck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, requirePermission: "admin:roles" },
   { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },
   { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, requirePermission: "admin:templates" },
+  { href: "/admin/qc-templates", label: "QC Templates", icon: ShieldCheck, requirePermission: "admin:templates" },
   { href: "/admin/booking-import", label: "Booking Import", icon: Upload, requirePermission: "import:parse" },
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
   { href: "/settings", label: "Settings", icon: Settings },
