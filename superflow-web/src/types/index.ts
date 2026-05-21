@@ -247,6 +247,7 @@ export interface Job {
   technician?: User;
   estimate_lines?: EstimateLine[];
   inspection?: Inspection;
+  qc_checklists?: { id: string; status: string | null } | null;
   media_files?: MediaFile[];
   job_status_history?: JobStatusHistory[];
   job_concerns?: JobConcern[];
