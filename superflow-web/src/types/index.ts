@@ -181,6 +181,27 @@ export type WorkshopStage =
   | "quality_check"
   | "ready_handover";
 
+export type WorkflowSystemCategory = "booked" | "active" | "ready" | "closed" | "cancelled";
+
+export interface WorkflowStageConfig {
+  key: string;
+  label: string;
+  description?: string;
+  systemStatus: JobStatus;
+  systemCategory: WorkflowSystemCategory;
+  color: string;
+  sortOrder: number;
+  isRequired: boolean;
+  isActive: boolean;
+}
+
+export interface WorkflowTemplate {
+  key: string;
+  label: string;
+  description: string;
+  stages: WorkflowStageConfig[];
+}
+
 export type JobStatus =
   | "booked"
   | "checking"
@@ -203,6 +224,7 @@ export interface Job {
   technician_id: string | null;
   status: JobStatus;
   workshop_stage: WorkshopStage | null;
+  workflow_stage_key: string | null;
   parts_status: PartsStatus | null;
   customer_informed: boolean | null;
   is_customer_waiting: boolean | null;

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getValidTransitions, getPriorityTone, getActionUrgencyClass } from "@/lib/jobs-data";
-import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity, User as UserType } from "@/types";
+import type { Job, JobAuthorisationStatus, JobStatus, WorkflowStageConfig, WorkshopStage, PartsStatus, CustomerSensitivity, User as UserType } from "@/types";
 
 // ─── Priority API result shape (mirrors backend) ──────────
 interface PriorityFactor { key: string; weight: number; description: string; category: string; }
@@ -236,6 +236,7 @@ export default function JobDetailPage() {
     return (TRANSITIONS[job.status]?.[0] ?? "") as JobStatus | "";
   }, [job?.status]);
   const [users, setUsers] = useState<any[]>([]);
+  const [workflowStages, setWorkflowStages] = useState<WorkflowStageConfig[]>([]);
   const [assigningAdvisor, setAssigningAdvisor] = useState(false);
   const [assigningTech, setAssigningTech] = useState(false);
   const [savingWorkshopStage, setSavingWorkshopStage] = useState(false);
@@ -246,6 +247,12 @@ export default function JobDetailPage() {
   const isWorkshopStageDisabled = job ? WORKSHOP_STAGE_DISABLED_STATUSES.includes(job.status) : false;
   const isPartsStatusDisabled = job ? PARTS_STATUS_DISABLED_STATUSES.includes(job.status) : false;
   const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);
+  const currentWorkflowStage = useMemo(() => {
+    if (!job || workflowStages.length === 0) return null;
+    return workflowStages.find((stage) => stage.key === job.workflow_stage_key)
+      ?? workflowStages.find((stage) => stage.systemStatus === job.status)
+      ?? null;
+  }, [job, workflowStages]);
 
   // Inline editing states
   const [editingConcern, setEditingConcern] = useState(false);
@@ -440,6 +447,11 @@ export default function JobDetailPage() {
     }
   };
 
+  const refreshWorkflow = async () => {
+    const { data } = await api.get<{ stages: WorkflowStageConfig[] }>("/admin/workflow");
+    setWorkflowStages((data.stages || []).filter((stage) => stage.isActive).sort((a, b) => a.sortOrder - b.sortOrder));
+  };
+
   const loadUsers = async () => {
     try {
       const { data } = await api.get("/users/assignable");
@@ -453,7 +465,7 @@ export default function JobDetailPage() {
   useEffect(() => {
     (async () => {
       try {
-        await refreshJob();
+        await Promise.all([refreshJob(), refreshWorkflow().catch(() => undefined)]);
       } catch {
         toast.error("Failed to load job");
       } finally {
@@ -823,19 +835,19 @@ export default function JobDetailPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Workshop stage {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-muted-foreground">— not available</span>}</p>
-                  <Select value={job.workshop_stage ?? "waiting_technician"} onValueChange={async (value) => {
-                    const workshopStage = value as WorkshopStage;
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Workflow stage</p>
+                  <Select value={currentWorkflowStage?.key ?? job.workflow_stage_key ?? ""} onValueChange={async (value) => {
+                    const nextStage = workflowStages.find((stage) => stage.key === value);
+                    if (!nextStage) return;
                     setSavingWorkshopStage(true);
                     try {
-                      await api.patch(`/jobs/${job.id}`, { workshop_stage: workshopStage });
+                      await api.patch(`/jobs/${job.id}`, { workflow_stage_key: nextStage.key });
                       await refreshJob();
-                      const syncMsg = workshopStage === 'work_in_progress' ? ' - Overall moved to In Progress' : workshopStage === 'quality_check' ? ' - Overall moved to Quality Check' : workshopStage === 'ready_handover' ? ' - Overall moved to Ready' : '';
-                      toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
+                      toast.success(`Workflow stage updated to ${nextStage.label}`);
                     } catch { toast.error("Failed to update workshop stage"); } finally { setSavingWorkshopStage(false); }
-                  }} disabled={savingWorkshopStage || isWorkshopStageDisabled}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[(job.workshop_stage ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
-                    <SelectContent className="min-w-[360px]">{WORKSHOP_STAGES.map((stage) => (<SelectItem key={stage} value={stage}>{WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}</SelectItem>))}</SelectContent>
+                  }} disabled={savingWorkshopStage || workflowStages.length === 0}>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workflow stage">{currentWorkflowStage?.label ?? "Workflow stage"}</SelectValue></SelectTrigger>
+                    <SelectContent className="min-w-[360px]">{workflowStages.map((stage) => (<SelectItem key={stage.key} value={stage.key}>{stage.label} - {stage.systemStatus.replace(/_/g, " ")}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
 

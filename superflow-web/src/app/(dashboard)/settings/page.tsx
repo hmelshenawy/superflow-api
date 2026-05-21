@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import type { WorkflowStageConfig, WorkflowTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ import {
   CalendarDays,
   FileText,
   Receipt,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -1098,7 +1100,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className="w-full overflow-x-auto">
+        <TabsList className="h-auto min-h-8 w-full flex-wrap justify-start overflow-visible">
           <TabsTrigger value="account">
             <User className="mr-1.5 h-4 w-4" />
             Account
@@ -1106,6 +1108,10 @@ export default function SettingsPage() {
           <TabsTrigger value="workshop">
             <Settings2 className="mr-1.5 h-4 w-4" />
             Workshop
+          </TabsTrigger>
+          <TabsTrigger value="workflow">
+            <Wrench className="mr-1.5 h-4 w-4" />
+            Workflow
           </TabsTrigger>
           <TabsTrigger value="priority">
             <Settings2 className="mr-1.5 h-4 w-4" />
@@ -1137,6 +1143,10 @@ export default function SettingsPage() {
           <WorkshopSection />
         </TabsContent>
 
+        <TabsContent value="workflow" className="mt-6 space-y-6">
+          <WorkflowSection />
+        </TabsContent>
+
         <TabsContent value="priority" className="mt-6 space-y-6">
           <PriorityMatrixSection />
         </TabsContent>
@@ -1156,5 +1166,126 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function WorkflowSection() {
+  const { currentWorkshopId, workshops } = useAuthStore();
+  const [stages, setStages] = useState<WorkflowStageConfig[]>([]);
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get<{ stages: WorkflowStageConfig[]; templates: WorkflowTemplate[] }>("/admin/workflow");
+      setStages((data.stages || []).sort((a, b) => a.sortOrder - b.sortOrder));
+      setTemplates(data.templates || []);
+    } catch {
+      toast.error("Failed to load workflow stages");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStage = (key: string, patch: Partial<WorkflowStageConfig>) => {
+    setStages((prev) => prev.map((stage) => stage.key === key ? { ...stage, ...patch } : stage));
+  };
+
+  const addStage = () => {
+    const index = stages.length + 1;
+    setStages((prev) => [...prev, {
+      key: `custom_stage_${index}`,
+      label: `Custom Stage ${index}`,
+      description: "",
+      systemStatus: "in_progress",
+      systemCategory: "active",
+      color: "blue",
+      sortOrder: index * 10,
+      isRequired: false,
+      isActive: true,
+    }]);
+  };
+
+  const removeStage = (key: string) => {
+    setStages((prev) => prev.filter((stage) => stage.key !== key || stage.isRequired));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put("/admin/workflow", { stages: stages.map((stage, index) => ({ ...stage, sortOrder: (index + 1) * 10 })) });
+      toast.success("Workflow stages saved");
+      await load();
+    } catch (err: any) {
+      toast.error(getApiError(err).message || "Failed to save workflow stages");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyTemplate = async (templateKey: string) => {
+    if (!confirm("Apply this template to the workshop workflow? Existing stage names/order will be replaced.")) return;
+    setSaving(true);
+    try {
+      const { data } = await api.post(`/admin/workflow/templates/${templateKey}/apply`);
+      setStages((data.stages || []).sort((a: WorkflowStageConfig, b: WorkflowStageConfig) => a.sortOrder - b.sortOrder));
+      toast.success("Workflow template applied");
+    } catch (err: any) {
+      toast.error(getApiError(err).message || "Failed to apply template");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SectionCard title="Workflow Stages">
+        <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard title="Workflow Stages" description="Customize the main workshop process columns for this workshop. Required system stages stay protected.">
+      {!currentWorkshopId && workshops.length > 1 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-100">
+          Select a workshop from the sidebar first. Workflow stages are saved per workshop.
+        </div>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-3">
+        {templates.map((template) => (
+          <button key={template.key} type="button" onClick={() => applyTemplate(template.key)} disabled={saving} className="rounded-2xl border border-border bg-muted/40 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/60 dark:hover:bg-blue-950/20">
+            <p className="font-semibold text-foreground">{template.label}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{template.description}</p>
+          </button>
+        ))}
+      </div>
+      <Separator />
+      <div className="space-y-3">
+        {stages.map((stage, index) => (
+          <div key={stage.key} className="grid gap-2 rounded-2xl border border-border bg-muted/40 p-3 lg:grid-cols-[42px_1.2fr_1fr_1fr_90px] lg:items-center">
+            <div className="text-sm font-semibold text-muted-foreground">{index + 1}</div>
+            <Input value={stage.label} onChange={(e) => updateStage(stage.key, { label: e.target.value })} />
+            <select value={stage.systemStatus} onChange={(e) => updateStage(stage.key, { systemStatus: e.target.value as WorkflowStageConfig["systemStatus"] })} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+              {["booked", "checking", "estimate_sent", "approved", "in_progress", "waiting_parts", "quality_check", "ready", "closed", "no_show"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+            </select>
+            <select value={stage.systemCategory} onChange={(e) => updateStage(stage.key, { systemCategory: e.target.value as WorkflowStageConfig["systemCategory"] })} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+              {["booked", "active", "ready", "closed", "cancelled"].map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+            <Button variant="ghost" size="sm" className="text-rose-600" disabled={stage.isRequired} onClick={() => removeStage(stage.key)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap justify-between gap-2 pt-2">
+        <Button variant="outline" onClick={addStage} disabled={saving}><Wrench className="mr-2 h-4 w-4" /> Add Stage</Button>
+        <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Workflow</Button>
+      </div>
+    </SectionCard>
   );
 }

@@ -22,6 +22,7 @@ export class UpdateJobDto {
   @ApiPropertyOptional() @IsOptional() @IsString() promised_at?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() dms_ro_number?: string;
   @ApiPropertyOptional({ enum: WORKSHOP_STAGES }) @IsOptional() @IsEnum(WORKSHOP_STAGES) workshop_stage?: typeof WORKSHOP_STAGES[number];
+  @ApiPropertyOptional() @IsOptional() @IsString() workflow_stage_key?: string;
   @ApiPropertyOptional({ enum: PARTS_STATUSES }) @IsOptional() @IsEnum(PARTS_STATUSES) parts_status?: typeof PARTS_STATUSES[number];
   @ApiPropertyOptional() @IsOptional() @IsBoolean() customer_informed?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_customer_waiting?: boolean;
