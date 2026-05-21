@@ -1281,7 +1281,7 @@ function WorkflowSection() {
       <Separator />
       <div className="space-y-3">
         {stages.map((stage, index) => (
-          <div key={stage.key} className="grid gap-2 rounded-2xl border border-border bg-muted/40 p-3 lg:grid-cols-[96px_1.2fr_1fr_1fr_90px] lg:items-center">
+          <div key={stage.key} className="grid gap-2 rounded-2xl border border-border bg-muted/40 p-3 lg:grid-cols-[96px_1.2fr_1fr_1fr_90px_90px] lg:items-center">
             <div className="flex items-center gap-1">
               <span className="w-6 text-sm font-semibold text-muted-foreground">{index + 1}</span>
               <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={index === 0 || saving} onClick={() => moveStage(stage.key, -1)} aria-label={`Move ${stage.label} up`}>
@@ -1298,6 +1298,10 @@ function WorkflowSection() {
             <select value={stage.systemCategory} onChange={(e) => updateStage(stage.key, { systemCategory: e.target.value as WorkflowStageConfig["systemCategory"] })} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
               {["booked", "active", "ready", "closed", "cancelled"].map((category) => <option key={category} value={category}>{category}</option>)}
             </select>
+            <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground">
+              <input type="checkbox" checked={stage.isActive} onChange={(e) => updateStage(stage.key, { isActive: e.target.checked })} disabled={stage.isRequired || saving} />
+              Active
+            </label>
             <Button variant="ghost" size="sm" className="text-rose-600" disabled={stage.isRequired} onClick={() => removeStage(stage.key)}>
               <Trash2 className="h-4 w-4" />
             </Button>

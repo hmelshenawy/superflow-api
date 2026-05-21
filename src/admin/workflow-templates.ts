@@ -38,7 +38,6 @@ export const REQUIRED_WORKFLOW_CATEGORIES: WorkflowSystemCategory[] = [
   'active',
   'ready',
   'closed',
-  'cancelled',
 ];
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
@@ -57,18 +56,18 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     key: 'large',
     label: 'Large Workshop',
-    description: 'Detailed service flow with approval, parts, QC, and handover lanes.',
+    description: 'Original full board with approved, parts, QC, ready, and closed lanes.',
     stages: [
       stage('booked', 'Booked', 'Customer is booked in or vehicle is received.', 'booked', 'booked', 'slate', 10, true),
-      stage('inspection', 'Inspection', 'Initial checking, diagnosis, and inspection.', 'checking', 'active', 'amber', 20, false),
+      stage('checking', 'Checking', 'Initial checking, diagnosis, and inspection.', 'checking', 'active', 'amber', 20, false),
       stage('estimate_sent', 'Estimate Sent', 'Estimate is with the customer for review.', 'estimate_sent', 'active', 'rose', 30, false),
-      stage('waiting_approval', 'Waiting Approval', 'Advisor is following up for customer approval.', 'estimate_sent', 'active', 'pink', 40, false),
-      stage('parts_ordered', 'Parts Ordered', 'Parts have been requested or ordered.', 'waiting_parts', 'active', 'purple', 50, false),
-      stage('in_progress', 'In Progress', 'Workshop production is active.', 'in_progress', 'active', 'blue', 60, true),
-      stage('quality_control', 'Quality Control', 'Final quality checks before delivery.', 'quality_check', 'active', 'cyan', 70, false),
+      stage('approved', 'Approved', 'Customer has approved the work.', 'approved', 'active', 'pink', 40, false),
+      stage('in_progress', 'In Progress', 'Workshop production is active.', 'in_progress', 'active', 'blue', 50, true),
+      stage('waiting_parts', 'Waiting Parts', 'Job is blocked or waiting for parts.', 'waiting_parts', 'active', 'purple', 60, false),
+      stage('quality_check', 'Quality Check', 'Final quality checks before delivery.', 'quality_check', 'active', 'cyan', 70, false),
       stage('ready', 'Ready', 'Vehicle is ready for pickup.', 'ready', 'ready', 'emerald', 80, true),
-      stage('delivered', 'Delivered', 'Vehicle handed over and job closed.', 'closed', 'closed', 'zinc', 90, true),
-      stage('cancelled', 'Cancelled / No Show', 'Booking cancelled or customer did not arrive.', 'no_show', 'cancelled', 'stone', 100, true),
+      stage('closed', 'Closed', 'Vehicle handed over and job closed.', 'closed', 'closed', 'zinc', 90, true),
+      { ...stage('no_show_cancelled', 'No Show / Cancelled', 'Booking cancelled or customer did not arrive.', 'no_show', 'cancelled', 'stone', 100, false), isActive: false },
     ],
   },
   {
