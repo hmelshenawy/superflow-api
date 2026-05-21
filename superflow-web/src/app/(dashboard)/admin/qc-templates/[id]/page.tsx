@@ -306,7 +306,7 @@ export default function QcTemplateEditorPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" aria-label="Back to QC templates" onClick={() => router.push("/admin/qc-templates")}>
+        <Button variant="ghost" size="icon" aria-label="Back to templates" onClick={() => router.push("/admin/templates?tab=qc")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">

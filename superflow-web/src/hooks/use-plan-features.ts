@@ -92,7 +92,7 @@ export const FEATURES = {
 export const NAV_FEATURE_MAP: Record<string, string> = {
   "/insights": FEATURES.ANALYTICS,
   "/advisor": FEATURES.PRIORITY_ENGINE,
-  "/admin/qc-templates": FEATURES.QC_CHECKLISTS,
+  "/admin/templates": FEATURES.QC_CHECKLISTS,
 };
 
 // Map feature keys to upgrade plan suggestions
