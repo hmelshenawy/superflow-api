@@ -189,6 +189,7 @@ export class JobsService {
         job_concerns: { include: { media_files: { where: { is_deleted: false }, orderBy: { uploaded_at: 'desc' } } }, orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }] },
         customer_portal_snapshots: { orderBy: { version: 'desc' }, take: 1 },
         inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
+        qc_checklists: { select: { id: true, status: true } },
         media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
         job_status_history: {
