@@ -505,7 +505,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
                       <div className={cn("flex items-center gap-2", isCollapsed && "flex-col")}>
                         {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
                         <span className={cn("h-2 w-2 rounded-full shrink-0", classes.dot)} />
-                        {!isCollapsed && <div className="min-w-0 flex-1"><h2 className="truncate text-[12px] font-semibold text-foreground">{stage.label}</h2><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{stage.description || stage.systemStatus.replace(/_/g, " ")}</p></div>}
+                        {!isCollapsed && <h2 className="truncate text-[12px] font-semibold text-foreground">{stage.label}</h2>}
                         <span className="rounded-full bg-card px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{stageJobs.length}</span>
                       </div>
                     </div>
