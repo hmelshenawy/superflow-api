@@ -55,7 +55,46 @@ async function main() {
     }
   }
 
-  // 6. Sample customer + vehicle + job
+  // 6. QC checklist template
+  const qcTemplate = await prisma.qc_checklist_templates.create({ data: { id: uuid(), name: 'Final Quality Control', description: 'Standard quality control checklist for completed work', is_default: true, is_active: true, created_by: admin.id } });
+  const qcSections = [
+    { name: 'Work Completion', icon: '✅', items: [
+      { label: 'All work per estimate completed', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: true },
+      { label: 'No loose fasteners or missing clips', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+      { label: 'Fluid levels checked and topped up', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: false },
+      { label: 'No fluid leaks visible', input_type: 'pass_fail', requires_photo: true, requires_note_on_fail: true },
+    ]},
+    { name: 'Workmanship Quality', icon: '🔧', items: [
+      { label: 'Paint/panel fit and finish', input_type: 'pass_fail', requires_photo: true, requires_note_on_fail: true },
+      { label: 'No scratches or marks on work area', input_type: 'pass_fail', requires_photo: true, requires_note_on_fail: false },
+      { label: 'All parts properly torqued', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: true },
+      { label: 'Wiring and hoses properly routed', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+    ]},
+    { name: 'Safety Verification', icon: '⚠️', items: [
+      { label: 'Brake system verified', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+      { label: 'Steering system checked', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+      { label: 'No warning lights on dashboard', input_type: 'yes_no', requires_photo: true, requires_note_on_fail: true },
+      { label: 'Tyre condition and pressures confirmed', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: false },
+      { label: 'Seatbelt and airbag systems OK', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+    ]},
+    { name: 'Customer-Facing Readiness', icon: '🚗', items: [
+      { label: 'Vehicle cleaned and presentable', input_type: 'yes_no', requires_photo: true, requires_note_on_fail: false },
+      { label: 'Interior left tidy', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: false },
+      { label: 'Odometer reading recorded', input_type: 'text', requires_photo: false, requires_note_on_fail: false },
+      { label: 'Final test drive completed', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: true },
+    ]},
+  ];
+
+  for (let si = 0; si < qcSections.length; si++) {
+    const sec = qcSections[si];
+    const section = await prisma.qc_checklist_sections.create({ data: { id: uuid(), template_id: qcTemplate.id, name: sec.name, icon: sec.icon, sort_order: si + 1, is_active: true } });
+    for (let ii = 0; ii < sec.items.length; ii++) {
+      const item = sec.items[ii];
+      await prisma.qc_checklist_items.create({ data: { id: uuid(), section_id: section.id, label: item.label, input_type: item.input_type as any, requires_photo: item.requires_photo, requires_note_on_fail: item.requires_note_on_fail, sort_order: ii + 1, is_active: true } });
+    }
+  }
+
+  // 7. Sample customer + vehicle + job
   const customer = await prisma.customers.create({ data: { id: uuid(), name: 'Mohammed Al Maktoum', email: 'mohammed@example.com', phone: '+971501234567', preferred_contact: 'whatsapp', language: 'ar', is_active: true } });
   const vehicle = await prisma.vehicles.create({ data: { id: uuid(), customer_id: customer.id, vin: 'WDDGF4HB1EA123456', make: 'Mercedes-Benz', model: 'C200', year: 2022, plate: 'DXB-A-12345', color: 'Obsidian Black', vehicle_type: 'sedan', engine: '2.0L Turbo' } });
   const job = await prisma.jobs.create({ data: { id: uuid(), job_number: 'SF-001', customer_id: customer.id, vehicle_id: vehicle.id, advisor_id: advisor.id, technician_id: tech.id, status: 'booked', customer_concern: 'Strange noise from front left when braking', odometer_in: 45000, promised_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) } });

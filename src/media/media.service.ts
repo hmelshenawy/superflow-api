@@ -258,6 +258,7 @@ export class MediaService {
         job_id: dto.job_id,
         inspection_response_id: inspectionResponseId,
         concern_id: dto.concern_id || null,
+        qc_checklist_response_id: dto.qc_checklist_response_id || null,
         uploaded_by: userId,
         s3_bucket: bucket,
         s3_key: s3Key,
@@ -271,10 +272,15 @@ export class MediaService {
     });
 
     if (inspectionResponseId) {
-      // Response media_count is denormalized for quick UI rendering on inspection
-      // screens, so uploads/deletes must keep it in sync.
       await this.prisma.tenant.inspection_responses.update({
         where: { id: inspectionResponseId },
+        data: { media_count: { increment: 1 } },
+      }).catch(() => {});
+    }
+
+    if (dto.qc_checklist_response_id) {
+      await this.prisma.tenant.qc_checklist_responses.update({
+        where: { id: dto.qc_checklist_response_id },
         data: { media_count: { increment: 1 } },
       }).catch(() => {});
     }
@@ -347,6 +353,12 @@ export class MediaService {
     if ((file as any).inspection_response_id) {
       await this.prisma.tenant.inspection_responses.update({
         where: { id: (file as any).inspection_response_id },
+        data: { media_count: { decrement: 1 } },
+      }).catch(() => {});
+    }
+    if ((file as any).qc_checklist_response_id) {
+      await this.prisma.tenant.qc_checklist_responses.update({
+        where: { id: (file as any).qc_checklist_response_id },
         data: { media_count: { decrement: 1 } },
       }).catch(() => {});
     }
