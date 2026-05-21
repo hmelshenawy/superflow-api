@@ -23,8 +23,18 @@ export function getJobWorkflowStage(job: Job, stages: WorkflowStageConfig[]) {
     const configured = stages.find((stage) => stage.key === job.workflow_stage_key && stage.isActive);
     if (configured) return configured;
   }
-  return stages.find((stage) => stage.isActive && stage.systemStatus === job.status)
-    ?? stages.find((stage) => stage.isActive && stage.systemCategory === "active")
-    ?? stages[0]
-    ?? null;
+  const exact = stages.find((stage) => stage.isActive && stage.systemStatus === job.status);
+  if (exact) return exact;
+
+  const category = job.status === "booked" ? "booked"
+    : job.status === "ready" ? "ready"
+    : job.status === "closed" ? "closed"
+    : job.status === "no_show" ? "cancelled"
+    : "active";
+  const sameCategory = stages.find((stage) => stage.isActive && stage.systemCategory === category);
+  if (sameCategory) return sameCategory;
+
+  return category === "active"
+    ? stages.find((stage) => stage.isActive && stage.systemCategory === "active") ?? null
+    : null;
 }
