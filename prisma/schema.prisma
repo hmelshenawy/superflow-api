@@ -45,6 +45,11 @@ model workshops {
   inspection_templates   inspection_templates[]
   inspections            inspections[]
   integrations           integrations[]
+  qc_checklist_templates qc_checklist_templates[]
+  qc_checklist_sections  qc_checklist_sections[]
+  qc_checklist_items     qc_checklist_items[]
+  qc_checklists          qc_checklists[]
+  qc_checklist_responses qc_checklist_responses[]
   integration_events     integration_events[]
   job_status_history     job_status_history[]
   jobs                   jobs[]
@@ -612,6 +617,111 @@ model inspections {
   @@index([workshop_id], map: "idx_ins_workshop")
 }
 
+model qc_checklist_templates {
+  id                      String                     @id @db.Char(36)
+  name                    String?                    @db.VarChar(120)
+  description             String?                    @db.Text
+  is_default              Boolean?                   @default(false)
+  is_active               Boolean?                   @default(true)
+  created_by              String?                    @db.Char(36)
+  workshop_id             String?                    @db.Char(36)
+  created_at              DateTime?                  @default(now()) @db.DateTime(0)
+  updated_at              DateTime?                  @default(now()) @db.DateTime(0)
+
+  qc_checklist_sections   qc_checklist_sections[]
+  qc_checklists            qc_checklists[]
+  users                    users?                     @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qct_created_by")
+  workshops                workshops?                 @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qct_workshop")
+
+  @@index([created_by], map: "fk_qct_created_by")
+  @@index([is_default], map: "idx_qct_is_default")
+  @@index([workshop_id], map: "idx_qct_workshop")
+}
+
+model qc_checklist_sections {
+  id                        String                     @id @db.Char(36)
+  template_id               String?                    @db.Char(36)
+  workshop_id               String?                    @db.Char(36)
+  name                      String?                    @db.VarChar(80)
+  icon                      String?                    @db.VarChar(10)
+  sort_order                Int?                       @db.SmallInt
+  is_active                 Boolean?                   @default(true)
+
+  qc_checklist_items        qc_checklist_items[]
+  qc_checklist_templates    qc_checklist_templates?    @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcs_template")
+  workshops                 workshops?                 @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcs_workshop")
+
+  @@index([template_id, sort_order], map: "idx_qcs_sort")
+  @@index([template_id], map: "idx_qcs_template")
+  @@index([workshop_id], map: "idx_qcs_workshop")
+}
+
+model qc_checklist_items {
+  id                        String                             @id @db.Char(36)
+  section_id                String?                            @db.Char(36)
+  workshop_id                String?                            @db.Char(36)
+  label                     String?                            @db.VarChar(180)
+  input_type                qc_checklist_items_input_type?      @default(pass_fail)
+  requires_photo            Boolean?                           @default(false)
+  requires_note_on_fail     Boolean?                           @default(false)
+  help_text                 String?                            @db.Text
+  sort_order                Int?                               @db.SmallInt
+  is_active                 Boolean?                           @default(true)
+
+  qc_checklist_responses    qc_checklist_responses[]
+  qc_checklist_sections     qc_checklist_sections?             @relation(fields: [section_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qci_section")
+  workshops                 workshops?                         @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qci_workshop")
+
+  @@index([section_id], map: "idx_qci_section")
+  @@index([section_id, sort_order], map: "idx_qci_sort")
+  @@index([workshop_id], map: "idx_qci_workshop")
+}
+
+model qc_checklists {
+  id                   String                  @id @db.Char(36)
+  job_id               String?                 @unique(map: "qc_job_id") @db.Char(36)
+  template_id          String?                 @db.Char(36)
+  checker_id           String?                 @db.Char(36)
+  status               qc_checklists_status?   @default(draft)
+  overall_result       qc_checklists_result?
+  workshop_id          String?                 @db.Char(36)
+  started_at           DateTime?               @db.DateTime(0)
+  submitted_at         DateTime?               @db.DateTime(0)
+  created_at           DateTime?               @default(now()) @db.DateTime(0)
+
+  qc_checklist_responses qc_checklist_responses[]
+  jobs                   jobs?                   @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_job")
+  users                  users?                  @relation(fields: [checker_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_checker")
+  qc_checklist_templates qc_checklist_templates? @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_template")
+  workshops              workshops?              @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_workshop")
+
+  @@index([checker_id], map: "fk_qc_checker")
+  @@index([template_id], map: "fk_qc_template")
+  @@index([job_id], map: "idx_qc_job")
+  @@index([status], map: "idx_qc_status")
+  @@index([workshop_id], map: "idx_qc_workshop")
+}
+
+model qc_checklist_responses {
+  id               String                    @id @db.Char(36)
+  checklist_id     String?                   @db.Char(36)
+  item_id          String?                   @db.Char(36)
+  workshop_id      String?                   @db.Char(36)
+  value            String?                   @db.VarChar(100)
+  notes            String?                   @db.Text
+  media_count      Int?                      @default(0) @db.TinyInt
+  recorded_at      DateTime?                 @default(now()) @db.DateTime(0)
+
+  qc_checklists    qc_checklists?            @relation(fields: [checklist_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcr_checklist")
+  qc_checklist_items qc_checklist_items?     @relation(fields: [item_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcr_item")
+  media_files      media_files[]
+  workshops        workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcr_workshop")
+
+  @@unique([checklist_id, item_id], map: "idx_qcr_checklist_item")
+  @@index([item_id], map: "fk_qcr_item")
+  @@index([workshop_id], map: "idx_qcr_workshop")
+}
+
 model integration_events {
   id             String                       @id @db.Char(36)
   integration_id String?                      @db.Char(36)
@@ -681,6 +791,7 @@ model jobs {
   technician_id                                     String?                   @db.Char(36)
   status                                            jobs_status               @default(booked)
   workshop_stage                                    jobs_workshop_stage?      @default(waiting_technician)
+  workflow_stage_key                                String?                   @db.VarChar(80)
   parts_status                                      jobs_parts_status?        @default(no_parts)
   workshop_id                                       String?                   @db.Char(36)
   customer_informed                                 Boolean?                  @default(false)
@@ -707,6 +818,7 @@ model jobs {
   job_concerns                                      job_concerns[]
   customer_portal_snapshots                         customer_portal_snapshots[]
   inspections                                       inspections?
+  qc_checklists                                     qc_checklists?
   job_status_history                                job_status_history[]
   users_jobs_advisor_idTousers                      users?                    @relation("jobs_advisor_idTousers", fields: [advisor_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_advisor")
   customers                                         customers?                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_customer")
@@ -724,6 +836,7 @@ model jobs {
   @@index([customer_id], map: "idx_jobs_customer")
   @@index([status], map: "idx_jobs_status")
   @@index([workshop_stage], map: "idx_jobs_workshop_stage")
+  @@index([workflow_stage_key], map: "idx_jobs_workflow_stage_key")
   @@index([parts_status], map: "idx_jobs_parts_status")
   @@index([is_customer_waiting], map: "idx_jobs_customer_waiting")
   @@index([customer_sensitivity], map: "idx_jobs_customer_sensitivity")
@@ -754,6 +867,7 @@ model media_files {
   job_id                 String?                  @db.Char(36)
   inspection_response_id String?                  @db.Char(36)
   concern_id             String?                  @db.Char(36)
+  qc_checklist_response_id String?                @db.Char(36)
   uploaded_by            String?                  @db.Char(36)
   workshop_id            String?                  @db.Char(36)
   s3_bucket              String?                  @db.VarChar(100)
@@ -771,6 +885,7 @@ model media_files {
   uploaded_at            DateTime?                @default(now()) @db.DateTime(0)
   jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_job")
   inspection_responses   inspection_responses?    @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_response")
+  qc_checklist_responses qc_checklist_responses?  @relation(fields: [qc_checklist_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_qc_response")
   job_concerns           job_concerns?            @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_mf_concern")
   users                  users?                   @relation(fields: [uploaded_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_uploaded_by")
   workshops              workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_workshop")
@@ -779,6 +894,7 @@ model media_files {
   @@index([job_id], map: "idx_media_job")
   @@index([concern_id], map: "idx_media_concern")
   @@index([inspection_response_id], map: "idx_media_response")
+  @@index([qc_checklist_response_id], map: "idx_media_qc_response")
   @@index([scan_status], map: "idx_media_scan")
   @@index([workshop_id], map: "idx_media_workshop")
 }
@@ -907,6 +1023,8 @@ model users {
   estimate_lines                 estimate_lines[]
   inspection_templates           inspection_templates[]
   inspections                    inspections[]
+  qc_checklist_templates        qc_checklist_templates[]
+  qc_checklists                  qc_checklists[]
   job_status_history             job_status_history[]
   jobs_jobs_advisor_idTousers    jobs[]                  @relation("jobs_advisor_idTousers")
   jobs_jobs_technician_idTousers jobs[]                  @relation("jobs_technician_idTousers")
@@ -1247,6 +1365,27 @@ enum media_files_scan_status {
   clean
   infected
   failed
+}
+
+enum qc_checklists_status {
+  draft
+  in_progress
+  submitted
+  approved
+}
+
+enum qc_checklist_items_input_type {
+  pass_fail
+  yes_no
+  ok_fail
+  photo
+  text
+}
+
+enum qc_checklists_result {
+  pass
+  fail
+  na
 }
 
 enum blockers_type {

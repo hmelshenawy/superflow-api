@@ -81,6 +81,12 @@ export const WORKSHOPS_ASSIGN_USERS = 'workshops:assign-users';
 export const PRIORITY_READ = 'priority:read';
 export const INSIGHTS_DASHBOARD = 'insights:dashboard';
 
+// ─── Quality Control ────────────────────────────────────
+export const QC_READ = 'qc:read';
+export const QC_CREATE = 'qc:create';
+export const QC_SUBMIT = 'qc:submit';
+export const QC_REOPEN = 'qc:reopen';
+
 // ─── Blockers ───────────────────────────────────────────
 export const BLOCKERS_READ = 'blockers:read';
 export const BLOCKERS_MANAGE = 'blockers:manage';
@@ -127,6 +133,7 @@ export const ALL_PERMISSIONS: string[] = [
   WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS,
   PRIORITY_READ, INSIGHTS_DASHBOARD,
   BLOCKERS_READ, BLOCKERS_MANAGE,
+  QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN,
   PARTS_READ, PARTS_CREATE, PARTS_UPDATE, PARTS_DELETE,
   SUPPLIERS_READ, SUPPLIERS_CREATE, SUPPLIERS_UPDATE,
   WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE,
@@ -163,6 +170,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION,
       ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE, ESTIMATES_DELETE,
       INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT,
+      QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN,
       CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE,
       VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE,
       MEDIA_UPLOAD, MEDIA_DELETE,
@@ -189,6 +197,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_TRANSITION,
       ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE,
       INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT,
+      QC_READ, QC_CREATE, QC_SUBMIT,
       CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE,
       VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE,
       MEDIA_UPLOAD,
@@ -211,6 +220,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       JOBS_READ, JOBS_UPDATE, JOBS_ASSIGN, JOBS_TRANSITION,
       ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE,
       INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT, INSPECTIONS_REOPEN,
+      QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN,
       CUSTOMERS_READ, VEHICLES_READ,
       MEDIA_UPLOAD,
       AUTH_STATUS,
@@ -229,6 +239,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       JOBS_READ, JOBS_TRANSITION,
       ESTIMATES_READ,
       INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT,
+      QC_READ,
       CUSTOMERS_READ, VEHICLES_READ,
       MEDIA_UPLOAD,
       AUTH_STATUS,
@@ -244,6 +255,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
     description: 'Front desk — books customers and vehicles, imports bookings, views basic job status',
     permissions: [
       JOBS_READ, JOBS_CREATE,
+      QC_READ,
       CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE,
       VEHICLES_READ, VEHICLES_CREATE,
       IMPORT_PARSE, IMPORT_RUN,

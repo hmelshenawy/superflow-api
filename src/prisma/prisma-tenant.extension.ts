@@ -39,6 +39,11 @@ const TENANT_SCOPED_MODELS = new Set([
   'job_parts',
   'purchase_orders',
   'purchase_order_items',
+  'qc_checklists',
+  'qc_checklist_sections',
+  'qc_checklist_items',
+  'qc_checklist_templates',
+  'qc_checklist_responses',
 ]);
 
 const READ_OPS = new Set(['findMany', 'findFirst', 'count', 'aggregate', 'groupBy']);

@@ -4,6 +4,8 @@ import { SettingsService } from './settings.service';
 import { RolesService } from './roles.service';
 import { LabourRatesService } from './labour-rates.service';
 import { TemplatesAdminService } from './templates.admin.service';
+import { QcTemplatesAdminService } from './qc-templates.admin.service';
+import { WorkflowService } from './workflow.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { CreateAdminTemplateDto } from './dto/create-template.dto';
 import { UpdateAdminTemplateDto } from './dto/update-template.dto';
@@ -30,6 +32,8 @@ export class AdminController {
     private roles: RolesService,
     private labourRates: LabourRatesService,
     private templates: TemplatesAdminService,
+    private qcTemplates: QcTemplatesAdminService,
+    private workflow: WorkflowService,
   ) {}
 
   // ─── Settings ──────────────────────────────────────────
@@ -43,6 +47,26 @@ export class AdminController {
   @ApiOperation({ summary: 'Bulk update settings' })
   updateSettings(@Body() body: UpdateSettingsDto, @CurrentUser('sub') userId: string) {
     return this.settings.updateSettings(body, userId);
+  }
+
+  // ─── Workflow Stages ───────────────────────────────────
+  @Get('workflow')
+  @RequirePermission(ADMIN_SETTINGS)
+  @ApiOperation({ summary: 'Get workshop job workflow stages and templates' })
+  getWorkflow() { return this.workflow.getWorkflow(); }
+
+  @Put('workflow')
+  @RequirePermission(ADMIN_SETTINGS_EDIT)
+  @ApiOperation({ summary: 'Replace workshop job workflow stages' })
+  updateWorkflow(@Body() body: { stages: any[] }, @CurrentUser('sub') userId: string) {
+    return this.workflow.updateStages(body.stages, userId);
+  }
+
+  @Post('workflow/templates/:templateKey/apply')
+  @RequirePermission(ADMIN_SETTINGS_EDIT)
+  @ApiOperation({ summary: 'Apply a built-in workflow template' })
+  applyWorkflowTemplate(@Param('templateKey') templateKey: string, @CurrentUser('sub') userId: string) {
+    return this.workflow.applyTemplate(templateKey, userId);
   }
 
   // ─── Stats ─────────────────────────────────────────────
@@ -213,5 +237,95 @@ export class AdminController {
   @ApiOperation({ summary: 'Reorder items within section' })
   reorderItems(@Param('sectionId') sectionId: string, @Body() body: { itemIds: string[] }) {
     return this.templates.reorderItems(sectionId, body.itemIds);
+  }
+
+  // ─── QC Checklist Templates ─────────────────────────────
+  @Get('qc-templates')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'List QC checklist templates' })
+  getQcTemplates() { return this.qcTemplates.getTemplates(); }
+
+  @Get('qc-templates/:id')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Get QC checklist template with sections/items' })
+  getQcTemplate(@Param('id') id: string) { return this.qcTemplates.getTemplate(id); }
+
+  @Post('qc-templates')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Create QC checklist template' })
+  createQcTemplate(@Body() body: { name: string; description?: string; is_default?: boolean; is_active?: boolean }, @CurrentUser('sub') userId: string) {
+    return this.qcTemplates.createTemplate(body, userId);
+  }
+
+  @Patch('qc-templates/:id')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Update QC checklist template metadata' })
+  updateQcTemplate(@Param('id') id: string, @Body() body: Record<string, any>) {
+    return this.qcTemplates.updateTemplate(id, body);
+  }
+
+  @Delete('qc-templates/:id')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Soft-delete QC checklist template' })
+  deleteQcTemplate(@Param('id') id: string) { return this.qcTemplates.deleteTemplate(id); }
+
+  // ─── QC Sections ────────────────────────────────────────
+  @Post('qc-templates/:id/sections')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Add section to QC checklist template' })
+  addQcSection(@Param('id') id: string, @Body() body: { name: string; icon?: string; sort_order?: number }) {
+    return this.qcTemplates.addSection(id, body);
+  }
+
+  @Patch('qc-templates/sections/:sectionId')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Update QC section' })
+  updateQcSection(@Param('sectionId') sectionId: string, @Body() body: Record<string, any>) {
+    return this.qcTemplates.updateSection(sectionId, body);
+  }
+
+  @Delete('qc-templates/sections/:sectionId')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Delete QC section and its items' })
+  deleteQcSection(@Param('sectionId') sectionId: string) {
+    return this.qcTemplates.deleteSection(sectionId);
+  }
+
+  @Patch('qc-templates/:id/sections/reorder')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Reorder QC sections' })
+  reorderQcSections(@Param('id') id: string, @Body() body: { sectionIds: string[] }) {
+    return this.qcTemplates.reorderSections(id, body.sectionIds);
+  }
+
+  // ─── QC Items ───────────────────────────────────────────
+  @Post('qc-templates/:id/items')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Add item to QC checklist section' })
+  addQcItem(@Param('id') id: string, @Body() body: {
+    section_id: string; label: string; input_type?: string;
+    requires_photo?: boolean; requires_note_on_fail?: boolean;
+    help_text?: string; sort_order?: number;
+  }) {
+    return this.qcTemplates.addItem(id, body);
+  }
+
+  @Patch('qc-templates/items/:itemId')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Update QC item' })
+  updateQcItem(@Param('itemId') itemId: string, @Body() body: Record<string, any>) {
+    return this.qcTemplates.updateItem(itemId, body);
+  }
+
+  @Delete('qc-templates/items/:itemId')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Delete QC item' })
+  deleteQcItem(@Param('itemId') itemId: string) { return this.qcTemplates.deleteItem(itemId); }
+
+  @Patch('qc-templates/sections/:sectionId/items/reorder')
+  @RequirePermission(ADMIN_TEMPLATES)
+  @ApiOperation({ summary: 'Reorder QC items within section' })
+  reorderQcItems(@Param('sectionId') sectionId: string, @Body() body: { itemIds: string[] }) {
+    return this.qcTemplates.reorderItems(sectionId, body.itemIds);
   }
 }

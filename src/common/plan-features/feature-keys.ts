@@ -31,6 +31,9 @@ export const FEATURE_KEYS = {
   // Inventory & Purchasing
   INVENTORY:             'inventory',
   PURCHASE_ORDERS:       'purchase_orders',
+
+  // Quality Control
+  QC_CHECKLISTS:         'qc_checklists',
 } as const;
 
 export type FeatureKey = typeof FEATURE_KEYS[keyof typeof FEATURE_KEYS];
@@ -55,4 +58,5 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   max_locations:        'Max Locations',
   inventory:             'Parts & Inventory',
   purchase_orders:       'Purchase Orders',
+  qc_checklists:         'Quality Control Checklists',
 };
