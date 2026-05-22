@@ -7,7 +7,7 @@ import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useS
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import type { Job, JobStatus, PaginatedResponse, WorkflowStageConfig, WorkshopStage } from "@/types";
-import { getJobWorkflowStage, workflowColor } from "@/lib/workflow";
+import { getJobWorkflowStage } from "@/lib/workflow";
 
 // ─── Priority API result shape (mirrors backend) ──────────
 interface PriorityFactor { key: string; weight: number; description: string; category: string; }
@@ -493,18 +493,25 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
         ) : overallView === "board" ? (
           <DndContext sensors={dndSensors} collisionDetection={closestCorners} onDragStart={handleDndStart} onDragEnd={handleDndEnd}>
           <div className="mt-4 overflow-x-auto pb-2">
+            <div className="mb-3 flex min-w-max gap-3">
+              {OVERALL_PHASES.map((phase) => {
+                const phaseStages = workflowStages.filter((stage) => phase.columns.includes(stage.systemStatus));
+                const width = phaseStages.reduce((sum, stage) => sum + (collapsedWorkflowStages.has(stage.key) ? BOARD_COLUMN_COLLAPSED_WIDTH : BOARD_COLUMN_WIDTH), 0) + Math.max(0, phaseStages.length - 1) * BOARD_COLUMN_GAP;
+                const count = phaseStages.reduce((sum, stage) => sum + (workflowJobs.get(stage.key)?.length || 0), 0);
+                return (<div key={phase.label} style={{ width }} className={cn("rounded-2xl border px-3.5 py-2.5 shadow-sm ring-1 ring-border/60", phase.className)}><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-[11px] font-bold uppercase tracking-[0.18em]">{phase.label}</p><p className="truncate text-[11px] opacity-75">{phase.hint}</p></div><span className="shrink-0 rounded-full bg-card/80 px-2 py-0.5 text-[11px] font-bold shadow-sm">{count}</span></div></div>);
+              })}
+            </div>
             <div className="flex min-w-max gap-3">
               {workflowStages.map((stage) => {
-                const classes = workflowColor(stage.color);
                 const stageJobs = workflowJobs.get(stage.key) || [];
                 const isCollapsed = collapsedWorkflowStages.has(stage.key);
                 return (
                   <div key={stage.key} id={`workflow-${stage.key}`} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropWorkflowStage(stage.key); }} onDragLeave={() => { if (dropWorkflowStage === stage.key) setDropWorkflowStage(null); }} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; setDropWorkflowStage(null); if (!jobId) return; await moveJobToWorkflowStage(jobId, stage); }}
-                    className={cn("flex shrink-0 flex-col rounded-[18px] border shadow-sm transition-all duration-200", classes.column, isCollapsed ? "w-[46px]" : "w-[248px] min-w-[240px]", dropWorkflowStage === stage.key && "border-slate-400 dark:border-slate-600 bg-muted")}>
-                    <div className={cn("cursor-pointer select-none border-b px-3 py-2.5", classes.header)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleWorkflowStage(stage.key); } }} onClick={() => toggleWorkflowStage(stage.key)}>
+                    className={cn("flex shrink-0 flex-col rounded-[18px] border shadow-sm transition-all duration-200", OVERALL_COLUMN_TONE[stage.systemStatus], isCollapsed ? "w-[46px]" : "w-[248px] min-w-[240px]", dropWorkflowStage === stage.key && "border-slate-400 dark:border-slate-600 bg-muted")}>
+                    <div className={cn("cursor-pointer select-none border-b px-3 py-2.5", OVERALL_COLUMN_HEADER_TONE[stage.systemStatus])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleWorkflowStage(stage.key); } }} onClick={() => toggleWorkflowStage(stage.key)}>
                       <div className={cn("flex items-center gap-2", isCollapsed && "flex-col")}>
                         {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", classes.dot)} />
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_META[stage.systemStatus].dot)} />
                         {!isCollapsed && <h2 className="truncate text-[12px] font-semibold text-foreground">{stage.label}</h2>}
                         <span className="rounded-full bg-card px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{stageJobs.length}</span>
                       </div>
@@ -522,7 +529,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
                           const promiseLabel = job.promised_at ? new Intl.DateTimeFormat("en-GB", { month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "No promise";
                           return (
                             <Link key={job.id} href={`/jobs/${job.id}`} draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", job.id); event.dataTransfer.effectAllowed = "move"; setDraggedJobId(job.id); }} onDragEnd={() => { setDraggedJobId(null); setDropWorkflowStage(null); }}
-                              className={cn("group flex min-h-[172px] flex-col rounded-2xl border border-l-4 border-border bg-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg", classes.accent, overdue && "border-l-red-500 dark:border-l-red-500 bg-red-50/40 dark:bg-red-950/15", job.is_customer_waiting && !overdue && "border-l-red-400", draggedJobId === job.id && "opacity-60", updatingJobId === job.id && "ring-2 ring-border")}>
+                              className={cn("group flex min-h-[172px] flex-col rounded-2xl border border-l-4 border-border bg-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg", BOARD_CARD_ACCENT[job.status], overdue && "border-l-red-500 dark:border-l-red-500 bg-red-50/40 dark:bg-red-950/15", job.is_customer_waiting && !overdue && "border-l-red-400", draggedJobId === job.id && "opacity-60", updatingJobId === job.id && "ring-2 ring-border")}>
                               <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-md border border-border bg-muted p-1 text-muted-foreground cursor-grab" title="Drag to move" onClick={(event) => event.preventDefault()}><GripVertical className="h-3 w-3" /></span><div className="min-w-0"><p className="inline-flex max-w-full rounded-md border border-blue-200 dark:border-blue-800/40 bg-blue-50/80 dark:bg-blue-950/40 px-2 py-0.5 text-[13px] font-black leading-none tracking-[0.08em] text-blue-950 dark:text-blue-200 shadow-sm"><span className="truncate tabular-nums">#{job.job_number || "Draft"}</span></p>{overdue ? <span className="mt-0.5 inline-flex rounded-full bg-red-100 dark:bg-red-900/50 px-1.5 py-0.5 text-[11px] font-bold text-red-700 dark:text-red-300">Overdue</span> : null}</div></div><span className={cn("shrink-0 rounded-full px-2 py-1 text-[11px] font-black tabular-nums ring-1", getPriorityTone(priority?.priorityScore))}>{priority?.priorityScore ?? "—"}</span></div>
                               <div className="mt-2 min-w-0"><h3 className="truncate text-[14px] font-bold leading-tight text-foreground">{job.customer?.name || "Walk-in"}</h3><div className="mt-1 rounded-xl bg-muted px-2.5 py-1.5 ring-1 ring-border"><p className="truncate text-[11px] font-medium text-muted-foreground">{getVehicleLabel(job)}</p><p className="mt-0.5 truncate text-[12px] font-black tracking-[0.12em] text-foreground tabular-nums">{getPlate(job)}</p></div></div>
                               <div className="mt-2 flex flex-wrap gap-1">
