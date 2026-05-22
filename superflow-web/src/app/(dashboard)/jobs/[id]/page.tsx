@@ -759,6 +759,13 @@ export default function JobDetailPage() {
 
         <div className="grid gap-5 bg-muted/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
+              <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
+              <StatCard label="Media" value={`${mediaCount}`} hint="files" />
+              <StatCard label="Approval" value={approvalStatusLabel} />
+            </div>
+
             <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-blue-600" />
@@ -821,13 +828,7 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
-                <ClipboardList className="mr-2 h-4 w-4" /> Inspection
-              </Button>
-              <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#media`)}>
-                <ImageIcon className="mr-2 h-4 w-4" /> Media
-              </Button>
+            <div className="flex gap-3">
               <Button variant="outline" className="h-12 rounded-2xl border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100" onClick={releasePortalUpdate} disabled={releasingPortal}>
                 <Send className="mr-2 h-4 w-4" /> {releasingPortal ? "Releasing..." : "Release portal"}
               </Button>
@@ -1042,12 +1043,6 @@ export default function JobDetailPage() {
                 <CardTitle className="text-lg">Quick actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
-                  <ClipboardList className="mr-2 h-4 w-4" /> Open inspection workspace
-                </Button>
-                <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={() => router.push(`/jobs/${job.id}#media`)}>
-                  <ImageIcon className="mr-2 h-4 w-4" /> Open media evidence
-                </Button>
                 {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-11 w-full rounded-xl">Add quote lines before approval</Button>}
               </CardContent>
             </Card>
