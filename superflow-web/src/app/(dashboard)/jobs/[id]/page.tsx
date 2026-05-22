@@ -759,13 +759,6 @@ export default function JobDetailPage() {
 
         <div className="grid gap-5 bg-muted/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
-              <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
-              <StatCard label="Media" value={`${mediaCount}`} hint="files" />
-              <StatCard label="Approval" value={approvalStatusLabel} />
-            </div>
-
             <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-blue-600" />
