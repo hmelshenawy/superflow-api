@@ -186,9 +186,9 @@ function estimateTotal(job: Job) {
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-muted p-4">
+    <div className="min-w-0 rounded-2xl border border-border bg-muted p-4">
       <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-foreground">{value}</p>
+      <p className="mt-2 truncate text-lg font-semibold text-foreground">{value}</p>
       {hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null}
     </div>
   );
@@ -759,7 +759,7 @@ export default function JobDetailPage() {
 
         <div className="grid gap-5 bg-muted/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
               <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
               <StatCard label="Media" value={`${mediaCount}`} hint="files" />
