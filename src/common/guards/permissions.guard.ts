@@ -61,7 +61,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Admin and platform_admin always pass
-    if (user.role === 'platform_admin') return true;
+    if (user.role === 'platform_admin' || user.role === 'admin' || user.role === 'workshop_admin') return true;
 
     await this.assertTrialAllowsRequest(user, request.method);
 
