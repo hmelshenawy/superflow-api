@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { AlertTriangle, Plus, RefreshCw, Pencil, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 export default function UsersRolesPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -143,6 +144,7 @@ export default function UsersRolesPage() {
   };
 
   return (
+    <RequirePermission permissions={["admin:users"]}>
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Users & Roles</h1>
@@ -269,5 +271,6 @@ export default function UsersRolesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </RequirePermission>
   );
 }

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/tabs";
 import { AlertTriangle, Plus, RefreshCw, Pencil, Power, RotateCcw, ClipboardList, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 const VEHICLE_TYPES = [
   { value: "", label: "All" },
@@ -58,6 +59,7 @@ export default function TemplatesPage() {
   const [tab, setTab] = useState(initialTab);
 
   return (
+    <RequirePermission permissions={["admin:templates"]}>
     <div className="space-y-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v)}>
         <TabsList className="grid w-full grid-cols-2 rounded-xl">
@@ -77,6 +79,7 @@ export default function TemplatesPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </RequirePermission>
   );
 }
 

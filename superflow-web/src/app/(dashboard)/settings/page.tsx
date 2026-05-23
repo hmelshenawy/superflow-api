@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { hasAnyPermission, SETTINGS_TAB_PERMISSIONS } from "@/lib/permissions";
 import type { WorkflowStageConfig, WorkflowTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1089,8 +1090,12 @@ function BillingSection() {
 // ─── Main Page ────────────────────────────────────────
 export default function SettingsPage() {
   const user = useAuthStore((state) => state.user);
-  const roleName = useMemo(() => user?.role?.name || "", [user?.role?.name]);
-  const canSeeBilling = ["workshop_admin", "platform_admin"].includes(roleName);
+
+  const visibleTabs = useMemo(() => {
+    return Object.entries(SETTINGS_TAB_PERMISSIONS)
+      .filter(([_, perms]) => perms.length === 0 || hasAnyPermission(user, perms))
+      .map(([key]) => key);
+  }, [user]);
 
   return (
     <div className="space-y-6">
@@ -1101,71 +1106,95 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="account" className="w-full">
+      <Tabs defaultValue={visibleTabs.includes("account") ? "account" : visibleTabs[0]} className="w-full">
         <TabsList className="h-auto min-h-8 w-full flex-wrap justify-start overflow-visible">
-          <TabsTrigger value="account">
-            <User className="mr-1.5 h-4 w-4" />
-            Account
-          </TabsTrigger>
-          <TabsTrigger value="workshop">
-            <Settings2 className="mr-1.5 h-4 w-4" />
-            Workshop
-          </TabsTrigger>
-          <TabsTrigger value="workflow">
-            <Wrench className="mr-1.5 h-4 w-4" />
-            Workflow
-          </TabsTrigger>
-          <TabsTrigger value="priority">
-            <Settings2 className="mr-1.5 h-4 w-4" />
-            Priority Matrix
-          </TabsTrigger>
-          {canSeeBilling ? (
+          {visibleTabs.includes("account") && (
+            <TabsTrigger value="account">
+              <User className="mr-1.5 h-4 w-4" />
+              Account
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("workshop") && (
+            <TabsTrigger value="workshop">
+              <Settings2 className="mr-1.5 h-4 w-4" />
+              Workshop
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("workflow") && (
+            <TabsTrigger value="workflow">
+              <Wrench className="mr-1.5 h-4 w-4" />
+              Workflow
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("priority") && (
+            <TabsTrigger value="priority">
+              <Settings2 className="mr-1.5 h-4 w-4" />
+              Priority Matrix
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("billing") && (
             <TabsTrigger value="billing">
               <CreditCard className="mr-1.5 h-4 w-4" />
               Billing
             </TabsTrigger>
-          ) : null}
-          <TabsTrigger value="notifications">
-            <Bell className="mr-1.5 h-4 w-4" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="integrations">
-            <Link2 className="mr-1.5 h-4 w-4" />
-            Integrations
-          </TabsTrigger>
+          )}
+          {visibleTabs.includes("notifications") && (
+            <TabsTrigger value="notifications">
+              <Bell className="mr-1.5 h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("integrations") && (
+            <TabsTrigger value="integrations">
+              <Link2 className="mr-1.5 h-4 w-4" />
+              Integrations
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="account" className="mt-6 space-y-6">
-          <ProfileSection />
-          <PasswordSection />
-          <SessionsSection />
-        </TabsContent>
+        {visibleTabs.includes("account") && (
+          <TabsContent value="account" className="mt-6 space-y-6">
+            <ProfileSection />
+            <PasswordSection />
+            <SessionsSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="workshop" className="mt-6 space-y-6">
-          <WorkshopSection />
-        </TabsContent>
+        {visibleTabs.includes("workshop") && (
+          <TabsContent value="workshop" className="mt-6 space-y-6">
+            <WorkshopSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="workflow" className="mt-6 space-y-6">
-          <WorkflowSection />
-        </TabsContent>
+        {visibleTabs.includes("workflow") && (
+          <TabsContent value="workflow" className="mt-6 space-y-6">
+            <WorkflowSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="priority" className="mt-6 space-y-6">
-          <PriorityMatrixSection />
-        </TabsContent>
+        {visibleTabs.includes("priority") && (
+          <TabsContent value="priority" className="mt-6 space-y-6">
+            <PriorityMatrixSection />
+          </TabsContent>
+        )}
 
-        {canSeeBilling ? (
+        {visibleTabs.includes("billing") && (
           <TabsContent value="billing" className="mt-6 space-y-6">
             <BillingSection />
           </TabsContent>
-        ) : null}
+        )}
 
-        <TabsContent value="notifications" className="mt-6 space-y-6">
-          <NotificationsSection />
-        </TabsContent>
+        {visibleTabs.includes("notifications") && (
+          <TabsContent value="notifications" className="mt-6 space-y-6">
+            <NotificationsSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="integrations" className="mt-6 space-y-6">
-          <IntegrationsSection />
-        </TabsContent>
+        {visibleTabs.includes("integrations") && (
+          <TabsContent value="integrations" className="mt-6 space-y-6">
+            <IntegrationsSection />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

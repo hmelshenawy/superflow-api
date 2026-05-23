@@ -24,6 +24,7 @@ import {
 import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download, AlertTriangle, CreditCard } from "lucide-react";
 import SubscriptionManagerDialog from "./SubscriptionManagerDialog";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 interface WorkshopUser {
   id: string;
@@ -247,6 +248,7 @@ export default function WorkshopsPage() {
   const availableUsers = allUsers.filter(u => !assignedUserIds.has(u.id));
 
   return (
+    <RequirePermission permissions={["workshops:read"]}>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -472,5 +474,6 @@ export default function WorkshopsPage() {
         workshopRegion={billingWorkshop?.region ?? null}
       />
     </div>
+    </RequirePermission>
   );
 }

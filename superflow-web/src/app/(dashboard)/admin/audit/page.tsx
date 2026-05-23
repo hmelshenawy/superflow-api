@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, ChevronLeft, ChevronRight, Eye, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 interface AuditUser {
   id: string;
@@ -170,6 +171,7 @@ export default function AuditPage() {
   }
 
   return (
+    <RequirePermission permissions={["admin:audit"]}>
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -312,5 +314,6 @@ export default function AuditPage() {
         </div>
       </div>
     </div>
+    </RequirePermission>
   );
 }

@@ -44,6 +44,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 import { redirect } from "next/navigation";
 
 // Permission categories for the UI
@@ -322,6 +323,7 @@ export default function RolesPermissionsPage() {
   const selectedPerms = useMemo(() => normalizePermissions(selectedRole?.permissions), [selectedRole]);
 
   return (
+    <RequirePermission permissions={["admin:roles"]}>
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -670,6 +672,7 @@ export default function RolesPermissionsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </RequirePermission>
   );
 }
 

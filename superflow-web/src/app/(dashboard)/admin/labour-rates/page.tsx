@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 export default function LabourRatesPage() {
   const [rates, setRates] = useState<LabourRate[]>([]);
@@ -100,6 +101,7 @@ export default function LabourRatesPage() {
   };
 
   return (
+    <RequirePermission permissions={["admin:labour-rates"]}>
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Labour Rates</h1>
@@ -193,5 +195,6 @@ export default function LabourRatesPage() {
         </Table>
       </div>
     </div>
+    </RequirePermission>
   );
 }

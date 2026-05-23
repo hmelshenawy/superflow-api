@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
+import { hasAnyPermission, isAdmin as isAdminCheck, isPlatformAdmin } from "@/lib/permissions";
 import {
   BadgeCheck,
   Building2,
@@ -52,33 +53,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/usage", label: "Usage Overview", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
 ];
 
-function isPlatformAdmin(user: { role?: { name?: string | null } | null } | null): boolean {
-  return user?.role?.name?.toLowerCase() === "platform_admin";
-}
-
-function isAdmin(user: { role?: { name?: string | null } | null; role_id?: string | null } | null): boolean {
-  if (!user) return false;
-  const roleName = user.role?.name?.toLowerCase();
-  if (roleName === "admin" || roleName === "administrator" || roleName === "super_admin" || roleName === "platform_admin" || roleName === "workshop_admin") return true;
-  const roleId = user.role_id;
-  if (roleId === "admin" || roleId === "super_admin") return true;
-  return false;
-}
-
-function getUserPermissions(user: { role?: { name?: string | null; permissions?: string[] | string | null } | null } | null): Set<string> {
-  if (!user) return new Set();
-  if (isAdmin(user)) return new Set(["*"]);
-  const perms = user.role?.permissions;
-  if (!perms) return new Set();
-  if (Array.isArray(perms)) return new Set(perms);
-  try { return new Set(JSON.parse(String(perms))); } catch { return new Set(); }
-}
-
 function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
   if (item.platformOnly && !isPlatformAdmin(user)) return false;
   if (!item.requirePermission) return true;
-  if (isAdmin(user)) return true;
-  return getUserPermissions(user).has(item.requirePermission);
+  return hasAnyPermission(user, [item.requirePermission]);
 }
 
 export function Sidebar() {
@@ -88,7 +66,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const admin = isAdmin(user);
+  const admin = isAdminCheck(user);
 
   // Initialize from localStorage after hydration
   useEffect(() => {

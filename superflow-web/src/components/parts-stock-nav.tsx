@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
+import { hasAnyPermission } from "@/lib/permissions";
 import { BarChart3, Package, ArrowLeftRight, AlertTriangle, Warehouse, Truck, ScrollText, Sliders } from "lucide-react";
 
 type Tab = { href: string; label: string; icon: typeof Package; requirePermission: string };
@@ -19,35 +20,11 @@ const TABS: Tab[] = [
   { href: "/parts/analytics", label: "Analytics", icon: BarChart3, requirePermission: "stock:analytics" },
 ];
 
-function isAdmin(user: { role?: { name?: string | null } | null; role_id?: string | null } | null): boolean {
-  if (!user) return false;
-  const roleName = user.role?.name?.toLowerCase();
-  if (roleName === "admin" || roleName === "administrator" || roleName === "super_admin" || roleName === "platform_admin" || roleName === "workshop_admin") return true;
-  const roleId = user.role_id;
-  if (roleId === "admin" || roleId === "super_admin") return true;
-  return false;
-}
-
-function getUserPermissions(user: { role?: { name?: string | null; permissions?: string[] | string | null } | null } | null): Set<string> {
-  if (!user) return new Set();
-  if (isAdmin(user)) return new Set(["*"]);
-  const perms = user.role?.permissions;
-  if (!perms) return new Set();
-  if (Array.isArray(perms)) return new Set(perms);
-  try { return new Set(JSON.parse(String(perms))); } catch { return new Set(); }
-}
-
-function canSeeTab(tab: Tab, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
-  if (!tab.requirePermission) return true;
-  if (isAdmin(user)) return true;
-  return getUserPermissions(user).has(tab.requirePermission);
-}
-
 export function PartsStockNav() {
   const pathname = usePathname();
   const { user } = useAuthStore();
 
-  const visibleTabs = TABS.filter((tab) => canSeeTab(tab, user));
+  const visibleTabs = TABS.filter((tab) => hasAnyPermission(user, [tab.requirePermission]));
 
   function isActive(href: string) {
     if (href === "/parts") return pathname === "/parts" || pathname.startsWith("/parts/");

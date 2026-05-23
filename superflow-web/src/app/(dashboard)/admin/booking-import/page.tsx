@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Upload, MapPin, Play, Save, ArrowLeft, ArrowRight, CheckCircle, XCircle, SkipForward, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -276,6 +277,7 @@ export default function BookingImportPage() {
   };
 
   return (
+    <RequirePermission permissions={["import:parse"]}>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -581,5 +583,6 @@ export default function BookingImportPage() {
         </Card>
       )}
     </div>
+    </RequirePermission>
   );
 }
