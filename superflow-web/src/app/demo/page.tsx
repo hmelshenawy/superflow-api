@@ -146,7 +146,7 @@ export default function DemoPage() {
           <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#08111F]">
             <video
               className="h-full w-full object-cover"
-              src="/videos/prioraflow-loop.mp4"
+              src="/videos/demo.mp4"
               poster="/prioraflow-logo.png"
               muted
               autoPlay
