@@ -143,27 +143,15 @@ export default function DemoPage() {
         </div>
 
         <div className="rounded-2xl border border-[#E5EAF0] bg-white p-3 shadow-2xl shadow-slate-200/70">
-          <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#08111F]">
+          <div className="aspect-video overflow-hidden rounded-2xl bg-[#08111F]">
             <video
               className="h-full w-full object-cover"
               src="/videos/demo.mp4"
               poster="/prioraflow-logo.png"
-              muted
-              autoPlay
-              loop
               playsInline
+              controls
+              preload="metadata"
             />
-            <div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase text-blue-200">Live Flow</p>
-                  <p className="mt-1 text-sm font-semibold sm:text-base">Priority-ranked workshop cockpit</p>
-                </div>
-                <span className="rounded-2xl bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-200">
-                  Live
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
