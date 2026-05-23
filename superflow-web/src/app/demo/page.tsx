@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 const bookDemoHref = "/book-demo";
 const whatsappHref = "https://wa.me/971501234567";
 const youtubeEmbedHref = "https://www.youtube.com/embed/YOUTUBE_VIDEO_ID";
-const youtubeWatchHref = "https://www.youtube.com/watch?v=YOUTUBE_VIDEO_ID";
+const youtubeWatchHref = "https://www.youtube.com/@PrioraFlow";
 
 const kpis = [
   { label: "Active Jobs", value: "24" },
