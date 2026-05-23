@@ -175,6 +175,7 @@ function normalizePermissions(p: string[] | string | null | undefined): string[]
 
 function isFullAccessRole(role: { name?: string | null; permissions?: string[] | string | null } | null): boolean {
   if (!role) return false;
+  if (role.name === "admin" || role.name === "workshop_admin") return true;
   const perms = normalizePermissions(role.permissions);
   return perms.length === 1 && perms[0] === "*";
 }
@@ -505,7 +506,7 @@ export default function RolesPermissionsPage() {
                       <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
                         {catPerms.map((perm) => {
                           const has = isWildcard || selectedPerms.includes(perm);
-                          const [, action] = perm.split(":");
+                          const action = perm.includes(":") ? perm.substring(perm.indexOf(":") + 1) : perm;
                           return (
                             <Badge
                               key={perm}
@@ -634,7 +635,7 @@ export default function RolesPermissionsPage() {
                       <div className="border-t px-3 py-2.5 space-y-2">
                         {catPerms.map((perm) => {
                           const has = formPermissions.has(perm);
-                          const [, action] = perm.split(":");
+                          const action = perm.includes(":") ? perm.substring(perm.indexOf(":") + 1) : perm;
                           return (
                             <label
                               key={perm}
