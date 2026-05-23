@@ -173,6 +173,12 @@ function normalizePermissions(p: string[] | string | null | undefined): string[]
   }
 }
 
+function isFullAccessRole(role: { name?: string | null; permissions?: string[] | string | null } | null): boolean {
+  if (!role) return false;
+  const perms = normalizePermissions(role.permissions);
+  return perms.length === 1 && perms[0] === "*";
+}
+
 export default function RolesPermissionsPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role?.name === "admin" || user?.role?.name === "administrator" || user?.role?.name === "platform_admin" || user?.role?.name === "workshop_admin";
@@ -238,7 +244,9 @@ export default function RolesPermissionsPage() {
     setEditingRole(role);
     setFormName(role.name ?? "");
     setFormDesc(role.description ?? "");
-    setFormPermissions(new Set(normalizePermissions(role.permissions)));
+    const perms = normalizePermissions(role.permissions);
+    // Wildcard roles get all permissions in the editor
+    setFormPermissions(perms.length === 1 && perms[0] === "*" ? new Set(allPermissions) : new Set(perms));
     setExpandedCategories(new Set(PERMISSION_CATEGORIES.map((c) => c.key)));
     setDialogOpen(true);
   };
@@ -392,7 +400,8 @@ export default function RolesPermissionsPage() {
                             <div className="font-medium flex items-center gap-2">
                               {role.name}
                               {role.name === "workshop_admin" && <Badge variant="default" className="text-[10px]">Always Full</Badge>}
-                              {isDefault && role.name !== "workshop_admin" && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
+                              {(role.name === "admin" || isFullAccessRole(role)) && role.name !== "workshop_admin" && <Badge variant="default" className="text-[10px]">Full Access</Badge>}
+                              {isDefault && role.name !== "workshop_admin" && !isFullAccessRole(role) && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
                             </div>
                             {role.description && (
                               <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{role.description}</div>
@@ -400,7 +409,7 @@ export default function RolesPermissionsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="outline">{perms.length}</Badge>
+                          <Badge variant="outline">{isFullAccessRole(role) ? "All" : perms.length}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -457,9 +466,13 @@ export default function RolesPermissionsPage() {
               </div>
 
               <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline">{selectedPerms.length} of {allPermissions.length} permissions</Badge>
-                {selectedRole.name === "admin" && (
-                  <span className="text-xs text-muted-foreground">Admin bypasses all checks regardless of listed permissions</span>
+                {isFullAccessRole(selectedRole) ? (
+                  <Badge variant="default" className="bg-green-600 text-white">Full access — all permissions granted</Badge>
+                ) : (
+                  <Badge variant="outline">{selectedPerms.length} of {allPermissions.length} permissions</Badge>
+                )}
+                {(selectedRole.name === "admin" || selectedRole.name === "workshop_admin") && !isFullAccessRole(selectedRole) && (
+                  <span className="text-xs text-muted-foreground">This role bypasses all permission checks regardless of listed permissions</span>
                 )}
               </div>
 
@@ -469,7 +482,8 @@ export default function RolesPermissionsPage() {
                 {PERMISSION_CATEGORIES.map((cat) => {
                   const catPerms = cat.permissions.filter((p) => allPermissions.includes(p));
                   if (catPerms.length === 0) return null;
-                  const granted = catPerms.filter((p) => selectedPerms.includes(p));
+                  const isWildcard = isFullAccessRole(selectedRole);
+                  const granted = isWildcard ? catPerms : catPerms.filter((p) => selectedPerms.includes(p));
                   const allGranted = granted.length === catPerms.length;
                   const noneGranted = granted.length === 0;
 
@@ -490,7 +504,7 @@ export default function RolesPermissionsPage() {
                       </div>
                       <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
                         {catPerms.map((perm) => {
-                          const has = selectedPerms.includes(perm);
+                          const has = isWildcard || selectedPerms.includes(perm);
                           const [, action] = perm.split(":");
                           return (
                             <Badge
