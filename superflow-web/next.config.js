@@ -28,7 +28,7 @@ const cspDirectives = [
   `connect-src ${connectSrc.join(" ")}`,
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
-  "frame-src 'none'",
+  "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
