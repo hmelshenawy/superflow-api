@@ -39,10 +39,10 @@ export function hasAnyPermission(user: PermissionUser, permissions: string[]): b
 
 export const SETTINGS_TAB_PERMISSIONS: Record<string, string[]> = {
   account: [],
-  workshop: ["admin:settings", "admin:settings:edit"],
-  workflow: ["admin:settings", "admin:settings:edit"],
-  priority: ["admin:settings", "admin:settings:edit"],
+  workshop: ["admin:settings:edit"],
+  workflow: ["admin:settings:edit"],
+  priority: ["admin:settings:edit"],
   billing: ["admin:billing"],
-  notifications: ["admin:settings", "admin:settings:edit"],
+  notifications: ["admin:settings:edit"],
   integrations: ["admin:integrations"],
 };
