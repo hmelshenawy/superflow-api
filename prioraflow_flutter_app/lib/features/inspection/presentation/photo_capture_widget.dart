@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
@@ -20,22 +21,37 @@ class PhotoCaptureWidget extends StatefulWidget {
 class _PhotoCaptureWidgetState extends State<PhotoCaptureWidget> {
   final _picker = ImagePicker();
   List<File> _photos = [];
+  bool _isPicking = false;
+
+  bool get _cameraAvailable =>
+      !Platform.isWindows && !Platform.isLinux && !kIsWeb;
 
   Future<void> _pickImage(ImageSource source) async {
-    if (_photos.length >= widget.maxPhotos) return;
+    if (_isPicking || _photos.length >= widget.maxPhotos) return;
+    setState(() => _isPicking = true);
 
-    final xFile = await _picker.pickImage(
-      source: source,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 85,
-    );
-    if (xFile == null) return;
+    try {
+      final xFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (xFile == null) return;
 
-    setState(() {
-      _photos.add(File(xFile.path));
-    });
-    widget.onPhotosChanged(_photos);
+      setState(() {
+        _photos.add(File(xFile.path));
+      });
+      widget.onPhotosChanged(_photos);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isPicking = false);
+    }
   }
 
   void _removePhoto(int index) {
@@ -54,6 +70,8 @@ class _PhotoCaptureWidgetState extends State<PhotoCaptureWidget> {
       children: [
         Row(
           children: [
+            const Icon(Icons.photo_camera_outlined, size: 20),
+            const SizedBox(width: 8),
             Text('Photos', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(width: 8),
             Text(
@@ -80,22 +98,32 @@ class _PhotoCaptureWidgetState extends State<PhotoCaptureWidget> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt, size: 18),
-                  label: const Text('Camera'),
+              if (_cameraAvailable) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isPicking ? null : () => _pickImage(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt, size: 18),
+                    label: const Text('Camera'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.gallery),
+                  onPressed: _isPicking ? null : () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library, size: 18),
-                  label: const Text('Gallery'),
+                  label: Text(_cameraAvailable ? 'Gallery' : 'Choose Photos'),
                 ),
               ),
             ],
+          ),
+        ] else ...[
+          const SizedBox(height: 8),
+          Text(
+            'Maximum photos reached',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.textMuted,
+                ),
           ),
         ],
       ],
