@@ -148,17 +148,24 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Concern description (read-only)
-            Card(
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.foreground.withOpacity(0.1)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Concern',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(color: AppColors.textMuted)),
+                    Text('CONCERN',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.15,
+                          color: AppColors.textMuted,
+                        )),
                     const SizedBox(height: 4),
                     Text(widget.concernDescription,
                         style: Theme.of(context).textTheme.bodyMedium),
@@ -169,8 +176,13 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
             const SizedBox(height: 16),
 
             // Finding type selector
-            Text('Finding Type',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text('FINDING TYPE',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.15,
+                  color: AppColors.textMuted,
+                )),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -307,9 +319,9 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
   Color _typeColor(FindingType type) {
     switch (type) {
       case FindingType.ok:
-        return AppColors.success;
+        return AppColors.statusApproved;
       case FindingType.needsAttention:
-        return AppColors.warning;
+        return AppColors.statusChecking;
       case FindingType.critical:
         return AppColors.danger;
       case FindingType.deferred:

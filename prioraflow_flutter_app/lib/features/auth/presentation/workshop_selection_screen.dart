@@ -19,15 +19,22 @@ class WorkshopSelectionScreen extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.business, size: 64, color: AppColors.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'Select Workshop',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
-                      ),
-                ),
+                Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.business, size: 48, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Select Workshop',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.foreground,
+                        ),
+                  ),
                 const SizedBox(height: 8),
                 Text(
                   'Choose a workshop to continue',
@@ -41,9 +48,9 @@ class WorkshopSelectionScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                      color: AppColors.danger.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.danger.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
@@ -77,7 +84,7 @@ class WorkshopSelectionScreen extends ConsumerWidget {
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
+                                    strokeWidth: 2, color: AppColors.background),
                               )
                             : Column(
                                 children: [

@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:prioraflow_tech/core/theme/app_colors.dart';
+
 enum JobStatus {
   booked,
   checking,
@@ -79,4 +82,21 @@ enum JobStatus {
         return 5;
     }
   }
+
+  /// Semantic status color matching web's STATUS_META dark-mode palette.
+  Color get color => switch (this) {
+        JobStatus.booked => AppColors.statusBooked,
+        JobStatus.checking => AppColors.statusChecking,
+        JobStatus.estimateSent => AppColors.statusEstimateSent,
+        JobStatus.approved => AppColors.statusApproved,
+        JobStatus.inProgress => AppColors.statusInProgress,
+        JobStatus.waitingParts => AppColors.statusWaitingParts,
+        JobStatus.qualityCheck => AppColors.statusQualityCheck,
+        JobStatus.ready => AppColors.statusReady,
+        JobStatus.closed => AppColors.statusClosed,
+        JobStatus.noShow => AppColors.statusNoShow,
+      };
+
+  /// Background tint for status badges (12% opacity of status color).
+  Color get bgColor => AppColors.statusBg(color);
 }

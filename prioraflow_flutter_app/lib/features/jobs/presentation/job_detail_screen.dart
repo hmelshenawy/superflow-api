@@ -74,7 +74,12 @@ class _VehicleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.foreground.withOpacity(0.1)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -82,16 +87,33 @@ class _VehicleHeader extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.directions_car, color: AppColors.primary, size: 28),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.muted,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.directions_car, color: AppColors.primary, size: 24),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (job.jobNumber != null)
+                        Text(
+                          job.jobNumber!,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.08,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                       Text(
                         job.vehicle?.displayName ?? 'Unknown Vehicle',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                       ),
                       if (job.vehicle?.plateNumber != null)
@@ -104,14 +126,7 @@ class _VehicleHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (job.customer?.name != null)
-                  Row(
-                    children: [
-                      const Icon(Icons.person_outline, size: 16, color: AppColors.textMuted),
-                      const SizedBox(width: 4),
-                      Text(job.customer!.name!, style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ),
+                _StatusPill(status: job.status),
               ],
             ),
             if (job.customerConcern != null) ...[
@@ -120,17 +135,67 @@ class _VehicleHeader extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.muted,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.foreground.withOpacity(0.08)),
                 ),
-                child: Text(
-                  job.customerConcern!,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.record_voice_over, size: 16, color: AppColors.statusChecking),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        job.customerConcern!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+
+  const _StatusPill({required this.status});
+  final JobStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: status.bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: status.color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: status.color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: status.color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -154,13 +219,26 @@ class _PhaseProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentIndex = status.phaseIndex;
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.foreground.withOpacity(0.1)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Progress', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'PROGRESS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.15,
+                color: AppColors.textMuted,
+              ),
+            ),
             const SizedBox(height: 16),
             Row(
               children: List.generate(_phases.length, (i) {
@@ -174,8 +252,8 @@ class _PhaseProgress extends StatelessWidget {
                         height: 28,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isComplete ? AppColors.primary : AppColors.border,
-                          border: isCurrent ? Border.all(color: AppColors.primaryLight, width: 2) : null,
+                          color: isComplete ? status.color : AppColors.muted,
+                          border: isCurrent ? Border.all(color: status.color.withOpacity(0.5), width: 3) : null,
                         ),
                         child: Icon(
                           isComplete ? Icons.check : _phases[i].$2,
@@ -188,7 +266,7 @@ class _PhaseProgress extends StatelessWidget {
                         _phases[i].$1,
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: isComplete ? AppColors.textPrimary : AppColors.textMuted,
+                              color: isComplete ? AppColors.foreground : AppColors.textMuted,
                               fontWeight: isCurrent ? FontWeight.w700 : null,
                             ),
                       ),
@@ -213,13 +291,26 @@ class _JobInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final countdown = app_date.AppDateUtils.countdown(job.promisedAt);
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.foreground.withOpacity(0.1)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Details', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'DETAILS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.15,
+                color: AppColors.textMuted,
+              ),
+            ),
             const SizedBox(height: 12),
             if (job.promisedAt != null)
               _InfoRow(
@@ -271,7 +362,7 @@ class _InfoRow extends StatelessWidget {
               value,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: valueColor ?? AppColors.textPrimary,
+                    color: valueColor ?? AppColors.foreground,
                   ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -293,109 +384,125 @@ class _CheckinSummaryCard extends StatelessWidget {
     final hasCustomerConcern =
         job.customerConcern != null && job.customerConcern!.isNotEmpty;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.foreground.withOpacity(0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => ConcernListScreen(jobId: job.id)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.assignment_outlined,
-                    size: 20, color: AppColors.info),
-                const SizedBox(width: 8),
-                Text('Check-in Report',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            if (hasCustomerConcern) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.info.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: AppColors.info.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    const Icon(Icons.record_voice_over,
-                        size: 16, color: AppColors.info),
+                    Icon(Icons.assignment_outlined, size: 18, color: AppColors.statusChecking),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(job.customerConcern!,
-                          style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      'CHECK-IN REPORT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.15,
+                        color: AppColors.statusChecking,
+                      ),
                     ),
+                    const Spacer(),
+                    Icon(Icons.chevron_right, color: AppColors.textMuted),
                   ],
                 ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (advisorCount > 0) ...[
+                if (hasCustomerConcern) ...[
+                  const SizedBox(height: 12),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.info.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
+                      color: AppColors.statusChecking.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.statusChecking.withOpacity(0.2)),
                     ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.support_agent,
-                            size: 14, color: AppColors.info),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$advisorCount advisor note${advisorCount > 1 ? 's' : ''}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.info,
-                          ),
+                        Icon(Icons.record_voice_over, size: 16, color: AppColors.statusChecking),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(job.customerConcern!,
+                              style: Theme.of(context).textTheme.bodyMedium),
                         ),
                       ],
                     ),
                   ),
                 ],
-                if (advisorCount > 0 && inspectionCount > 0)
-                  const SizedBox(width: 8),
-                if (inspectionCount > 0) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.search,
-                            size: 14, color: AppColors.success),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$inspectionCount finding${inspectionCount > 1 ? 's' : ''}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.success,
-                          ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    if (advisorCount > 0) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.statusChecking.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.statusChecking.withOpacity(0.3)),
                         ),
-                      ],
-                    ),
-                  ),
-                ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.support_agent, size: 14, color: AppColors.statusChecking),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$advisorCount advisor note${advisorCount > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.statusChecking,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (advisorCount > 0 && inspectionCount > 0)
+                      const SizedBox(width: 8),
+                    if (inspectionCount > 0) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.statusApproved.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.statusApproved.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.search, size: 14, color: AppColors.statusApproved),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$inspectionCount finding${inspectionCount > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.statusApproved,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -467,7 +574,7 @@ class _ActionButtons extends ConsumerWidget {
         if (job.status == JobStatus.booked) ...[
           OutlinedButton(
             onPressed: () => notifier.transitionStatus(JobStatus.noShow),
-            style: OutlinedButton.styleFrom(foregroundColor: AppColors.warning),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.statusChecking),
             child: const Text('No Show'),
           ),
           const SizedBox(height: 8),

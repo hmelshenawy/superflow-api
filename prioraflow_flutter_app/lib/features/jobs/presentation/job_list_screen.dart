@@ -191,72 +191,103 @@ class _JobCard extends StatelessWidget {
     final countdown = app_date.AppDateUtils.countdown(job.promisedAt);
     final isOverdue = countdown == 'Overdue';
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => JobDetailScreen(jobId: job.id)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      job.displayTitle,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ),
-                  _PriorityChip(priority: job.priorityLevel),
-                ],
-              ),
-              if (job.customerConcern != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  job.customerConcern!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border(left: BorderSide(color: job.status.color, width: 4)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.foreground.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => JobDetailScreen(jobId: job.id)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (job.jobNumber != null) ...[
+                      Text(
+                        job.jobNumber!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.08,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Text(
+                        job.displayTitle,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    _PriorityPill(priority: job.priorityLevel),
+                  ],
+                ),
+                if (job.customerConcern != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    job.customerConcern!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _StatusPill(status: job.status),
+                    const Spacer(),
+                    if (job.vehicle?.plateNumber != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.muted,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.foreground.withOpacity(0.08)),
+                        ),
+                        child: Text(
+                          job.vehicle!.plateNumber!,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                letterSpacing: 0.04,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    if (countdown != null)
+                      Text(
+                        countdown,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: isOverdue ? AppColors.danger : AppColors.textMuted,
+                              fontWeight: isOverdue ? FontWeight.w700 : null,
+                            ),
+                      ),
+                  ],
                 ),
               ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _StatusBadge(status: job.status),
-                  const Spacer(),
-                  if (job.vehicle?.plateNumber != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        job.vehicle!.plateNumber!,
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (countdown != null)
-                    Text(
-                      countdown,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: isOverdue ? AppColors.danger : AppColors.textMuted,
-                            fontWeight: isOverdue ? FontWeight.w700 : null,
-                          ),
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -264,18 +295,19 @@ class _JobCard extends StatelessWidget {
   }
 }
 
-class _PriorityChip extends StatelessWidget {
+class _PriorityPill extends StatelessWidget {
 
-  const _PriorityChip({required this.priority});
+  const _PriorityPill({required this.priority});
   final PriorityLevel priority;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: priority.color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
+        color: priority.color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: priority.color.withOpacity(0.3)),
       ),
       child: Text(
         priority.label,
@@ -289,31 +321,41 @@ class _PriorityChip extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
+class _StatusPill extends StatelessWidget {
 
-  const _StatusBadge({required this.status});
+  const _StatusPill({required this.status});
   final JobStatus status;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
-      JobStatus.inProgress => AppColors.primary,
-      JobStatus.qualityCheck => AppColors.warning,
-      JobStatus.ready => AppColors.success,
-      JobStatus.closed => AppColors.textMuted,
-      JobStatus.waitingParts => AppColors.warning,
-      _ => AppColors.textSecondary,
-    };
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
+        color: status.bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: status.color.withOpacity(0.3)),
       ),
-      child: Text(
-        status.label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: status.color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: status.color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -330,6 +372,7 @@ class _AppDrawer extends ConsumerWidget {
     final role = (user?['role']?['name'] ?? 'technician').toString();
 
     return Drawer(
+      backgroundColor: AppColors.background,
       child: SafeArea(
         child: Column(
           children: [
@@ -339,10 +382,10 @@ class _AppDrawer extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: AppColors.foreground,
                     child: Text(
                       name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.background),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -351,29 +394,45 @@ class _AppDrawer extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(name, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                        Text(role.toUpperCase(), style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.statusApproved.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            role.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.1,
+                              color: AppColors.statusApproved,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.foreground.withOpacity(0.1)),
             ListTile(
-              leading: const Icon(Icons.assignment_outlined),
+              leading: Icon(Icons.assignment_outlined, color: AppColors.foreground),
               title: const Text('My Jobs'),
+              selectedTileColor: AppColors.foreground.withOpacity(0.1),
               onTap: () => Navigator.of(context).pop(),
             ),
             ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('Profile'),
+              leading: Icon(Icons.person_outline, color: AppColors.foregroundMuted),
+              title: Text('Profile', style: TextStyle(color: AppColors.foregroundMuted)),
               onTap: () {
                 Navigator.of(context).pop();
                 context.push('/profile');
               },
             ),
             const Spacer(),
-            const Divider(height: 1),
+            Divider(height: 1, color: AppColors.foreground.withOpacity(0.1)),
             ListTile(
               leading: const Icon(Icons.logout, color: AppColors.danger),
               title: const Text('Sign Out', style: TextStyle(color: AppColors.danger)),

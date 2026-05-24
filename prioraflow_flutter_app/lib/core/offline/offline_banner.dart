@@ -13,7 +13,7 @@ class OfflineBanner extends ConsumerWidget {
     if (isOnline) return const SizedBox.shrink();
 
     return Material(
-      color: AppColors.warning,
+      color: AppColors.statusChecking,
       child: SafeArea(
         bottom: false,
         child: Padding(

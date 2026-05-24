@@ -56,10 +56,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo area
-                  const Icon(
-                    Icons.build_circle_outlined,
-                    size: 64,
-                    color: AppColors.primary,
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.build_circle_outlined,
+                      size: 48,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -67,7 +74,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
+                          color: AppColors.foreground,
                         ),
                   ),
                   const SizedBox(height: 4),
@@ -125,9 +132,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.danger.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                        color: AppColors.danger.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
@@ -152,7 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.background),
                           )
                         : const Text('Sign In'),
                   ),
