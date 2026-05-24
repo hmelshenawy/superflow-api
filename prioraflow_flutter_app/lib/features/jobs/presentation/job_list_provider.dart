@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/features/jobs/data/job_repository.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
+import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
 final jobListProvider = AsyncNotifierProvider<JobListNotifier, List<Job>>(() {
   return JobListNotifier();
@@ -11,6 +12,9 @@ class JobListNotifier extends AsyncNotifier<List<Job>> {
   String? _search;
   int _page = 1;
   bool _hasMore = true;
+
+  List<Job> _filterHidden(List<Job> jobs) =>
+      jobs.where((j) => !j.status.isHidden).toList();
 
   @override
   Future<List<Job>> build() async {
@@ -23,7 +27,7 @@ class JobListNotifier extends AsyncNotifier<List<Job>> {
       page: _page,
     );
     _hasMore = result.hasMore;
-    return result.items;
+    return _filterHidden(result.items);
   }
 
   Future<void> refresh() async {
@@ -38,7 +42,7 @@ class JobListNotifier extends AsyncNotifier<List<Job>> {
         page: _page,
       );
       _hasMore = result.hasMore;
-      state = AsyncData(result.items);
+      state = AsyncData(_filterHidden(result.items));
     } catch (e, st) {
       state = AsyncError(e, st);
     }
@@ -66,7 +70,7 @@ class JobListNotifier extends AsyncNotifier<List<Job>> {
         page: _page,
       );
       _hasMore = result.hasMore;
-      state = AsyncData([...current, ...result.items]);
+      state = AsyncData([...current, ..._filterHidden(result.items)]);
     } catch (e, st) {
       _page--;
       state = AsyncError(e, st);

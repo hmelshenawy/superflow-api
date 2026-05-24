@@ -99,4 +99,7 @@ enum JobStatus {
 
   /// Background tint for status badges (12% opacity of status color).
   Color get bgColor => AppColors.statusBg(color);
+
+  /// Whether this status should be hidden from the active job list.
+  bool get isHidden => this == JobStatus.closed || this == JobStatus.noShow;
 }
