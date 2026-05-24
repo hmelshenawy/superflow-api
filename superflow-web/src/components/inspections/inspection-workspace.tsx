@@ -24,6 +24,7 @@ import {
   Upload,
   X,
   FileText,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -316,6 +317,17 @@ export function InspectionWorkspace({
     }
   };
 
+  const viewMedia = async (mediaId: string) => {
+    try {
+      const res = await api.get(`/media/${mediaId}/download`, { responseType: "blob" });
+      const blobUrl = URL.createObjectURL(res.data);
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err: any) {
+      toast.error(`Failed to open: ${getApiError(err).message}`);
+    }
+  };
+
   const sections =
     inspection?.inspection_templates?.inspection_sections ?? [];
 
@@ -600,7 +612,8 @@ export function InspectionWorkspace({
                         {mediaFiles.map((mf: MediaFile) => (
                           <div
                             key={mf.id}
-                            className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted"
+                            className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted cursor-pointer"
+                            onClick={() => viewMedia(mf.id)}
                           >
                             {mf.file_type === "video" ? (
                               <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -617,14 +630,28 @@ export function InspectionWorkspace({
                                 <Camera className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => removeMedia(mf.id, item.id)}
-                              aria-label="Remove media"
-                              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white opacity-0 group-hover:opacity-100 transition"
-                            >
-                              <X className="h-2.5 w-2.5" />
-                            </button>
+                            {/* Hover overlay with view + delete */}
+                            <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); viewMedia(mf.id); }}
+                                className="rounded-full bg-card p-1 text-foreground shadow hover:bg-muted"
+                                aria-label="Open file"
+                                title="Open file"
+                              >
+                                <Eye className="h-3 w-3" />
+                              </button>
+                              {!isLocked && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); removeMedia(mf.id, item.id); }}
+                                  aria-label="Remove media"
+                                  className="rounded-full bg-card p-1 text-red-600 shadow hover:bg-red-50"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
