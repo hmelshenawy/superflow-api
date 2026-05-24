@@ -560,12 +560,51 @@ export class AuthorisationService {
       return order(a) - order(b);
     });
 
+    const existingDecisions = await this.getImmutableLineDecisions(token.job_id);
+    const decisionByLine = new Map<string, any>();
+    for (const d of existingDecisions) {
+      if (d.estimate_line_id && !decisionByLine.has(d.estimate_line_id)) {
+        decisionByLine.set(d.estimate_line_id, d);
+      }
+    }
+
+    // Add is_actionable to each estimate line and group_decision_summary to each group
+    for (const group of grouped) {
+      const groupDecisions: string[] = [];
+      for (const line of group.lines) {
+        const decision = decisionByLine.get(line.id);
+        (line as any).is_actionable = !decision;
+        if (decision) groupDecisions.push(decision.decision);
+      }
+      const approved = groupDecisions.filter((d: string) => d === 'approved').length;
+      const declined = groupDecisions.filter((d: string) => d === 'declined').length;
+      const deferred = groupDecisions.filter((d: string) => d === 'deferred').length;
+      (group as any).group_decision_summary =
+        approved > 0 && declined > 0 ? 'mixed'
+        : approved > 0 ? 'approved'
+        : declined > 0 ? 'declined'
+        : deferred > 0 ? 'deferred'
+        : 'pending';
+      (group as any).is_locked = group.lines.length > 0 && group.lines.every((l: any) => decisionByLine.has(l.id));
+    }
+
+    const isExpired = token.expires_at ? new Date(token.expires_at) < new Date() : false;
+    const approvedTotal = existingDecisions
+      .filter((d: any) => d.decision === 'approved')
+      .reduce((sum: number, d: any) => {
+        const line = lines.find((l: any) => l.id === d.estimate_line_id);
+        return sum + Number(line?.line_total ?? 0);
+      }, 0);
+    const hasActionableLines = lines.some((l: any) => !decisionByLine.has(l.id));
+    const canSubmit = !isExpired && !token.is_revoked && hasActionableLines;
+
     return {
       token: {
         expires_at: token.expires_at,
         first_opened_at: token.first_opened_at,
         used_at: token.used_at,
         is_revoked: token.is_revoked,
+        is_expired: isExpired,
       },
       job: {
         id: token.jobs?.id,
@@ -592,7 +631,10 @@ export class AuthorisationService {
       job_photos: (token.jobs?.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
       grouped_estimate: grouped,
       grand_total: lines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
-      existing_decisions: await this.getImmutableLineDecisions(token.job_id),
+      approved_total: approvedTotal,
+      has_actionable_lines: hasActionableLines,
+      can_submit: canSubmit,
+      existing_decisions: existingDecisions,
       currency: currencyRow?.value || 'AED',
     };
     });

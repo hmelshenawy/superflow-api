@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { SubmitInspectionDto } from './dto/submit-inspection.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { inspectionTrafficLight, isInformationalInputType, inspectionAvailableOptions } from '../common/utils/traffic-light';
 
 @Injectable()
 export class InspectionsService {
@@ -48,7 +49,11 @@ export class InspectionsService {
       }),
       this.prisma.tenant.inspections.count(),
     ]);
-    return { items, total, page: pagination.page, limit: pagination.limit };
+    const itemsWithMeta = items.map((item: any) => ({
+      ...item,
+      is_locked: ['submitted', 'reviewed', 'approved'].includes(item.status ?? ''),
+    }));
+    return { items: itemsWithMeta, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
@@ -74,6 +79,20 @@ export class InspectionsService {
       },
     });
     if (!inspection) throw new NotFoundException('Inspection not found');
+
+    // Add is_locked computed field
+    (inspection as any).is_locked = ['submitted', 'reviewed', 'approved'].includes(inspection.status ?? '');
+
+    // Add computed fields to each inspection item and response
+    for (const section of inspection.inspection_templates?.inspection_sections ?? []) {
+      for (const item of section.inspection_items ?? []) {
+        (item as any).is_informational = isInformationalInputType(item.input_type ?? 'pass_fail');
+        (item as any).available_options = inspectionAvailableOptions(item.input_type ?? 'pass_fail', (item as any).options);
+      }
+    }
+    for (const resp of inspection.inspection_responses ?? []) {
+      (resp as any).traffic_light = inspectionTrafficLight(resp.value, (resp as any).urgency);
+    }
 
     // Generate API proxy URLs for media_files on each response
     // (browser can't reach minio:9000 directly, so we serve through /media/:id/download)

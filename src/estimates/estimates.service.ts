@@ -43,10 +43,17 @@ export class EstimatesService {
   async findByJob(jobId: string) {
     const lines = await this.prisma.tenant.estimate_lines.findMany({
       where: { job_id: jobId },
-      include: { quote_groups: true, job_concerns: true },
+      include: { quote_groups: true, job_concerns: true, authorisation_decisions: true },
       orderBy: { sort_order: 'asc' },
     });
-    return lines.map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns }));
+    return lines.map((l: any) => ({
+      ...l,
+      quote_group: l.quote_groups,
+      concern: l.job_concerns,
+      is_recommended: l.is_recommended ?? Boolean(l.inspection_response_id),
+      is_actionable: !l.authorisation_decisions?.length,
+      group_decision_summary: undefined,
+    }));
   }
 
   async getDefaults() {

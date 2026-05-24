@@ -108,7 +108,7 @@ export class PriorityService {
   }
 
   /** ─── CORE SCORING ENGINE ─────────────────────────────────── */
-  private computeForJob(job: any): PriorityResultDto {
+  computeForJob(job: any): PriorityResultDto {
     const now = Date.now();
     const factors: PriorityFactorDto[] = [];
     let score = 10; // base

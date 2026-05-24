@@ -85,7 +85,11 @@ export class PartsService {
       this.prisma.tenant.parts.count({ where }),
     ]);
 
-    return { items, total, page: query.page, limit: query.limit };
+    const itemsWithMeta = items.map((item: any) => ({
+      ...item,
+      is_low_stock: this.computeIsLowStock(item),
+    }));
+    return { items: itemsWithMeta, total, page: query.page, limit: query.limit };
   }
 
   async findOne(id: string) {
@@ -98,6 +102,7 @@ export class PartsService {
       },
     });
     if (!part) throw new NotFoundException('Part not found');
+    return { ...part, is_low_stock: this.computeIsLowStock(part) };
     return part;
   }
 
@@ -204,5 +209,14 @@ export class PartsService {
     return matches
       .map((row: (typeof matches)[number]) => byId.get(row.id))
       .filter((item: (typeof items)[number] | undefined): item is (typeof items)[number] => Boolean(item));
+  }
+
+  private computeIsLowStock(part: any): boolean {
+    const minStock = part.min_stock ?? 0;
+    if (minStock <= 0) return false;
+    const totalOnHand = (part.inventory ?? []).reduce(
+      (sum: number, inv: any) => sum + (inv.quantity_on_hand ?? 0), 0,
+    );
+    return totalOnHand <= minStock;
   }
 }

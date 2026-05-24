@@ -9,6 +9,7 @@ import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
 import { UsageService } from '../common/plan-features/usage.service';
 import { WorkflowService } from '../admin/workflow.service';
+import { JobMetaService } from './job-meta.service';
 
 @Injectable()
 export class JobsService {
@@ -16,6 +17,7 @@ export class JobsService {
     private prisma: PrismaService,
     private usageService: UsageService,
     private workflowService: WorkflowService,
+    private metaService: JobMetaService,
   ) {}
 
   private async assertTenantCustomer(customerId: string) {
@@ -160,20 +162,22 @@ export class JobsService {
           vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true } },
           users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
           users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
+          estimate_lines: { select: { line_total: true } },
         },
         orderBy: { created_at: 'desc' },
       }),
       this.prisma.tenant.jobs.count({ where }),
     ]);
-    const data = items.map((item: (typeof items)[number]) => ({
-      ...item,
-      // Rename Prisma relation aliases to simpler keys so the frontend does not
-      // need to know about Prisma naming conventions.
-      customer: item.customers,
-      vehicle: item.vehicles,
-      advisor: item.users_jobs_advisor_idTousers,
-      technician: item.users_jobs_technician_idTousers,
-    }));
+    const data = items.map((item: (typeof items)[number]) => {
+      const reshaped = {
+        ...item,
+        customer: item.customers,
+        vehicle: item.vehicles,
+        advisor: item.users_jobs_advisor_idTousers,
+        technician: item.users_jobs_technician_idTousers,
+      };
+      return { ...reshaped, meta: this.metaService.computeJobListMeta(reshaped) };
+    });
     return { items: data, total, page: pagination.page, limit: pagination.limit };
   }
 
@@ -199,7 +203,7 @@ export class JobsService {
       },
     });
     if (!job) throw new NotFoundException('Job not found');
-    return {
+    const reshaped = {
       ...job,
       customer: job.customers,
       vehicle: job.vehicles,
@@ -209,6 +213,7 @@ export class JobsService {
       estimate_lines: (job.estimate_lines ?? []).map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns })),
       latest_portal_snapshot: job.customer_portal_snapshots?.[0] ?? null,
     };
+    return { ...reshaped, meta: this.metaService.computeJobMeta(reshaped) };
   }
 
 
