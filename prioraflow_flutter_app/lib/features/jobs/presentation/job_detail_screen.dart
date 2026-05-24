@@ -284,6 +284,14 @@ class _ActionButtons extends ConsumerWidget {
   final String jobId;
   final Job job;
 
+  // Concerns are viewable once inspection has started and until the job is done
+  bool get _canViewConcerns => job.status == JobStatus.checking ||
+      job.status == JobStatus.estimateSent ||
+      job.status == JobStatus.approved ||
+      job.status == JobStatus.inProgress ||
+      job.status == JobStatus.waitingParts ||
+      job.status == JobStatus.qualityCheck;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(jobDetailProvider(jobId).notifier);
@@ -296,7 +304,7 @@ class _ActionButtons extends ConsumerWidget {
             onPressed: () => notifier.transitionStatus(JobStatus.checking),
             child: const Text('Start Inspection'),
           ),
-        if (job.status == JobStatus.checking)
+        if (_canViewConcerns)
           ElevatedButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
