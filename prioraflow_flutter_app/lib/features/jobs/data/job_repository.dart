@@ -6,9 +6,9 @@ import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
 class JobRepository {
-  final Dio _dio;
 
   JobRepository(this._dio);
+  final Dio _dio;
 
   Future<List<Job>> getMyJobs({String? status}) async {
     final queryParameters = <String, dynamic>{};
@@ -20,7 +20,7 @@ class JobRepository {
     );
 
     final data = response.data;
-    final List<dynamic> items = data is Map
+    final items = data is Map
         ? (data['items'] ?? data['data'] ?? <dynamic>[]) as List<dynamic>
         : data as List<dynamic>;
     return items.map((e) => Job.fromJson(e as Map<String, dynamic>)).toList();

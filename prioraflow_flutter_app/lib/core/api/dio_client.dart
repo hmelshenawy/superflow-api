@@ -1,7 +1,13 @@
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
 import 'package:prioraflow_tech/core/api/auth_interceptor.dart';
+
+final cookieJarProvider = Provider<CookieJar>((ref) {
+  return CookieJar();
+});
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
@@ -17,12 +23,13 @@ final dioProvider = Provider<Dio>((ref) {
     ),
   );
 
+  final cookieJar = ref.watch(cookieJarProvider);
   dio.interceptors.addAll([
+    CookieManager(cookieJar),
     AuthInterceptor(ref),
     LogInterceptor(
       requestBody: true,
       responseBody: true,
-      error: true,
     ),
   ]);
 

@@ -28,7 +28,7 @@ class JobListScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.assignment_outlined, size: 64, color: AppColors.textMuted),
+                        const Icon(Icons.assignment_outlined, size: 64, color: AppColors.textMuted),
                         const SizedBox(height: 16),
                         Text(
                           'No jobs assigned',
@@ -106,9 +106,9 @@ class _StatusFilterBar extends ConsumerWidget {
 }
 
 class _JobCard extends StatelessWidget {
-  final Job job;
 
   const _JobCard({required this.job});
+  final Job job;
 
   @override
   Widget build(BuildContext context) {
@@ -189,16 +189,16 @@ class _JobCard extends StatelessWidget {
 }
 
 class _PriorityChip extends StatelessWidget {
-  final PriorityLevel priority;
 
   const _PriorityChip({required this.priority});
+  final PriorityLevel priority;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: priority.color.withOpacity(0.15),
+        color: priority.color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -214,9 +214,9 @@ class _PriorityChip extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  final JobStatus status;
 
   const _StatusBadge({required this.status});
+  final JobStatus status;
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +232,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(

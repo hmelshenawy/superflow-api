@@ -6,14 +6,14 @@ import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 
 class InspectionRepository {
-  final Dio _dio;
 
   InspectionRepository(this._dio);
+  final Dio _dio;
 
   Future<List<Concern>> getConcerns(String jobId) async {
     final response = await _dio.get(ApiConstants.jobConcerns(jobId));
     final data = response.data;
-    final List<dynamic> items = data is Map
+    final items = data is Map
         ? (data['items'] ?? data['data'] ?? <dynamic>[]) as List<dynamic>
         : data as List<dynamic>;
     return items.map((e) => Concern.fromJson(e as Map<String, dynamic>)).toList();

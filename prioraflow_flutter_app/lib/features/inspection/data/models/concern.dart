@@ -1,11 +1,4 @@
 class Concern {
-  final String id;
-  final String jobId;
-  final String description;
-  final String? category;
-  final String? severity;
-  final String? findingStatus;
-  final DateTime? createdAt;
 
   const Concern({
     required this.id,
@@ -25,8 +18,15 @@ class Concern {
       category: json['category'] as String?,
       severity: json['severity'] as String?,
       findingStatus: json['finding_status'] as String? ??
-          ((json['inspection_responses'] as List?)?.isNotEmpty == true ? 'inspected' : null),
+          ((json['inspection_responses'] as List?)?.isNotEmpty ?? false ? 'inspected' : null),
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
     );
   }
+  final String id;
+  final String jobId;
+  final String description;
+  final String? category;
+  final String? severity;
+  final String? findingStatus;
+  final DateTime? createdAt;
 }

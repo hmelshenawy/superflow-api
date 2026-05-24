@@ -2,27 +2,6 @@ import 'package:prioraflow_tech/core/utils/priority_utils.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
 class Job {
-  final String id;
-  final String? jobNumber;
-  final JobStatus status;
-  final PriorityLevel priorityLevel;
-  final String? customerConcern;
-  final String? internalNotes;
-  final int? odometerIn;
-  final DateTime? promisedAt;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-
-  // Relations
-  final VehicleInfo? vehicle;
-  final CustomerInfo? customer;
-  final TechnicianInfo? technician;
-  final AdvisorInfo? advisor;
-
-  // Counts
-  final int? concernsCount;
-  final int? findingsCompleted;
-  final String? partsStatus;
 
   const Job({
     required this.id,
@@ -80,18 +59,32 @@ class Job {
       partsStatus: json['parts_status'] as String?,
     );
   }
+  final String id;
+  final String? jobNumber;
+  final JobStatus status;
+  final PriorityLevel priorityLevel;
+  final String? customerConcern;
+  final String? internalNotes;
+  final int? odometerIn;
+  final DateTime? promisedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  // Relations
+  final VehicleInfo? vehicle;
+  final CustomerInfo? customer;
+  final TechnicianInfo? technician;
+  final AdvisorInfo? advisor;
+
+  // Counts
+  final int? concernsCount;
+  final int? findingsCompleted;
+  final String? partsStatus;
 
   String get displayTitle => vehicle?.displayName ?? jobNumber ?? id.substring(0, 8);
 }
 
 class VehicleInfo {
-  final String id;
-  final String? plateNumber;
-  final String? make;
-  final String? model;
-  final int? year;
-  final String? color;
-  final String? vin;
 
   const VehicleInfo({
     required this.id,
@@ -114,6 +107,13 @@ class VehicleInfo {
       vin: json['vin'] as String?,
     );
   }
+  final String id;
+  final String? plateNumber;
+  final String? make;
+  final String? model;
+  final int? year;
+  final String? color;
+  final String? vin;
 
   String get displayName {
     final parts = [make, model, year?.toString()].where((p) => p != null).toList();
@@ -123,9 +123,6 @@ class VehicleInfo {
 }
 
 class CustomerInfo {
-  final String id;
-  final String? name;
-  final String? phone;
 
   const CustomerInfo({required this.id, this.name, this.phone});
 
@@ -136,11 +133,12 @@ class CustomerInfo {
       phone: json['phone'] as String?,
     );
   }
+  final String id;
+  final String? name;
+  final String? phone;
 }
 
 class TechnicianInfo {
-  final String id;
-  final String? name;
 
   const TechnicianInfo({required this.id, this.name});
 
@@ -150,11 +148,11 @@ class TechnicianInfo {
       name: json['name'] as String?,
     );
   }
+  final String id;
+  final String? name;
 }
 
 class AdvisorInfo {
-  final String id;
-  final String? name;
 
   const AdvisorInfo({required this.id, this.name});
 
@@ -164,4 +162,6 @@ class AdvisorInfo {
       name: json['name'] as String?,
     );
   }
+  final String id;
+  final String? name;
 }

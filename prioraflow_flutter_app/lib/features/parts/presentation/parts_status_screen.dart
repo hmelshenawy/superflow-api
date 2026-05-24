@@ -9,9 +9,9 @@ final jobPartsProvider = FutureProvider.family<List<Map<String, dynamic>>, Strin
 });
 
 class PartsStatusScreen extends ConsumerWidget {
-  final String jobId;
 
-  const PartsStatusScreen({super.key, required this.jobId});
+  const PartsStatusScreen({required this.jobId, super.key});
+  final String jobId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,7 +26,7 @@ class PartsStatusScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textMuted),
+                  const Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textMuted),
                   const SizedBox(height: 16),
                   Text('No parts requested', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textMuted)),
                 ],
@@ -52,7 +52,7 @@ class PartsStatusScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Failed to load parts'),
+              const Text('Failed to load parts'),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.invalidate(jobPartsProvider(jobId)),
@@ -67,9 +67,9 @@ class PartsStatusScreen extends ConsumerWidget {
 }
 
 class _PartCard extends StatelessWidget {
-  final Map<String, dynamic> part;
 
   const _PartCard({required this.part});
+  final Map<String, dynamic> part;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +100,7 @@ class _PartCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(

@@ -19,6 +19,8 @@ dependencies:
 
   # HTTP
   dio: ^5.4.3+1
+  dio_cookie_manager: ^3.4.0
+  cookie_jar: ^4.0.8
 
   # Auth
   flutter_secure_storage: ^9.0.0

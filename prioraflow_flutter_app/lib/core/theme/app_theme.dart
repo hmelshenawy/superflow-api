@@ -103,11 +103,11 @@ class AppTheme {
         brightness: Brightness.light,
         colorSchemeSeed: AppColors.primary,
         scaffoldBackgroundColor: AppColors.lightBackground,
-        cardTheme: CardThemeData(
+        cardTheme: const CardThemeData(
           color: AppColors.lightSurface,
           elevation: 1,
           shape: RoundedRectangleBorder(
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
             side: BorderSide(color: AppColors.lightBorder),
           ),
         ),

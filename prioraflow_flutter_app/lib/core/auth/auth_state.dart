@@ -1,10 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 class AuthState extends Equatable {
-  final bool isLoading;
-  final bool isAuthenticated;
-  final String? error;
-  final Map<String, dynamic>? user;
 
   const AuthState({
     this.isLoading = false,
@@ -12,6 +8,10 @@ class AuthState extends Equatable {
     this.error,
     this.user,
   });
+  final bool isLoading;
+  final bool isAuthenticated;
+  final String? error;
+  final Map<String, dynamic>? user;
 
   AuthState copyWith({
     bool? isLoading,

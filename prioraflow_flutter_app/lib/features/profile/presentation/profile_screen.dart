@@ -40,19 +40,19 @@ class ProfileScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 (user?['role']?['name'] ?? 'technician').toString().toUpperCase(),
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 32),
-            Divider(color: AppColors.border),
+            const Divider(color: AppColors.border),
             const SizedBox(height: 8),
             ListTile(
-              leading: Icon(Icons.info_outline, color: AppColors.textMuted),
+              leading: const Icon(Icons.info_outline, color: AppColors.textMuted),
               title: const Text('App Version'),
               trailing: Text('1.0.0', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
               contentPadding: EdgeInsets.zero,
@@ -66,7 +66,7 @@ class ProfileScreen extends ConsumerWidget {
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
-                  side: BorderSide(color: AppColors.danger),
+                  side: const BorderSide(color: AppColors.danger),
                 ),
                 child: const Text('Sign Out'),
               ),

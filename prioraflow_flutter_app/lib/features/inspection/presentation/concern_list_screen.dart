@@ -6,9 +6,9 @@ import 'package:prioraflow_tech/features/inspection/presentation/concern_list_pr
 import 'package:prioraflow_tech/features/inspection/presentation/finding_form_screen.dart';
 
 class ConcernListScreen extends ConsumerWidget {
-  final String jobId;
 
-  const ConcernListScreen({super.key, required this.jobId});
+  const ConcernListScreen({required this.jobId, super.key});
+  final String jobId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,7 +23,7 @@ class ConcernListScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.checklist_outlined, size: 64, color: AppColors.textMuted),
+                  const Icon(Icons.checklist_outlined, size: 64, color: AppColors.textMuted),
                   const SizedBox(height: 16),
                   Text('No concerns logged', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.textMuted)),
                 ],
@@ -73,7 +73,7 @@ class ConcernListScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Failed to load concerns'),
+              const Text('Failed to load concerns'),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.read(concernListProvider(jobId).notifier).refresh(),
@@ -88,10 +88,10 @@ class ConcernListScreen extends ConsumerWidget {
 }
 
 class _ConcernCard extends StatelessWidget {
-  final Concern concern;
-  final VoidCallback onTap;
 
   const _ConcernCard({required this.concern, required this.onTap});
+  final Concern concern;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

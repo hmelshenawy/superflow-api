@@ -5,16 +5,13 @@ import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/finding_form_provider.dart';
 
 class FindingFormScreen extends ConsumerStatefulWidget {
+
+  const FindingFormScreen({
+    required this.jobId, required this.concernId, required this.concernDescription, super.key,
+  });
   final String jobId;
   final String concernId;
   final String concernDescription;
-
-  const FindingFormScreen({
-    super.key,
-    required this.jobId,
-    required this.concernId,
-    required this.concernDescription,
-  });
 
   @override
   ConsumerState<FindingFormScreen> createState() => _FindingFormScreenState();
@@ -107,7 +104,7 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
                   label: Text(type.label),
                   selected: selected,
                   onSelected: (_) => setState(() => _selectedType = type),
-                  selectedColor: _typeColor(type).withOpacity(0.2),
+                  selectedColor: _typeColor(type).withValues(alpha: 0.2),
                 );
               }).toList(),
             ),
@@ -187,7 +184,7 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
 
             if (state.error != null) ...[
               const SizedBox(height: 12),
-              Text(state.error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
+              Text(state.error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
             ],
           ],
         ),

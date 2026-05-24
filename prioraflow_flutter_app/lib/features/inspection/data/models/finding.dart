@@ -1,12 +1,4 @@
 class Finding {
-  final String id;
-  final String concernId;
-  final FindingType type;
-  final String? description;
-  final int? estimatedMinutes;
-  final FindingStatus status;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
 
   const Finding({
     required this.id,
@@ -31,6 +23,14 @@ class Finding {
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
     );
   }
+  final String id;
+  final String concernId;
+  final FindingType type;
+  final String? description;
+  final int? estimatedMinutes;
+  final FindingStatus status;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 enum FindingType {

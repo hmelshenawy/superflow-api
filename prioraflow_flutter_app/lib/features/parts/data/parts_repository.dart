@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/api/dio_client.dart';
 
 class PartsRepository {
-  final Dio _dio;
 
   PartsRepository(this._dio);
+  final Dio _dio;
 
   Future<List<Map<String, dynamic>>> getJobParts(String jobId) async {
     final response = await _dio.get('/job-parts/job/$jobId');
     final data = response.data;
-    final List<dynamic> items = data is Map
+    final items = data is Map
         ? (data['items'] ?? data['data'] ?? <dynamic>[]) as List<dynamic>
         : data as List<dynamic>;
     return items.cast<Map<String, dynamic>>();

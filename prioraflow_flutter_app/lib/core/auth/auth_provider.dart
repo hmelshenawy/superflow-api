@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/auth/auth_service.dart';
 import 'package:prioraflow_tech/core/auth/auth_state.dart';
@@ -7,11 +8,11 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthService _authService;
 
   AuthNotifier(this._authService) : super(const AuthState()) {
     _checkAuth();
   }
+  final AuthService _authService;
 
   Future<void> _checkAuth() async {
     final isAuth = await _authService.isAuthenticated();
@@ -20,7 +21,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = await _authService.getCurrentUser();
         state = state.copyWith(isAuthenticated: true, user: user);
       } catch (_) {
-        // Token might be expired — stay unauthenticated
         await _authService.clearTokens();
         state = const AuthState();
       }
@@ -31,7 +31,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
     required String password,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final result = await _authService.login(
@@ -39,17 +39,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
       );
 
+      // Merge login response with full user data
+      // Login returns: { id, name, email, role (string) }
+      // /auth/me returns: { id, name, email, role (object with name + permissions), workshops, ... }
       final user = result.user;
+      final workshops = result.workshops;
+
+      // Build a combined user map for the UI
+      final fullUser = <String, dynamic>{
+        ...user,
+        'workshops': workshops,
+        if (result.workshopId != null) 'workshopId': result.workshopId,
+      };
+
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
-        user: user,
+        user: fullUser,
       );
-    } catch (e) {
-      final message = _extractErrorMessage(e);
+    } on DioException catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: message,
+        error: _extractDioError(e),
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: _extractErrorMessage(e),
       );
     }
   }
@@ -59,15 +75,35 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState();
   }
 
-  String _extractErrorMessage(dynamic error) {
-    if (error is Exception) {
-      final msg = error.toString();
-      if (msg.contains('401')) return 'Invalid email or password';
-      if (msg.contains('429')) return 'Too many attempts. Please try again later.';
-      if (msg.contains('SocketException') || msg.contains('Connection')) {
-        return 'Unable to connect to server. Check your connection.';
-      }
+  String _extractDioError(DioException e) {
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+
+    if (status == 401) {
+      return 'Invalid email or password';
     }
+    if (status == 429) {
+      return 'Too many attempts. Please try again later.';
+    }
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionError) {
+      return 'Unable to connect to server. Check your connection.';
+    }
+
+    // Try to extract backend error message
+    if (data is Map && data['message'] != null) {
+      return data['message'].toString();
+    }
+
     return 'An unexpected error occurred. Please try again.';
+  }
+
+  String _extractErrorMessage(dynamic error) {
+    final msg = error.toString();
+    if (msg.contains('401')) return 'Invalid email or password';
+    if (msg.contains('429')) return 'Too many attempts. Please try again later.';
+    return 'An unexpected error occurred ($msg).';
   }
 }

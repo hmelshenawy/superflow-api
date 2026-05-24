@@ -56,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo area
-                  Icon(
+                  const Icon(
                     Icons.build_circle_outlined,
                     size: 64,
                     color: AppColors.primary,
@@ -125,9 +125,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.danger.withOpacity(0.1),
+                        color: AppColors.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [

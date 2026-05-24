@@ -8,9 +8,9 @@ import 'package:prioraflow_tech/features/jobs/presentation/job_detail_provider.d
 import 'package:prioraflow_tech/features/inspection/presentation/concern_list_screen.dart';
 
 class JobDetailScreen extends ConsumerWidget {
-  final String jobId;
 
-  const JobDetailScreen({super.key, required this.jobId});
+  const JobDetailScreen({required this.jobId, super.key});
+  final String jobId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,7 +42,7 @@ class JobDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Failed to load job'),
+              const Text('Failed to load job'),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.read(jobDetailProvider(jobId).notifier).refresh(),
@@ -57,9 +57,9 @@ class JobDetailScreen extends ConsumerWidget {
 }
 
 class _VehicleHeader extends StatelessWidget {
-  final Job job;
 
   const _VehicleHeader({required this.job});
+  final Job job;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class _VehicleHeader extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.directions_car, color: AppColors.primary, size: 28),
+                const Icon(Icons.directions_car, color: AppColors.primary, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -96,7 +96,7 @@ class _VehicleHeader extends StatelessWidget {
                 if (job.customer?.name != null)
                   Row(
                     children: [
-                      Icon(Icons.person_outline, size: 16, color: AppColors.textMuted),
+                      const Icon(Icons.person_outline, size: 16, color: AppColors.textMuted),
                       const SizedBox(width: 4),
                       Text(job.customer!.name!, style: Theme.of(context).textTheme.bodySmall),
                     ],
@@ -126,9 +126,9 @@ class _VehicleHeader extends StatelessWidget {
 }
 
 class _PhaseProgress extends StatelessWidget {
-  final JobStatus status;
 
   const _PhaseProgress({required this.status});
+  final JobStatus status;
 
   static const _phases = [
     ('Received', Icons.inbox),
@@ -194,9 +194,9 @@ class _PhaseProgress extends StatelessWidget {
 }
 
 class _JobInfoCard extends StatelessWidget {
-  final Job job;
 
   const _JobInfoCard({required this.job});
+  final Job job;
 
   @override
   Widget build(BuildContext context) {
@@ -233,10 +233,6 @@ class _JobInfoCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? valueColor;
 
   const _InfoRow({
     required this.icon,
@@ -244,6 +240,10 @@ class _InfoRow extends StatelessWidget {
     required this.value,
     this.valueColor,
   });
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -272,10 +272,10 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _ActionButtons extends ConsumerWidget {
-  final String jobId;
-  final Job job;
 
   const _ActionButtons({required this.jobId, required this.job});
+  final String jobId;
+  final Job job;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

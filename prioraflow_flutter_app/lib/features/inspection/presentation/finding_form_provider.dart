@@ -3,11 +3,11 @@ import 'package:prioraflow_tech/features/inspection/data/inspection_repository.d
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 
 class FindingFormState {
+
+  const FindingFormState({this.isLoading = false, this.error, this.savedFinding});
   final bool isLoading;
   final String? error;
   final Finding? savedFinding;
-
-  const FindingFormState({this.isLoading = false, this.error, this.savedFinding});
 
   FindingFormState copyWith({bool? isLoading, String? error, Finding? savedFinding}) {
     return FindingFormState(
@@ -23,9 +23,9 @@ final findingFormProvider = StateNotifierProvider<FindingFormNotifier, FindingFo
 });
 
 class FindingFormNotifier extends StateNotifier<FindingFormState> {
-  final InspectionRepository _repo;
 
   FindingFormNotifier(this._repo) : super(const FindingFormState());
+  final InspectionRepository _repo;
 
   Future<bool> submit({
     required String concernId,

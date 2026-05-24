@@ -5,6 +5,6 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
+  await dotenv.load();
   runApp(const ProviderScope(child: PrioraFlowApp()));
 }
