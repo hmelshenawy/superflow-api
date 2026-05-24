@@ -47,17 +47,18 @@ class FindingFormState {
 
 final findingFormProvider =
     StateNotifierProvider<FindingFormNotifier, FindingFormState>((ref) {
-  return FindingFormNotifier(ref.watch(inspectionRepositoryProvider));
+  return FindingFormNotifier(ref.watch(inspectionRepositoryProvider), ref.watch(draftServiceProvider));
 });
 
 class FindingFormNotifier extends StateNotifier<FindingFormState> {
-  FindingFormNotifier(this._repo) : super(const FindingFormState());
+  FindingFormNotifier(this._repo, this._draftService) : super(const FindingFormState());
 
   final InspectionRepository _repo;
+  final DraftService _draftService;
 
   /// Load a saved draft for a concern and mark state accordingly.
   Map<String, dynamic>? loadDraft(String concernId) {
-    final draft = DraftService.loadFindingDraft(concernId);
+    final draft = _draftService.loadFindingDraft(concernId);
     if (draft != null) {
       state = state.copyWith(hasDraft: true);
     }
@@ -74,7 +75,7 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
     int? partQuantity,
     String? partNotes,
   }) async {
-    await DraftService.saveFindingDraft(
+    await _draftService.saveFindingDraft(
       concernId: concernId,
       findingType: findingType,
       description: description,
@@ -146,13 +147,13 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
       }
 
       // Clear the draft on successful submit
-      await DraftService.deleteFindingDraft(concernId);
+      await _draftService.deleteFindingDraft(concernId);
 
       state = FindingFormState(savedConcern: concern);
       return true;
     } catch (e) {
       // Save as draft so the user doesn't lose their work
-      await DraftService.saveFindingDraft(
+      await _draftService.saveFindingDraft(
         concernId: concernId,
         findingType: type.name,
         description: description,

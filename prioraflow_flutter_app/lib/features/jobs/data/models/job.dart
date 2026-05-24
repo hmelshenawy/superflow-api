@@ -1,6 +1,8 @@
 import 'package:prioraflow_tech/core/utils/priority_utils.dart';
+import 'package:prioraflow_tech/core/utils/parse_utils.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/inspection.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/qc_checklist.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
 class Job {
@@ -24,6 +26,7 @@ class Job {
     this.partsStatus,
     this.concerns = const [],
     this.inspection,
+    this.qcChecklist,
     this.workflowStageKey,
     this.isCustomerWaiting,
     this.dmsRoNumber,
@@ -40,7 +43,7 @@ class Job {
       ),
       customerConcern: json['customer_concern'] as String?,
       internalNotes: json['internal_notes'] as String?,
-      odometerIn: json['odometer_in'] as int?,
+      odometerIn: parseInt(json['odometer_in']),
       promisedAt: json['promised_at'] != null
           ? DateTime.parse(json['promised_at'] as String)
           : null,
@@ -63,8 +66,8 @@ class Job {
           ? AdvisorInfo.fromJson(json['advisor'] as Map<String, dynamic>)
           : null,
       concernsCount: (json['job_concerns'] as List<dynamic>?)?.length ??
-          json['_count']?['concerns'] as int? ??
-          json['concerns_count'] as int?,
+          parseInt(json['_count']?['concerns']) ??
+          parseInt(json['concerns_count']),
       partsStatus: json['parts_status'] as String?,
       concerns: (json['job_concerns'] as List<dynamic>?)
               ?.map((e) => Concern.fromJson(e as Map<String, dynamic>))
@@ -73,6 +76,7 @@ class Job {
       inspection: json['inspection'] != null
           ? Inspection.fromJson(json['inspection'] as Map<String, dynamic>)
           : null,
+      qcChecklist: _parseQcChecklistSummary(json['qc_checklists']),
       workflowStageKey: json['workflow_stage_key'] as String?,
       isCustomerWaiting: json['is_customer_waiting'] as bool?,
       dmsRoNumber: json['dms_ro_number'] as String?,
@@ -107,6 +111,9 @@ class Job {
   // DVI inspection (from job detail)
   final Inspection? inspection;
 
+  // QC checklist summary (from job detail)
+  final QcChecklistSummary? qcChecklist;
+
   // Extra fields
   final String? workflowStageKey;
   final bool? isCustomerWaiting;
@@ -122,6 +129,27 @@ class Job {
   /// Concerns found during technician DVI inspection (linked to an inspection response).
   List<Concern> get inspectionConcerns =>
       concerns.where((c) => c.source == ConcernSource.inspection).toList();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'job_number': jobNumber,
+        'status': status.apiValue,
+        'priority_level': priorityLevel.name,
+        'customer_concern': customerConcern,
+        'internal_notes': internalNotes,
+        'odometer_in': odometerIn,
+        'promised_at': promisedAt?.toIso8601String(),
+        'created_at': createdAt?.toIso8601String(),
+        'updated_at': updatedAt?.toIso8601String(),
+        'vehicle': vehicle?.toJson(),
+        'customer': customer?.toJson(),
+        'technician': technician?.toJson(),
+        'advisor': advisor?.toJson(),
+        'workflow_stage_key': workflowStageKey,
+        'is_customer_waiting': isCustomerWaiting,
+        'dms_ro_number': dmsRoNumber,
+        'is_archived': isArchived,
+      };
 }
 
 class VehicleInfo {
@@ -142,7 +170,7 @@ class VehicleInfo {
       plateNumber: json['plate_number'] as String? ?? json['plate'] as String?,
       make: json['make'] as String?,
       model: json['model'] as String?,
-      year: json['year'] as int?,
+      year: parseInt(json['year']),
       color: json['color'] as String?,
       vin: json['vin'] as String?,
     );
@@ -160,6 +188,16 @@ class VehicleInfo {
     if (parts.isNotEmpty) return parts.join(' ');
     return plateNumber ?? 'Unknown Vehicle';
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'plate_number': plateNumber,
+        'make': make,
+        'model': model,
+        'year': year,
+        'color': color,
+        'vin': vin,
+      };
 }
 
 class CustomerInfo {
@@ -176,6 +214,8 @@ class CustomerInfo {
   final String id;
   final String? name;
   final String? phone;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'phone': phone};
 }
 
 class TechnicianInfo {
@@ -190,6 +230,8 @@ class TechnicianInfo {
   }
   final String id;
   final String? name;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
 }
 
 class AdvisorInfo {
@@ -204,4 +246,31 @@ class AdvisorInfo {
   }
   final String id;
   final String? name;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+}
+
+/// Lightweight QC checklist summary embedded in job detail responses.
+class QcChecklistSummary {
+  const QcChecklistSummary({required this.id, this.status});
+
+  final String id;
+  final String? status;
+}
+
+QcChecklistSummary? _parseQcChecklistSummary(dynamic data) {
+  if (data is List && data.isNotEmpty) {
+    final first = data.first as Map<String, dynamic>;
+    return QcChecklistSummary(
+      id: first['id'] as String,
+      status: first['status'] as String?,
+    );
+  }
+  if (data is Map<String, dynamic>) {
+    return QcChecklistSummary(
+      id: data['id'] as String,
+      status: data['status'] as String?,
+    );
+  }
+  return null;
 }

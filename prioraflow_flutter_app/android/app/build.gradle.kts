@@ -15,21 +15,49 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.prioraflow.prioraflow_tech"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            // To build a release APK, create a keystore and set these properties
+            // in ~/.gradle/gradle.properties or via environment variables:
+            //   PRIORAFLOW_STORE_FILE=/path/to/keystore.jks
+            //   PRIORAFLOW_STORE_PASSWORD=your_store_password
+            //   PRIORAFLOW_KEY_ALIAS=your_key_alias
+            //   PRIORAFLOW_KEY_PASSWORD=your_key_password
+            val storeFilePath = System.getenv("PRIORAFLOW_STORE_FILE")
+                ?: findProject?.properties?.get("PRIORAFLOW_STORE_FILE") as? String
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+                storePassword = System.getenv("PRIORAFLOW_STORE_PASSWORD")
+                    ?: findProject?.properties?.get("PRIORAFLOW_STORE_PASSWORD") as? String ?: ""
+                keyAlias = System.getenv("PRIORAFLOW_KEY_ALIAS")
+                    ?: findProject?.properties?.get("PRIORAFLOW_KEY_ALIAS") as? String ?: ""
+                keyPassword = System.getenv("PRIORAFLOW_KEY_PASSWORD")
+                    ?: findProject?.properties?.get("PRIORAFLOW_KEY_PASSWORD") as? String ?: ""
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+        }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            // Fallback to debug signing only if no release keystore is configured.
+            // This allows `flutter run --release` to work during development,
+            // but production builds MUST set PRIORAFLOW_STORE_FILE etc.
+            signingConfig = if (signingConfigs.getByName("release").storeFile != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

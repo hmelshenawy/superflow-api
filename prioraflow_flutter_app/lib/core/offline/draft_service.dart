@@ -1,20 +1,23 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class DraftService {
-  DraftService._();
-  static const _boxName = 'drafts';
+  DraftService(this._box);
 
-  static Box<dynamic>? _box;
+  final Box<dynamic> _box;
 
-  static Future<void> init() async {
+  /// Initialize Hive and open the drafts box. Call once in main().
+  static Future<Box<dynamic>> init() async {
     await Hive.initFlutter();
-    _box = await Hive.openBox(_boxName);
+    return Hive.openBox(_boxName);
   }
 
-  static Box<dynamic> get _drafts => _box ?? Hive.box(_boxName);
+  static const _boxName = 'drafts';
+
+  // ── Finding Drafts ─────────────────────────────────────────────────────
 
   /// Save a finding draft for a specific concern.
-  static Future<void> saveFindingDraft({
+  Future<void> saveFindingDraft({
     required String concernId,
     required String findingType,
     String? description,
@@ -23,7 +26,7 @@ class DraftService {
     int? partQuantity,
     String? partNotes,
   }) async {
-    await _drafts.put('finding_$concernId', {
+    await _box.put('finding_$concernId', {
       'findingType': findingType,
       'description': description,
       'estimatedMinutes': estimatedMinutes,
@@ -35,32 +38,90 @@ class DraftService {
   }
 
   /// Load a finding draft for a specific concern.
-  static Map<String, dynamic>? loadFindingDraft(String concernId) {
-    final data = _drafts.get('finding_$concernId');
+  Map<String, dynamic>? loadFindingDraft(String concernId) {
+    final data = _box.get('finding_$concernId');
     if (data == null) return null;
     return Map<String, dynamic>.from(data as Map);
   }
 
   /// Delete a finding draft after successful submission.
-  static Future<void> deleteFindingDraft(String concernId) async {
-    await _drafts.delete('finding_$concernId');
+  Future<void> deleteFindingDraft(String concernId) async {
+    await _box.delete('finding_$concernId');
   }
 
   /// Get all draft concern IDs.
-  static List<String> getDraftConcernIds() {
-    return _drafts.keys
+  List<String> getDraftConcernIds() {
+    return _box.keys
         .where((key) => (key as String).startsWith('finding_'))
         .map((key) => (key as String).replaceFirst('finding_', ''))
         .toList();
   }
 
   /// Clear all drafts (e.g., on logout).
-  static Future<void> clearAll() async {
-    final keys = _drafts.keys
-        .where((key) => (key as String).startsWith('finding_'))
+  Future<void> clearAll() async {
+    final keys = _box.keys
+        .where((key) =>
+            (key as String).startsWith('finding_') ||
+            (key as String).startsWith('inspection_') ||
+            (key as String).startsWith('qc_'))
         .toList();
     for (final key in keys) {
-      await _drafts.delete(key);
+      await _box.delete(key);
     }
   }
+
+  // ── Inspection Drafts ─────────────────────────────────────────────────
+
+  /// Save an inspection draft (per-item responses as a map of itemId → response data).
+  Future<void> saveInspectionDraft({
+    required String inspectionId,
+    required Map<String, dynamic> responses,
+  }) async {
+    await _box.put('inspection_$inspectionId', {
+      'responses': responses,
+      'savedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Load an inspection draft.
+  Map<String, dynamic>? loadInspectionDraft(String inspectionId) {
+    final data = _box.get('inspection_$inspectionId');
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  /// Delete an inspection draft after successful submission.
+  Future<void> deleteInspectionDraft(String inspectionId) async {
+    await _box.delete('inspection_$inspectionId');
+  }
+
+  // ── QC Checklist Drafts ───────────────────────────────────────────────
+
+  /// Save a QC checklist draft (per-item responses as a map of itemId → response data).
+  Future<void> saveQcDraft({
+    required String checklistId,
+    required Map<String, dynamic> responses,
+  }) async {
+    await _box.put('qc_$checklistId', {
+      'responses': responses,
+      'savedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Load a QC checklist draft.
+  Map<String, dynamic>? loadQcDraft(String checklistId) {
+    final data = _box.get('qc_$checklistId');
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  /// Delete a QC checklist draft after successful submission.
+  Future<void> deleteQcDraft(String checklistId) async {
+    await _box.delete('qc_$checklistId');
+  }
 }
+
+/// Riverpod provider for DraftService — overridden in main() after Hive init.
+final draftServiceProvider = Provider<DraftService>((ref) {
+  throw StateError('DraftService not initialized. Override draftServiceProvider in main().');
+});

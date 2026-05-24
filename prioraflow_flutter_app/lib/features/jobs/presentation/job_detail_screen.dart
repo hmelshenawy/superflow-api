@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:prioraflow_tech/core/auth/role_guards.dart';
+import 'package:prioraflow_tech/core/errors/error_handler.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
+import 'package:prioraflow_tech/core/theme/snackbar.dart';
 import 'package:prioraflow_tech/core/utils/date_utils.dart' as app_date;
+import 'package:prioraflow_tech/core/utils/haptic.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_detail_provider.dart';
-import 'package:prioraflow_tech/features/inspection/presentation/concern_list_screen.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/inspection.dart';
+import 'package:shimmer/shimmer.dart';
 
 class JobDetailScreen extends ConsumerWidget {
 
@@ -29,10 +34,8 @@ class JobDetailScreen extends ConsumerWidget {
               children: [
                 _VehicleHeader(job: job),
                 const SizedBox(height: 16),
-                if (job.concerns.isNotEmpty || (job.customerConcern != null && job.customerConcern!.isNotEmpty))
-                  _CheckinSummaryCard(job: job),
-                if (job.concerns.isNotEmpty || (job.customerConcern != null && job.customerConcern!.isNotEmpty))
-                  const SizedBox(height: 16),
+                _InspectionPhaseCard(job: job),
+                const SizedBox(height: 16),
                 _PhaseProgress(status: job.status),
                 const SizedBox(height: 16),
                 _JobInfoCard(job: job),
@@ -44,16 +47,52 @@ class JobDetailScreen extends ConsumerWidget {
                   icon: const Icon(Icons.inventory_2_outlined, size: 18),
                   label: const Text('View Parts Status'),
                 ),
+                const SizedBox(height: 8),
+                if (job.customer != null)
+                  OutlinedButton.icon(
+                    onPressed: () => context.push('/jobs/$jobId/customer', extra: {
+                      'customer': job.customer!,
+                      'vehicle': job.vehicle,
+                    }),
+                    icon: const Icon(Icons.person_outline, size: 18),
+                    label: const Text('Customer Details'),
+                  ),
+                if (job.status == JobStatus.estimateSent) ...[
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/jobs/$jobId/estimate'),
+                    icon: const Icon(Icons.request_quote_outlined, size: 18),
+                    label: const Text('View Estimate'),
+                  ),
+                ],
               ],
             ),
           ),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Shimmer.fromColors(
+          baseColor: AppColors.surfaceLight,
+          highlightColor: AppColors.border,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 80, decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16))),
+                const SizedBox(height: 16),
+                Container(height: 120, decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16))),
+                const SizedBox(height: 16),
+                Container(height: 60, decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16))),
+                const SizedBox(height: 16),
+                Container(height: 150, decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16))),
+              ],
+            ),
+          ),
+        ),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Failed to load job'),
+              Text(handleError(e).message, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.read(jobDetailProvider(jobId).notifier).refresh(),
@@ -373,135 +412,204 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _CheckinSummaryCard extends StatelessWidget {
-  const _CheckinSummaryCard({required this.job});
+class _InspectionPhaseCard extends StatelessWidget {
+  const _InspectionPhaseCard({required this.job});
   final Job job;
 
   @override
   Widget build(BuildContext context) {
-    final advisorCount = job.advisorConcerns.length;
-    final inspectionCount = job.inspectionConcerns.length;
-    final hasCustomerConcern =
-        job.customerConcern != null && job.customerConcern!.isNotEmpty;
-
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.foreground.withOpacity(0.1)),
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => ConcernListScreen(jobId: job.id)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.assignment_outlined, size: 18, color: AppColors.statusChecking),
-                    const SizedBox(width: 8),
-                    Text(
-                      'CHECK-IN REPORT',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.15,
-                        color: AppColors.statusChecking,
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(Icons.chevron_right, color: AppColors.textMuted),
-                  ],
-                ),
-                if (hasCustomerConcern) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.statusChecking.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.statusChecking.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.record_voice_over, size: 16, color: AppColors.statusChecking),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(job.customerConcern!,
-                              style: Theme.of(context).textTheme.bodyMedium),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (advisorCount > 0) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.statusChecking.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.statusChecking.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.support_agent, size: 14, color: AppColors.statusChecking),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$advisorCount advisor note${advisorCount > 1 ? 's' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.statusChecking,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (advisorCount > 0 && inspectionCount > 0)
-                      const SizedBox(width: 8),
-                    if (inspectionCount > 0) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.statusApproved.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.statusApproved.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.search, size: 14, color: AppColors.statusApproved),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$inspectionCount finding${inspectionCount > 1 ? 's' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.statusApproved,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'INSPECTIONS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.15,
+                color: AppColors.textMuted,
+              ),
             ),
+            const SizedBox(height: 12),
+            _PhaseRow(
+              icon: Icons.assignment_outlined,
+              label: 'Reception DVI',
+              statusLabel: _dviStatusLabel(job),
+              statusColor: _dviStatusColor(job),
+              onTap: _canStartDvi(job) || job.inspection != null
+                  ? () => _navigateToDvi(context, job)
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            _PhaseRow(
+              icon: Icons.search,
+              label: 'Tech Findings',
+              statusLabel: _findingsStatusLabel(job),
+              statusColor: _findingsStatusColor(job),
+              onTap: _canViewConcerns(job)
+                  ? () => context.push('/jobs/${job.id}/concerns')
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            _PhaseRow(
+              icon: Icons.verified_user_outlined,
+              label: 'QC Checklist',
+              statusLabel: _qcStatusLabel(job),
+              statusColor: _qcStatusColor(job),
+              onTap: _canStartQc(job) || job.qcChecklist != null
+                  ? () => _navigateToQc(context, job)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _canStartDvi(Job job) =>
+      job.status == JobStatus.booked || job.status == JobStatus.checking;
+
+  bool _canViewConcerns(Job job) =>
+      job.status != JobStatus.booked &&
+      job.status != JobStatus.closed &&
+      job.status != JobStatus.noShow;
+
+  bool _canStartQc(Job job) => job.status == JobStatus.qualityCheck;
+
+  String _dviStatusLabel(Job job) {
+    if (job.inspection != null) {
+      return job.inspection!.isLocked ? 'Completed' : 'In Progress';
+    }
+    return _canStartDvi(job) ? 'Start' : 'Not available';
+  }
+
+  Color _dviStatusColor(Job job) {
+    if (job.inspection != null) {
+      return job.inspection!.isLocked ? AppColors.success : AppColors.statusChecking;
+    }
+    return _canStartDvi(job) ? AppColors.primary : AppColors.textMuted;
+  }
+
+  String _findingsStatusLabel(Job job) {
+    if (!_canViewConcerns(job)) return 'Not available';
+    final count = job.inspectionConcerns.length;
+    return count > 0 ? '$count finding${count > 1 ? 's' : ''}' : 'View';
+  }
+
+  Color _findingsStatusColor(Job job) {
+    if (!_canViewConcerns(job)) return AppColors.textMuted;
+    return AppColors.primary;
+  }
+
+  String _qcStatusLabel(Job job) {
+    if (job.qcChecklist != null) {
+      return job.qcChecklist!.status == 'submitted' ||
+              job.qcChecklist!.status == 'approved'
+          ? 'Completed'
+          : 'In Progress';
+    }
+    return _canStartQc(job) ? 'Start' : 'Not available';
+  }
+
+  Color _qcStatusColor(Job job) {
+    if (job.qcChecklist != null) {
+      final s = job.qcChecklist!.status;
+      return s == 'submitted' || s == 'approved'
+          ? AppColors.success
+          : AppColors.statusChecking;
+    }
+    return _canStartQc(job) ? AppColors.primary : AppColors.textMuted;
+  }
+
+  void _navigateToDvi(BuildContext context, Job job) {
+    if (job.inspection != null) {
+      context.push('/jobs/${job.id}/inspection/${job.inspection!.id}');
+    } else {
+      context.push('/jobs/${job.id}/inspection/new');
+    }
+  }
+
+  void _navigateToQc(BuildContext context, Job job) {
+    if (job.qcChecklist != null) {
+      context.push('/jobs/${job.id}/qc-checklist/${job.qcChecklist!.id}');
+    } else {
+      context.push('/jobs/${job.id}/qc-checklist/new');
+    }
+  }
+}
+
+class _PhaseRow extends StatelessWidget {
+  const _PhaseRow({
+    required this.icon,
+    required this.label,
+    required this.statusLabel,
+    required this.statusColor,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String statusLabel;
+  final Color statusColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceLight,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: statusColor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.foreground,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor.withOpacity(0.3)),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right, size: 16, color: AppColors.textMuted),
+              ],
+            ],
           ),
         ),
       ),
@@ -520,9 +628,28 @@ class _ActionButtons extends ConsumerWidget {
       job.status != JobStatus.closed &&
       job.status != JobStatus.noShow;
 
+  Future<void> _transition(
+    BuildContext context,
+    WidgetRef ref,
+    JobStatus newStatus, {
+    String? successMessage,
+  }) async {
+    final notifier = ref.read(jobDetailProvider(jobId).notifier);
+    final success = await notifier.transitionStatus(newStatus);
+    if (success) hapticMedium();
+    if (context.mounted) {
+      if (success) {
+        showSuccessSnackBar(context, successMessage ?? 'Status updated');
+      } else {
+        showErrorSnackBar(context, 'Failed to update status. Please try again.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(jobDetailProvider(jobId).notifier);
+    final isAdmin = ref.watch(isAdminProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -531,28 +658,39 @@ class _ActionButtons extends ConsumerWidget {
         switch (job.status) {
           JobStatus.booked => _PrimaryButton(
               label: 'Start Inspection',
-              onPressed: () => notifier.transitionStatus(JobStatus.checking)),
+              onPressed: () => context.push('/jobs/$jobId/inspection/new')),
           JobStatus.checking => _PrimaryButton(
               label: 'Mark Approved',
-              onPressed: () => notifier.transitionStatus(JobStatus.approved)),
+              onPressed: isAdmin ? () => _transition(context, ref, JobStatus.approved, successMessage: 'Job approved') : null),
           JobStatus.estimateSent => _PrimaryButton(
               label: 'Mark Approved',
-              onPressed: () => notifier.transitionStatus(JobStatus.approved)),
+              onPressed: isAdmin ? () => _transition(context, ref, JobStatus.approved, successMessage: 'Job approved') : null),
           JobStatus.approved => _PrimaryButton(
               label: 'Start Work',
-              onPressed: () => notifier.transitionStatus(JobStatus.inProgress)),
+              onPressed: () => _transition(context, ref, JobStatus.inProgress, successMessage: 'Work started')),
           JobStatus.inProgress => _PrimaryButton(
               label: 'Hand to QC',
-              onPressed: () => notifier.transitionStatus(JobStatus.qualityCheck)),
+              onPressed: () async {
+                final success = await notifier.transitionStatus(JobStatus.qualityCheck);
+                if (success) hapticMedium();
+                if (context.mounted) {
+                  if (success) {
+                    showSuccessSnackBar(context, 'Moved to QC');
+                  } else {
+                    showErrorSnackBar(context, 'Failed to update status');
+                  }
+                  if (success) context.push('/jobs/$jobId/qc-checklist/new');
+                }
+              }),
           JobStatus.waitingParts => _PrimaryButton(
               label: 'Resume Work',
-              onPressed: () => notifier.transitionStatus(JobStatus.inProgress)),
+              onPressed: () => _transition(context, ref, JobStatus.inProgress, successMessage: 'Work resumed')),
           JobStatus.qualityCheck => _PrimaryButton(
               label: 'Mark Ready',
-              onPressed: () => notifier.transitionStatus(JobStatus.ready)),
+              onPressed: () => _transition(context, ref, JobStatus.ready, successMessage: 'Marked as ready')),
           JobStatus.ready => _PrimaryButton(
               label: 'Close Job',
-              onPressed: () => notifier.transitionStatus(JobStatus.closed)),
+              onPressed: isAdmin ? () => _transition(context, ref, JobStatus.closed, successMessage: 'Job closed') : null),
           JobStatus.closed || JobStatus.noShow => const SizedBox.shrink(),
         },
         const SizedBox(height: 8),
@@ -560,20 +698,16 @@ class _ActionButtons extends ConsumerWidget {
         // View Concerns button (always visible for active jobs)
         if (_canViewConcerns) ...[
           ElevatedButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ConcernListScreen(jobId: jobId),
-              ),
-            ),
+            onPressed: () => context.push('/jobs/$jobId/concerns'),
             child: const Text('View Concerns'),
           ),
           const SizedBox(height: 8),
         ],
 
         // Secondary actions
-        if (job.status == JobStatus.booked) ...[
+        if (job.status == JobStatus.booked && isAdmin) ...[
           OutlinedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.noShow),
+            onPressed: () => _transition(context, ref, JobStatus.noShow, successMessage: 'Marked as no-show'),
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.statusChecking),
             child: const Text('No Show'),
           ),
@@ -581,32 +715,32 @@ class _ActionButtons extends ConsumerWidget {
         ],
         if (job.status == JobStatus.inProgress) ...[
           OutlinedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.waitingParts),
+            onPressed: () => _transition(context, ref, JobStatus.waitingParts, successMessage: 'Marked as waiting parts'),
             child: const Text('Waiting Parts'),
           ),
           const SizedBox(height: 8),
         ],
         if (job.status == JobStatus.qualityCheck) ...[
           OutlinedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.inProgress),
+            onPressed: () => _transition(context, ref, JobStatus.inProgress, successMessage: 'Job reopened'),
             child: const Text('Reopen'),
           ),
           const SizedBox(height: 8),
         ],
-        if (job.status == JobStatus.checking) ...[
+        if (job.status == JobStatus.checking && isAdmin) ...[
           OutlinedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.estimateSent),
+            onPressed: () => _transition(context, ref, JobStatus.estimateSent, successMessage: 'Estimate sent'),
             child: const Text('Send Estimate'),
           ),
           const SizedBox(height: 8),
         ],
 
-        // Cancel/close for active jobs (not booked/closed/no-show, those have their own flow)
-        if (job.status != JobStatus.booked &&
+        // Cancel/close for active jobs (admin only)
+        if (isAdmin && job.status != JobStatus.booked &&
             job.status != JobStatus.closed &&
             job.status != JobStatus.noShow) ...[
           OutlinedButton(
-            onPressed: () => _confirmClose(context, notifier),
+            onPressed: () => _confirmClose(context, ref),
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Close Job'),
           ),
@@ -622,7 +756,7 @@ class _ActionButtons extends ConsumerWidget {
     );
   }
 
-  void _confirmClose(BuildContext context, dynamic notifier) {
+  void _confirmClose(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -636,7 +770,7 @@ class _ActionButtons extends ConsumerWidget {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              notifier.transitionStatus(JobStatus.closed);
+              _transition(context, ref, JobStatus.closed, successMessage: 'Job closed');
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Close'),
@@ -650,7 +784,7 @@ class _ActionButtons extends ConsumerWidget {
 class _PrimaryButton extends StatelessWidget {
   const _PrimaryButton({required this.label, required this.onPressed});
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

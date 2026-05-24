@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
+import 'package:prioraflow_tech/core/theme/snackbar.dart';
 
 class PhotoCaptureWidget extends StatefulWidget {
   const PhotoCaptureWidget({
@@ -45,9 +46,7 @@ class _PhotoCaptureWidgetState extends State<PhotoCaptureWidget> {
       widget.onPhotosChanged(_photos);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        showErrorSnackBar(context, 'Failed to pick image');
       }
     } finally {
       setState(() => _isPicking = false);

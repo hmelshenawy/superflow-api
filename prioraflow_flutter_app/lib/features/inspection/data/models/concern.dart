@@ -1,3 +1,5 @@
+import 'package:prioraflow_tech/core/utils/parse_utils.dart';
+
 /// Origin of a concern: advisor-entered at check-in, or found during DVI inspection.
 enum ConcernSource {
   advisor,
@@ -41,7 +43,7 @@ class Concern {
       workNote: json['work_note'] as String?,
       qcNote: json['qc_note'] as String?,
       customerDecision: json['customer_decision'] as String?,
-      sortOrder: json['sort_order'] as int?,
+      sortOrder: parseInt(json['sort_order']),
       category: json['category'] as String?,
       severity: json['severity'] as String?,
       inspectionResponseId: json['inspection_response_id'] as String?,
@@ -83,6 +85,24 @@ class Concern {
       inspectionResponseId != null ? ConcernSource.inspection : ConcernSource.advisor;
 
   String get displayTitle => title ?? description;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'job_id': jobId,
+        'title': title,
+        'code': code,
+        'description': description,
+        'status': status,
+        'technician_finding': technicianFinding,
+        'work_note': workNote,
+        'qc_note': qcNote,
+        'customer_decision': customerDecision,
+        'sort_order': sortOrder,
+        'category': category,
+        'severity': severity,
+        'inspection_response_id': inspectionResponseId,
+        'media_files': mediaFiles?.map((m) => m.toJson()).toList(),
+      };
 }
 
 class ConcernMedia {
@@ -109,4 +129,11 @@ class ConcernMedia {
   final String? url;
   final String? mimeType;
   final DateTime? uploadedAt;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'url': url,
+        'mime_type': mimeType,
+        'uploaded_at': uploadedAt?.toIso8601String(),
+      };
 }

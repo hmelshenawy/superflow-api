@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
+import 'package:prioraflow_tech/core/theme/snackbar.dart';
+import 'package:prioraflow_tech/core/utils/haptic.dart';
+import 'package:prioraflow_tech/core/utils/parse_utils.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/finding_form_provider.dart';
@@ -61,7 +64,7 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
       _needsPart = draft['partName'] != null;
       _partNameController.text = draft['partName'] as String? ?? '';
       _partQuantityController.text =
-          (draft['partQuantity'] as int?)?.toString() ?? '1';
+          (parseInt(draft['partQuantity']))?.toString() ?? '1';
       _partNotesController.text = draft['partNotes'] as String? ?? '';
     }
   }
@@ -95,11 +98,21 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
   Future<void> _saveFinding() async {
     if (_selectedType != FindingType.ok &&
         _descriptionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Description is required for non-OK findings')),
-      );
+      showErrorSnackBar(context, 'Description is required for non-OK findings');
       return;
+    }
+
+    if (_needsPart && _partNameController.text.trim().isEmpty) {
+      showErrorSnackBar(context, 'Part name is required');
+      return;
+    }
+
+    if (_needsPart) {
+      final qty = int.tryParse(_partQuantityController.text);
+      if (qty == null || qty <= 0) {
+        showErrorSnackBar(context, 'Quantity must be a positive number');
+        return;
+      }
     }
 
     final notifier = ref.read(findingFormProvider.notifier);
@@ -124,15 +137,12 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Finding saved')),
-      );
+      hapticMedium();
+      showSuccessSnackBar(context, 'Finding saved');
       Navigator.of(context).pop();
     } else {
       final error = ref.read(findingFormProvider).error;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'Failed to save finding')),
-      );
+      showErrorSnackBar(context, error ?? 'Failed to save finding');
     }
   }
 

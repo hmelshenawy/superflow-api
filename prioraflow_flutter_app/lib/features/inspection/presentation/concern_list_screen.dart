@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
-import 'package:prioraflow_tech/features/inspection/presentation/finding_form_screen.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_detail_provider.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ConcernListScreen extends ConsumerWidget {
   const ConcernListScreen({required this.jobId, super.key});
@@ -118,7 +119,18 @@ class ConcernListScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Shimmer.fromColors(
+          baseColor: AppColors.surfaceLight,
+          highlightColor: AppColors.border,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: List.generate(4, (_) => Container(
+              height: 72,
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16)),
+            )),
+          ),
+        ),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -212,6 +224,11 @@ class _ConcernCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final findingType = findingTypeFromConcernStatus(concern.status);
     final isInspected = concern.hasFinding;
+    final mediaUrls = concern.mediaFiles
+            ?.where((m) => m.url != null)
+            .map((m) => m.url!)
+            .toList() ??
+        [];
 
     Color statusColor;
     String statusLabel;
@@ -236,17 +253,19 @@ class _ConcernCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => FindingFormScreen(
-                  jobId: jobId,
-                  concernId: concern.id,
-                  concernDescription: concern.displayTitle,
-                  initialType: findingType,
-                  initialFinding: concern.technicianFinding,
-                ),
-              ),
-            );
+            final params = <String, String>{
+              'description': concern.displayTitle,
+            };
+            if (findingType != null) {
+              params['initialType'] = findingType.statusName;
+            }
+            if (concern.technicianFinding != null && concern.technicianFinding!.isNotEmpty) {
+              params['initialFinding'] = concern.technicianFinding!;
+            }
+            context.push(Uri(
+              path: '/jobs/$jobId/concerns/${concern.id}/finding',
+              queryParameters: params,
+            ).toString());
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -283,6 +302,29 @@ class _ConcernCard extends StatelessWidget {
                               .textTheme
                               .labelSmall
                               ?.copyWith(color: AppColors.textMuted),
+                        ),
+                      ],
+                      if (mediaUrls.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => context.push('/gallery', extra: {
+                            'urls': mediaUrls,
+                            'initialIndex': 0,
+                          }),
+                          child: Row(
+                            children: [
+                              Icon(Icons.photo_library, size: 14, color: AppColors.primary),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${mediaUrls.length} photo${mediaUrls.length > 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ],

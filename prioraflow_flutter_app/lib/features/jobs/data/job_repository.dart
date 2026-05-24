@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
 import 'package:prioraflow_tech/core/api/dio_client.dart';
+import 'package:prioraflow_tech/core/errors/error_handler.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
@@ -46,40 +47,52 @@ class JobRepository {
     String? status,
     String? search,
   }) async {
-    final queryParameters = <String, dynamic>{
-      'page': page,
-      'limit': limit,
-    };
-    if (status != null) queryParameters['status'] = status;
-    if (search != null && search.trim().isNotEmpty) {
-      queryParameters['search'] = search.trim();
+    try {
+      final queryParameters = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
+      if (status != null) queryParameters['status'] = status;
+      if (search != null && search.trim().isNotEmpty) {
+        queryParameters['search'] = search.trim();
+      }
+
+      final response = await _dio.get(
+        ApiConstants.jobs,
+        queryParameters: queryParameters,
+      );
+
+      return PaginatedResult.fromJson(
+        response.data as Map<String, dynamic>,
+        (json) => Job.fromJson(json),
+      );
+    } catch (e) {
+      throw handleError(e);
     }
-
-    final response = await _dio.get(
-      ApiConstants.jobs,
-      queryParameters: queryParameters,
-    );
-
-    return PaginatedResult.fromJson(
-      response.data as Map<String, dynamic>,
-      (json) => Job.fromJson(json),
-    );
   }
 
   Future<Job> getJobDetail(String jobId) async {
-    final response = await _dio.get('${ApiConstants.jobs}/$jobId');
-    return Job.fromJson(response.data as Map<String, dynamic>);
+    try {
+      final response = await _dio.get('${ApiConstants.jobs}/$jobId');
+      return Job.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw handleError(e);
+    }
   }
 
   Future<Job> updateJobStatus(String jobId, JobStatus newStatus, {String? reason}) async {
-    final response = await _dio.patch(
-      ApiConstants.jobStatus(jobId),
-      data: {
-        'to_status': newStatus.apiValue,
-        if (reason != null) 'reason': reason,
-      },
-    );
-    return Job.fromJson(response.data as Map<String, dynamic>);
+    try {
+      final response = await _dio.patch(
+        ApiConstants.jobStatus(jobId),
+        data: {
+          'to_status': newStatus.apiValue,
+          if (reason != null) 'reason': reason,
+        },
+      );
+      return Job.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw handleError(e);
+    }
   }
 }
 

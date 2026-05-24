@@ -16,9 +16,7 @@ class PrioraFlowApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'PrioraFlow',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
+      theme: AppTheme.dark,
       routerDelegate: router.routerDelegate,
       routeInformationParser: router.routeInformationParser,
       routeInformationProvider: router.routeInformationProvider,

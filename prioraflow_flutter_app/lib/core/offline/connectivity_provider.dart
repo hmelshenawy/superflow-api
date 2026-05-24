@@ -1,26 +1,17 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Polls connectivity by making lightweight requests to the API health endpoint.
-/// Emits true when connected, false when offline.
-final connectivityProvider = StreamProvider<bool>((ref) async* {
-  // We'll use a simple approach: check connectivity every 10 seconds.
-  // The actual check is done by trying to reach the API.
-  // For now, we assume online until a request fails.
-  // The OfflineBanner widget will show/hide based on this.
-  // This provider is supplemented by checking response errors in the Dio interceptor.
-
-  // Start assuming connected
-  yield true;
-
-  // Keep the stream alive
-  await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
-    // The actual offline detection happens via DioException in the auth interceptor.
-    // This provider is updated by ConnectivityNotifier when errors occur.
-  }
+/// Real-time connectivity state based on connectivity_plus.
+/// Emits true when any network is available, false when completely offline.
+final connectivityProvider = StreamProvider<bool>((ref) {
+  return Connectivity().onConnectivityChanged.map(
+    (results) => results.any((r) => r != ConnectivityResult.none),
+  );
 });
 
-/// Notifier that tracks online/offline state based on actual network errors.
+/// Notifier that tracks online/offline state.
+/// Updated by both the connectivity stream (proactive) and the Dio interceptor (reactive on errors).
 class ConnectivityNotifier extends StateNotifier<bool> {
   ConnectivityNotifier() : super(true);
 
@@ -28,6 +19,22 @@ class ConnectivityNotifier extends StateNotifier<bool> {
   void markOnline() => state = true;
 }
 
+/// Combined online/offline state.
+/// - Proactive: listens to connectivity_plus for network changes.
+/// - Reactive: the auth interceptor calls markOffline/markOnline on Dio errors/successes.
 final isOnlineProvider = StateNotifierProvider<ConnectivityNotifier, bool>((ref) {
-  return ConnectivityNotifier();
+  final notifier = ConnectivityNotifier();
+
+  // Listen to connectivity_plus stream and sync.
+  ref.listen(connectivityProvider, (_, asyncValue) {
+    asyncValue.whenData((isOnline) {
+      if (isOnline && !notifier.state) {
+        notifier.markOnline();
+      } else if (!isOnline) {
+        notifier.markOffline();
+      }
+    });
+  });
+
+  return notifier;
 });

@@ -1,17 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prioraflow_tech/core/auth/auth_provider.dart';
+import 'package:prioraflow_tech/core/auth/role_guards.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
 import 'package:prioraflow_tech/core/utils/date_utils.dart' as app_date;
+import 'package:prioraflow_tech/core/utils/haptic.dart';
 import 'package:prioraflow_tech/core/utils/priority_utils.dart';
+import 'package:prioraflow_tech/features/jobs/presentation/advanced_filter_sheet.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_list_provider.dart';
-import 'package:prioraflow_tech/features/jobs/presentation/job_detail_screen.dart';
 import 'package:shimmer/shimmer.dart';
-
-final _searchDebounceProvider = StateProvider<String>((_) => '');
 
 class JobListScreen extends ConsumerStatefulWidget {
   const JobListScreen({super.key});
@@ -23,6 +24,7 @@ class JobListScreen extends ConsumerStatefulWidget {
 class _JobListScreenState extends ConsumerState<JobListScreen> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -32,6 +34,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _scrollController.removeListener(_onScroll);
     _searchController.dispose();
     _scrollController.dispose();
@@ -46,7 +49,10 @@ class _JobListScreenState extends ConsumerState<JobListScreen> {
   }
 
   void _onSearchChanged(String query) {
-    ref.read(jobListProvider.notifier).search(query.isEmpty ? null : query);
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      ref.read(jobListProvider.notifier).search(query.isEmpty ? null : query);
+    });
   }
 
   @override
@@ -54,7 +60,22 @@ class _JobListScreenState extends ConsumerState<JobListScreen> {
     final jobsAsync = ref.watch(jobListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Jobs')),
+      appBar: AppBar(
+        title: const Text('My Jobs'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: () {
+              hapticLight();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => const AdvancedFilterSheet(),
+              );
+            },
+          ),
+        ],
+      ),
       drawer: const _AppDrawer(),
       body: Column(
         children: [
@@ -109,8 +130,29 @@ class _JobListScreenState extends ConsumerState<JobListScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: jobs.length,
-                    itemBuilder: (context, index) => _JobCard(job: jobs[index]),
+                    itemCount: jobs.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == jobs.length) {
+                        final loadingMore = ref.watch(jobListLoadingMoreProvider);
+                        if (loadingMore) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }
+                      return _JobCard(job: jobs[index]);
+                    },
                   ),
                 );
               },
@@ -172,7 +214,10 @@ class _StatusFilterBar extends ConsumerWidget {
             padding: const EdgeInsets.only(right: 8),
             child: ActionChip(
               label: Text(f.$1),
-              onPressed: () => ref.read(jobListProvider.notifier).filterByStatus(f.$2),
+              onPressed: () {
+                hapticSelection();
+                ref.read(jobListProvider.notifier).filterByStatus(f.$2);
+              },
             ),
           );
         }).toList(),
@@ -210,9 +255,7 @@ class _JobCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => JobDetailScreen(jobId: job.id)),
-          ),
+          onTap: () => context.push('/jobs/${job.id}'),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -369,7 +412,8 @@ class _AppDrawer extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final name = user?['name']?.toString() ?? 'Technician';
-    final role = (user?['role']?['name'] ?? 'technician').toString();
+    final role = ref.watch(userRoleProvider);
+    final isAdmin = ref.watch(isAdminProvider);
 
     return Drawer(
       backgroundColor: AppColors.background,
@@ -397,7 +441,7 @@ class _AppDrawer extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.statusApproved.withOpacity(0.12),
+                            color: (isAdmin ? AppColors.primary : AppColors.statusApproved).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -406,7 +450,7 @@ class _AppDrawer extends ConsumerWidget {
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.1,
-                              color: AppColors.statusApproved,
+                              color: isAdmin ? AppColors.primary : AppColors.statusApproved,
                             ),
                           ),
                         ),
@@ -424,8 +468,8 @@ class _AppDrawer extends ConsumerWidget {
               onTap: () => Navigator.of(context).pop(),
             ),
             ListTile(
-              leading: Icon(Icons.person_outline, color: AppColors.foregroundMuted),
-              title: Text('Profile', style: TextStyle(color: AppColors.foregroundMuted)),
+              leading: Icon(Icons.settings_outlined, color: AppColors.foregroundMuted),
+              title: Text('Settings', style: TextStyle(color: AppColors.foregroundMuted)),
               onTap: () {
                 Navigator.of(context).pop();
                 context.push('/profile');
@@ -437,6 +481,7 @@ class _AppDrawer extends ConsumerWidget {
               leading: const Icon(Icons.logout, color: AppColors.danger),
               title: const Text('Sign Out', style: TextStyle(color: AppColors.danger)),
               onTap: () async {
+                hapticMedium();
                 await ref.read(authProvider.notifier).logout();
                 if (context.mounted) context.go('/login');
               },

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
+import 'package:prioraflow_tech/features/parts/data/models/part.dart';
 import 'package:prioraflow_tech/features/parts/data/parts_repository.dart';
+import 'package:shimmer/shimmer.dart';
 
-final jobPartsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, jobId) async {
+final jobPartsProvider = FutureProvider.family<List<JobPart>, String>((ref, jobId) async {
   final repo = ref.watch(partsRepositoryProvider);
   return repo.getJobParts(jobId);
 });
@@ -41,13 +43,22 @@ class PartsStatusScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               itemCount: parts.length,
               itemBuilder: (context, index) {
-                final part = parts[index];
-                return _PartCard(part: part);
+                return _PartCard(part: parts[index]);
               },
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => Shimmer.fromColors(
+          baseColor: AppColors.surfaceLight,
+          highlightColor: AppColors.border,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: List.generate(4, (_) => Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Container(height: 60, padding: const EdgeInsets.all(16)),
+            )),
+          ),
+        ),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -69,12 +80,11 @@ class PartsStatusScreen extends ConsumerWidget {
 class _PartCard extends StatelessWidget {
 
   const _PartCard({required this.part});
-  final Map<String, dynamic> part;
+  final JobPart part;
 
   @override
   Widget build(BuildContext context) {
-    final status = part['status'] as String? ?? 'requested';
-    final color = _statusColor(status);
+    final statusColor = _statusColor(part.status);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -87,12 +97,12 @@ class _PartCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    part['part']?['name'] as String? ?? part['name'] as String? ?? 'Unknown Part',
+                    part.displayName,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
-                  if (part['quantity'] != null) ...[
+                  if (part.quantity != null) ...[
                     const SizedBox(height: 4),
-                    Text('Qty: ${part['quantity']}', style: Theme.of(context).textTheme.labelSmall),
+                    Text('Qty: ${part.quantity}', style: Theme.of(context).textTheme.labelSmall),
                   ],
                 ],
               ),
@@ -100,12 +110,12 @@ class _PartCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
+                color: statusColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                _statusLabel(status),
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                part.status.label,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor),
               ),
             ),
           ],
@@ -114,34 +124,12 @@ class _PartCard extends StatelessWidget {
     );
   }
 
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'arrived':
-      case 'parts_ready':
-        return AppColors.success;
-      case 'sourcing':
-      case 'order_parts':
-        return AppColors.warning;
-      case 'cancelled':
-        return AppColors.danger;
-      default:
-        return AppColors.textMuted;
-    }
-  }
-
-  String _statusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'requested':
-        return 'Requested';
-      case 'sourcing':
-        return 'Sourcing';
-      case 'arrived':
-      case 'parts_ready':
-        return 'Arrived';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status.replaceAll('_', ' ').split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
-    }
+  Color _statusColor(PartStatus status) {
+    return switch (status) {
+      PartStatus.arrived || PartStatus.partsReady => AppColors.success,
+      PartStatus.sourcing || PartStatus.orderParts => AppColors.warning,
+      PartStatus.cancelled => AppColors.danger,
+      _ => AppColors.textMuted,
+    };
   }
 }

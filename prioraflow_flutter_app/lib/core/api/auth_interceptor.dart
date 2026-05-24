@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,11 @@ class AuthInterceptor extends Interceptor {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
+  /// Mutex to prevent concurrent refresh requests.
+  /// If a refresh is already in progress, other 401s will wait for its result
+  /// and reuse the new token instead of triggering additional refresh calls.
+  Completer<String>? _refreshCompleter;
+
   @override
   Future<void> onRequest(
     RequestOptions options,
@@ -34,7 +40,7 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
-  void onSuccess(Response<dynamic> response, ResponseInterceptorHandler handler) {
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
     ref.read(isOnlineProvider.notifier).markOnline();
     handler.next(response);
   }
@@ -57,7 +63,28 @@ class AuthInterceptor extends Interceptor {
         return;
       }
 
-      // Try to refresh using the cookie jar (httpOnly refresh cookie is stored by CookieManager)
+      // If a refresh is already in progress, wait for it
+      if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
+        try {
+          final newToken = await _refreshCompleter!.future;
+          // Retry the original request with the new token
+          err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+          final retryDio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
+          final cookieJar = ref.read(cookieJarProvider);
+          retryDio.interceptors.add(CookieManager(cookieJar));
+          final retryResponse = await retryDio.fetch(err.requestOptions);
+          handler.resolve(retryResponse);
+          ref.read(isOnlineProvider.notifier).markOnline();
+          return;
+        } catch (_) {
+          // The in-progress refresh failed — propagate the original error
+          handler.next(err);
+          return;
+        }
+      }
+
+      // Start a new refresh
+      _refreshCompleter = Completer<String>();
       try {
         final cookieJar = ref.read(cookieJarProvider);
         final refreshDio = Dio(BaseOptions(
@@ -72,6 +99,9 @@ class AuthInterceptor extends Interceptor {
 
         await _secureStorage.write(key: 'access_token', value: newAccessToken);
 
+        // Complete the mutex so any waiting requests get the new token
+        _refreshCompleter!.complete(newAccessToken);
+
         // Retry the original request with the new token
         err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
         final retryDio = Dio(BaseOptions(baseUrl: ApiConstants.baseUrl));
@@ -82,8 +112,13 @@ class AuthInterceptor extends Interceptor {
         return;
       } catch (_) {
         // Refresh failed — clear tokens and reject
+        if (!_refreshCompleter!.isCompleted) {
+          _refreshCompleter!.completeError(_);
+        }
         await _secureStorage.delete(key: 'access_token');
         await _secureStorage.delete(key: 'workshop_id');
+      } finally {
+        _refreshCompleter = null;
       }
     }
 

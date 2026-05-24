@@ -1,12 +1,18 @@
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
 import 'package:prioraflow_tech/core/api/auth_interceptor.dart';
 
-final cookieJarProvider = Provider<CookieJar>((ref) {
-  return CookieJar();
+/// Set from main() after Hive.initFlutter() which ensures the app dir is available.
+late final String appCookiesDir;
+
+final cookieJarProvider = Provider<PersistCookieJar>((ref) {
+  return PersistCookieJar(
+    storage: FileStorage('$appCookiesDir/cookies'),
+  );
 });
 
 final dioProvider = Provider<Dio>((ref) {
@@ -27,10 +33,11 @@ final dioProvider = Provider<Dio>((ref) {
   dio.interceptors.addAll([
     CookieManager(cookieJar),
     AuthInterceptor(ref),
-    LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-    ),
+    if (kDebugMode)
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+      ),
   ]);
 
   return dio;

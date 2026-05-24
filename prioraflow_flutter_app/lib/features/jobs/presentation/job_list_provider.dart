@@ -7,6 +7,9 @@ final jobListProvider = AsyncNotifierProvider<JobListNotifier, List<Job>>(() {
   return JobListNotifier();
 });
 
+/// Whether the job list is currently fetching the next page.
+final jobListLoadingMoreProvider = StateProvider<bool>((ref) => false);
+
 class JobListNotifier extends AsyncNotifier<List<Job>> {
   String? _statusFilter;
   String? _search;
@@ -59,7 +62,8 @@ class JobListNotifier extends AsyncNotifier<List<Job>> {
   }
 
   Future<void> loadMore() async {
-    if (!_hasMore) return;
+    if (!_hasMore || ref.read(jobListLoadingMoreProvider)) return;
+    ref.read(jobListLoadingMoreProvider.notifier).state = true;
     final current = state.valueOrNull ?? [];
     _page++;
     try {
@@ -74,6 +78,8 @@ class JobListNotifier extends AsyncNotifier<List<Job>> {
     } catch (e, st) {
       _page--;
       state = AsyncError(e, st);
+    } finally {
+      ref.read(jobListLoadingMoreProvider.notifier).state = false;
     }
   }
 }

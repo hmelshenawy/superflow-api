@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/auth/auth_service.dart';
@@ -5,14 +6,15 @@ import 'package:prioraflow_tech/core/auth/auth_state.dart';
 import 'package:prioraflow_tech/core/offline/draft_service.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(authServiceProvider));
+  return AuthNotifier(ref.watch(authServiceProvider), ref.watch(draftServiceProvider));
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._authService) : super(const AuthState()) {
+  AuthNotifier(this._authService, this._draftService) : super(const AuthState()) {
     _checkAuth();
   }
   final AuthService _authService;
+  final DraftService _draftService;
 
   Future<void> _checkAuth() async {
     final isAuth = await _authService.isAuthenticated();
@@ -20,9 +22,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         final user = await _authService.getCurrentUser();
         state = state.copyWith(isAuthenticated: true, user: user);
+      } on DioException catch (e) {
+        // If this is a network/connectivity error, keep the user authenticated
+        // locally. The token may still be valid — we just can't verify it right now.
+        // The auth interceptor will handle token refresh on the next request.
+        if (e.type == DioExceptionType.connectionError ||
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.sendTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.error is SocketException) {
+          // Stay authenticated with cached state — we'll re-validate on next successful request
+          state = state.copyWith(isAuthenticated: true);
+        } else {
+          // Auth error (401, 403, etc.) — token is truly invalid
+          await _authService.clearTokens();
+          state = const AuthState();
+        }
       } catch (_) {
-        await _authService.clearTokens();
-        state = const AuthState();
+        // Unknown error — keep user authenticated to avoid logging out on transient failures
+        state = state.copyWith(isAuthenticated: true);
       }
     }
   }
@@ -117,7 +135,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _authService.logout();
-    await DraftService.clearAll();
+    await _draftService.clearAll();
     state = const AuthState();
   }
 

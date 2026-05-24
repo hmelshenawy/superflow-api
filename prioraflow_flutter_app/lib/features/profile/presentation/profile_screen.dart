@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:prioraflow_tech/core/auth/auth_provider.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
+import 'package:prioraflow_tech/core/theme/snackbar.dart';
+import 'package:prioraflow_tech/core/utils/haptic.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -49,20 +52,17 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 32),
-            const Divider(color: AppColors.border),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const Icon(Icons.info_outline, color: AppColors.textMuted),
-              title: const Text('App Version'),
-              trailing: Text('1.0.0', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
-              contentPadding: EdgeInsets.zero,
-            ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () async {
+                  hapticMedium();
                   await ref.read(authProvider.notifier).logout();
+                  if (context.mounted) {
+                    showInfoSnackBar(context, 'Signed out');
+                    context.go('/login');
+                  }
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
@@ -71,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                 child: const Text('Sign Out'),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 16),
           ],
         ),
       ),

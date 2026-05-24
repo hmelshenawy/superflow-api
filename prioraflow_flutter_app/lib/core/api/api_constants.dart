@@ -8,7 +8,7 @@ class ApiConstants {
     if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
     return const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:3000/api',
+      defaultValue: 'https://prioraflow.com/api',
     );
   }
 
@@ -31,6 +31,7 @@ class ApiConstants {
   static const mediaPresign = '/media/presign';
   static const mediaConfirm = '/media/confirm';
   static const mediaUploadDirect = '/media/upload-direct';
+  static String mediaDownload(String mediaId) => '/media/$mediaId/download';
 
   // Job Parts
   static String jobParts(String jobId) => '/job-parts/job/$jobId';
@@ -38,4 +39,26 @@ class ApiConstants {
 
   // Parts
   static const partsSearch = '/parts/search';
+
+  // Inspection Templates
+  static const inspectionTemplates = '/inspection-templates';
+  static String inspectionTemplate(String id) => '/inspection-templates/$id';
+
+  // Inspections
+  static const inspections = '/inspections';
+  static String inspection(String id) => '/inspections/$id';
+  static String inspectionResponses(String id) => '/inspections/$id/responses';
+  static String inspectionSubmit(String id) => '/inspections/$id/submit';
+  static String inspectionReopen(String id) => '/inspections/$id/reopen';
+
+  // QC Checklist Templates
+  static const qcChecklistTemplates = '/qc-checklist-templates';
+  static String qcChecklistTemplate(String id) => '/qc-checklist-templates/$id';
+
+  // QC Checklists
+  static const qcChecklists = '/qc-checklists';
+  static String qcChecklist(String id) => '/qc-checklists/$id';
+  static String qcChecklistResponses(String id) => '/qc-checklists/$id/responses';
+  static String qcChecklistSubmit(String id) => '/qc-checklists/$id/submit';
+  static String qcChecklistReopen(String id) => '/qc-checklists/$id/reopen';
 }
