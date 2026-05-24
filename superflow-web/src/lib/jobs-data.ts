@@ -1,24 +1,5 @@
 import type { Job, JobStatus, PartsStatus, CustomerSensitivity, WorkshopStage } from "@/types";
 
-// ─── State Machine ─────────────────────────────────────────────
-// Mirror of backend state machine — single source of truth for frontend transitions.
-const TRANSITIONS: Record<JobStatus, JobStatus[]> = {
-  booked: ["checking", "closed", "no_show"],
-  checking: ["estimate_sent", "approved", "in_progress", "closed"],
-  estimate_sent: ["checking", "approved", "closed"],
-  approved: ["estimate_sent", "in_progress", "closed"],
-  in_progress: ["waiting_parts", "quality_check", "ready", "closed"],
-  waiting_parts: ["in_progress", "closed"],
-  quality_check: ["in_progress", "ready"],
-  ready: ["quality_check", "closed"],
-  closed: [],
-  no_show: [],
-};
-
-export function getValidTransitions(current: JobStatus): JobStatus[] {
-  return [...(TRANSITIONS[current] ?? [])];
-}
-
 // ─── Status Metadata ──────────────────────────────────────────
 export const STATUS_META: Record<JobStatus, { label: string; tone: string; chip: string; dot: string }> = {
   booked:          { label: "Booked",         tone: "border-border bg-muted text-foreground", chip: "bg-muted text-foreground", dot: "bg-slate-400" },
@@ -139,11 +120,18 @@ export function getPlate(job: Job) {
   return job.vehicle?.plate || "No plate";
 }
 
-export function isWorkshopPhaseJob(job: Job) {
+export function isWorkshopPhaseJob(job: Job): boolean {
+  if ((job as any).meta?.isWorkshopPhase !== undefined) return (job as any).meta.isWorkshopPhase;
   return ["in_progress", "waiting_parts", "quality_check", "ready"].includes(job.status);
 }
 
 export function getWorkshopStage(job: Job): WorkshopStage | null {
+  const meta = (job as any).meta;
+  if (meta?.resolvedWorkshopStage !== undefined) {
+    const stage = meta.resolvedWorkshopStage as WorkshopStage | null;
+    if (stage && WORKSHOP_STAGE_META[stage]) return stage;
+  }
+  // Fallback for when meta is not available
   if (["booked", "checking", "estimate_sent", "approved", "closed"].includes(job.status)) return null;
   if (String(job.workshop_stage) === "advisor_review") return "customer_approval";
   if (job.workshop_stage && WORKSHOP_STAGE_META[job.workshop_stage]) return job.workshop_stage;
@@ -152,6 +140,25 @@ export function getWorkshopStage(job: Job): WorkshopStage | null {
   if (job.status === "quality_check") return "quality_check";
   if (job.status === "ready") return "ready_handover";
   return null;
+}
+
+export function getValidTransitions(job: Job): JobStatus[] {
+  const meta = (job as any).meta;
+  if (meta?.validTransitions?.length) return meta.validTransitions as JobStatus[];
+  // Fallback: derive from status (kept for safety during transition)
+  const fallback: Record<JobStatus, JobStatus[]> = {
+    booked: ["checking", "closed", "no_show"],
+    checking: ["estimate_sent", "approved", "in_progress", "closed"],
+    estimate_sent: ["checking", "approved", "closed"],
+    approved: ["estimate_sent", "in_progress", "closed"],
+    in_progress: ["waiting_parts", "quality_check", "ready", "closed"],
+    waiting_parts: ["in_progress", "closed"],
+    quality_check: ["in_progress", "ready"],
+    ready: ["quality_check", "closed"],
+    closed: [],
+    no_show: [],
+  };
+  return [...(fallback[job.status] ?? [])];
 }
 
 export function getPromisedLabel(value: string | null) {
