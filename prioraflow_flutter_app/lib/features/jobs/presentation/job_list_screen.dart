@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:prioraflow_tech/core/auth/auth_provider.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
 import 'package:prioraflow_tech/core/utils/date_utils.dart' as app_date;
 import 'package:prioraflow_tech/core/utils/priority_utils.dart';
@@ -7,6 +9,7 @@ import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_list_provider.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_detail_screen.dart';
+import 'package:shimmer/shimmer.dart';
 
 final _searchDebounceProvider = StateProvider<String>((_) => '');
 
@@ -52,6 +55,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Jobs')),
+      drawer: const _AppDrawer(),
       body: Column(
         children: [
           Padding(
@@ -110,7 +114,18 @@ class _JobListScreenState extends ConsumerState<JobListScreen> {
                   ),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => Shimmer.fromColors(
+                baseColor: AppColors.surfaceLight,
+                highlightColor: AppColors.border,
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: 5,
+                  itemBuilder: (_, __) => Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Container(height: 100, padding: const EdgeInsets.all(16)),
+                  ),
+                ),
+              ),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -299,6 +314,77 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         status.label,
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
+class _AppDrawer extends ConsumerWidget {
+  const _AppDrawer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
+    final name = user?['name']?.toString() ?? 'Technician';
+    final role = (user?['role']?['name'] ?? 'technician').toString();
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.primary,
+                    child: Text(
+                      name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(role.toUpperCase(), style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.assignment_outlined),
+              title: const Text('My Jobs'),
+              onTap: () => Navigator.of(context).pop(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push('/profile');
+              },
+            ),
+            const Spacer(),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.danger),
+              title: const Text('Sign Out', style: TextStyle(color: AppColors.danger)),
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) context.go('/login');
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
