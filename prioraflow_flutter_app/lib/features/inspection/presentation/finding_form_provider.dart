@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/features/inspection/data/inspection_repository.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 
 class FindingFormState {
   const FindingFormState({
     this.isLoading = false,
     this.error,
-    this.savedFinding,
+    this.savedConcern,
     this.photosUploaded = 0,
     this.photosTotal = 0,
     this.isUploadingPhotos = false,
@@ -15,7 +16,7 @@ class FindingFormState {
 
   final bool isLoading;
   final String? error;
-  final Finding? savedFinding;
+  final Concern? savedConcern;
   final int photosUploaded;
   final int photosTotal;
   final bool isUploadingPhotos;
@@ -23,7 +24,7 @@ class FindingFormState {
   FindingFormState copyWith({
     bool? isLoading,
     String? error,
-    Finding? savedFinding,
+    Concern? savedConcern,
     int? photosUploaded,
     int? photosTotal,
     bool? isUploadingPhotos,
@@ -31,7 +32,7 @@ class FindingFormState {
     return FindingFormState(
       isLoading: isLoading ?? this.isLoading,
       error: error,
-      savedFinding: savedFinding ?? this.savedFinding,
+      savedConcern: savedConcern ?? this.savedConcern,
       photosUploaded: photosUploaded ?? this.photosUploaded,
       photosTotal: photosTotal ?? this.photosTotal,
       isUploadingPhotos: isUploadingPhotos ?? this.isUploadingPhotos,
@@ -49,9 +50,23 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
 
   final InspectionRepository _repo;
 
+  /// Maps the finding type selected by the technician to the concern status.
+  String _findingTypeToStatus(FindingType type) {
+    switch (type) {
+      case FindingType.ok:
+        return 'ok';
+      case FindingType.needsAttention:
+        return 'needs_attention';
+      case FindingType.critical:
+        return 'critical';
+      case FindingType.deferred:
+        return 'deferred';
+    }
+  }
+
   Future<bool> submit({
-    required String concernId,
     required String jobId,
+    required String concernId,
     required FindingType type,
     String? description,
     int? estimatedMinutes,
@@ -63,19 +78,27 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
     state = const FindingFormState(isLoading: true);
 
     try {
-      // Append parts request info to description if provided
-      var fullDescription = description ?? '';
+      // Build the technician_finding text
+      var findingText = description ?? '';
       if (partName != null && partName.isNotEmpty) {
         final partsInfo =
             '\n\n[Parts Request] $partName x${partQuantity ?? 1}${partNotes != null && partNotes.isNotEmpty ? ' — $partNotes' : ''}';
-        fullDescription += partsInfo;
+        findingText += partsInfo;
       }
 
-      final finding = await _repo.createFinding(
+      // Build work_note from estimated minutes
+      String? workNote;
+      if (estimatedMinutes != null) {
+        workNote = 'Est. ${estimatedMinutes}min';
+      }
+
+      // Update the concern via PATCH /jobs/:jobId/concerns/:concernId
+      final concern = await _repo.updateConcern(
+        jobId: jobId,
         concernId: concernId,
-        type: type,
-        description: fullDescription.isEmpty ? null : fullDescription,
-        estimatedMinutes: estimatedMinutes,
+        status: _findingTypeToStatus(type),
+        technicianFinding: findingText.isEmpty ? null : findingText,
+        workNote: workNote,
       );
 
       // Upload photos sequentially
@@ -100,7 +123,7 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
         state = state.copyWith(isUploadingPhotos: false);
       }
 
-      state = FindingFormState(savedFinding: finding);
+      state = FindingFormState(savedConcern: concern);
       return true;
     } catch (e) {
       state = FindingFormState(error: e.toString());

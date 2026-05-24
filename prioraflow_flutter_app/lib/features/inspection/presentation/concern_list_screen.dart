@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/concern_list_provider.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/finding_form_screen.dart';
 
@@ -30,7 +31,7 @@ class ConcernListScreen extends ConsumerWidget {
               ),
             );
           }
-          final inspected = concerns.where((c) => c.findingStatus != null).length;
+          final inspected = concerns.where((c) => c.hasFinding).length;
           return Column(
             children: [
               Padding(
@@ -52,15 +53,21 @@ class ConcernListScreen extends ConsumerWidget {
                     itemCount: concerns.length,
                     itemBuilder: (context, index) => _ConcernCard(
                       concern: concerns[index],
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => FindingFormScreen(
-                            jobId: jobId,
-                            concernId: concerns[index].id,
-                            concernDescription: concerns[index].description,
+                      onTap: () {
+                        final concern = concerns[index];
+                        final existingType = findingTypeFromConcernStatus(concern.status);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => FindingFormScreen(
+                              jobId: jobId,
+                              concernId: concern.id,
+                              concernDescription: concern.displayTitle,
+                              initialType: existingType,
+                              initialFinding: concern.technicianFinding,
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -95,9 +102,18 @@ class _ConcernCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isInspected = concern.findingStatus != null;
-    final statusColor = isInspected ? AppColors.success : AppColors.textMuted;
-    final statusLabel = isInspected ? 'Inspected' : 'Not inspected';
+    final findingType = findingTypeFromConcernStatus(concern.status);
+    final isInspected = concern.hasFinding;
+
+    Color statusColor;
+    String statusLabel;
+    if (findingType != null) {
+      statusColor = _typeColor(findingType);
+      statusLabel = findingType.label;
+    } else {
+      statusColor = AppColors.textMuted;
+      statusLabel = 'Not inspected';
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -119,16 +135,18 @@ class _ConcernCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      concern.description,
+                      concern.displayTitle,
                       style: Theme.of(context).textTheme.bodyMedium,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (concern.category != null) ...[
-                      const SizedBox(height: 4),
+                    if (concern.code != null) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        concern.category!,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
+                        concern.code!,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted,
+                            ),
                       ),
                     ],
                   ],
@@ -145,5 +163,18 @@ class _ConcernCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Color _typeColor(FindingType type) {
+    switch (type) {
+      case FindingType.ok:
+        return AppColors.success;
+      case FindingType.needsAttention:
+        return AppColors.warning;
+      case FindingType.critical:
+        return AppColors.danger;
+      case FindingType.deferred:
+        return AppColors.textMuted;
+    }
   }
 }

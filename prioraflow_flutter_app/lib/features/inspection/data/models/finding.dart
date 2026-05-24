@@ -1,38 +1,5 @@
-class Finding {
-
-  const Finding({
-    required this.id,
-    required this.concernId,
-    this.type = FindingType.ok,
-    this.description,
-    this.estimatedMinutes,
-    this.status = FindingStatus.draft,
-    this.createdAt,
-    this.updatedAt,
-  });
-
-  factory Finding.fromJson(Map<String, dynamic> json) {
-    return Finding(
-      id: json['id'] as String,
-      concernId: json['concern_id'] as String? ?? json['concernId'] as String? ?? '',
-      type: FindingType.fromString(json['type'] as String?),
-      description: json['description'] as String?,
-      estimatedMinutes: json['estimated_minutes'] as int?,
-      status: FindingStatus.fromString(json['status'] as String?),
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : null,
-    );
-  }
-  final String id;
-  final String concernId;
-  final FindingType type;
-  final String? description;
-  final int? estimatedMinutes;
-  final FindingStatus status;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-}
-
+/// Finding type represents the technician's assessment of a concern.
+/// These map to the concern's `status` field in the backend.
 enum FindingType {
   ok,
   needsAttention,
@@ -50,8 +17,25 @@ enum FindingType {
         return FindingType.critical;
       case 'deferred':
         return FindingType.deferred;
+      // Map backend concern statuses that represent "inspected but not yet categorized"
+      case 'reviewing':
+      case 'inspected':
       default:
         return FindingType.ok;
+    }
+  }
+
+  /// Converts to the backend concern status string.
+  String get statusName {
+    switch (this) {
+      case FindingType.ok:
+        return 'ok';
+      case FindingType.needsAttention:
+        return 'needs_attention';
+      case FindingType.critical:
+        return 'critical';
+      case FindingType.deferred:
+        return 'deferred';
     }
   }
 
@@ -69,21 +53,9 @@ enum FindingType {
   }
 }
 
-enum FindingStatus {
-  draft,
-  submitted,
-  reopened;
-
-  static FindingStatus fromString(String? value) {
-    switch (value?.toLowerCase()) {
-      case 'draft':
-        return FindingStatus.draft;
-      case 'submitted':
-        return FindingStatus.submitted;
-      case 'reopened':
-        return FindingStatus.reopened;
-      default:
-        return FindingStatus.draft;
-    }
-  }
+/// Parses a concern's status string into a FindingType.
+/// Returns null if the concern hasn't been inspected yet (status = 'reviewing').
+FindingType? findingTypeFromConcernStatus(String? status) {
+  if (status == null || status == 'reviewing') return null;
+  return FindingType.fromString(status);
 }

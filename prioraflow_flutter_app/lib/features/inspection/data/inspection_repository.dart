@@ -3,44 +3,32 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
 import 'package:prioraflow_tech/core/api/dio_client.dart';
-import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 
 class InspectionRepository {
   InspectionRepository(this._dio);
   final Dio _dio;
 
-  Future<Finding> createFinding({
+  /// Update a concern with technician finding data.
+  /// Uses PATCH /jobs/:jobId/concerns/:concernId
+  Future<Concern> updateConcern({
+    required String jobId,
     required String concernId,
-    required FindingType type,
-    String? description,
-    int? estimatedMinutes,
-  }) async {
-    final response = await _dio.post(
-      '/concerns/$concernId/findings',
-      data: {
-        'type': type.name,
-        if (description != null) 'description': description,
-        if (estimatedMinutes != null) 'estimated_minutes': estimatedMinutes,
-      },
-    );
-    return Finding.fromJson(response.data as Map<String, dynamic>);
-  }
-
-  Future<Finding> updateFinding({
-    required String findingId,
-    FindingType? type,
-    String? description,
-    int? estimatedMinutes,
+    String? status,
+    String? technicianFinding,
+    String? workNote,
+    String? qcNote,
   }) async {
     final response = await _dio.patch(
-      '/findings/$findingId',
+      '${ApiConstants.jobs}/$jobId/concerns/$concernId',
       data: {
-        if (type != null) 'type': type.name,
-        if (description != null) 'description': description,
-        if (estimatedMinutes != null) 'estimated_minutes': estimatedMinutes,
+        if (status != null) 'status': status,
+        if (technicianFinding != null) 'technician_finding': technicianFinding,
+        if (workNote != null) 'work_note': workNote,
+        if (qcNote != null) 'qc_note': qcNote,
       },
     );
-    return Finding.fromJson(response.data as Map<String, dynamic>);
+    return Concern.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Upload a photo to a concern via the media module (direct upload).

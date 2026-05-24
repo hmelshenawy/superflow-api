@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/finding_form_provider.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/photo_capture_widget.dart';
@@ -11,19 +12,23 @@ class FindingFormScreen extends ConsumerStatefulWidget {
     required this.jobId,
     required this.concernId,
     required this.concernDescription,
+    this.initialType,
+    this.initialFinding,
     super.key,
   });
 
   final String jobId;
   final String concernId;
   final String concernDescription;
+  final FindingType? initialType;
+  final String? initialFinding;
 
   @override
   ConsumerState<FindingFormScreen> createState() => _FindingFormScreenState();
 }
 
 class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
-  FindingType _selectedType = FindingType.ok;
+  late FindingType _selectedType;
   final _descriptionController = TextEditingController();
   final _estimatedMinutesController = TextEditingController();
   bool _needsPart = false;
@@ -31,6 +36,15 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
   final _partQuantityController = TextEditingController(text: '1');
   final _partNotesController = TextEditingController();
   List<File> _photos = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedType = widget.initialType ?? FindingType.ok;
+    if (widget.initialFinding != null && widget.initialFinding!.isNotEmpty) {
+      _descriptionController.text = widget.initialFinding!;
+    }
+  }
 
   @override
   void dispose() {
@@ -54,8 +68,8 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
 
     final notifier = ref.read(findingFormProvider.notifier);
     final success = await notifier.submit(
-      concernId: widget.concernId,
       jobId: widget.jobId,
+      concernId: widget.concernId,
       type: _selectedType,
       description: _descriptionController.text.trim().isEmpty
           ? null
