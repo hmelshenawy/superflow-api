@@ -177,7 +177,8 @@ function formatDate(value?: string | null, withTime = false) {
   }).format(date);
 }
 
-function estimateTotal(job: Job) {
+function estimateTotal(job: Job | null) {
+  if (!job) return 0;
   const meta = (job as any).meta;
   if (meta?.estimateTotal !== undefined) return meta.estimateTotal;
   return (job.estimate_lines ?? []).reduce(
