@@ -1,14 +1,19 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/finding_form_provider.dart';
+import 'package:prioraflow_tech/features/inspection/presentation/photo_capture_widget.dart';
 
 class FindingFormScreen extends ConsumerStatefulWidget {
-
   const FindingFormScreen({
-    required this.jobId, required this.concernId, required this.concernDescription, super.key,
+    required this.jobId,
+    required this.concernId,
+    required this.concernDescription,
+    super.key,
   });
+
   final String jobId;
   final String concernId;
   final String concernDescription;
@@ -25,6 +30,7 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
   final _partNameController = TextEditingController();
   final _partQuantityController = TextEditingController(text: '1');
   final _partNotesController = TextEditingController();
+  List<File> _photos = [];
 
   @override
   void dispose() {
@@ -37,9 +43,11 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
   }
 
   Future<void> _saveFinding() async {
-    if (_selectedType != FindingType.ok && _descriptionController.text.trim().isEmpty) {
+    if (_selectedType != FindingType.ok &&
+        _descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Description is required for non-OK findings')),
+        const SnackBar(
+            content: Text('Description is required for non-OK findings')),
       );
       return;
     }
@@ -47,9 +55,20 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
     final notifier = ref.read(findingFormProvider.notifier);
     final success = await notifier.submit(
       concernId: widget.concernId,
+      jobId: widget.jobId,
       type: _selectedType,
-      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-      estimatedMinutes: _estimatedMinutesController.text.isNotEmpty ? int.tryParse(_estimatedMinutesController.text) : null,
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+      estimatedMinutes: _estimatedMinutesController.text.isNotEmpty
+          ? int.tryParse(_estimatedMinutesController.text)
+          : null,
+      photos: _photos.isNotEmpty ? _photos : null,
+      partName: _needsPart ? _partNameController.text.trim() : null,
+      partQuantity: _needsPart
+          ? int.tryParse(_partQuantityController.text) ?? 1
+          : null,
+      partNotes: _needsPart ? _partNotesController.text.trim() : null,
     );
 
     if (!mounted) return;
@@ -60,8 +79,9 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
       );
       Navigator.of(context).pop();
     } else {
+      final error = ref.read(findingFormProvider).error;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save finding')),
+        SnackBar(content: Text(error ?? 'Failed to save finding')),
       );
     }
   }
@@ -84,9 +104,14 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Concern', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
+                    Text('Concern',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: AppColors.textMuted)),
                     const SizedBox(height: 4),
-                    Text(widget.concernDescription, style: Theme.of(context).textTheme.bodyMedium),
+                    Text(widget.concernDescription,
+                        style: Theme.of(context).textTheme.bodyMedium),
                   ],
                 ),
               ),
@@ -94,7 +119,8 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
             const SizedBox(height: 16),
 
             // Finding type selector
-            Text('Finding Type', style: Theme.of(context).textTheme.titleSmall),
+            Text('Finding Type',
+                style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -136,11 +162,21 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Photo capture
+            PhotoCaptureWidget(
+              onPhotosChanged: (photos) {
+                setState(() => _photos = photos);
+              },
+            ),
+            const SizedBox(height: 16),
+
             // Parts request toggle
             if (_selectedType != FindingType.ok) ...[
               SwitchListTile(
                 title: const Text('Request Parts'),
-                subtitle: _needsPart ? null : const Text('Toggle if this finding requires parts'),
+                subtitle: _needsPart
+                    ? null
+                    : const Text('Toggle if this finding requires parts'),
                 value: _needsPart,
                 onChanged: (v) => setState(() => _needsPart = v),
                 contentPadding: EdgeInsets.zero,
@@ -171,20 +207,46 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
               const SizedBox(height: 16),
             ],
 
+            // Photo upload progress
+            if (state.isUploadingPhotos) ...[
+              LinearProgressIndicator(
+                value:
+                    state.photosTotal > 0
+                        ? state.photosUploaded / state.photosTotal
+                        : 0,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Uploading photo ${state.photosUploaded}/${state.photosTotal}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Submit
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: state.isLoading ? null : _saveFinding,
+                onPressed:
+                    state.isLoading ? null : _saveFinding,
                 child: state.isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
                     : const Text('Save Finding'),
               ),
             ),
 
             if (state.error != null) ...[
               const SizedBox(height: 12),
-              Text(state.error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+              Text(state.error!,
+                  style: const TextStyle(
+                      color: AppColors.danger, fontSize: 13)),
             ],
           ],
         ),

@@ -31,4 +31,5 @@ class ApiConstants {
 
   // Job Parts
   static String jobParts(String jobId) => '/job-parts/job/$jobId';
+  static const jobPartsReserve = '/job-parts/reserve';
 }

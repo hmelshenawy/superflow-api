@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:prioraflow_tech/core/theme/app_colors.dart';
 import 'package:prioraflow_tech/core/utils/date_utils.dart' as app_date;
 import 'package:prioraflow_tech/features/jobs/data/models/job.dart';
@@ -33,6 +34,12 @@ class JobDetailScreen extends ConsumerWidget {
                 _JobInfoCard(job: job),
                 const SizedBox(height: 16),
                 _ActionButtons(jobId: jobId, job: job),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/jobs/$jobId/parts'),
+                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                  label: const Text('View Parts Status'),
+                ),
               ],
             ),
           ),

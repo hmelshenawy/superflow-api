@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
@@ -6,7 +7,6 @@ import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
 
 class InspectionRepository {
-
   InspectionRepository(this._dio);
   final Dio _dio;
 
@@ -53,16 +53,25 @@ class InspectionRepository {
     return Finding.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<void> uploadFindingPhoto({
-    required String findingId,
-    required String filePath,
-    required String fileName,
+  /// Upload a photo to a concern via the media module (direct upload).
+  Future<Map<String, dynamic>> uploadConcernPhoto({
+    required String jobId,
+    required String concernId,
+    required File file,
   }) async {
+    final fileName = file.path.split('/').last.split('\\').last;
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath, filename: fileName),
-      'finding_id': findingId,
+      'file': await MultipartFile.fromFile(file.path, filename: fileName),
+      'job_id': jobId,
+      'file_type': 'photo',
+      'filename': fileName,
+      'concern_id': concernId,
     });
-    await _dio.post('/findings/$findingId/photos', data: formData);
+    final response = await _dio.post(
+      ApiConstants.mediaUploadDirect,
+      data: formData,
+    );
+    return response.data as Map<String, dynamic>;
   }
 }
 
