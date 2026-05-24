@@ -327,4 +327,50 @@ class SEn extends S {
 
   @override
   String get phaseCompleted => 'Completed';
+
+  @override
+  String get checkinReport => 'Check-in Report';
+
+  @override
+  String get advisorNotes => 'Check-in Notes';
+
+  @override
+  String get inspectionFindings => 'Inspection Findings';
+
+  @override
+  String get advisorBadge => 'Advisor';
+
+  @override
+  String get inspectionBadge => 'Inspection';
+
+  @override
+  String get noCheckinNotes => 'No check-in notes';
+
+  @override
+  String get noInspectionFindings => 'No inspection findings yet';
+
+  @override
+  String advisorNotesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 's',
+      one: '',
+    );
+    return '$count advisor note$_temp0';
+  }
+
+  @override
+  String inspectionFindingsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 's',
+      one: '',
+    );
+    return '$count finding$_temp0';
+  }
+
+  @override
+  String get customerConcern => 'Customer Concern';
 }

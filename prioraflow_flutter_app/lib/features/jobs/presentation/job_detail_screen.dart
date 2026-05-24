@@ -29,6 +29,10 @@ class JobDetailScreen extends ConsumerWidget {
               children: [
                 _VehicleHeader(job: job),
                 const SizedBox(height: 16),
+                if (job.concerns.isNotEmpty || (job.customerConcern != null && job.customerConcern!.isNotEmpty))
+                  _CheckinSummaryCard(job: job),
+                if (job.concerns.isNotEmpty || (job.customerConcern != null && job.customerConcern!.isNotEmpty))
+                  const SizedBox(height: 16),
                 _PhaseProgress(status: job.status),
                 const SizedBox(height: 16),
                 _JobInfoCard(job: job),
@@ -273,6 +277,126 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CheckinSummaryCard extends StatelessWidget {
+  const _CheckinSummaryCard({required this.job});
+  final Job job;
+
+  @override
+  Widget build(BuildContext context) {
+    final advisorCount = job.advisorConcerns.length;
+    final inspectionCount = job.inspectionConcerns.length;
+    final hasCustomerConcern =
+        job.customerConcern != null && job.customerConcern!.isNotEmpty;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.assignment_outlined,
+                    size: 20, color: AppColors.info),
+                const SizedBox(width: 8),
+                Text('Check-in Report',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ],
+            ),
+            if (hasCustomerConcern) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: AppColors.info.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.record_voice_over,
+                        size: 16, color: AppColors.info),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(job.customerConcern!,
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (advisorCount > 0) ...[
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.support_agent,
+                            size: 14, color: AppColors.info),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$advisorCount advisor note${advisorCount > 1 ? 's' : ''}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.info,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (advisorCount > 0 && inspectionCount > 0)
+                  const SizedBox(width: 8),
+                if (inspectionCount > 0) ...[
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.search,
+                            size: 14, color: AppColors.success),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$inspectionCount finding${inspectionCount > 1 ? 's' : ''}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -127,5 +127,26 @@
   "phaseInspection": "Inspection",
   "phaseApproval": "Approval",
   "phaseInProgress": "In Progress",
-  "phaseCompleted": "Completed"
+  "phaseCompleted": "Completed",
+
+  "checkinReport": "Check-in Report",
+  "advisorNotes": "Check-in Notes",
+  "inspectionFindings": "Inspection Findings",
+  "advisorBadge": "Advisor",
+  "inspectionBadge": "Inspection",
+  "noCheckinNotes": "No check-in notes",
+  "noInspectionFindings": "No inspection findings yet",
+  "advisorNotesCount": "{count} advisor note{count, plural, one{} other{s}}",
+  "@advisorNotesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "inspectionFindingsCount": "{count} finding{count, plural, one{} other{s}}",
+  "@inspectionFindingsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "customerConcern": "Customer Concern"
 }

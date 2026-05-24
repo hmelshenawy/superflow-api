@@ -127,5 +127,26 @@
   "phaseInspection": "الفحص",
   "phaseApproval": "الموافقة",
   "phaseInProgress": "قيد التنفيذ",
-  "phaseCompleted": "مكتمل"
+  "phaseCompleted": "مكتمل",
+
+  "checkinReport": "تقرير الاستلام",
+  "advisorNotes": "ملاحظات الاستلام",
+  "inspectionFindings": "نتائج الفحص",
+  "advisorBadge": "المستشار",
+  "inspectionBadge": "الفحص",
+  "noCheckinNotes": "لا توجد ملاحظات استلام",
+  "noInspectionFindings": "لا توجد نتائج فحص بعد",
+  "advisorNotesCount": "{count} ملاحظة مستشار",
+  "@advisorNotesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "inspectionFindingsCount": "{count} نتيجة فحص",
+  "@inspectionFindingsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "customerConcern": "شكوى العميل"
 }

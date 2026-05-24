@@ -1,5 +1,6 @@
 import 'package:prioraflow_tech/core/utils/priority_utils.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/inspection.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
 class Job {
@@ -22,6 +23,7 @@ class Job {
     this.concernsCount,
     this.partsStatus,
     this.concerns = const [],
+    this.inspection,
     this.workflowStageKey,
     this.isCustomerWaiting,
     this.dmsRoNumber,
@@ -68,6 +70,9 @@ class Job {
               ?.map((e) => Concern.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      inspection: json['inspection'] != null
+          ? Inspection.fromJson(json['inspection'] as Map<String, dynamic>)
+          : null,
       workflowStageKey: json['workflow_stage_key'] as String?,
       isCustomerWaiting: json['is_customer_waiting'] as bool?,
       dmsRoNumber: json['dms_ro_number'] as String?,
@@ -99,6 +104,9 @@ class Job {
   // Nested concerns (from job detail)
   final List<Concern> concerns;
 
+  // DVI inspection (from job detail)
+  final Inspection? inspection;
+
   // Extra fields
   final String? workflowStageKey;
   final bool? isCustomerWaiting;
@@ -106,6 +114,14 @@ class Job {
   final bool isArchived;
 
   String get displayTitle => vehicle?.displayName ?? jobNumber ?? id.substring(0, 8);
+
+  /// Concerns created by the advisor at check-in (no inspection_response_id).
+  List<Concern> get advisorConcerns =>
+      concerns.where((c) => c.source == ConcernSource.advisor).toList();
+
+  /// Concerns found during technician DVI inspection (linked to an inspection response).
+  List<Concern> get inspectionConcerns =>
+      concerns.where((c) => c.source == ConcernSource.inspection).toList();
 }
 
 class VehicleInfo {

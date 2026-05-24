@@ -324,4 +324,38 @@ class SAr extends S {
 
   @override
   String get phaseCompleted => 'مكتمل';
+
+  @override
+  String get checkinReport => 'تقرير الاستلام';
+
+  @override
+  String get advisorNotes => 'ملاحظات الاستلام';
+
+  @override
+  String get inspectionFindings => 'نتائج الفحص';
+
+  @override
+  String get advisorBadge => 'المستشار';
+
+  @override
+  String get inspectionBadge => 'الفحص';
+
+  @override
+  String get noCheckinNotes => 'لا توجد ملاحظات استلام';
+
+  @override
+  String get noInspectionFindings => 'لا توجد نتائج فحص بعد';
+
+  @override
+  String advisorNotesCount(int count) {
+    return '$count ملاحظة مستشار';
+  }
+
+  @override
+  String inspectionFindingsCount(int count) {
+    return '$count نتيجة فحص';
+  }
+
+  @override
+  String get customerConcern => 'شكوى العميل';
 }

@@ -720,6 +720,66 @@ abstract class S {
   /// In en, this message translates to:
   /// **'Completed'**
   String get phaseCompleted;
+
+  /// No description provided for @checkinReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in Report'**
+  String get checkinReport;
+
+  /// No description provided for @advisorNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in Notes'**
+  String get advisorNotes;
+
+  /// No description provided for @inspectionFindings.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspection Findings'**
+  String get inspectionFindings;
+
+  /// No description provided for @advisorBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Advisor'**
+  String get advisorBadge;
+
+  /// No description provided for @inspectionBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspection'**
+  String get inspectionBadge;
+
+  /// No description provided for @noCheckinNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'No check-in notes'**
+  String get noCheckinNotes;
+
+  /// No description provided for @noInspectionFindings.
+  ///
+  /// In en, this message translates to:
+  /// **'No inspection findings yet'**
+  String get noInspectionFindings;
+
+  /// No description provided for @advisorNotesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} advisor note{count, plural, one{} other{s}}'**
+  String advisorNotesCount(int count);
+
+  /// No description provided for @inspectionFindingsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} finding{count, plural, one{} other{s}}'**
+  String inspectionFindingsCount(int count);
+
+  /// No description provided for @customerConcern.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer Concern'**
+  String get customerConcern;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

@@ -1,3 +1,9 @@
+/// Origin of a concern: advisor-entered at check-in, or found during DVI inspection.
+enum ConcernSource {
+  advisor,
+  inspection,
+}
+
 class Concern {
 
   const Concern({
@@ -14,6 +20,7 @@ class Concern {
     this.sortOrder,
     this.category,
     this.severity,
+    this.inspectionResponseId,
     this.createdAt,
     this.updatedAt,
     this.mediaFiles,
@@ -37,6 +44,7 @@ class Concern {
       sortOrder: json['sort_order'] as int?,
       category: json['category'] as String?,
       severity: json['severity'] as String?,
+      inspectionResponseId: json['inspection_response_id'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -62,12 +70,17 @@ class Concern {
   final int? sortOrder;
   final String? category;
   final String? severity;
+  final String? inspectionResponseId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final List<ConcernMedia>? mediaFiles;
 
   /// Whether a technician has already inspected this concern
   bool get hasFinding => status != null && status != 'reviewing';
+
+  /// Origin of this concern: advisor-created or from DVI inspection.
+  ConcernSource get source =>
+      inspectionResponseId != null ? ConcernSource.inspection : ConcernSource.advisor;
 
   String get displayTitle => title ?? description;
 }
