@@ -1,4 +1,4 @@
-type JobStatus =
+export type JobStatus =
   | 'booked'
   | 'checking'
   | 'estimate_sent'
@@ -10,7 +10,7 @@ type JobStatus =
   | 'closed'
   | 'no_show';
 
-const FLOW_ORDER: JobStatus[] = [
+export const FLOW_ORDER: JobStatus[] = [
   'booked',
   'checking',
   'estimate_sent',

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SaveResponseDto } from './dto/save-response.dto';
 import { SubmitChecklistDto } from './dto/submit-checklist.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { qcTrafficLight, isQcInformationalInputType, qcAvailableOptions } from '../common/utils/traffic-light';
 
 @Injectable()
 export class QcChecklistsService {
@@ -46,7 +47,11 @@ export class QcChecklistsService {
       }),
       this.prisma.tenant.qc_checklists.count(),
     ]);
-    return { items, total, page: pagination.page, limit: pagination.limit };
+    const itemsWithMeta = items.map((item: any) => ({
+      ...item,
+      is_locked: ['submitted', 'approved'].includes(item.status ?? ''),
+    }));
+    return { items: itemsWithMeta, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
@@ -72,6 +77,20 @@ export class QcChecklistsService {
       },
     });
     if (!checklist) throw new NotFoundException('QC checklist not found');
+
+    // Add is_locked computed field
+    (checklist as any).is_locked = ['submitted', 'approved'].includes(checklist.status ?? '');
+
+    // Add computed fields to each QC item and response
+    for (const section of checklist.qc_checklist_templates?.qc_checklist_sections ?? []) {
+      for (const item of section.qc_checklist_items ?? []) {
+        (item as any).is_informational = isQcInformationalInputType(item.input_type ?? 'pass_fail');
+        (item as any).available_options = qcAvailableOptions(item.input_type ?? 'pass_fail');
+      }
+    }
+    for (const resp of checklist.qc_checklist_responses ?? []) {
+      (resp as any).traffic_light = qcTrafficLight(resp.value);
+    }
 
     // Generate API proxy URLs for media_files on each response
     for (const resp of checklist.qc_checklist_responses ?? []) {
