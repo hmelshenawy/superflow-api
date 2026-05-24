@@ -121,11 +121,13 @@ export function getPlate(job: Job) {
 }
 
 export function isWorkshopPhaseJob(job: Job): boolean {
+  if (!job) return false;
   if ((job as any).meta?.isWorkshopPhase !== undefined) return (job as any).meta.isWorkshopPhase;
   return ["in_progress", "waiting_parts", "quality_check", "ready"].includes(job.status);
 }
 
 export function getWorkshopStage(job: Job): WorkshopStage | null {
+  if (!job) return null;
   const meta = (job as any).meta;
   if (meta?.resolvedWorkshopStage !== undefined) {
     const stage = meta.resolvedWorkshopStage as WorkshopStage | null;
@@ -143,6 +145,7 @@ export function getWorkshopStage(job: Job): WorkshopStage | null {
 }
 
 export function getValidTransitions(job: Job): JobStatus[] {
+  if (!job) return [];
   const meta = (job as any).meta;
   if (meta?.validTransitions?.length) return meta.validTransitions as JobStatus[];
   // Fallback: derive from status (kept for safety during transition)

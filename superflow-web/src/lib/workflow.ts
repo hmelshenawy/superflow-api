@@ -19,6 +19,7 @@ export function workflowColor(color?: string) {
 }
 
 export function getJobWorkflowStage(job: Job, stages: WorkflowStageConfig[]) {
+  if (!job) return null;
   // Prefer backend-computed workflow stage key
   const meta = (job as any).meta;
   if (meta?.resolvedWorkflowStageKey) {
