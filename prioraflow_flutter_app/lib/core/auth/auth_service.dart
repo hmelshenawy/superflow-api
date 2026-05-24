@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
 import 'package:prioraflow_tech/core/api/dio_client.dart';
+import 'package:prioraflow_tech/core/auth/auth_state.dart';
 
 class AuthService {
-
   AuthService(this._dio, this._storage);
   final Dio _dio;
   final FlutterSecureStorage _storage;
@@ -27,18 +27,16 @@ class AuthService {
     );
 
     final data = response.data as Map<String, dynamic>;
-    // Backend returns camelCase: accessToken, user, workshops, workshopId
     final accessToken = data['accessToken'] as String;
     final user = data['user'] as Map<String, dynamic>;
-    final workshops = (data['workshops'] as List<dynamic>?)
+    final workshopsRaw = (data['workshops'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>() ??
         [];
+    final workshops =
+        workshopsRaw.map((w) => Workshop.fromJson(w)).toList();
     final workshopId = data['workshopId'] as String?;
 
-    // Store the access token
     await _storage.write(key: _accessTokenKey, value: accessToken);
-
-    // If the user has one workshop, auto-select it
     if (workshopId != null) {
       await _storage.write(key: _workshopIdKey, value: workshopId);
     }
@@ -51,17 +49,23 @@ class AuthService {
     );
   }
 
-  Future<bool> refreshToken() async {
-    try {
-      final response = await _dio.post(ApiConstants.refresh);
-      final data = response.data as Map<String, dynamic>;
-      final newAccessToken = data['accessToken'] as String;
+  Future<SelectWorkshopResult> selectWorkshop(String workshopId) async {
+    final response = await _dio.post(
+      ApiConstants.selectWorkshop,
+      data: {'workshopId': workshopId},
+    );
 
-      await _storage.write(key: _accessTokenKey, value: newAccessToken);
-      return true;
-    } catch (_) {
-      return false;
-    }
+    final data = response.data as Map<String, dynamic>;
+    final newAccessToken = data['accessToken'] as String;
+    final workshop = data['workshop'] as Map<String, dynamic>;
+
+    await _storage.write(key: _accessTokenKey, value: newAccessToken);
+    await _storage.write(key: _workshopIdKey, value: workshopId);
+
+    return SelectWorkshopResult(
+      accessToken: newAccessToken,
+      workshop: Workshop.fromJson(workshop),
+    );
   }
 
   Future<Map<String, dynamic>> getCurrentUser() async {
@@ -90,7 +94,6 @@ class AuthService {
 }
 
 class AuthResult {
-
   AuthResult({
     required this.accessToken,
     required this.user,
@@ -99,8 +102,17 @@ class AuthResult {
   });
   final String accessToken;
   final Map<String, dynamic> user;
-  final List<Map<String, dynamic>> workshops;
+  final List<Workshop> workshops;
   final String? workshopId;
+}
+
+class SelectWorkshopResult {
+  SelectWorkshopResult({
+    required this.accessToken,
+    required this.workshop,
+  });
+  final String accessToken;
+  final Workshop workshop;
 }
 
 final authServiceProvider = Provider<AuthService>((ref) {

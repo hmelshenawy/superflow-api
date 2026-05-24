@@ -17,9 +17,15 @@ class ApiConstants {
   static const refresh = '/auth/refresh';
   static const me = '/auth/me';
   static const logout = '/auth/logout';
+  static const selectWorkshop = '/auth/select-workshop';
 
   // Jobs
   static const jobs = '/jobs';
+  static String jobStatus(String jobId) => '/jobs/$jobId/status';
+  static String jobConcerns(String jobId) => '/jobs/$jobId/concerns';
+  static String jobConcern(String jobId, String concernId) =>
+      '/jobs/$jobId/concerns/$concernId';
+  static String createConcern(String jobId) => '/jobs/$jobId/concerns';
 
   // Media
   static const mediaPresign = '/media/presign';
@@ -29,4 +35,7 @@ class ApiConstants {
   // Job Parts
   static String jobParts(String jobId) => '/job-parts/job/$jobId';
   static const jobPartsReserve = '/job-parts/reserve';
+
+  // Parts
+  static const partsSearch = '/parts/search';
 }

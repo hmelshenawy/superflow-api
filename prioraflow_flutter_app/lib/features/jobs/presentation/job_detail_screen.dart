@@ -284,13 +284,10 @@ class _ActionButtons extends ConsumerWidget {
   final String jobId;
   final Job job;
 
-  // Concerns are viewable once inspection has started and until the job is done
-  bool get _canViewConcerns => job.status == JobStatus.checking ||
-      job.status == JobStatus.estimateSent ||
-      job.status == JobStatus.approved ||
-      job.status == JobStatus.inProgress ||
-      job.status == JobStatus.waitingParts ||
-      job.status == JobStatus.qualityCheck;
+  // Concerns are viewable for all statuses except booked, closed, and no-show
+  bool get _canViewConcerns => job.status != JobStatus.booked &&
+      job.status != JobStatus.closed &&
+      job.status != JobStatus.noShow;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -299,12 +296,38 @@ class _ActionButtons extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (job.status == JobStatus.booked)
-          ElevatedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.checking),
-            child: const Text('Start Inspection'),
-          ),
-        if (_canViewConcerns)
+        // Primary action per status
+        switch (job.status) {
+          JobStatus.booked => _PrimaryButton(
+              label: 'Start Inspection',
+              onPressed: () => notifier.transitionStatus(JobStatus.checking)),
+          JobStatus.checking => _PrimaryButton(
+              label: 'Mark Approved',
+              onPressed: () => notifier.transitionStatus(JobStatus.approved)),
+          JobStatus.estimateSent => _PrimaryButton(
+              label: 'Mark Approved',
+              onPressed: () => notifier.transitionStatus(JobStatus.approved)),
+          JobStatus.approved => _PrimaryButton(
+              label: 'Start Work',
+              onPressed: () => notifier.transitionStatus(JobStatus.inProgress)),
+          JobStatus.inProgress => _PrimaryButton(
+              label: 'Hand to QC',
+              onPressed: () => notifier.transitionStatus(JobStatus.qualityCheck)),
+          JobStatus.waitingParts => _PrimaryButton(
+              label: 'Resume Work',
+              onPressed: () => notifier.transitionStatus(JobStatus.inProgress)),
+          JobStatus.qualityCheck => _PrimaryButton(
+              label: 'Mark Ready',
+              onPressed: () => notifier.transitionStatus(JobStatus.ready)),
+          JobStatus.ready => _PrimaryButton(
+              label: 'Close Job',
+              onPressed: () => notifier.transitionStatus(JobStatus.closed)),
+          JobStatus.closed || JobStatus.noShow => const SizedBox.shrink(),
+        },
+        const SizedBox(height: 8),
+
+        // View Concerns button (always visible for active jobs)
+        if (_canViewConcerns) ...[
           ElevatedButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -313,27 +336,96 @@ class _ActionButtons extends ConsumerWidget {
             ),
             child: const Text('View Concerns'),
           ),
-        if (job.status == JobStatus.approved)
-          ElevatedButton(
+          const SizedBox(height: 8),
+        ],
+
+        // Secondary actions
+        if (job.status == JobStatus.booked) ...[
+          OutlinedButton(
+            onPressed: () => notifier.transitionStatus(JobStatus.noShow),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.warning),
+            child: const Text('No Show'),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (job.status == JobStatus.inProgress) ...[
+          OutlinedButton(
+            onPressed: () => notifier.transitionStatus(JobStatus.waitingParts),
+            child: const Text('Waiting Parts'),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (job.status == JobStatus.qualityCheck) ...[
+          OutlinedButton(
             onPressed: () => notifier.transitionStatus(JobStatus.inProgress),
-            child: const Text('Start Work'),
+            child: const Text('Reopen'),
           ),
-        if (job.status == JobStatus.inProgress)
-          ElevatedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.qualityCheck),
-            child: const Text('Hand to QC'),
+          const SizedBox(height: 8),
+        ],
+        if (job.status == JobStatus.checking) ...[
+          OutlinedButton(
+            onPressed: () => notifier.transitionStatus(JobStatus.estimateSent),
+            child: const Text('Send Estimate'),
           ),
-        if (job.status == JobStatus.qualityCheck)
-          ElevatedButton(
-            onPressed: () => notifier.transitionStatus(JobStatus.ready),
-            child: const Text('Mark Ready'),
+          const SizedBox(height: 8),
+        ],
+
+        // Cancel/close for active jobs (not booked/closed/no-show, those have their own flow)
+        if (job.status != JobStatus.booked &&
+            job.status != JobStatus.closed &&
+            job.status != JobStatus.noShow) ...[
+          OutlinedButton(
+            onPressed: () => _confirmClose(context, notifier),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Close Job'),
           ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
+
+        // Refresh
         OutlinedButton(
           onPressed: () => ref.read(jobDetailProvider(jobId).notifier).refresh(),
           child: const Text('Refresh'),
         ),
       ],
+    );
+  }
+
+  void _confirmClose(BuildContext context, dynamic notifier) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Close Job?'),
+        content: const Text('This will close the job. This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              notifier.transitionStatus(JobStatus.closed);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.label, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      child: Text(label),
     );
   }
 }

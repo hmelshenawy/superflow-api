@@ -8,17 +8,77 @@ import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_list_provider.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_detail_screen.dart';
 
-class JobListScreen extends ConsumerWidget {
+final _searchDebounceProvider = StateProvider<String>((_) => '');
+
+class JobListScreen extends ConsumerStatefulWidget {
   const JobListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<JobListScreen> createState() => _JobListScreenState();
+}
+
+class _JobListScreenState extends ConsumerState<JobListScreen> {
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(jobListProvider.notifier).loadMore();
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    ref.read(jobListProvider.notifier).search(query.isEmpty ? null : query);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final jobsAsync = ref.watch(jobListProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Jobs')),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search jobs...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                      )
+                    : null,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onChanged: _onSearchChanged,
+            ),
+          ),
           const _StatusFilterBar(),
           Expanded(
             child: jobsAsync.when(
@@ -43,6 +103,7 @@ class JobListScreen extends ConsumerWidget {
                 return RefreshIndicator(
                   onRefresh: () => ref.read(jobListProvider.notifier).refresh(),
                   child: ListView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: jobs.length,
                     itemBuilder: (context, index) => _JobCard(job: jobs[index]),

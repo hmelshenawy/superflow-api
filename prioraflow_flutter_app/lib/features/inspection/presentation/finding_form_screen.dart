@@ -41,8 +41,28 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
   void initState() {
     super.initState();
     _selectedType = widget.initialType ?? FindingType.ok;
+
+    // Restore from server data if available, otherwise check for local draft
     if (widget.initialFinding != null && widget.initialFinding!.isNotEmpty) {
       _descriptionController.text = widget.initialFinding!;
+    } else {
+      _restoreDraft();
+    }
+  }
+
+  void _restoreDraft() {
+    final notifier = ref.read(findingFormProvider.notifier);
+    final draft = notifier.loadDraft(widget.concernId);
+    if (draft != null) {
+      _selectedType = FindingType.fromString(draft['findingType'] as String?);
+      _descriptionController.text = draft['description'] as String? ?? '';
+      _estimatedMinutesController.text =
+          draft['estimatedMinutes']?.toString() ?? '';
+      _needsPart = draft['partName'] != null;
+      _partNameController.text = draft['partName'] as String? ?? '';
+      _partQuantityController.text =
+          (draft['partQuantity'] as int?)?.toString() ?? '1';
+      _partNotesController.text = draft['partNotes'] as String? ?? '';
     }
   }
 
@@ -53,7 +73,23 @@ class _FindingFormScreenState extends ConsumerState<FindingFormScreen> {
     _partNameController.dispose();
     _partQuantityController.dispose();
     _partNotesController.dispose();
+    _saveDraft();
     super.dispose();
+  }
+
+  void _saveDraft() {
+    ref.read(findingFormProvider.notifier).saveDraft(
+          concernId: widget.concernId,
+          findingType: _selectedType.name,
+          description: _descriptionController.text.isEmpty
+              ? null
+              : _descriptionController.text,
+          estimatedMinutes: int.tryParse(_estimatedMinutesController.text),
+          partName: _needsPart ? _partNameController.text : null,
+          partQuantity:
+              _needsPart ? int.tryParse(_partQuantityController.text) ?? 1 : null,
+          partNotes: _needsPart ? _partNotesController.text : null,
+        );
   }
 
   Future<void> _saveFinding() async {

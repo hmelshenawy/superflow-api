@@ -18,6 +18,20 @@ enum JobStatus {
     );
   }
 
+  /// Snake-case API value matching the backend state machine.
+  String get apiValue => switch (this) {
+        JobStatus.booked => 'booked',
+        JobStatus.checking => 'checking',
+        JobStatus.estimateSent => 'estimate_sent',
+        JobStatus.approved => 'approved',
+        JobStatus.inProgress => 'in_progress',
+        JobStatus.waitingParts => 'waiting_parts',
+        JobStatus.qualityCheck => 'quality_check',
+        JobStatus.ready => 'ready',
+        JobStatus.closed => 'closed',
+        JobStatus.noShow => 'no_show',
+      };
+
   String get label {
     switch (this) {
       case JobStatus.booked:

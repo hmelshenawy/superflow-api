@@ -20,9 +20,12 @@ class Job {
     this.technician,
     this.advisor,
     this.concernsCount,
-    this.findingsCompleted,
     this.partsStatus,
     this.concerns = const [],
+    this.workflowStageKey,
+    this.isCustomerWaiting,
+    this.dmsRoNumber,
+    this.isArchived = false,
   });
 
   factory Job.fromJson(Map<String, dynamic> json) {
@@ -30,7 +33,9 @@ class Job {
       id: json['id'] as String,
       jobNumber: json['job_number'] as String?,
       status: JobStatus.fromString(json['status'] as String?),
-      priorityLevel: priorityLevelFromString(json['priority_level'] as String?),
+      priorityLevel: priorityLevelFromString(
+        json['priority_level'] as String? ?? json['customer_sensitivity'] as String?,
+      ),
       customerConcern: json['customer_concern'] as String?,
       internalNotes: json['internal_notes'] as String?,
       odometerIn: json['odometer_in'] as int?,
@@ -55,16 +60,21 @@ class Job {
       advisor: json['advisor'] != null
           ? AdvisorInfo.fromJson(json['advisor'] as Map<String, dynamic>)
           : null,
-      concernsCount: json['_count']?['concerns'] as int? ??
+      concernsCount: (json['job_concerns'] as List<dynamic>?)?.length ??
+          json['_count']?['concerns'] as int? ??
           json['concerns_count'] as int?,
-      findingsCompleted: json['findings_completed'] as int?,
       partsStatus: json['parts_status'] as String?,
       concerns: (json['job_concerns'] as List<dynamic>?)
               ?.map((e) => Concern.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      workflowStageKey: json['workflow_stage_key'] as String?,
+      isCustomerWaiting: json['is_customer_waiting'] as bool?,
+      dmsRoNumber: json['dms_ro_number'] as String?,
+      isArchived: json['is_archived'] as bool? ?? json['archived_at'] != null,
     );
   }
+
   final String id;
   final String? jobNumber;
   final JobStatus status;
@@ -82,13 +92,18 @@ class Job {
   final TechnicianInfo? technician;
   final AdvisorInfo? advisor;
 
-  // Counts
+  // Counts & status
   final int? concernsCount;
-  final int? findingsCompleted;
   final String? partsStatus;
 
   // Nested concerns (from job detail)
   final List<Concern> concerns;
+
+  // Extra fields
+  final String? workflowStageKey;
+  final bool? isCustomerWaiting;
+  final String? dmsRoNumber;
+  final bool isArchived;
 
   String get displayTitle => vehicle?.displayName ?? jobNumber ?? id.substring(0, 8);
 }
@@ -108,7 +123,7 @@ class VehicleInfo {
   factory VehicleInfo.fromJson(Map<String, dynamic> json) {
     return VehicleInfo(
       id: json['id'] as String,
-      plateNumber: json['plate_number'] as String?,
+      plateNumber: json['plate_number'] as String? ?? json['plate'] as String?,
       make: json['make'] as String?,
       model: json['model'] as String?,
       year: json['year'] as int?,

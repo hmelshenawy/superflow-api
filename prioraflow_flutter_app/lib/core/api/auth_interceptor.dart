@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:prioraflow_tech/core/api/api_constants.dart';
+import 'package:prioraflow_tech/core/offline/connectivity_provider.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:prioraflow_tech/core/api/dio_client.dart';
 
@@ -32,7 +34,22 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
+  void onSuccess(Response<dynamic> response, ResponseInterceptorHandler handler) {
+    ref.read(isOnlineProvider.notifier).markOnline();
+    handler.next(response);
+  }
+
+  @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+    // Mark offline for connection errors
+    if (err.type == DioExceptionType.connectionError ||
+        err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.sendTimeout ||
+        err.type == DioExceptionType.receiveTimeout ||
+        err.error is SocketException) {
+      ref.read(isOnlineProvider.notifier).markOffline();
+    }
+
     if (err.response?.statusCode == 401) {
       final isAuthEndpoint = _noAuthEndpoints.any((e) => err.requestOptions.path.endsWith(e));
       if (isAuthEndpoint) {
@@ -61,6 +78,7 @@ class AuthInterceptor extends Interceptor {
         retryDio.interceptors.add(CookieManager(cookieJar));
         final retryResponse = await retryDio.fetch(err.requestOptions);
         handler.resolve(retryResponse);
+        ref.read(isOnlineProvider.notifier).markOnline();
         return;
       } catch (_) {
         // Refresh failed — clear tokens and reject

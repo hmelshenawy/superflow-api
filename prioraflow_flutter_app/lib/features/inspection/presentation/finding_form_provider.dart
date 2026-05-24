@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:prioraflow_tech/core/offline/draft_service.dart';
 import 'package:prioraflow_tech/features/inspection/data/inspection_repository.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/inspection/data/models/finding.dart';
@@ -12,6 +13,7 @@ class FindingFormState {
     this.photosUploaded = 0,
     this.photosTotal = 0,
     this.isUploadingPhotos = false,
+    this.hasDraft = false,
   });
 
   final bool isLoading;
@@ -20,6 +22,7 @@ class FindingFormState {
   final int photosUploaded;
   final int photosTotal;
   final bool isUploadingPhotos;
+  final bool hasDraft;
 
   FindingFormState copyWith({
     bool? isLoading,
@@ -28,6 +31,7 @@ class FindingFormState {
     int? photosUploaded,
     int? photosTotal,
     bool? isUploadingPhotos,
+    bool? hasDraft,
   }) {
     return FindingFormState(
       isLoading: isLoading ?? this.isLoading,
@@ -36,6 +40,7 @@ class FindingFormState {
       photosUploaded: photosUploaded ?? this.photosUploaded,
       photosTotal: photosTotal ?? this.photosTotal,
       isUploadingPhotos: isUploadingPhotos ?? this.isUploadingPhotos,
+      hasDraft: hasDraft ?? this.hasDraft,
     );
   }
 }
@@ -50,18 +55,35 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
 
   final InspectionRepository _repo;
 
-  /// Maps the finding type selected by the technician to the concern status.
-  String _findingTypeToStatus(FindingType type) {
-    switch (type) {
-      case FindingType.ok:
-        return 'ok';
-      case FindingType.needsAttention:
-        return 'needs_attention';
-      case FindingType.critical:
-        return 'critical';
-      case FindingType.deferred:
-        return 'deferred';
+  /// Load a saved draft for a concern and mark state accordingly.
+  Map<String, dynamic>? loadDraft(String concernId) {
+    final draft = DraftService.loadFindingDraft(concernId);
+    if (draft != null) {
+      state = state.copyWith(hasDraft: true);
     }
+    return draft;
+  }
+
+  /// Save form data as a local draft.
+  Future<void> saveDraft({
+    required String concernId,
+    required String findingType,
+    String? description,
+    int? estimatedMinutes,
+    String? partName,
+    int? partQuantity,
+    String? partNotes,
+  }) async {
+    await DraftService.saveFindingDraft(
+      concernId: concernId,
+      findingType: findingType,
+      description: description,
+      estimatedMinutes: estimatedMinutes,
+      partName: partName,
+      partQuantity: partQuantity,
+      partNotes: partNotes,
+    );
+    state = state.copyWith(hasDraft: true);
   }
 
   Future<bool> submit({
@@ -96,7 +118,7 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
       final concern = await _repo.updateConcern(
         jobId: jobId,
         concernId: concernId,
-        status: _findingTypeToStatus(type),
+        status: type.statusName,
         technicianFinding: findingText.isEmpty ? null : findingText,
         workNote: workNote,
       );
@@ -123,9 +145,22 @@ class FindingFormNotifier extends StateNotifier<FindingFormState> {
         state = state.copyWith(isUploadingPhotos: false);
       }
 
+      // Clear the draft on successful submit
+      await DraftService.deleteFindingDraft(concernId);
+
       state = FindingFormState(savedConcern: concern);
       return true;
     } catch (e) {
+      // Save as draft so the user doesn't lose their work
+      await DraftService.saveFindingDraft(
+        concernId: concernId,
+        findingType: type.name,
+        description: description,
+        estimatedMinutes: estimatedMinutes,
+        partName: partName,
+        partQuantity: partQuantity,
+        partNotes: partNotes,
+      );
       state = FindingFormState(error: e.toString());
       return false;
     }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:prioraflow_tech/core/auth/auth_provider.dart';
 import 'package:prioraflow_tech/features/auth/presentation/login_screen.dart';
+import 'package:prioraflow_tech/features/auth/presentation/workshop_selection_screen.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_list_screen.dart';
 import 'package:prioraflow_tech/features/jobs/presentation/job_detail_screen.dart';
 import 'package:prioraflow_tech/features/inspection/presentation/concern_list_screen.dart';
@@ -16,16 +17,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     redirect: (context, state) {
       final isAuthenticated = authState.isAuthenticated;
+      final needsWorkshop = authState.needsWorkshopSelection;
       final isLoginRoute = state.matchedLocation == '/login';
+      const isWorkshopRoute = '/select-workshop';
 
-      if (!isAuthenticated && !isLoginRoute) return '/login';
+      // Not authenticated and not on login — redirect to login
+      if (!isAuthenticated && !needsWorkshop && !isLoginRoute) return '/login';
+
+      // Authenticated but needs workshop selection
+      if (needsWorkshop && state.matchedLocation != isWorkshopRoute) {
+        return isWorkshopRoute;
+      }
+
+      // Authenticated and on login — redirect to home
       if (isAuthenticated && isLoginRoute) return '/';
+
       return null;
     },
     routes: [
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/select-workshop',
+        builder: (context, state) => const WorkshopSelectionScreen(),
       ),
       GoRoute(
         path: '/',

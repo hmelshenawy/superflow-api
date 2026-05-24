@@ -2,13 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:prioraflow_tech/core/auth/auth_service.dart';
 import 'package:prioraflow_tech/core/auth/auth_state.dart';
+import 'package:prioraflow_tech/core/offline/draft_service.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref.watch(authServiceProvider));
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
-
   AuthNotifier(this._authService) : super(const AuthState()) {
     _checkAuth();
   }
@@ -39,23 +39,68 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
       );
 
-      // Merge login response with full user data
-      // Login returns: { id, name, email, role (string) }
-      // /auth/me returns: { id, name, email, role (object with name + permissions), workshops, ... }
-      final user = result.user;
-      final workshops = result.workshops;
-
-      // Build a combined user map for the UI
       final fullUser = <String, dynamic>{
-        ...user,
-        'workshops': workshops,
+        ...result.user,
+        'workshops': result.workshops.map((w) => w.toJson()).toList(),
         if (result.workshopId != null) 'workshopId': result.workshopId,
+      };
+
+      if (result.workshopId == null && result.workshops.length > 1) {
+        // Multi-workshop user — needs to select a workshop
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: false,
+          user: fullUser,
+          workshops: result.workshops,
+          needsWorkshopSelection: true,
+        );
+      } else if (result.workshopId != null) {
+        // Single workshop or already selected
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: true,
+          user: fullUser,
+          workshops: result.workshops,
+          selectedWorkshopId: result.workshopId,
+          needsWorkshopSelection: false,
+        );
+      } else {
+        // No workshops assigned
+        state = state.copyWith(
+          isLoading: false,
+          error: 'No workshops assigned to your account.',
+        );
+      }
+    } on DioException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: _extractDioError(e),
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: _extractErrorMessage(e),
+      );
+    }
+  }
+
+  Future<void> selectWorkshop(String workshopId) async {
+    state = state.copyWith(isLoading: true);
+
+    try {
+      final result = await _authService.selectWorkshop(workshopId);
+
+      final fullUser = <String, dynamic>{
+        ...?state.user,
+        'workshopId': workshopId,
       };
 
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
         user: fullUser,
+        selectedWorkshopId: workshopId,
+        needsWorkshopSelection: false,
       );
     } on DioException catch (e) {
       state = state.copyWith(
@@ -72,6 +117,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _authService.logout();
+    await DraftService.clearAll();
     state = const AuthState();
   }
 
@@ -92,7 +138,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return 'Unable to connect to server. Check your connection.';
     }
 
-    // Try to extract backend error message
     if (data is Map && data['message'] != null) {
       return data['message'].toString();
     }
