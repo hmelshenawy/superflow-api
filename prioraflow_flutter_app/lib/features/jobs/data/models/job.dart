@@ -1,4 +1,5 @@
 import 'package:prioraflow_tech/core/utils/priority_utils.dart';
+import 'package:prioraflow_tech/features/inspection/data/models/concern.dart';
 import 'package:prioraflow_tech/features/jobs/data/models/job_status.dart';
 
 class Job {
@@ -21,6 +22,7 @@ class Job {
     this.concernsCount,
     this.findingsCompleted,
     this.partsStatus,
+    this.concerns = const [],
   });
 
   factory Job.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,10 @@ class Job {
           json['concerns_count'] as int?,
       findingsCompleted: json['findings_completed'] as int?,
       partsStatus: json['parts_status'] as String?,
+      concerns: (json['job_concerns'] as List<dynamic>?)
+              ?.map((e) => Concern.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
   final String id;
@@ -80,6 +86,9 @@ class Job {
   final int? concernsCount;
   final int? findingsCompleted;
   final String? partsStatus;
+
+  // Nested concerns (from job detail)
+  final List<Concern> concerns;
 
   String get displayTitle => vehicle?.displayName ?? jobNumber ?? id.substring(0, 8);
 }

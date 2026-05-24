@@ -21,9 +21,6 @@ class ApiConstants {
   // Jobs
   static const jobs = '/jobs';
 
-  // Concerns (nested under jobs)
-  static String jobConcerns(String jobId) => '/jobs/$jobId/concerns';
-
   // Media
   static const mediaPresign = '/media/presign';
   static const mediaConfirm = '/media/confirm';
