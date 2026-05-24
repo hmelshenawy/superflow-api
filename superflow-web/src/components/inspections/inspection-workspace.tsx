@@ -641,16 +641,14 @@ export function InspectionWorkspace({
                               >
                                 <Eye className="h-3 w-3" />
                               </button>
-                              {!isLocked && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); removeMedia(mf.id, item.id); }}
-                                  aria-label="Remove media"
-                                  className="rounded-full bg-card p-1 text-red-600 shadow hover:bg-red-50"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removeMedia(mf.id, item.id); }}
+                                aria-label="Remove media"
+                                className="rounded-full bg-card p-1 text-red-600 shadow hover:bg-red-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
                             </div>
                           </div>
                         ))}
