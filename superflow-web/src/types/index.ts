@@ -450,10 +450,14 @@ export interface Inspection {
   template_id: string | null;
   technician_id: string | null;
   status: InspectionStatus | null;
+  is_locked: boolean;
+  summary: { green: number; amber: number; red: number; unset: number };
   started_at: string | null;
   submitted_at: string | null;
   created_at: string;
+  inspection_responses?: InspectionResponse[];
   responses?: InspectionResponse[];
+  inspection_templates?: InspectionTemplate;
 }
 
 export interface InspectionResponse {
@@ -464,6 +468,8 @@ export interface InspectionResponse {
   urgency: string | null;
   tech_notes: string | null;
   media_count: number | null;
+  traffic_light: "green" | "amber" | "red" | null;
+  media_files?: MediaFile[];
   recorded_at: string | null;
 }
 
@@ -531,6 +537,8 @@ export interface InspectionItem {
   help_text: string | null;
   sort_order: number;
   is_active: boolean;
+  is_informational: boolean;
+  available_options: string[];
 }
 
 export interface InspectionSection {

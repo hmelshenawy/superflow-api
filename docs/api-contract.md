@@ -116,6 +116,12 @@ New computed fields:
 {
   // ...existing fields...
   "is_locked": true,                    // status in [submitted, reviewed, approved]
+  "summary": {
+    "green": 8,
+    "amber": 1,
+    "red": 2,
+    "unset": 3
+  },
 
   // On each inspection item (inside template > sections):
   "is_informational": false,            // input_type in [photo, odometer, fuel_level, text]

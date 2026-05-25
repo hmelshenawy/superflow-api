@@ -111,6 +111,22 @@ export class InspectionsService {
     for (const resp of inspection.inspection_responses ?? []) {
       (resp as any).traffic_light = inspectionTrafficLight(resp.value, (resp as any).urgency);
     }
+    const responseByItem = new Map((inspection.inspection_responses ?? []).map((resp: any) => [resp.item_id, resp]));
+    const summary = { green: 0, amber: 0, red: 0, unset: 0 };
+    for (const section of inspection.inspection_templates?.inspection_sections ?? []) {
+      for (const item of section.inspection_items ?? []) {
+        if ((item as any).is_informational) continue;
+        const resp = responseByItem.get(item.id) as any;
+        if (!resp?.value) {
+          summary.unset++;
+          continue;
+        }
+        const light = (resp.traffic_light ?? 'none') as keyof typeof summary | 'none';
+        if (light === 'green' || light === 'amber' || light === 'red') summary[light]++;
+        else summary.unset++;
+      }
+    }
+    (inspection as any).summary = summary;
 
     // Generate API proxy URLs for media_files on each response
     // (browser can't reach minio:9000 directly, so we serve through /media/:id/download)

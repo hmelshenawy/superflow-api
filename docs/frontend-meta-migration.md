@@ -84,3 +84,30 @@ Replace with: `item.available_options`
 Logic: Active-section/item filters and sort-order sorting.
 Location: `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:245-250`
 Replace with: No replacement needed. These are presentation ordering/visibility concerns from backend data flags.
+
+## Inspection Workspace Findings
+
+[Inspection] Finding 1:
+Logic: Computes locked state from `status in [submitted, reviewed, approved]`.
+Location: `superflow-web/src/components/inspections/inspection-workspace.tsx:117`
+Replace with: `inspection.is_locked`
+
+[Inspection] Finding 2:
+Logic: Maps response values/input types to traffic lights with `resultToTrafficLight()`.
+Location: `superflow-web/src/components/inspections/inspection-workspace.tsx:55-62`, `superflow-web/src/components/inspections/inspection-workspace.tsx:404`
+Replace with: `response.traffic_light`
+
+[Inspection] Finding 3:
+Logic: Derives whether an item is informational from `input_type`.
+Location: `superflow-web/src/components/inspections/inspection-workspace.tsx:49-51`, `superflow-web/src/components/inspections/inspection-workspace.tsx:340`
+Replace with: `item.is_informational`
+
+[Inspection] Finding 4:
+Logic: Derives item options from `input_type`.
+Location: `superflow-web/src/components/inspections/inspection-workspace.tsx:34-47`, `superflow-web/src/components/inspections/inspection-workspace.tsx:496`
+Replace with: `item.available_options`
+
+[Inspection] Finding 5:
+Logic: Computes summary counts from local responses and input-type rules.
+Location: `superflow-web/src/components/inspections/inspection-workspace.tsx:334-348`
+Replace with: `inspection.summary`. This field was missing from the contract and backend response, so it must be added first.

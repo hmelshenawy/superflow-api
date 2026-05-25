@@ -135,6 +135,7 @@ Update job fields (workshop_stage, parts_status, etc).
   "id": "uuid",
   "status": "in_progress",
   "is_locked": false,                    // computed: status in [submitted, reviewed, approved]
+  "summary": { "green": 8, "amber": 1, "red": 2, "unset": 3 },
   "inspection_responses": [{
     "id": "uuid",
     "value": "fail",
