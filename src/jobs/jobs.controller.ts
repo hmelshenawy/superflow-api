@@ -32,6 +32,11 @@ export class JobsController {
     return this.service.findAll(query, query.status, query.search, userId, role);
   }
 
+  @Get('concern-status-options')
+  @RequirePermission(JOBS_READ)
+  @ApiOperation({ summary: 'Valid customer/job concern status options' })
+  concernStatusOptions() { return this.service.concernStatusOptions(); }
+
   @Get(':id')
   @RequirePermission(JOBS_READ)
   @ApiOperation({ summary: 'Full job details' })

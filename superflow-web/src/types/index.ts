@@ -397,6 +397,8 @@ export interface EstimateLine {
   line_total: number | null;
   tax_amount: number | null;
   is_recommended: boolean | null;
+  is_actionable: boolean;
+  group_decision_summary: "pending" | "approved" | "declined" | "deferred" | "mixed";
   sort_order: number | null;
   added_by: string | null;
   created_at: string;

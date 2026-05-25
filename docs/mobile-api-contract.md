@@ -104,6 +104,37 @@ Full job detail with complete `meta`.
 ### `PATCH /api/jobs/:id`
 Update job fields (workshop_stage, parts_status, etc).
 
+### `GET /api/jobs/concern-status-options`
+Returns valid concern status options for feedback forms:
+
+```typescript
+[{ "value": "reviewing", "label": "Initial checking" }]
+```
+
+## Estimates
+
+### `GET /api/estimates/job/:jobId`
+```typescript
+[{
+  "id": "uuid",
+  "type": "labour",
+  "description": "Brake pad replacement",
+  "quantity": 1,
+  "unit_price": 250.00,
+  "line_total": 250.00,
+  "tax_amount": 12.50,
+  "inspection_response_id": "uuid" | null,
+  "quote_group_id": "uuid" | null,
+  "concern_id": "uuid" | null,
+  "is_recommended": true,
+  "is_actionable": true,
+  "group_decision_summary": "pending" // "pending" | "approved" | "declined" | "deferred" | "mixed"
+}]
+```
+
+### `PUT /api/estimates/job/:jobId/bulk`
+Backend recalculates `line_total` and `tax_amount` and returns the saved lines with the computed fields above.
+
 ## Concerns
 
 ### `POST /api/jobs/:id/concerns`

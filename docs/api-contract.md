@@ -108,6 +108,22 @@ Each item in the `items` array now includes a `meta` key:
 
 Note: `concernsSummary` and `partsSummary` are NOT included in list meta (too expensive to compute per job).
 
+## `GET /api/jobs/concern-status-options` — Concern Status Options
+
+Returns backend-owned status options for customer/job concern feedback forms:
+
+```typescript
+[
+  { "value": "reviewing", "label": "Initial checking" },
+  { "value": "finding_ready", "label": "Tech feedback ready" },
+  { "value": "priced", "label": "Needs approval" },
+  { "value": "approved", "label": "Approved" },
+  { "value": "declined", "label": "Declined" },
+  { "value": "in_progress", "label": "Work in progress" },
+  { "value": "qc_complete", "label": "QC complete" }
+]
+```
+
 ## `GET /api/inspections/:id` — Inspection Detail
 
 New computed fields:
@@ -182,6 +198,7 @@ New computed fields on each line:
   // ...existing fields...
   "is_recommended": true,               // explicit flag OR inferred from inspection_response_id presence
   "is_actionable": true,                // no authorisation_decisions exist for this line
+  "group_decision_summary": "pending"   // "pending" | "approved" | "declined" | "deferred" | "mixed"
 }
 ```
 
