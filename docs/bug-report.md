@@ -256,3 +256,20 @@ Audit date: 2026-05-25
 **Root cause**: The migration trusted persisted legacy stage values before canonical status rules.
 
 **Fix**: Canonical status rules now override stale `workshop_stage` values before falling back to stored workshop stage.
+
+## Bug 15: Deferred action visibility still depends on client-side status rules
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `superflow-web/src/app/(dashboard)/deferred/page.tsx:201`, `src/deferred/deferred.service.ts`
+**Found in**: Remaining frontend migration Step 2
+
+**Description**: The deferred work screen decides whether Remind and Close buttons should be visible by comparing `item.status` on the frontend.
+
+**Expected behavior**: Deferred responses should expose backend-computed action availability so the frontend only renders what the API says is allowed.
+
+**Actual behavior**: The screen duplicated deferred workflow rules locally, and the API contract did not include deferred action metadata.
+
+**Root cause**: The initial backend meta migration covered jobs, inspection, QC, portal, estimates, and parts, but not deferred-work action availability.
+
+**Fix**: Deferred responses now include `available_actions`, and the screen reads `can_remind` / `can_close` from that backend field.

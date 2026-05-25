@@ -189,3 +189,21 @@ New computed field:
   "is_low_stock": false                 // sum(inventory[].quantity_on_hand) <= min_stock && min_stock > 0
 }
 ```
+
+## `GET /api/deferred` and `GET /api/deferred/:id` — Deferred Work
+
+New computed field:
+
+```typescript
+{
+  // ...existing fields...
+  "available_actions": ["can_remind", "can_close"] // backend-owned action visibility
+}
+```
+
+### `available_actions` keys
+
+| Key | Condition |
+|---|---|
+| `can_remind` | status is `pending` or `reminded` |
+| `can_close` | status is not `closed` |

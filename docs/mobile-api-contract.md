@@ -268,6 +268,34 @@ Update job fields (workshop_stage, parts_status, etc).
 ### `GET /api/parts/search?q=brake`
 Returns top 20 matching parts: `[{ id, name, part_number, barcode, brand }]`
 
+## Deferred Work
+
+### `GET /api/deferred?status=&page=1&limit=20`
+```typescript
+{
+  "items": [{
+    "id": "uuid",
+    "status": "pending",
+    "urgency": "medium",
+    "estimated_value": 450.00,
+    "remind_after": "2026-06-01T00:00:00Z",
+    "available_actions": ["can_remind", "can_close"], // computed by backend
+    "customer": { "id", "name", "phone", "email" },
+    "vehicle": { "id", "make", "model", "plate", "year" }
+  }],
+  "total": 42,
+  "page": 1,
+  "limit": 20
+}
+```
+
+`available_actions` keys:
+
+| Key | Meaning |
+|---|---|
+| `can_remind` | Staff can send a reminder now |
+| `can_close` | Staff can close the deferred work item |
+
 ## Media
 
 ### `GET /api/media/:id/download`
