@@ -230,3 +230,23 @@ New computed field:
 |---|---|
 | `can_remind` | status is `pending` or `reminded` |
 | `can_close` | status is not `closed` |
+
+## `GET /api/insights/dashboard` — Analytics Dashboard
+
+Additional backend-computed aggregate fields:
+
+```typescript
+{
+  "notificationDeliveryRate": 92,
+  "approvalCounts": {
+    "approved": 10,
+    "declined": 2,
+    "pending": 3,
+    "total": 15
+  },
+  "inspectionCounts": {
+    "completed": 8,
+    "inProgress": 4
+  }
+}
+```
