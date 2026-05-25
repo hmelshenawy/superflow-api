@@ -10,6 +10,37 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class EstimatesService {
   constructor(private prisma: PrismaService) {}
 
+  private decorateLines(lines: any[]) {
+    const groupKeyFor = (line: any) => line.concern_id
+      ? `concern:${line.concern_id}`
+      : line.inspection_response_id
+        ? `response:${line.inspection_response_id}`
+        : line.quote_group_id
+          ? `quote:${line.quote_group_id}`
+          : 'general';
+    const decisionsByGroup = new Map<string, string[]>();
+    for (const line of lines) {
+      const decisions = (line.authorisation_decisions ?? []).map((decision: any) => decision.decision).filter(Boolean);
+      if (!decisionsByGroup.has(groupKeyFor(line))) decisionsByGroup.set(groupKeyFor(line), []);
+      decisionsByGroup.get(groupKeyFor(line))!.push(...decisions);
+    }
+    const summaryFor = (line: any) => {
+      const decisions = decisionsByGroup.get(groupKeyFor(line)) ?? [];
+      const unique = [...new Set(decisions)];
+      if (!unique.length) return 'pending';
+      if (unique.length > 1) return 'mixed';
+      return unique[0];
+    };
+    return lines.map((line: any) => ({
+      ...line,
+      quote_group: line.quote_groups,
+      concern: line.job_concerns,
+      is_recommended: Boolean(line.inspection_response_id) || Boolean(line.is_recommended),
+      is_actionable: !line.authorisation_decisions?.length,
+      group_decision_summary: summaryFor(line),
+    }));
+  }
+
   async create(dto: CreateLineDto, userId: string) {
     // The backend always recomputes money fields so the client cannot drift from
     // server-side totals just by sending pre-calculated values.
@@ -46,14 +77,7 @@ export class EstimatesService {
       include: { quote_groups: true, job_concerns: true, authorisation_decisions: true },
       orderBy: { sort_order: 'asc' },
     });
-    return lines.map((l: any) => ({
-      ...l,
-      quote_group: l.quote_groups,
-      concern: l.job_concerns,
-      is_recommended: Boolean(l.inspection_response_id) || Boolean(l.is_recommended),
-      is_actionable: !l.authorisation_decisions?.length,
-      group_decision_summary: undefined,
-    }));
+    return this.decorateLines(lines);
   }
 
   async getDefaults() {
@@ -181,7 +205,7 @@ export class EstimatesService {
           tax_rate_pct: taxRate,
           line_total: lineTotal,
           tax_amount: taxAmount,
-          is_recommended: l.is_recommended ?? Boolean(l.inspection_response_id),
+          is_recommended: Boolean(l.inspection_response_id) || Boolean(l.is_recommended),
           sort_order: i,
           added_by: userId,
           inspection_response_id: l.inspection_response_id || null,
@@ -240,10 +264,10 @@ export class EstimatesService {
 
       const saved = await tx.estimate_lines.findMany({
         where: { job_id: jobId },
-        include: { quote_groups: true, job_concerns: true },
+        include: { quote_groups: true, job_concerns: true, authorisation_decisions: true },
         orderBy: { sort_order: 'asc' },
       });
-      return saved.map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns }));
+      return this.decorateLines(saved);
     });
   }
 

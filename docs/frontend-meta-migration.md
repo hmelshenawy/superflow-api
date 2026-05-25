@@ -111,3 +111,30 @@ Replace with: `item.available_options`
 Logic: Computes summary counts from local responses and input-type rules.
 Location: `superflow-web/src/components/inspections/inspection-workspace.tsx:334-348`
 Replace with: `inspection.summary`. This field was missing from the contract and backend response, so it must be added first.
+
+## Estimate Builder Findings
+
+[Estimate] Finding 1:
+Logic: Maps inspection response values/urgency to quote-group severity with `resultToSeverity()`.
+Location: `superflow-web/src/components/estimates/estimate-builder.tsx:85-92`, `superflow-web/src/components/estimates/estimate-builder.tsx:288`
+Replace with: `response.traffic_light`
+
+[Estimate] Finding 2:
+Logic: Summarizes group decisions by reducing `decisionByLine`.
+Location: `superflow-web/src/components/estimates/estimate-builder.tsx:101-121`, `superflow-web/src/components/estimates/estimate-builder.tsx:402`
+Replace with: `line.group_decision_summary`. The field was missing from the estimate-lines endpoint and is added before the UI replacement.
+
+[Estimate] Finding 3:
+Logic: Uses `recalc()` to compute `line_total` and `tax_amount` locally.
+Location: `superflow-web/src/components/estimates/estimate-builder.tsx:139-147`
+Replace with: Keep for optimistic typing only; after save, replace local lines with backend-returned `line_total` and `tax_amount`.
+
+[Estimate] Finding 4:
+Logic: Marks new inspection-linked lines as recommended from `inspectionResponseId`.
+Location: `superflow-web/src/components/estimates/estimate-builder.tsx:195`
+Replace with: Backend `line.is_recommended` after save. This optimistic flag remains only for new unsaved rows.
+
+[Estimate] Finding 5:
+Logic: Hardcoded concern status options in the quote group feedback form.
+Location: `superflow-web/src/components/estimates/estimate-builder.tsx:502-510`
+Replace with: `GET /jobs/concern-status-options`

@@ -290,3 +290,37 @@ Audit date: 2026-05-25
 **Root cause**: The first backend migration added per-response `traffic_light` and per-item fields but did not add an aggregate inspection summary.
 
 **Fix**: `GET /inspections/:id` now returns `summary`, and the workspace reads it directly.
+
+## Bug 17: Estimate group decision summary is missing from estimate responses
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `src/estimates/estimates.service.ts`, `superflow-web/src/components/estimates/estimate-builder.tsx`
+**Found in**: Remaining frontend migration Step 6
+
+**Description**: The estimate builder summarizes group-level customer decisions by reducing line decisions in the frontend.
+
+**Expected behavior**: Estimate line responses should expose the backend-owned group decision summary used by quote groups.
+
+**Actual behavior**: `GET /estimates/job/:jobId` returned `group_decision_summary: undefined`.
+
+**Root cause**: The migration added line actionability but did not finish the group summary value on the estimate-lines endpoint.
+
+**Fix**: Estimate responses now include `group_decision_summary`, and the builder reads that field.
+
+## Bug 18: Concern status options are not exposed by the backend
+
+**Status**: Fixed
+**Severity**: Low
+**Location**: `superflow-web/src/components/estimates/estimate-builder.tsx:502`
+**Found in**: Remaining frontend migration Step 6
+
+**Description**: The estimate builder contains a hardcoded list of concern status options in the feedback form.
+
+**Expected behavior**: The backend should expose valid concern status options or the concern update contract should describe the allowable values.
+
+**Actual behavior**: No backend field or endpoint exists in `docs/api-contract.md` for concern status options.
+
+**Root cause**: Concern status option metadata was not included in the backend migration.
+
+**Fix**: Added `GET /jobs/concern-status-options` and updated the estimate builder to fetch options from the backend.

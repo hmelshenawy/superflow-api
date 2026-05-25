@@ -217,6 +217,18 @@ export class JobsService {
     return { ...reshaped, meta: await this.metaService.computeJobMeta(reshaped) };
   }
 
+  concernStatusOptions() {
+    return [
+      { value: 'reviewing', label: 'Initial checking' },
+      { value: 'finding_ready', label: 'Tech feedback ready' },
+      { value: 'priced', label: 'Needs approval' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'declined', label: 'Declined' },
+      { value: 'in_progress', label: 'Work in progress' },
+      { value: 'qc_complete', label: 'QC complete' },
+    ];
+  }
+
 
   async createConcern(jobId: string, dto: any) {
     await this.findOne(jobId);

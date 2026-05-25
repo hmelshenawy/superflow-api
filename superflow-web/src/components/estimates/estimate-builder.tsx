@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import type { EstimateLine, EstimateLineType, JobAuthorisationDecision, JobConcern, QuoteGroup } from "@/types";
+import type { EstimateLine, EstimateLineType, JobConcern, QuoteGroup } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +31,7 @@ interface Props {
   onUpdate: () => void;
   inspection?: any | null;
   jobConcerns?: JobConcern[];
-  decisionByLine?: Record<string, JobAuthorisationDecision>;
+  decisionByLine?: unknown;
 }
 
 interface LabourRateOption {
@@ -49,6 +49,11 @@ interface EstimateDefaults {
   labour_rates?: LabourRateOption[];
 }
 
+interface ConcernStatusOption {
+  value: string;
+  label: string;
+}
+
 type ConcernSeverity = "amber" | "red" | "other";
 
 interface ConcernGroup {
@@ -60,13 +65,8 @@ interface ConcernGroup {
   concernId: string | null;
   concern?: JobConcern | null;
   severity: ConcernSeverity;
+  groupDecisionSummary: EstimateLine["group_decision_summary"];
   lines: EstimateLine[];
-}
-
-interface GroupDecisionSummary {
-  decision: "approved" | "declined" | "deferred" | "mixed" | "pending";
-  comment: string | null;
-  decidedAt: string | null;
 }
 
 function normalizeLines(lines: EstimateLine[]) {
@@ -82,13 +82,9 @@ function normalizeLines(lines: EstimateLine[]) {
   }));
 }
 
-function resultToSeverity(value?: string | null, urgency?: string | null): ConcernSeverity | null {
-  const u = String(urgency ?? "").toLowerCase();
-  if (["medium", "amber", "yellow"].includes(u)) return "amber";
-  if (["high", "critical", "red"].includes(u)) return "red";
-  const v = String(value ?? "").toLowerCase();
-  if (["warn", "warning", "medium", "amber", "yellow"].includes(v)) return "amber";
-  if (["fail", "bad", "critical", "high", "red", "no"].includes(v)) return "red";
+function trafficToSeverity(traffic?: string | null): ConcernSeverity | null {
+  if (traffic === "red") return "red";
+  if (traffic === "amber") return "amber";
   return null;
 }
 
@@ -98,29 +94,7 @@ function severityMeta(severity: ConcernSeverity) {
   return { tone: "border-border bg-muted", badge: "bg-muted text-foreground/80", icon: null, label: "General" };
 }
 
-function summarizeGroupDecision(lines: EstimateLine[], decisionByLine: Record<string, JobAuthorisationDecision>): GroupDecisionSummary | null {
-  const decisions = lines
-    .map((line) => decisionByLine[line.id])
-    .filter(Boolean) as JobAuthorisationDecision[];
-
-  if (!decisions.length) return { decision: "pending", comment: null, decidedAt: null };
-
-  const uniqueDecisions = Array.from(new Set(decisions.map((item) => item.decision)));
-  const comment = decisions.find((item) => item.customer_comment)?.customer_comment ?? null;
-  const decidedAt = decisions
-    .map((item) => item.decided_at)
-    .filter(Boolean)
-    .sort()
-    .at(-1) ?? null;
-
-  if (uniqueDecisions.length === 1) {
-    return { decision: uniqueDecisions[0], comment, decidedAt };
-  }
-
-  return { decision: "mixed", comment, decidedAt };
-}
-
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [], decisionByLine = {} }: Props) {
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [] }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
@@ -135,7 +109,9 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   const [defaults, setDefaults] = useState<EstimateDefaults>({
     default_tax_rate: 5, currency: "AED", standard_labour_rate: 0, standard_labour_rate_name: "Standard", labour_rates: [],
   });
+  const [concernStatusOptions, setConcernStatusOptions] = useState<ConcernStatusOption[]>([]);
 
+  // Optimistic only: the backend recalculates and returns authoritative money fields on save.
   const recalc = (line: Partial<EstimateLine>) => {
     const qty = Number(line.quantity ?? 1);
     const price = Number(line.unit_price ?? 0);
@@ -156,7 +132,10 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   useEffect(() => {
     const fetchDefaults = async () => {
       try {
-        const { data } = await api.get<EstimateDefaults>("/estimates/defaults");
+        const [{ data }, { data: statusOptions }] = await Promise.all([
+          api.get<EstimateDefaults>("/estimates/defaults"),
+          api.get<ConcernStatusOption[]>("/jobs/concern-status-options"),
+        ]);
         setDefaults({
           default_tax_rate: Number(data.default_tax_rate ?? 5),
           currency: data.currency || "AED",
@@ -164,6 +143,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
           standard_labour_rate_name: data.standard_labour_rate_name || "Standard",
           labour_rates: (data.labour_rates ?? []).map((r) => ({ ...r, rate_per_hour: Number(r.rate_per_hour ?? 0) })),
         });
+        setConcernStatusOptions(statusOptions);
       } catch {}
     };
     fetchDefaults();
@@ -193,6 +173,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       discount_pct: 0, tax_rate_pct: defaults.default_tax_rate,
       line_total: 0, tax_amount: 0,
       is_recommended: Boolean(opts?.inspectionResponseId),
+      is_actionable: true,
+      group_decision_summary: "pending",
       sort_order: lines.length, added_by: null,
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
@@ -234,7 +216,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         type: "labour", description: "Initial checking / diagnosis", part_number: null, quantity: 1,
         unit_price: defaults.standard_labour_rate, discount_pct: 0,
         tax_rate_pct: defaults.default_tax_rate, line_total: 0, tax_amount: 0,
-        is_recommended: false, sort_order: lines.length, added_by: null,
+        is_recommended: false, is_actionable: true, group_decision_summary: "pending", sort_order: lines.length, added_by: null,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       };
       setLines((prev) => [...prev, { ...newLine, ...recalc(newLine) }]);
@@ -285,7 +267,10 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
 
   const concernGroups = useMemo(() => {
     const allResponses = inspection?.inspection_responses ?? inspection?.responses ?? [];
-    const flaggedResponses = allResponses.filter((r: any) => { const s = resultToSeverity(r?.value, r?.urgency); return s === "amber" || s === "red"; });
+    const flaggedResponses = allResponses.filter((r: any) => {
+      const s = trafficToSeverity(r?.traffic_light);
+      return s === "amber" || s === "red";
+    });
 
     const byConcernId = new Map<string, EstimateLine[]>();
     const byResponseId = new Map<string, EstimateLine[]>();
@@ -304,7 +289,11 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       }
     }
 
-    const groups: ConcernGroup[] = jobConcerns.map((c) => ({
+    const summaryForLines = (groupLines: EstimateLine[]) => groupLines[0]?.group_decision_summary ?? "pending";
+
+    const groups: ConcernGroup[] = jobConcerns.map((c) => {
+      const groupLines = byConcernId.get(c.id) ?? [];
+      return ({
       key: c.id,
       title: c.title || c.code || "Customer concern",
       detail: c.technician_finding || c.description || undefined,
@@ -313,19 +302,23 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       concernId: c.id,
       concern: c,
       severity: "other",
-      lines: byConcernId.get(c.id) ?? [],
-    }));
+      groupDecisionSummary: summaryForLines(groupLines),
+      lines: groupLines,
+    });
+    });
 
     groups.push(...flaggedResponses.map((r: any) => {
-      const severity = resultToSeverity(r?.value, r?.urgency) ?? "amber";
+      const severity = trafficToSeverity(r?.traffic_light) ?? "amber";
       const detail = [r?.tech_notes, r?.value ? `Result: ${r.value}` : null, r?.urgency && r.urgency !== "none" ? `Urgency: ${r.urgency}` : null].filter(Boolean).join(" • ");
-      return { key: r.id, title: r?.inspection_items?.label || "Inspection concern", detail, responseId: r.id, quoteGroupId: null, concernId: null, concern: null, severity, lines: byResponseId.get(r.id) ?? [] };
+      const groupLines = byResponseId.get(r.id) ?? [];
+      return { key: r.id, title: r?.inspection_items?.label || "Inspection concern", detail, responseId: r.id, quoteGroupId: null, concernId: null, concern: null, severity, groupDecisionSummary: summaryForLines(groupLines), lines: groupLines };
     }));
 
     const seenGroupIds = new Set<string>();
     for (const line of lines) {
       if (line.quote_group_id && !seenGroupIds.has(line.quote_group_id)) {
         seenGroupIds.add(line.quote_group_id);
+        const groupLines = byQuoteGroupId.get(line.quote_group_id) ?? [];
         groups.push({
           key: line.quote_group_id,
           title: line.quote_group?.title || "Custom group",
@@ -334,7 +327,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
           concernId: null,
           concern: null,
           severity: "other",
-          lines: byQuoteGroupId.get(line.quote_group_id) ?? [],
+          groupDecisionSummary: summaryForLines(groupLines),
+          lines: groupLines,
         });
       }
     }
@@ -347,6 +341,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         key: "general", title: "General / Other",
         detail: groups.length === 0 ? "Add manual estimate items here." : "Items not linked to a checklist concern.",
         responseId: null, quoteGroupId: null, concernId: null, concern: null, severity: "other",
+        groupDecisionSummary: summaryForLines([...orphanLinkedLines, ...generalLines]),
         lines: [...orphanLinkedLines, ...generalLines],
       });
     }
@@ -381,7 +376,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         concern_id: line.concern_id ?? undefined,
       }));
 
-      await api.put(`/estimates/job/${jobId}/bulk`, { lines: payloadLines });
+      const { data: savedLines } = await api.put<EstimateLine[]>(`/estimates/job/${jobId}/bulk`, { lines: payloadLines });
+      setLines(normalizeLines(savedLines));
       toast.success("Estimate saved");
       onUpdate();
     } catch {
@@ -399,25 +395,25 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         const groupTotal = group.lines.reduce((sum, l) => sum + Number(l.line_total ?? 0), 0);
         const isCustom = Boolean(group.quoteGroupId);
         const isCollapsed = collapsedGroups.has(group.key);
-        const groupDecision = summarizeGroupDecision(group.lines, decisionByLine);
-        const groupDecisionTone = groupDecision?.decision === "approved"
+        const groupDecision = group.groupDecisionSummary;
+        const groupDecisionTone = groupDecision === "approved"
           ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200"
-          : groupDecision?.decision === "declined"
+          : groupDecision === "declined"
             ? "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200"
-            : groupDecision?.decision === "deferred"
+            : groupDecision === "deferred"
               ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200"
-              : groupDecision?.decision === "pending"
+              : groupDecision === "pending"
                 ? "bg-muted text-foreground/80"
                 : "bg-muted text-foreground/80";
-        const groupDecisionLabel = groupDecision?.decision === "approved"
+        const groupDecisionLabel = groupDecision === "approved"
           ? "Approved"
-          : groupDecision?.decision === "declined"
+          : groupDecision === "declined"
             ? "Rejected"
-            : groupDecision?.decision === "deferred"
+            : groupDecision === "deferred"
               ? "Deferred"
-              : groupDecision?.decision === "pending"
+              : groupDecision === "pending"
                 ? "Pending"
-                : groupDecision?.decision === "mixed"
+                : groupDecision === "mixed"
                   ? "Mixed"
                   : null;
 
@@ -488,25 +484,15 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                 </div>
               </div>
               {(group.detail && !isCustom) ? <p className="mt-1.5 text-xs text-muted-foreground">{group.detail}</p> : null}
-              {groupDecision ? (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {groupDecision.decidedAt ? <span>Reply: {new Date(groupDecision.decidedAt).toLocaleString("en-GB")}</span> : null}
-                  {groupDecision.comment ? <p className="mt-1">Comment: {groupDecision.comment}</p> : null}
-                </div>
-              ) : null}
               {!isCollapsed && group.concern ? (
                 <form className="mt-3 rounded-xl border border-border bg-card/80 p-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); updateConcernFeedback(group.concernId as string, event.currentTarget); }}>
                   <div className="grid gap-3 lg:grid-cols-[160px_1fr_1fr_auto]">
                     <div>
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Concern status</p>
                       <select name="status" defaultValue={group.concern.status || "reviewing"} className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm">
-                        <option value="reviewing">Initial checking</option>
-                        <option value="finding_ready">Tech feedback ready</option>
-                        <option value="priced">Needs approval</option>
-                        <option value="approved">Approved</option>
-                        <option value="declined">Declined</option>
-                        <option value="in_progress">Work in progress</option>
-                        <option value="qc_complete">QC complete</option>
+                        {concernStatusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
