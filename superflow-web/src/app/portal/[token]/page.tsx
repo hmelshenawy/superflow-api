@@ -37,6 +37,7 @@ interface QuoteLine {
   discount_pct: number;
   tax_rate_pct: number;
   line_total: number;
+  is_actionable: boolean;
 }
 
 interface QuoteGroup {
@@ -46,6 +47,8 @@ interface QuoteGroup {
   finding: Finding | null;
   lines: QuoteLine[];
   total: number;
+  group_decision_summary: "pending" | "approved" | "declined" | "deferred" | "mixed";
+  is_locked: boolean;
 }
 
 interface ExistingDecision {
@@ -73,7 +76,7 @@ type GroupDecisionState = {
 };
 
 interface PortalData {
-  token: { expires_at: string; is_revoked: boolean; used_at: string | null };
+  token: { expires_at: string; is_revoked: boolean; used_at: string | null; is_expired: boolean };
   job: {
     id: string;
     job_number: string;
@@ -89,6 +92,9 @@ interface PortalData {
   job_photos?: { id: string; url: string; mime_type?: string; filename?: string }[];
   grouped_estimate: QuoteGroup[];
   grand_total: number;
+  approved_total: number;
+  has_actionable_lines: boolean;
+  can_submit: boolean;
   existing_decisions: ExistingDecision[];
   currency: string;
 }
@@ -171,19 +177,18 @@ export default function PortalPage() {
   const existingDecisionByLine = new Map(
     (data?.existing_decisions ?? []).map((ed) => [ed.estimate_line_id, { decision: ed.decision, comment: ed.customer_comment || "" }]),
   );
-  const getActionableLines = (group: QuoteGroup) => group.lines.filter((line) => !existingDecisionByLine.has(line.id));
-  const hasActionableLines = Boolean(data?.grouped_estimate?.some((group) => getActionableLines(group).length > 0));
-  const allDecided = Boolean(data?.grouped_estimate?.length) && data!.grouped_estimate.every((group) => {
+  const getActionableLines = (group: QuoteGroup) => group.lines.filter((line) => line.is_actionable);
+  const hasActionableLines = data?.has_actionable_lines ?? false;
+  const portalCanSubmit = data?.can_submit ?? false;
+  const allActionableGroupsDecided = Boolean(data?.grouped_estimate?.length) && data!.grouped_estimate.every((group) => {
     const actionable = getActionableLines(group);
-    // Groups with no new undecided estimate lines are informational only:
-    // already-submitted lines are locked, and empty concern updates should not
-    // block the customer from replying to newly added actionable items.
+    // Form completeness only: backend owns whether the portal may submit.
     if (actionable.length === 0) return true;
     return Boolean(decisions[group.key]?.decision);
   });
 
   const submit = async () => {
-    if (!data || !allDecided || !hasActionableLines) return;
+    if (!data || !portalCanSubmit || !allActionableGroupsDecided) return;
     setSubmitting(true);
     try {
       const apiBase = `${window.location.origin}/api`;
@@ -242,15 +247,8 @@ export default function PortalPage() {
     { key: "final_report", label: "Final report" },
   ];
   const activeStageIndex = Math.max(stageSteps.findIndex((s) => s.key === stage), 0);
-  const isExpired = Boolean(data.token.expires_at && new Date(data.token.expires_at) < new Date());
-  const approvedTotal = grouped_estimate.reduce((sum, group) => {
-    const lineTotal = group.lines.reduce((lineSum, line) => {
-      const locked = existingDecisionByLine.get(line.id);
-      const decision = locked?.decision || decisions[group.key]?.decision;
-      return decision === "approved" ? lineSum + Number(line.line_total || 0) : lineSum;
-    }, 0);
-    return sum + lineTotal;
-  }, 0);
+  const isExpired = data.token.is_expired;
+  const approvedTotal = data.approved_total;
 
   /* ── Submitted ────────────────────────────────────── */
   if (submitted)
@@ -430,8 +428,7 @@ export default function PortalPage() {
               const groupDecision = decisions[group.key];
               const lockedGroupDecision = group.lines.map((line) => existingDecisionByLine.get(line.id)).filter(Boolean)[0];
               const displayDecision = groupDecision || lockedGroupDecision;
-              const actionableLines = getActionableLines(group);
-              const isFullyLocked = group.lines.length > 0 && actionableLines.length === 0;
+              const isFullyLocked = group.is_locked;
               return (
                 <div key={group.key} className={`rounded-xl border ${SEVERITY_STYLE[group.severity || ""] || "border-border bg-card"} overflow-hidden`}>
                   {/* Group header */}
@@ -609,7 +606,7 @@ export default function PortalPage() {
             </div>
             <button
               onClick={submit}
-              disabled={!allDecided || !hasActionableLines || submitting || isExpired}
+              disabled={!portalCanSubmit || !allActionableGroupsDecided || submitting}
               className="rounded-xl bg-slate-900 dark:bg-slate-100 px-8 py-3 text-sm font-semibold text-white dark:text-slate-900 shadow-lg transition hover:bg-slate-800 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting
@@ -618,7 +615,9 @@ export default function PortalPage() {
                 ? "Waiting for estimate"
                 : !hasActionableLines
                 ? "No new items to decide"
-                : !allDecided
+                : !portalCanSubmit
+                ? "Cannot submit"
+                : !allActionableGroupsDecided
                 ? "Review new groups first"
                 : "Submit My Decisions"}
             </button>
