@@ -129,7 +129,7 @@ export class RolesSyncService implements OnModuleInit {
     }
 
     // Create any DEFAULT_ROLES that don't exist in DB yet
-    const dbRoleNames = new Set(dbRoles.map(r => r.name));
+    const dbRoleNames = new Set(dbRoles.map((r: { name: string }) => r.name));
     for (const [name, template] of Object.entries(DEFAULT_ROLES)) {
       if (dbRoleNames.has(name)) continue;
       await this.prisma.raw.roles.create({
@@ -154,11 +154,11 @@ export class RolesSyncService implements OnModuleInit {
     const existingFeatures = await this.prisma.raw.plan_features.findMany({
       select: { plan_id: true, feature_key: true },
     });
-    const existing = new Set(existingFeatures.map(f => `${f.plan_id}:${f.feature_key}`));
+    const existing = new Set(existingFeatures.map((f: { plan_id: string; feature_key: string }) => `${f.plan_id}:${f.feature_key}`));
 
     let created = 0;
     for (const [planId, features] of Object.entries(PLAN_FEATURE_DEFAULTS)) {
-      const planExists = plans.some(p => p.id === planId);
+      const planExists = plans.some((p: { id: string }) => p.id === planId);
       if (!planExists) continue;
 
       for (const feat of features) {

@@ -173,7 +173,7 @@ export class InsightsService {
       totalRevenue += lt;
       if (status === 'closed' || status === 'ready') approvedRevenue += lt;
     }
-    pendingRevenue = Number(revenueRows.reduce((sum, r) => sum + Number(r.approvedPending || 0), 0));
+    pendingRevenue = Number(revenueRows.reduce((sum: number, r: typeof revenueRows[number]) => sum + Number(r.approvedPending || 0), 0));
 
     // Attendance 30d
     const att30 = attendance30d[0] || {};

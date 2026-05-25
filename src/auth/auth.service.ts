@@ -461,7 +461,12 @@ export class AuthService {
         ...subscription.plans,
         price: regionPrice?.price_monthly_cents ?? subscription.plans.price_monthly_cents,
         currency: regionPrice?.currency ?? subscription.plans.currency,
-        features: features.map(f => ({
+        features: features.map((f: {
+          feature_key: string;
+          is_included: boolean;
+          ceiling: number | null;
+          overage_unit_cents: number | null;
+        }) => ({
           key: f.feature_key,
           isIncluded: f.is_included,
           ceiling: f.ceiling,

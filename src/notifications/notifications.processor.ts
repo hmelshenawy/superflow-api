@@ -46,7 +46,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
           status: terminal ? 'failed' : 'queued',
           error_message: error?.message || 'Unknown notification failure',
         },
-      }).catch((e) => this.logger.error(`Failed to update notification ${notificationId} status: ${e?.message}`));
+      }).catch((e: Error) => this.logger.error(`Failed to update notification ${notificationId} status: ${e?.message}`));
 
       this.logger.warn(`Notification ${notificationId} failed (${attemptsMade}/${maxAttempts}): ${error?.message}`);
     });
