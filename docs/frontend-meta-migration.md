@@ -62,3 +62,25 @@ Replace with: `data.can_submit` for backend eligibility. Keep a local selected-d
 Logic: Computes fully locked groups from whether all lines are non-actionable.
 Location: `superflow-web/src/app/portal/[token]/page.tsx:433-434`
 Replace with: `group.is_locked`
+
+## QC Checklist Workspace Findings
+
+[QC] Finding 1:
+Logic: Computes locked state from `status in [submitted, approved]`.
+Location: `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:83`
+Replace with: `checklist.is_locked`
+
+[QC] Finding 2:
+Logic: Maps response values to traffic lights with `resultToTrafficLight()`.
+Location: `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:37-43`, `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:263`
+Replace with: `response.traffic_light`
+
+[QC] Finding 3:
+Logic: Derives checklist item options from `input_type`.
+Location: `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:26-33`, `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:266`
+Replace with: `item.available_options`
+
+[QC] Finding 4:
+Logic: Active-section/item filters and sort-order sorting.
+Location: `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx:245-250`
+Replace with: No replacement needed. These are presentation ordering/visibility concerns from backend data flags.

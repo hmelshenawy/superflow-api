@@ -21,26 +21,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { QcChecklist, QcChecklistItem, QcChecklistResponse } from "@/types";
 
-/* ── helpers ── */
-
-function optionsForInputType(inputType?: string | null) {
-  switch (inputType) {
-    case "pass_fail": return ["pass", "fail"];
-    case "yes_no": return ["yes", "no"];
-    case "ok_fail": return ["ok", "fail"];
-    default: return [];
-  }
-}
-
 type TrafficLight = "green" | "red" | "none";
-
-function resultToTrafficLight(value: string | null | undefined): TrafficLight {
-  if (!value) return "none";
-  const v = value.toLowerCase();
-  if (["ok", "pass", "yes", "good"].includes(v)) return "green";
-  if (["fail", "no", "bad"].includes(v)) return "red";
-  return "none";
-}
 
 const LIGHT_STYLES: Record<TrafficLight, { bg: string; border: string; dot: string; icon: typeof CheckCircle2 }> = {
   green: {
@@ -80,7 +61,7 @@ export function QcChecklistWorkspace({
   checklist: QcChecklist;
   onChanged: () => void;
 }) {
-  const isLocked = ["submitted", "approved"].includes(checklist?.status || "");
+  const isLocked = checklist.is_locked;
   const overallResult = checklist?.overall_result;
 
   const template = checklist?.qc_checklist_templates;
@@ -95,6 +76,7 @@ export function QcChecklistWorkspace({
         media_count: Number(r.media_count ?? 0),
         media_files: (r as any).media_files ?? [],
         response_id: r.id,
+        traffic_light: r.traffic_light ?? "none",
       };
     }
     return map;
@@ -115,6 +97,7 @@ export function QcChecklistWorkspace({
         media_count: 0,
         media_files: [],
         response_id: null,
+        traffic_light: "none",
         ...prev[itemId],
         ...patch,
       },
@@ -260,10 +243,10 @@ export function QcChecklistWorkspace({
               <div className="divide-y divide-border">
                 {items.map((item) => {
                   const resp = responses[item.id] || {};
-                  const traffic = resultToTrafficLight(resp.value);
+                  const traffic = (resp.traffic_light ?? "none") as TrafficLight;
                   const light = LIGHT_STYLES[traffic];
                   const LightIcon = light.icon;
-                  const options = optionsForInputType(item.input_type);
+                  const options = item.available_options ?? [];
                   const isPhoto = item.input_type === "photo";
                   const isText = item.input_type === "text";
                   const showNoteRequired = item.requires_note_on_fail && resp.value?.toLowerCase() === "fail";
@@ -314,20 +297,19 @@ export function QcChecklistWorkspace({
                                 />
                               ) : (
                                 options.map((opt) => {
-                                  const optTraffic = resultToTrafficLight(opt);
-                                  const optLight = LIGHT_STYLES[optTraffic];
-                                  const OptIcon = optLight.icon;
+                                  const active = resp.value === opt;
+                                  const OptIcon = active ? LightIcon : MinusCircle;
                                   return (
                                     <button
                                       key={opt}
                                       type="button"
                                       className={cn(
                                         "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition",
-                                        resp.value === opt
-                                          ? `${optLight.bg} ${optLight.border} text-foreground shadow-sm`
+                                        active
+                                          ? `${light.bg} ${light.border} text-foreground shadow-sm`
                                           : "border-border bg-background text-muted-foreground hover:bg-muted"
                                       )}
-                                      onClick={() => setItem(item.id, { value: opt })}
+                                      onClick={() => setItem(item.id, { value: opt, traffic_light: "none" })}
                                     >
                                       <OptIcon className="h-3.5 w-3.5" />
                                       {opt}
