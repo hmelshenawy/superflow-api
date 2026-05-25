@@ -691,6 +691,7 @@ export interface Part {
   barcode: string | null;
   supplier_id: string | null;
   min_stock: number | null;
+  is_low_stock: boolean;
   is_active: boolean | null;
   workshop_id: string | null;
   created_at: string;

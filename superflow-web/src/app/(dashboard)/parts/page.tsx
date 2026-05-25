@@ -184,7 +184,6 @@ export default function PartsPage() {
                 const inventory = part.inventory ?? [];
                 const totalAvailable = inventory.reduce((sum, inv) => sum + (inv.available_quantity ?? 0), 0);
                 const totalOnHand = inventory.reduce((sum, inv) => sum + (inv.quantity_on_hand ?? 0), 0);
-                const isLowStock = part.min_stock != null && totalAvailable <= (part.min_stock ?? 0);
 
                 return (
                   <TableRow
@@ -203,7 +202,7 @@ export default function PartsPage() {
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={cn("font-semibold", isLowStock && "text-red-600")}>
+                      <span className={cn("font-semibold", part.is_low_stock && "text-red-600")}>
                         {totalAvailable}
                       </span>
                       <span className="text-muted-foreground"> / {totalOnHand}</span>
@@ -214,7 +213,7 @@ export default function PartsPage() {
                         <Badge variant={part.is_active ? "default" : "secondary"}>
                           {part.is_active ? "Active" : "Inactive"}
                         </Badge>
-                        {isLowStock && (
+                        {part.is_low_stock && (
                           <Badge variant="destructive" className="text-[10px]">Low Stock</Badge>
                         )}
                       </div>
