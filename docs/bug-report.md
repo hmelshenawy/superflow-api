@@ -273,3 +273,20 @@ Audit date: 2026-05-25
 **Root cause**: The initial backend meta migration covered jobs, inspection, QC, portal, estimates, and parts, but not deferred-work action availability.
 
 **Fix**: Deferred responses now include `available_actions`, and the screen reads `can_remind` / `can_close` from that backend field.
+
+## Bug 16: Inspection summary counts still depend on client-side traffic rules
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `superflow-web/src/components/inspections/inspection-workspace.tsx:334`, `src/inspections/inspections.service.ts`
+**Found in**: Remaining frontend migration Step 5
+
+**Description**: The inspection workspace computes green/amber/red/unset summary counts by re-running traffic-light and informational-item rules in the frontend.
+
+**Expected behavior**: Inspection detail responses should expose backend-computed summary counts based on the same backend traffic-light and informational fields used by each item/response.
+
+**Actual behavior**: The screen still duplicated inspection traffic-light rules locally.
+
+**Root cause**: The first backend migration added per-response `traffic_light` and per-item fields but did not add an aggregate inspection summary.
+
+**Fix**: `GET /inspections/:id` now returns `summary`, and the workspace reads it directly.

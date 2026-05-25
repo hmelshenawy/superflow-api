@@ -28,38 +28,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-/* ── helpers ── */
-
-function optionsForInputType(inputType?: string) {
-  switch (inputType) {
-    case "pass_fail":
-      return ["pass", "fail"];
-    case "yes_no":
-    case "toggle":
-      return ["yes", "no"];
-    case "fuel_level":
-      return ["E", "1/4", "1/2", "3/4", "F"];
-    case "ok_warn_fail":
-    default:
-      return ["ok", "warn", "fail"];
-  }
-}
-
-function isInformationalInputType(inputType?: string) {
-  return ["number", "text", "photo", "odometer", "fuel_level"].includes(inputType || "");
-}
+import type { Inspection } from "@/types";
 
 type TrafficLight = "green" | "amber" | "red" | "none";
-
-function resultToTrafficLight(value: string, inputType?: string): TrafficLight {
-  if (!value || isInformationalInputType(inputType)) return "none";
-  const v = value.toLowerCase();
-  if (["ok", "pass", "yes", "good"].includes(v)) return "green";
-  if (["warn", "warning", "medium", "maybe"].includes(v)) return "amber";
-  if (["fail", "no", "bad", "critical", "high"].includes(v)) return "red";
-  return "none";
-}
 
 const LIGHT_STYLES: Record<TrafficLight, { bg: string; border: string; dot: string; icon: typeof CheckCircle2 }> = {
   green: {
@@ -111,13 +82,14 @@ export function InspectionWorkspace({
   inspection,
   onChanged,
 }: {
-  inspection: any;
+  inspection: Inspection;
   onChanged: () => void;
 }) {
-  const isLocked = ["submitted", "reviewed", "approved"].includes(inspection?.status);
+  const isLocked = inspection.is_locked;
   const responsesMap = useMemo(() => {
     const map: Record<string, any> = {};
     for (const r of inspection?.inspection_responses ?? inspection?.responses ?? []) {
+      if (!r.item_id) continue;
       map[r.item_id] = {
         value: r.value ?? "",
         urgency: r.urgency ?? "none",
@@ -125,6 +97,7 @@ export function InspectionWorkspace({
         media_count: Number(r.media_count ?? 0),
         media_files: (r.media_files ?? []) as MediaFile[],
         response_id: r.id,
+        traffic_light: r.traffic_light ?? "none",
       };
     }
     return map;
@@ -148,6 +121,7 @@ export function InspectionWorkspace({
         media_count: 0,
         media_files: [],
         response_id: null,
+        traffic_light: "none",
         ...prev[itemId],
         ...patch,
       },
@@ -260,7 +234,7 @@ export function InspectionWorkspace({
         const file = files[i];
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("job_id", inspection.job_id);
+        formData.append("job_id", inspection.job_id ?? "");
         formData.append("inspection_id", inspection.id);
         formData.append("item_id", itemId);
         formData.append("file_type", file.type.startsWith("video") ? "video" : "photo");
@@ -331,23 +305,7 @@ export function InspectionWorkspace({
   const sections =
     inspection?.inspection_templates?.inspection_sections ?? [];
 
-  /* ── summary counts ── */
-  const summary = useMemo(() => {
-    let green = 0, amber = 0, red = 0, unset = 0;
-    for (const section of sections) {
-      for (const item of section.inspection_items ?? []) {
-        const v = responses[item.id]?.value;
-        if (isInformationalInputType(item.input_type)) continue;
-        const light = resultToTrafficLight(v || "", item.input_type);
-        if (!v) unset++;
-        else if (light === "green") green++;
-        else if (light === "amber") amber++;
-        else if (light === "red") red++;
-        else unset++;
-      }
-    }
-    return { green, amber, red, unset };
-  }, [responses, sections]);
+  const summary = inspection.summary;
 
   return (
     <div className="space-y-4">
@@ -401,7 +359,7 @@ export function InspectionWorkspace({
                   media_files: [],
                   response_id: null,
                 };
-                const light = resultToTrafficLight(value.value, item.input_type);
+                const light = (value.traffic_light ?? "none") as TrafficLight;
                 const style = LIGHT_STYLES[light];
                 const LightIcon = style.icon;
                 const mediaFiles: MediaFile[] = value.media_files ?? [];
@@ -493,24 +451,11 @@ export function InspectionWorkspace({
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {optionsForInputType(item.input_type).map(
-                                (opt) => (
+                              {(item.available_options ?? []).map(
+                                (opt: string) => (
                                   <SelectItem key={opt} value={opt}>
                                     <span className="flex items-center gap-1.5">
-                                      <span
-                                        className={cn(
-                                          "h-2 w-2 rounded-full",
-                                          resultToTrafficLight(opt, item.input_type) === "green"
-                                            ? "bg-emerald-500"
-                                            : resultToTrafficLight(opt, item.input_type) ===
-                                              "amber"
-                                            ? "bg-amber-500"
-                                            : resultToTrafficLight(opt, item.input_type) ===
-                                              "red"
-                                            ? "bg-rose-500"
-                                            : "bg-muted-foreground"
-                                        )}
-                                      />
+                                      <span className="h-2 w-2 rounded-full bg-muted-foreground" />
                                       {opt.charAt(0).toUpperCase() +
                                         opt.slice(1)}
                                     </span>
