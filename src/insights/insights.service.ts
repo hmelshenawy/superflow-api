@@ -57,6 +57,7 @@ export class InsightsService {
 
     const inspectionCompletionRate = totalInspections > 0 ? Math.round((submittedInspections / totalInspections) * 100) : 0;
     const approvalRate = totalDecisions > 0 ? Math.round((approvedDecisions / totalDecisions) * 100) : 0;
+    const notificationDeliveryRate = totalNotifications > 0 ? Math.round((sentNotifications / totalNotifications) * 100) : 0;
 
     // ── Batch 2: Aggregated time-series queries (parallel) ───
     const [jobsOverTimeRows, attendanceTrendRows, closedJobsAgg, todayAttendance] = await Promise.all([
@@ -243,8 +244,14 @@ export class InsightsService {
       approvalCounts: {
         approved: approvedDecisions,
         declined: declinedDecisions,
+        pending: Math.max(0, totalDecisions - approvedDecisions - declinedDecisions),
         total: totalDecisions,
       },
+      inspectionCounts: {
+        completed: submittedInspections,
+        inProgress: Math.max(0, totalInspections - submittedInspections),
+      },
+      notificationDeliveryRate,
       deferredByStatus: deferredByStatus.map((row: any) => ({
         status: row.status,
         count: row._count,

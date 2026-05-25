@@ -138,3 +138,20 @@ Replace with: Backend `line.is_recommended` after save. This optimistic flag rem
 Logic: Hardcoded concern status options in the quote group feedback form.
 Location: `superflow-web/src/components/estimates/estimate-builder.tsx:502-510`
 Replace with: `GET /jobs/concern-status-options`
+
+## Insights Screen Findings
+
+[Insights] Finding 1:
+Logic: Computes notification delivery rate from sent/total notification counts.
+Location: `superflow-web/src/app/(dashboard)/insights/page.tsx:249-251`
+Replace with: `data.notificationDeliveryRate`
+
+[Insights] Finding 2:
+Logic: Computes pending approval decisions from total minus approved minus declined.
+Location: `superflow-web/src/app/(dashboard)/insights/page.tsx:257`
+Replace with: `data.approvalCounts.pending`
+
+[Insights] Finding 3:
+Logic: Computes inspection completed and in-progress counts from completion rate and inspection total.
+Location: `superflow-web/src/app/(dashboard)/insights/page.tsx:262-263`
+Replace with: `data.inspectionCounts.completed` and `data.inspectionCounts.inProgress`

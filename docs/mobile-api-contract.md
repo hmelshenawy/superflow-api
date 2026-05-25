@@ -135,6 +135,19 @@ Returns valid concern status options for feedback forms:
 ### `PUT /api/estimates/job/:jobId/bulk`
 Backend recalculates `line_total` and `tax_amount` and returns the saved lines with the computed fields above.
 
+## Insights
+
+### `GET /api/insights/dashboard`
+Returns backend-computed dashboard metrics, including:
+
+```typescript
+{
+  "notificationDeliveryRate": 92,
+  "approvalCounts": { "approved": 10, "declined": 2, "pending": 3, "total": 15 },
+  "inspectionCounts": { "completed": 8, "inProgress": 4 }
+}
+```
+
 ## Concerns
 
 ### `POST /api/jobs/:id/concerns`
