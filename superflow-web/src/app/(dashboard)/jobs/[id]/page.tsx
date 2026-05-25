@@ -179,7 +179,7 @@ function formatDate(value?: string | null, withTime = false) {
 
 function estimateTotal(job: Job | null) {
   if (!job) return 0;
-  const meta = (job as any)?.meta;
+  const meta = job.meta;
   if (meta?.estimateTotal !== undefined) return meta.estimateTotal;
   return (job.estimate_lines ?? []).reduce(
     (sum, line) => sum + Number(line.line_total ?? 0),
@@ -231,7 +231,7 @@ export default function JobDetailPage() {
   /** Most logical next status in the forward flow */
   const nextFlowStatus = useMemo(() => {
     if (!job) return "";
-    const meta = (job as any)?.meta;
+    const meta = job.meta;
     if (meta?.nextFlowStatus) return meta.nextFlowStatus as JobStatus | "";
     // Fallback (removed after meta is verified)
     const TRANSITIONS: Record<string, string[]> = {
@@ -246,7 +246,7 @@ export default function JobDetailPage() {
       closed: [],
     };
     return (TRANSITIONS[job.status]?.[0] ?? "") as JobStatus | "";
-  }, [job?.status, job ? (job as any).meta?.nextFlowStatus : undefined]);
+  }, [job?.status, job?.meta?.nextFlowStatus]);
   const [users, setUsers] = useState<any[]>([]);
   const [workflowStages, setWorkflowStages] = useState<WorkflowStageConfig[]>([]);
   const [assigningAdvisor, setAssigningAdvisor] = useState(false);
@@ -256,7 +256,7 @@ export default function JobDetailPage() {
   const [savingCustomerInformed, setSavingCustomerInformed] = useState(false);
 
   /** True when the job is still in reception / advisor phase - workshop fields are irrelevant. */
-  const meta = job ? (job as any).meta : null;
+  const meta = job?.meta ?? null;
   const isWorkshopStageDisabled = job ? !(meta?.editableFields?.includes("workshop_stage") ?? !WORKSHOP_STAGE_DISABLED_STATUSES.includes(job.status)) : false;
   const isPartsStatusDisabled = job ? !(meta?.editableFields?.includes("parts_status") ?? !PARTS_STATUS_DISABLED_STATUSES.includes(job.status)) : false;
   const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);

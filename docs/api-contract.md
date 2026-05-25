@@ -31,7 +31,7 @@ Response now includes a top-level `meta` key:
     },
     "isWorkshopPhase": true,            // status in [in_progress, waiting_parts, quality_check, ready]
     "resolvedWorkshopStage": "work_in_progress",  // fallback-resolved stage
-    "resolvedWorkflowStageKey": "active",          // status-to-category mapping
+    "resolvedWorkflowStageKey": "in_progress",     // active workflow stage key from workshop config
     "validTransitions": ["waiting_parts", "quality_check", "ready", "closed"],
     "nextFlowStatus": "waiting_parts",  // first valid forward transition
     "availableActions": ["start_qc", "request_parts", "assign_technician", "add_concern"],
@@ -44,9 +44,9 @@ Response now includes a top-level `meta` key:
       "pending": 1                      // concerns without technician_finding
     },
     "partsSummary": {
-      "requested": 1,                   // parts requested
-      "arrived": 0,                     // parts arrived
-      "pending": 1                      // parts not yet arrived
+      "requested": 1,                   // job_parts reserved or used
+      "arrived": 0,                     // job_parts used
+      "pending": 1                      // job_parts still reserved
     }
   }
 }
@@ -63,7 +63,7 @@ Response now includes a top-level `meta` key:
 | `approve_estimate` | status = `estimate_sent` |
 | `start_work` | status = `approved` |
 | `request_parts` | status = `in_progress` + parts needed |
-| `resume_work` | status = `waiting_parts` + parts_status = `all_arrived` |
+| `resume_work` | status = `waiting_parts` + parts_status = `parts_ready` |
 | `start_qc` | status = `in_progress` |
 | `inform_customer` | status = `ready` + customer_informed = false |
 | `close_job` | status = `ready` |
@@ -99,6 +99,7 @@ Each item in the `items` array now includes a `meta` key:
     },
     "isWorkshopPhase": true,
     "resolvedWorkshopStage": "work_in_progress",
+    "resolvedWorkflowStageKey": "in_progress",
     "estimateTotal": 4500.00,
     "editableFields": ["workshop_stage", "parts_status"]
   }

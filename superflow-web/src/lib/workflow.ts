@@ -21,13 +21,13 @@ export function workflowColor(color?: string) {
 export function getJobWorkflowStage(job: Job, stages: WorkflowStageConfig[]) {
   if (!job) return null;
   // Prefer backend-computed workflow stage key
-  const meta = (job as any)?.meta;
+  const meta = job.meta;
   if (meta?.resolvedWorkflowStageKey) {
     const configured = stages.find((stage) => stage.key === meta.resolvedWorkflowStageKey && stage.isActive);
     if (configured) return configured;
   }
 
-  // Fallback: derive from status (kept for safety during transition)
+  // Fallback is kept for local optimistic rows before the refreshed API payload arrives.
   if (job.workflow_stage_key) {
     const configured = stages.find((stage) => stage.key === job.workflow_stage_key && stage.isActive);
     if (configured) return configured;

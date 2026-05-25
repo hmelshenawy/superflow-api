@@ -6,10 +6,14 @@ import { SaveResponseDto } from './dto/save-response.dto';
 import { SubmitChecklistDto } from './dto/submit-checklist.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { qcTrafficLight, isQcInformationalInputType, qcAvailableOptions } from '../common/utils/traffic-light';
+import { WorkflowService } from '../admin/workflow.service';
 
 @Injectable()
 export class QcChecklistsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private workflowService: WorkflowService,
+  ) {}
 
   async create(jobId: string, templateId: string, checkerId: string) {
     const existing = await this.prisma.tenant.qc_checklists.findUnique({ where: { job_id: jobId } });
@@ -18,10 +22,24 @@ export class QcChecklistsService {
     // Move job to quality_check if currently in_progress or waiting_parts
     const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'in_progress' || job?.status === 'waiting_parts') {
-      await this.prisma.tenant.jobs.update({
-        where: { id: jobId },
-        data: { status: 'quality_check' },
-      });
+      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('quality_check');
+      // Bug fix: QC-created transitions must keep workflow lane and history in sync.
+      await this.prisma.$transaction([
+        this.prisma.tenant.jobs.update({
+          where: { id: jobId },
+          data: { status: 'quality_check', workflow_stage_key: workflowStageKey, workshop_stage: 'quality_check' },
+        }),
+        this.prisma.tenant.job_status_history.create({
+          data: {
+            id: uuid(),
+            job_id: jobId,
+            from_status: job.status,
+            to_status: 'quality_check',
+            changed_by: checkerId,
+            reason: 'QC checklist started',
+          },
+        }),
+      ]);
     }
 
     return this.prisma.tenant.qc_checklists.create({
@@ -196,10 +214,31 @@ export class QcChecklistsService {
       const job = await this.prisma.tenant.jobs.findUnique({ where: { id: checklist.job_id } });
       if (job?.status === 'quality_check') {
         const newStatus = overallResult === 'pass' ? 'ready' : 'in_progress';
-        await this.prisma.tenant.jobs.update({
-          where: { id: checklist.job_id },
-          data: { status: newStatus },
-        });
+        const workflowStageKey = await this.defaultWorkflowStageKeyForStatus(newStatus);
+        const transitionData: any = {
+          status: newStatus,
+          workflow_stage_key: workflowStageKey,
+          workshop_stage: newStatus === 'ready' ? 'ready_handover' : 'waiting_technician',
+        };
+        if (newStatus === 'ready') transitionData.completed_at = new Date();
+        if (newStatus === 'in_progress') transitionData.completed_at = null;
+        // Bug fix: QC submit transitions must keep workflow lane, timestamps, and history in sync.
+        await this.prisma.$transaction([
+          this.prisma.tenant.jobs.update({
+            where: { id: checklist.job_id },
+            data: transitionData,
+          }),
+          this.prisma.tenant.job_status_history.create({
+            data: {
+              id: uuid(),
+              job_id: checklist.job_id,
+              from_status: 'quality_check',
+              to_status: newStatus,
+              changed_by: userId,
+              reason: `QC checklist ${overallResult}`,
+            },
+          }),
+        ]);
       }
     }
 
@@ -270,5 +309,13 @@ export class QcChecklistsService {
     }).catch(() => {});
 
     return updated;
+  }
+
+  private async defaultWorkflowStageKeyForStatus(status: string) {
+    const stages = await this.workflowService.getStages();
+    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
+    if (exact) return exact.key;
+    const category = status === 'ready' ? 'ready' : status === 'closed' ? 'closed' : 'active';
+    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 }

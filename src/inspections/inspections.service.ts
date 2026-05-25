@@ -6,10 +6,14 @@ import { CreateResponseDto } from './dto/create-response.dto';
 import { SubmitInspectionDto } from './dto/submit-inspection.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { inspectionTrafficLight, isInformationalInputType, inspectionAvailableOptions } from '../common/utils/traffic-light';
+import { WorkflowService } from '../admin/workflow.service';
 
 @Injectable()
 export class InspectionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private workflowService: WorkflowService,
+  ) {}
 
   async create(jobId: string, templateId: string, technicianId: string) {
     const existing = await this.prisma.tenant.inspections.findUnique({ where: { job_id: jobId } });
@@ -20,10 +24,24 @@ export class InspectionsService {
     // Move job from booked → checking when inspection is created.
     const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'booked') {
-      await this.prisma.tenant.jobs.update({
-        where: { id: jobId },
-        data: { status: 'checking' },
-      });
+      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('checking');
+      // Bug fix: keep inspection-created check-in aligned with the job state machine side effects.
+      await this.prisma.$transaction([
+        this.prisma.tenant.jobs.update({
+          where: { id: jobId },
+          data: { status: 'checking', workflow_stage_key: workflowStageKey, workshop_stage: null, arrived_at: job.arrived_at || new Date() },
+        }),
+        this.prisma.tenant.job_status_history.create({
+          data: {
+            id: uuid(),
+            job_id: jobId,
+            from_status: 'booked',
+            to_status: 'checking',
+            changed_by: technicianId,
+            reason: 'Inspection started',
+          },
+        }),
+      ]);
     }
 
     return this.prisma.tenant.inspections.create({
@@ -299,5 +317,12 @@ export class InspectionsService {
     }).catch(() => {});
 
     return updated;
+  }
+
+  private async defaultWorkflowStageKeyForStatus(status: string) {
+    const stages = await this.workflowService.getStages();
+    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
+    if (exact) return exact.key;
+    return stages.find((stage) => stage.isActive && stage.systemCategory === 'active')?.key ?? null;
   }
 }

@@ -232,7 +232,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
       const reasons = pr?.factors?.map((f) => f.description) ?? [];
       const idleHours = pr?.idleHours ?? 0;
       const hoursToPromise = pr?.hoursToPromise ?? null;
-      const estimateTotal = (job as any).meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0);
+      const estimateTotal = job.meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0);
       const nextAction: any = pr?.nextAction ?? { title: "Review job", reason: "", urgency: "low", owner: "advisor", actionType: "general_review", score: 0, signals: [] };
       return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal, nextAction, isOverdue: pr?.isOverdue ?? false };
     }).sort((a, b) => b.priorityScore - a.priorityScore);
@@ -412,7 +412,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
                 <div className="rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/15 p-3">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-rose-950 dark:text-rose-200"><PhoneCall className="h-4 w-4" /> Pending approvals</h3>
                   <div className="mt-3 space-y-2">
-                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.customer?.name || "Walk-in"}</span><span className="text-xs font-semibold text-rose-700 dark:text-rose-300">{((job as any).meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0)).toFixed(0)} AED</span></Link>))}
+                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.customer?.name || "Walk-in"}</span><span className="text-xs font-semibold text-rose-700 dark:text-rose-300">{(job.meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0)).toFixed(0)} AED</span></Link>))}
                     {jobs.filter((job) => job.status === "estimate_sent").length === 0 && <p className="text-xs text-rose-700 dark:text-rose-300">No approvals pending.</p>}
                   </div>
                 </div>
@@ -536,7 +536,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
                         {loading ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">Loading jobs...</div>)
                         : stageJobs.length === 0 ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">No jobs in this stage</div>)
                         : stageJobs.map((job) => {
-                          const estimateTotal = (job as any).meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0);
+                          const estimateTotal = job.meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0);
                           const overdue = !!priorityMap.get(job.id)?.isOverdue;
                           const priority = priorityByJobId.get(job.id);
                           const partsStatus = job.parts_status ?? "no_parts";

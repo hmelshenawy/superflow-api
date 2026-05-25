@@ -6,10 +6,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { runWithWorkshop } from '../prisma/workshop-context';
 import { DecideDto } from './dto/decide.dto';
 import { canTransition } from '../jobs/jobs.state-machine';
+import { WorkflowService } from '../admin/workflow.service';
 
 @Injectable()
 export class AuthorisationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private workflowService: WorkflowService,
+  ) {}
 
   private hashToken(raw: string) {
     return crypto.createHash('sha256').update(raw).digest('hex');
@@ -129,10 +133,11 @@ export class AuthorisationService {
     // Generating an approval link is also a business event: the workshop has
     // effectively sent the estimate to the customer, so the job moves forward.
     if (job.status !== 'estimate_sent' && canTransition(job.status as any, 'estimate_sent')) {
+      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('estimate_sent');
       await this.prisma.$transaction([
         this.prisma.tenant.jobs.update({
           where: { id: job.id },
-          data: { status: 'estimate_sent' as any },
+          data: { status: 'estimate_sent' as any, workflow_stage_key: workflowStageKey, workshop_stage: null },
         }),
         this.prisma.tenant.job_status_history.create({
           data: {
@@ -359,6 +364,18 @@ export class AuthorisationService {
     if (status === 'approved' || status === 'in_progress' || status === 'waiting_parts') return 'work_in_progress';
     if (status === 'quality_check' || status === 'ready' || status === 'closed') return 'final_report';
     return 'initial_findings';
+  }
+
+  private async defaultWorkflowStageKeyForStatus(status: string) {
+    const stages = await this.workflowService.getStages();
+    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
+    if (exact) return exact.key;
+    const category = status === 'booked' ? 'booked'
+      : status === 'ready' ? 'ready'
+      : status === 'closed' ? 'closed'
+      : status === 'no_show' ? 'cancelled'
+      : 'active';
+    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 
   private async getImmutableLineDecisions(jobId?: string | null) {
@@ -725,9 +742,10 @@ export class AuthorisationService {
       // The customer has now responded to the estimate, so the job can move to
       // approved when the workflow allows it.
       if (token.job_id && token.jobs?.status && token.jobs.status !== 'approved' && canTransition(token.jobs.status as any, 'approved')) {
+        const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
         await tx.jobs.update({
           where: { id: token.job_id },
-          data: { status: 'approved' as any },
+          data: { status: 'approved' as any, workflow_stage_key: workflowStageKey, workshop_stage: null },
         });
         await tx.job_status_history.create({
           data: {
