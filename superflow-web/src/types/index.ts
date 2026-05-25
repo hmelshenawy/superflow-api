@@ -593,6 +593,8 @@ export interface QcChecklistItem {
   help_text: string | null;
   sort_order: number | null;
   is_active: boolean | null;
+  is_informational: boolean;
+  available_options: string[];
 }
 
 export interface QcChecklist {
@@ -602,6 +604,7 @@ export interface QcChecklist {
   checker_id: string | null;
   status: QcChecklistStatus | null;
   overall_result: QcChecklistResult | null;
+  is_locked: boolean;
   started_at: string | null;
   submitted_at: string | null;
   created_at: string;
@@ -618,6 +621,7 @@ export interface QcChecklistResponse {
   value: string | null;
   notes: string | null;
   media_count: number | null;
+  traffic_light: "green" | "red" | null;
   recorded_at: string | null;
   qc_checklist_items?: QcChecklistItem;
   media_files?: any[];
