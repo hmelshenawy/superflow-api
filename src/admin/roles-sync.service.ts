@@ -129,7 +129,7 @@ export class RolesSyncService implements OnModuleInit {
     }
 
     // Create any DEFAULT_ROLES that don't exist in DB yet
-    const dbRoleNames = new Set(dbRoles.map((r: { name: string }) => r.name));
+    const dbRoleNames = new Set(dbRoles.map((r: { name: string | null }) => r.name));
     for (const [name, template] of Object.entries(DEFAULT_ROLES)) {
       if (dbRoleNames.has(name)) continue;
       await this.prisma.raw.roles.create({
