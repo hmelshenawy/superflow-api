@@ -30,3 +30,35 @@ Replace with: `item.available_actions.includes("can_close")`
 Logic: `GET /deferred` does not currently expose `available_actions`, and deferred rows are not job objects with `job.meta.availableActions`.
 Location: `src/deferred/deferred.service.ts:29`
 Replace with: Add backend-computed `available_actions` to deferred responses before migrating the screen.
+
+## Portal Screen Findings
+
+[Portal] Finding 1:
+Logic: Computes expiry by comparing `token.expires_at` to the current time.
+Location: `superflow-web/src/app/portal/[token]/page.tsx:245`
+Replace with: `data.token.is_expired`
+
+[Portal] Finding 2:
+Logic: Computes approved total by reducing estimate lines and selected/existing decisions.
+Location: `superflow-web/src/app/portal/[token]/page.tsx:246-253`
+Replace with: `data.approved_total`
+
+[Portal] Finding 3:
+Logic: Computes actionable lines by excluding lines with existing decisions.
+Location: `superflow-web/src/app/portal/[token]/page.tsx:174`
+Replace with: `line.is_actionable`
+
+[Portal] Finding 4:
+Logic: Computes whether the portal has actionable lines from grouped estimate contents.
+Location: `superflow-web/src/app/portal/[token]/page.tsx:175`
+Replace with: `data.has_actionable_lines`
+
+[Portal] Finding 5:
+Logic: Uses local grouped-line rules to decide whether the portal can be submitted.
+Location: `superflow-web/src/app/portal/[token]/page.tsx:176-186`, `superflow-web/src/app/portal/[token]/page.tsx:612`
+Replace with: `data.can_submit` for backend eligibility. Keep a local selected-decision completeness check so the UI does not send an empty/incomplete payload.
+
+[Portal] Finding 6:
+Logic: Computes fully locked groups from whether all lines are non-actionable.
+Location: `superflow-web/src/app/portal/[token]/page.tsx:433-434`
+Replace with: `group.is_locked`
