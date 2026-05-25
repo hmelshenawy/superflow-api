@@ -198,12 +198,12 @@ export default function DeferredWorkPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-1">
-                      {(item.status === "pending" || item.status === "reminded") && (
+                      {item.available_actions.includes("can_remind") && (
                         <Button size="sm" variant="outline" onClick={() => sendReminder(item.id)} disabled={remindingId === item.id || closingId === item.id}>
                           <Clock className="mr-1 h-3 w-3" /> {remindingId === item.id ? "Sending..." : "Remind"}
                         </Button>
                       )}
-                      {item.status !== "closed" && (
+                      {item.available_actions.includes("can_close") && (
                         <Button size="sm" variant="ghost" className="text-red-500" onClick={() => closeItem(item.id)} disabled={closingId === item.id || remindingId === item.id}>
                           {closingId === item.id ? "Closing..." : "Close"}
                         </Button>

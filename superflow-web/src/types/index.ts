@@ -485,6 +485,7 @@ export interface DeferredWork {
   last_reminded_at: string | null;
   booked_job_id: string | null;
   closed_reason: string | null;
+  available_actions: string[];
   created_at: string;
   customer?: Customer;
   vehicle?: Vehicle;
