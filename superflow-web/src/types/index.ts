@@ -214,6 +214,31 @@ export type JobStatus =
   | "closed"
   | "no_show";
 
+export interface JobMeta {
+  phaseIndex: number;
+  phaseLabel: string;
+  phaseTotal?: number;
+  isOverdue: boolean;
+  hoursToPromise?: number | null;
+  idleHours: number;
+  idleTier?: "none" | "6h" | "12h" | "24h";
+  priorityScore: number;
+  priorityLevel: string;
+  priorityFactors?: Array<{ key: string; weight: number; description: string; category: string }>;
+  nextAction: { title: string; reason?: string; urgency: string; owner: string; actionType: string; signals?: string[] } | null;
+  isWorkshopPhase: boolean;
+  resolvedWorkshopStage: WorkshopStage | null;
+  resolvedWorkflowStageKey: string | null;
+  validTransitions: JobStatus[];
+  nextFlowStatus: JobStatus | null;
+  availableActions?: string[];
+  editableFields: string[];
+  blockedReason?: string | null;
+  estimateTotal: number;
+  concernsSummary?: { total: number; inspected: number; pending: number };
+  partsSummary?: { requested: number; arrived: number; pending: number };
+}
+
 export interface Job {
   id: string;
   job_number: string | null;
@@ -252,6 +277,7 @@ export interface Job {
   job_status_history?: JobStatusHistory[];
   job_concerns?: JobConcern[];
   latest_portal_snapshot?: CustomerPortalSnapshot | null;
+  meta?: JobMeta;
 }
 
 

@@ -53,6 +53,7 @@ Returns paginated job list with lightweight `meta` per item.
       "nextAction": { "title", "urgency", "owner", "actionType" },
       "isWorkshopPhase": true,
       "resolvedWorkshopStage": "work_in_progress",
+      "resolvedWorkflowStageKey": "in_progress",
       "estimateTotal": 4500.00,
       "editableFields": ["workshop_stage", "parts_status"]
     }
@@ -80,7 +81,7 @@ Full job detail with complete `meta`.
     "priorityFactors": [{ "key", "weight", "description", "category" }],
     "nextAction": { "title", "reason", "urgency", "owner", "actionType", "signals" },
     "concernsSummary": { "total": 3, "inspected": 2, "pending": 1 },
-    "partsSummary": { "requested": 1, "arrived": 0, "pending": 1 },
+    "partsSummary": { "requested": 1, "arrived": 0, "pending": 1 }, // from job_parts: reserved/used, used, reserved
     "availableActions": ["start_qc", "assign_technician", "add_concern"],
     "blockedReason": null,
     "idleTier": "none"                   // "none" | "6h" | "12h" | "24h"

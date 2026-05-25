@@ -168,7 +168,7 @@ export class JobsService {
       }),
       this.prisma.tenant.jobs.count({ where }),
     ]);
-    const data = items.map((item: (typeof items)[number]) => {
+    const data = await Promise.all(items.map(async (item: (typeof items)[number]) => {
       const reshaped = {
         ...item,
         customer: item.customers,
@@ -176,8 +176,8 @@ export class JobsService {
         advisor: item.users_jobs_advisor_idTousers,
         technician: item.users_jobs_technician_idTousers,
       };
-      return { ...reshaped, meta: this.metaService.computeJobListMeta(reshaped) };
-    });
+      return { ...reshaped, meta: await this.metaService.computeJobListMeta(reshaped) };
+    }));
     return { items: data, total, page: pagination.page, limit: pagination.limit };
   }
 
@@ -194,6 +194,7 @@ export class JobsService {
         customer_portal_snapshots: { orderBy: { version: 'desc' }, take: 1 },
         inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
         qc_checklists: { select: { id: true, status: true } },
+        job_parts: true,
         media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
         job_status_history: {
@@ -213,7 +214,7 @@ export class JobsService {
       estimate_lines: (job.estimate_lines ?? []).map((l: any) => ({ ...l, quote_group: l.quote_groups, concern: l.job_concerns })),
       latest_portal_snapshot: job.customer_portal_snapshots?.[0] ?? null,
     };
-    return { ...reshaped, meta: this.metaService.computeJobMeta(reshaped) };
+    return { ...reshaped, meta: await this.metaService.computeJobMeta(reshaped) };
   }
 
 

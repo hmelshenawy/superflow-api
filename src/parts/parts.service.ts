@@ -103,7 +103,6 @@ export class PartsService {
     });
     if (!part) throw new NotFoundException('Part not found');
     return { ...part, is_low_stock: this.computeIsLowStock(part) };
-    return part;
   }
 
   async update(id: string, dto: UpdatePartDto) {

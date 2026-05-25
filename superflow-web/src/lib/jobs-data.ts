@@ -122,18 +122,19 @@ export function getPlate(job: Job) {
 
 export function isWorkshopPhaseJob(job: Job): boolean {
   if (!job) return false;
-  if ((job as any).meta?.isWorkshopPhase !== undefined) return (job as any).meta.isWorkshopPhase;
+  if (job.meta?.isWorkshopPhase !== undefined) return job.meta.isWorkshopPhase;
+  // Fallback is kept for local optimistic rows before the refreshed API payload arrives.
   return ["in_progress", "waiting_parts", "quality_check", "ready"].includes(job.status);
 }
 
 export function getWorkshopStage(job: Job): WorkshopStage | null {
   if (!job) return null;
-  const meta = (job as any).meta;
+  const meta = job.meta;
   if (meta?.resolvedWorkshopStage !== undefined) {
     const stage = meta.resolvedWorkshopStage as WorkshopStage | null;
     if (stage && WORKSHOP_STAGE_META[stage]) return stage;
   }
-  // Fallback for when meta is not available
+  // Fallback is kept for local optimistic rows before the refreshed API payload arrives.
   if (["booked", "checking", "estimate_sent", "approved", "closed"].includes(job.status)) return null;
   if (String(job.workshop_stage) === "advisor_review") return "customer_approval";
   if (job.workshop_stage && WORKSHOP_STAGE_META[job.workshop_stage]) return job.workshop_stage;
@@ -146,9 +147,9 @@ export function getWorkshopStage(job: Job): WorkshopStage | null {
 
 export function getValidTransitions(job: Job): JobStatus[] {
   if (!job) return [];
-  const meta = (job as any).meta;
+  const meta = job.meta;
   if (meta?.validTransitions?.length) return meta.validTransitions as JobStatus[];
-  // Fallback: derive from status (kept for safety during transition)
+  // Fallback is kept for local optimistic rows before the refreshed API payload arrives.
   const fallback: Record<JobStatus, JobStatus[]> = {
     booked: ["checking", "closed", "no_show"],
     checking: ["estimate_sent", "approved", "in_progress", "closed"],
