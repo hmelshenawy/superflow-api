@@ -324,3 +324,20 @@ Audit date: 2026-05-25
 **Root cause**: Concern status option metadata was not included in the backend migration.
 
 **Fix**: Added `GET /jobs/concern-status-options` and updated the estimate builder to fetch options from the backend.
+
+## Bug 19: Checklist card color does not update after selecting OK/Fail
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `superflow-web/src/components/qc-checklists/qc-checklist-workspace.tsx`, `superflow-web/src/components/inspections/inspection-workspace.tsx`
+**Found in**: Live QA on job `b525a449-2c78-48fb-9925-48be2b31cd42`
+
+**Description**: Checklist item cards stayed neutral after selecting OK/Pass/Fail until the checklist was saved and reloaded.
+
+**Expected behavior**: The selected value should immediately apply the same traffic-light color the backend will return after save.
+
+**Actual behavior**: The migration set unsaved selections to `traffic_light: "none"`, so row background and icon color did not change.
+
+**Root cause**: Backend `traffic_light` became authoritative, but the frontend still needs optimistic display state while editing unsaved responses.
+
+**Fix**: Checklist workspaces now apply backend-equivalent traffic-light color for unsaved selections, then sync back to backend `traffic_light` after save/reload.

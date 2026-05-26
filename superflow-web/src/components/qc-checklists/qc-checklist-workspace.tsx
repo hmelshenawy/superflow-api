@@ -22,6 +22,12 @@ import type { QcChecklist, QcChecklistItem, QcChecklistResponse } from "@/types"
 
 type TrafficLight = "green" | "red" | "none";
 
+function optimisticQcTrafficLight(value: string | null | undefined): TrafficLight {
+  if (["ok", "pass", "yes"].includes(String(value ?? "").toLowerCase())) return "green";
+  if (["fail", "no"].includes(String(value ?? "").toLowerCase())) return "red";
+  return "none";
+}
+
 const LIGHT_STYLES: Record<TrafficLight, { bg: string; border: string; dot: string; icon: typeof CheckCircle2 }> = {
   green: {
     bg: "bg-emerald-50 dark:bg-emerald-950/40",
@@ -297,7 +303,7 @@ export function QcChecklistWorkspace({
                                           ? `${light.bg} ${light.border} text-foreground shadow-sm`
                                           : "border-border bg-background text-muted-foreground hover:bg-muted"
                                       )}
-                                      onClick={() => setItem(item.id, { value: opt, traffic_light: "none" })}
+                                      onClick={() => setItem(item.id, { value: opt, traffic_light: optimisticQcTrafficLight(opt) })}
                                     >
                                       <OptIcon className="h-3.5 w-3.5" />
                                       {opt}

@@ -31,6 +31,20 @@ import type { Inspection } from "@/types";
 
 type TrafficLight = "green" | "amber" | "red" | "none";
 
+function optimisticInspectionTrafficLight(value: string | null | undefined, urgency: string | null | undefined, isInformational?: boolean): TrafficLight {
+  if (isInformational) return "none";
+  const normalizedUrgency = String(urgency ?? "").toLowerCase();
+  if (["none", "low"].includes(normalizedUrgency)) return "green";
+  if (normalizedUrgency === "medium") return "amber";
+  if (["high", "critical"].includes(normalizedUrgency)) return "red";
+
+  const normalizedValue = String(value ?? "").toLowerCase();
+  if (["ok", "pass", "yes"].includes(normalizedValue)) return "green";
+  if (normalizedValue === "warn") return "amber";
+  if (["fail", "no"].includes(normalizedValue)) return "red";
+  return "none";
+}
+
 const LIGHT_STYLES: Record<TrafficLight, { bg: string; border: string; dot: string; icon: typeof CheckCircle2 }> = {
   green: {
     bg: "bg-emerald-50 dark:bg-emerald-950/40",
@@ -411,7 +425,7 @@ export function InspectionWorkspace({
                               placeholder={item.input_type === "odometer" ? "Mileage" : undefined}
                               value={value.value}
                               onChange={(e) =>
-                                setItem(item.id, { value: e.target.value })
+                                setItem(item.id, { value: e.target.value, traffic_light: "none" })
                               }
                             />
                             {(item.unit || item.input_type === "odometer") && (
@@ -425,14 +439,17 @@ export function InspectionWorkspace({
                             className="h-8 w-40 rounded-lg border-border text-[13px]"
                             value={value.value}
                             onChange={(e) =>
-                              setItem(item.id, { value: e.target.value })
+                              setItem(item.id, { value: e.target.value, traffic_light: "none" })
                             }
                           />
                         ) : (
                           <Select
                             value={value.value || undefined}
                             onValueChange={(v) =>
-                              setItem(item.id, { value: v ?? "" })
+                              setItem(item.id, {
+                                value: v ?? "",
+                                traffic_light: optimisticInspectionTrafficLight(v, value.urgency, item.is_informational),
+                              })
                             }
                           >
                             <SelectTrigger className="h-8 w-28 rounded-lg border-border text-[13px]" aria-label="Result">
@@ -463,7 +480,10 @@ export function InspectionWorkspace({
                         <Select
                           value={value.urgency || "none"}
                           onValueChange={(v) =>
-                            setItem(item.id, { urgency: v ?? "none" })
+                            setItem(item.id, {
+                              urgency: v ?? "none",
+                              traffic_light: optimisticInspectionTrafficLight(value.value, v, item.is_informational),
+                            })
                           }
                         >
                           <SelectTrigger className="h-8 w-24 rounded-lg border-border text-[13px]" aria-label="Urgency">
