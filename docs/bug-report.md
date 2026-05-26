@@ -392,3 +392,20 @@ Audit date: 2026-05-25
 **Root cause**: Backend `approved_total` is the persisted approval total. The portal still needs display-only form math for the customer’s current unsaved selection.
 
 **Fix**: Portal approved total now starts from backend `approved_total` and adds actionable lines from groups currently selected as approved.
+
+## Bug 23: Job detail stage selector shows overall workflow stages
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `superflow-web/src/app/(dashboard)/jobs/[id]/page.tsx`
+**Found in**: User-reported regression after backend meta migration
+
+**Description**: The stage selector inside the job detail page loads `/admin/workflow` and edits `workflow_stage_key`, so it shows overall kanban stages instead of workshop phases.
+
+**Expected behavior**: The job detail sidebar should show workshop phases such as Diagnosis, Work In Progress, Final Test, Quality Check, and Ready Handover.
+
+**Actual behavior**: The selector shows overall workflow stages and updates the overall workflow lane.
+
+**Root cause**: During migration, the detail page kept the overall workflow-stage control in the workshop-field area instead of using backend `meta.resolvedWorkshopStage` and the job `workshop_stage` field.
+
+**Fix**: The detail page now renders workshop phase options from `WORKSHOP_STAGE_META`, uses `meta.resolvedWorkshopStage`/`job.workshop_stage` for the selected value, and patches `workshop_stage`.
