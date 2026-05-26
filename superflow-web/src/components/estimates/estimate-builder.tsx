@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import type { EstimateLine, EstimateLineType, JobConcern, QuoteGroup } from "@/types";
+import type { EstimateLine, EstimateLineType, JobAuthorisationDecision, JobConcern, QuoteGroup } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +31,7 @@ interface Props {
   onUpdate: () => void;
   inspection?: any | null;
   jobConcerns?: JobConcern[];
-  decisionByLine?: unknown;
+  decisionByLine?: Record<string, JobAuthorisationDecision>;
 }
 
 interface LabourRateOption {
@@ -99,7 +99,7 @@ function normalizeDefaultTaxRate(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
 
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [] }: Props) {
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [], decisionByLine = {} }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
@@ -296,7 +296,19 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       }
     }
 
-    const summaryForLines = (groupLines: EstimateLine[]) => groupLines[0]?.group_decision_summary ?? "pending";
+    const summaryForLines = (groupLines: EstimateLine[]) => {
+      const decisions = groupLines.map((line) => decisionByLine[line.id]?.decision).filter(Boolean);
+      const approved = decisions.filter((decision) => decision === "approved").length;
+      const declined = decisions.filter((decision) => decision === "declined").length;
+      const deferred = decisions.filter((decision) => decision === "deferred").length;
+      if (approved > 0 && declined > 0) return "mixed";
+      if (approved > 0) return "approved";
+      if (declined > 0) return "declined";
+      if (deferred > 0) return "deferred";
+      return groupLines.find((line) => line.group_decision_summary && line.group_decision_summary !== "pending")?.group_decision_summary
+        ?? groupLines[0]?.group_decision_summary
+        ?? "pending";
+    };
 
     const groups: ConcernGroup[] = jobConcerns.map((c) => {
       const groupLines = [
@@ -367,7 +379,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     });
 
     return groups;
-  }, [inspection, lines, jobConcerns]);
+  }, [inspection, lines, jobConcerns, decisionByLine]);
 
   const save = async () => {
     setSaving(true);

@@ -443,3 +443,20 @@ Audit date: 2026-05-25
 **Root cause**: `GET /estimates/defaults` returned zero when no tax setting was found, and bulk save treated an incoming zero tax rate as authoritative for new lines.
 
 **Fix**: Estimate defaults now distinguish missing/blank settings from explicit values and fall back to `5`; bulk save applies the workshop default tax rate to newly created lines when the incoming tax rate is missing or zero; the frontend also normalizes missing/invalid default tax values.
+
+## Bug 26: Estimate concern group badge stays pending after customer approval
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `superflow-web/src/components/estimates/estimate-builder.tsx`
+**Found in**: Live QA on job `b525a449-2c78-48fb-9925-48be2b31cd42`
+
+**Description**: The quotation builder showed a concern group as Pending even though the customer had approved its estimate line.
+
+**Expected behavior**: Concern groups should show Approved, Declined, Deferred, Mixed, or Pending based on saved customer decisions.
+
+**Actual behavior**: The job detail page passed undecorated `estimate_lines` from `GET /jobs/:id`, so `group_decision_summary` remained pending in the builder.
+
+**Root cause**: `EstimateBuilder` accepted `decisionByLine` from `/jobs/:id/auth-status` but did not use it when calculating concern group badges.
+
+**Fix**: The estimate builder now derives group decision badges from `decisionByLine` first, then falls back to backend `group_decision_summary` on estimate lines.
