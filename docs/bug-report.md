@@ -375,3 +375,20 @@ Audit date: 2026-05-25
 **Root cause**: Informational item handling did not distinguish value-bearing inspection fields from text/photo fields.
 
 **Fix**: Odometer and fuel-level items now map to green when filled and neutral when empty, both optimistically in the frontend and after backend reload.
+
+## Bug 22: Portal approved total ignores current unsaved approval selection
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `superflow-web/src/app/portal/[token]/page.tsx`
+**Found in**: Live QA on portal token `43bd900bb6697111d9c651c23cbb1c2e728bd2723eb9d427515e83a34659e21f`
+
+**Description**: The customer portal approved total stayed at zero after the customer selected Approve for an actionable estimate group.
+
+**Expected behavior**: The approved total shown in the sticky footer should immediately include currently selected approved lines, while still using backend `approved_total` for already-saved decisions.
+
+**Actual behavior**: The migration changed the display to `data.approved_total` only, so unsaved current selections were not included.
+
+**Root cause**: Backend `approved_total` is the persisted approval total. The portal still needs display-only form math for the customer’s current unsaved selection.
+
+**Fix**: Portal approved total now starts from backend `approved_total` and adds actionable lines from groups currently selected as approved.
