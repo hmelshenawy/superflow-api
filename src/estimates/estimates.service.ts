@@ -10,6 +10,22 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class EstimatesService {
   constructor(private prisma: PrismaService) {}
 
+  private parseSettingNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private async getDefaultTaxRate(): Promise<number> {
+    const settings = await this.prisma.tenant.settings.findMany({
+      where: { key: { in: ['default_tax_rate', 'tax_rate'] } },
+    });
+    const byKey = new Map(settings.map((row: (typeof settings)[number]) => [row.key, row.value]));
+    return this.parseSettingNumber(byKey.get('default_tax_rate'))
+      ?? this.parseSettingNumber(byKey.get('tax_rate'))
+      ?? 5;
+  }
+
   private decorateLines(lines: any[]) {
     const groupKeyFor = (line: any) => line.concern_id
       ? `concern:${line.concern_id}`
@@ -44,10 +60,11 @@ export class EstimatesService {
   async create(dto: CreateLineDto, userId: string) {
     // The backend always recomputes money fields so the client cannot drift from
     // server-side totals just by sending pre-calculated values.
+    const defaultTaxRate = await this.getDefaultTaxRate();
     const qty = dto.quantity ?? 1;
     const unitPrice = dto.unit_price ?? 0;
     const discount = dto.discount_pct ?? 0;
-    const taxRate = dto.tax_rate_pct ?? 0;
+    const taxRate = dto.tax_rate_pct ?? defaultTaxRate;
     const lineTotal = qty * unitPrice * (1 - discount / 100);
     const taxAmount = lineTotal * (taxRate / 100);
 
@@ -94,13 +111,16 @@ export class EstimatesService {
     ]);
 
     const byKey = new Map(settings.map((row: (typeof settings)[number]) => [row.key, row.value]));
+    const defaultTaxRate = this.parseSettingNumber(byKey.get('default_tax_rate'))
+      ?? this.parseSettingNumber(byKey.get('tax_rate'))
+      ?? 5;
     const standardRate =
       labourRates.find((rate: (typeof labourRates)[number]) => (rate.name || '').toLowerCase() === 'standard') ||
       labourRates[0] ||
       null;
 
     return {
-      default_tax_rate: Number(byKey.get('default_tax_rate') ?? byKey.get('tax_rate') ?? 0),
+      default_tax_rate: defaultTaxRate,
       currency: byKey.get('currency') ?? standardRate?.currency ?? 'AED',
       standard_labour_rate: Number(standardRate?.rate_per_hour ?? 0),
       standard_labour_rate_name: standardRate?.name ?? 'Standard',
@@ -165,9 +185,11 @@ export class EstimatesService {
     // auto-injected on create/update. The raw prisma.$transaction passes a
     // plain tx client that bypasses the tenant extension, causing null
     // constraint violations on workshop_id.
+    const defaultTaxRate = await this.getDefaultTaxRate();
     return this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const existing = await tx.estimate_lines.findMany({ where: { job_id: jobId } });
       const existingIds = new Set(existing.map((line: (typeof existing)[number]) => line.id));
+      const existingById = new Map<string, (typeof existing)[number]>(existing.map((line: (typeof existing)[number]) => [line.id, line]));
       const incomingIds = new Set(
         lines
           .map((line) => line.id)
@@ -190,7 +212,13 @@ export class EstimatesService {
         const qty = Number(l.quantity ?? 1);
         const unitPrice = Number(l.unit_price ?? 0);
         const discount = Number(l.discount_pct ?? 0);
-        const taxRate = Number(l.tax_rate_pct ?? 5);
+        const existingLine = l.id ? existingById.get(l.id) : null;
+        const incomingTaxRate = this.parseSettingNumber(l.tax_rate_pct);
+        // Bug fix: new quote lines should inherit workshop VAT even if the UI
+        // accidentally sends 0 while defaults are loading.
+        const taxRate = existingLine
+          ? (incomingTaxRate ?? Number(existingLine.tax_rate_pct ?? defaultTaxRate))
+          : (incomingTaxRate && incomingTaxRate > 0 ? incomingTaxRate : defaultTaxRate);
         const lineTotal = qty * unitPrice * (1 - discount / 100);
         const taxAmount = lineTotal * (taxRate / 100);
 

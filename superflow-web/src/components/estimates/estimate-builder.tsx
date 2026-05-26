@@ -94,6 +94,11 @@ function severityMeta(severity: ConcernSeverity) {
   return { tone: "border-border bg-muted", badge: "bg-muted text-foreground/80", icon: null, label: "General" };
 }
 
+function normalizeDefaultTaxRate(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
+}
+
 export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [] }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
@@ -137,7 +142,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
           api.get<ConcernStatusOption[]>("/jobs/concern-status-options"),
         ]);
         setDefaults({
-          default_tax_rate: Number(data.default_tax_rate ?? 5),
+          default_tax_rate: normalizeDefaultTaxRate(data.default_tax_rate),
           currency: data.currency || "AED",
           standard_labour_rate: Number(data.standard_labour_rate ?? 0),
           standard_labour_rate_name: data.standard_labour_rate_name || "Standard",
