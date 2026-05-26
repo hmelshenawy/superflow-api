@@ -190,6 +190,21 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
     return () => clearInterval(interval);
   }, [jobs.length, mounted, fetchJobs, jobs.some((j) => j.status === "estimate_sent")]);
 
+  // Refresh on window focus so status changes from portal/other tabs appear quickly
+  useEffect(() => {
+    if (!mounted) return;
+    const onFocus = () => fetchJobs();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [mounted, fetchJobs]);
+
+  // Poll every 30s for active jobs (catches portal approvals, etc.)
+  useEffect(() => {
+    if (!mounted) return;
+    const interval = setInterval(() => fetchJobs(), 30000);
+    return () => clearInterval(interval);
+  }, [mounted, fetchJobs]);
+
   useEffect(() => { setNowTs(Date.now()); }, []);
 
   useEffect(() => {

@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Save,
   Send,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -201,6 +202,17 @@ export function QcChecklistWorkspace({
     }
   };
 
+  const viewMedia = async (mediaId: string) => {
+    try {
+      const res = await api.get(`/media/${mediaId}/download`, { responseType: "blob" });
+      const blobUrl = URL.createObjectURL(res.data);
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err: any) {
+      toast.error(`Failed to open: ${getApiError(err).message}`);
+    }
+  };
+
   /* ── render ── */
   return (
     <div className="space-y-6">
@@ -340,7 +352,7 @@ export function QcChecklistWorkspace({
                           {resp.media_files?.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
                               {resp.media_files.map((mf: MediaFileRef) => (
-                                <div key={mf.id} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border">
+                                <div key={mf.id} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border cursor-pointer" onClick={() => viewMedia(mf.id)}>
                                   {mf.url ? (
                                     <img src={mf.url} alt={mf.original_filename || "media"} className="h-full w-full object-cover" />
                                   ) : (
@@ -348,14 +360,26 @@ export function QcChecklistWorkspace({
                                       <Camera className="h-4 w-4" />
                                     </div>
                                   )}
-                                  {!isLocked && (
+                                  {/* Hover overlay with view + delete */}
+                                  <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/40 opacity-0 group-hover:opacity-100 transition">
                                     <button
-                                      className="absolute right-0.5 top-0.5 rounded-full bg-rose-500 p-0.5 text-white opacity-0 transition group-hover:opacity-100"
-                                      onClick={() => removeMedia(mf.id, item.id)}
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); viewMedia(mf.id); }}
+                                      className="rounded-full bg-card p-1 text-foreground shadow hover:bg-muted"
+                                      aria-label="Open file"
+                                      title="Open file"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); removeMedia(mf.id, item.id); }}
+                                      className="rounded-full bg-card p-1 text-red-600 shadow hover:bg-red-50"
+                                      aria-label="Remove media"
                                     >
                                       <X className="h-3 w-3" />
                                     </button>
-                                  )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
