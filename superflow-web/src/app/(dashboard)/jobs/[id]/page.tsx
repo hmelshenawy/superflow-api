@@ -1405,22 +1405,6 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent>
               <ComponentErrorBoundary label="Quote builder">
-                <div className="mb-4 rounded-2xl border border-border bg-muted/40 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground">Portal release control</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Customer sees the last released snapshot, not every draft change.</p>
-                    </div>
-                    <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={releasePortalUpdate} disabled={releasingPortal}>
-                      <Send className="mr-2 h-4 w-4" /> {releasingPortal ? "Releasing..." : "Release update"}
-                    </Button>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-                    <div className="rounded-xl bg-card p-3"><span className="text-muted-foreground">Published version</span><p className="font-semibold">{job.latest_portal_snapshot?.version ? `v${job.latest_portal_snapshot.version}` : "Not released"}</p></div>
-                    <div className="rounded-xl bg-card p-3"><span className="text-muted-foreground">Stage</span><p className="font-semibold">{job.latest_portal_snapshot?.stage || "Draft"}</p></div>
-                    <div className="rounded-xl bg-card p-3"><span className="text-muted-foreground">Released</span><p className="font-semibold">{job.latest_portal_snapshot?.released_at ? formatDate(job.latest_portal_snapshot.released_at, true) : "—"}</p></div>
-                  </div>
-                </div>
                 <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
               </ComponentErrorBoundary>
             </CardContent>
