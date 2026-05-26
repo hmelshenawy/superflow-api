@@ -1341,74 +1341,98 @@ export default function JobDetailPage() {
         </TabsContent>
 
 
-        <TabsContent value="estimate" className="space-y-4">
-          <Card className="rounded-2xl border-border shadow-sm">
-            <CardHeader className="gap-4">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <TabsContent value="estimate" className="space-y-0">
+          {(() => {
+            const concerns = job.job_concerns ?? [];
+            const ca = authStatus?.concernApprovals ?? [];
+            const allLines = job.estimate_lines ?? [];
+            const approvedConcerns = concerns.filter((c) => {
+              const a = ca.find((x) => x.concernId === c.id);
+              return a?.advisorDecision === "approved" || a?.customerDecision === "approved";
+            });
+            const approvedLines = approvedConcerns.flatMap((c) => allLines.filter((l) => l.concern_id === c.id));
+            const approvedLabour = approvedLines.filter((l) => l.type === "labour").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedParts = approvedLines.filter((l) => l.type === "part").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedSublet = approvedLines.filter((l) => l.type === "sublet").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const avgTaxRate = approvedLines.length > 0 ? approvedLines.reduce((s, l) => s + Number(l.tax_rate_pct ?? 0), 0) / approvedLines.length : 0;
+            const approvedVat = (approvedLabour + approvedParts + approvedSublet) * (avgTaxRate / 100);
+            const approvedTotal = approvedLines.reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const hasApproved = approvedConcerns.length > 0;
+            return (
+          <Card className="overflow-hidden rounded-2xl border-border shadow-sm">
+            {/* Zone 1 — Header */}
+            <div className="border-b border-border px-5 py-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
-                  <CardTitle className="text-lg">Quote builder & authorization</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">Parts, labour, totals, and customer approval in one workspace.</p>
+                  <p className="text-[12px] text-muted-foreground">WO-{job.job_number ?? "..."} &middot; {job.vehicle ? [job.vehicle.year, job.vehicle.make, job.vehicle.model].filter(Boolean).join(" ") : "No vehicle"} &middot; {job.customer?.name || "Walk-in"}</p>
+                  <p className="mt-0.5 text-[15px] font-medium text-foreground">Quote builder &amp; approval</p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Quote total</p>
-                    <p className="mt-2 text-xl font-semibold text-foreground">AED {total.toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Live total from estimate lines</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Quote total</p>
+                    <p className="text-[22px] font-medium leading-tight text-foreground">AED {total.toFixed(2)}</p>
                   </div>
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Authorization</p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">{approvalStatusLabel}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {approvalCounts
-                        ? `${approvalCounts.approved} approved · ${approvalCounts.declined} rejected · ${approvalCounts.deferred} deferred · ${approvalCounts.pending} pending`
-                        : `${estimateCount} line item${estimateCount === 1 ? "" : "s"}`}
-                    </p>
-                  </div>
+                  {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="rounded-md">Add lines first</Button>}
                 </div>
               </div>
-
-              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted p-4 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Send the customer approval link once the quote and media evidence are ready.
-                </p>
-                <div className="w-full lg:w-auto">
-                  {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="w-full rounded-xl">Add estimate lines first</Button>}
-                </div>
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                {latestApprovalToken ? (
+                  <>
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${latestApprovalToken?.used_at ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200" : latestApprovalToken?.first_opened_at ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200" : "bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200"}`}>
+                      {latestApprovalToken?.used_at ? "Replied" : latestApprovalToken?.first_opened_at ? "Viewed" : "Sent"}
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">{formatDate(latestApprovalToken?.issued_at, true)}</span>
+                  </>
+                ) : (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">Draft</span>
+                )}
+                {approvalCounts ? (
+                  <>
+                    {approvalCounts.approved > 0 && <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">{approvalCounts.approved} approved</span>}
+                    {approvalCounts.declined > 0 && <span className="rounded-full bg-rose-100 dark:bg-rose-900/50 px-2 py-0.5 text-[11px] font-medium text-rose-800 dark:text-rose-200">{approvalCounts.declined} rejected</span>}
+                    {approvalCounts.deferred > 0 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">{approvalCounts.deferred} deferred</span>}
+                    {approvalCounts.pending > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">{approvalCounts.pending} pending</span>}
+                  </>
+                ) : null}
               </div>
+            </div>
 
-              {authStatus ? (
-                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
-                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground">Customer approval feedback</p>
-                      <p className="text-xs text-muted-foreground">
-                        {latestApprovalToken?.used_at
-                          ? `Customer submitted a response on ${formatDate(latestApprovalToken.used_at, true)}.`
-                          : latestApprovalToken?.first_opened_at
-                            ? `Customer viewed the quote on ${formatDate(latestApprovalToken.first_opened_at, true)} but has not submitted yet.`
-                            : latestApprovalToken?.issued_at
-                              ? `Approval link sent on ${formatDate(latestApprovalToken.issued_at, true)}.`
-                              : "No approval request has been sent yet."}
-                      </p>
-                    </div>
-                    {approvalCounts ? (
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-3 py-1 font-semibold text-emerald-800 dark:text-emerald-200">Approved: {approvalCounts.approved}</span>
-                        <span className="rounded-full bg-rose-100 dark:bg-rose-900/50 px-3 py-1 font-semibold text-rose-800 dark:text-rose-200">Rejected: {approvalCounts.declined}</span>
-                        <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-3 py-1 font-semibold text-amber-800 dark:text-amber-200">Deferred: {approvalCounts.deferred}</span>
-                        <span className="rounded-full bg-muted px-3 py-1 font-semibold text-foreground/80">Pending: {approvalCounts.pending}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-            </CardHeader>
-            <CardContent>
+            {/* Zone 2 — Concerns list */}
+            <div>
               <ComponentErrorBoundary label="Quote builder">
                 <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} concernApprovals={authStatus?.concernApprovals ?? []} />
               </ComponentErrorBoundary>
-            </CardContent>
+            </div>
+
+            {/* Zone 3 — Footer with totals */}
+            <div className="border-t border-border px-5 py-4">
+              <div className="grid grid-cols-2 gap-x-10">
+                <div>
+                  <p className="border-b border-border pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
+                  <div className="mt-2 flex justify-between text-[14px] font-medium text-foreground">
+                    <span>Grand total</span>
+                    <span>AED {total.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className={hasApproved ? "" : "opacity-40"}>
+                  <p className="border-b border-border pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Approved</p>
+                  {hasApproved ? (
+                    <div className="mt-2 space-y-0.5">
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Labour</span><span>AED {approvedLabour.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Parts</span><span>AED {approvedParts.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Sublet</span><span>AED {approvedSublet.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>VAT ({avgTaxRate.toFixed(1)}%)</span><span>AED {approvedVat.toFixed(2)}</span></div>
+                      <div className="mt-1.5 flex justify-between border-t border-border pt-2 text-[14px] font-medium text-foreground"><span>Total approved</span><span>AED {(approvedTotal + approvedVat).toFixed(2)}</span></div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[13px] text-muted-foreground">No concerns approved yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </Card>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="inspection" className="space-y-4" id="inspection">
