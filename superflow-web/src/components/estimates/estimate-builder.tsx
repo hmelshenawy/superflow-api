@@ -267,7 +267,9 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
 
   const concernGroups = useMemo(() => {
     const allResponses = inspection?.inspection_responses ?? inspection?.responses ?? [];
+    const concernResponseIds = new Set(jobConcerns.map((concern) => concern.inspection_response_id).filter(Boolean));
     const flaggedResponses = allResponses.filter((r: any) => {
+      if (concernResponseIds.has(r?.id)) return false;
       const s = trafficToSeverity(r?.traffic_light);
       return s === "amber" || s === "red";
     });
@@ -292,7 +294,10 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     const summaryForLines = (groupLines: EstimateLine[]) => groupLines[0]?.group_decision_summary ?? "pending";
 
     const groups: ConcernGroup[] = jobConcerns.map((c) => {
-      const groupLines = byConcernId.get(c.id) ?? [];
+      const groupLines = [
+        ...(byConcernId.get(c.id) ?? []),
+        ...(c.inspection_response_id ? byResponseId.get(c.inspection_response_id) ?? [] : []),
+      ];
       return ({
       key: c.id,
       title: c.title || c.code || "Customer concern",
@@ -334,7 +339,9 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     }
 
     const linkedResponseIds = new Set(flaggedResponses.map((r: any) => r.id));
-    const orphanLinkedLines = lines.filter((l) => l.inspection_response_id && !linkedResponseIds.has(l.inspection_response_id)).map((l) => ({ ...l, inspection_response_id: null }));
+    const orphanLinkedLines = lines
+      .filter((l) => l.inspection_response_id && !linkedResponseIds.has(l.inspection_response_id) && !concernResponseIds.has(l.inspection_response_id))
+      .map((l) => ({ ...l, inspection_response_id: null }));
 
     if (generalLines.length > 0 || orphanLinkedLines.length > 0 || groups.length === 0) {
       groups.push({

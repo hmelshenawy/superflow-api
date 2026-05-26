@@ -409,3 +409,20 @@ Audit date: 2026-05-25
 **Root cause**: During migration, the detail page kept the overall workflow-stage control in the workshop-field area instead of using backend `meta.resolvedWorkshopStage` and the job `workshop_stage` field.
 
 **Fix**: The detail page now renders workshop phase options from `WORKSHOP_STAGE_META`, uses `meta.resolvedWorkshopStage`/`job.workshop_stage` for the selected value, and patches `workshop_stage`.
+
+## Bug 24: Inspection findings appear as legacy quote groups instead of customer concerns
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `src/inspections/inspections.service.ts`, `superflow-web/src/components/estimates/estimate-builder.tsx`
+**Found in**: User-reported quotation builder regression
+
+**Description**: Amber/red initial inspection responses are shown in the quotation builder as old inspection-response groups instead of structured customer concern groups.
+
+**Expected behavior**: Actionable inspection findings should create customer concerns that carry the technician feedback, so the quotation builder groups work under those concerns.
+
+**Actual behavior**: Submitting an inspection did not create `job_concerns`, so the estimate builder fell back to legacy response groups.
+
+**Root cause**: The backend captured inspection responses and technician notes, but did not bridge actionable findings into the newer customer concern model.
+
+**Fix**: Inspection submit now creates or updates `job_concerns` for amber/red responses, copies technician notes into `technician_finding`, links media to the concern, and the estimate builder suppresses legacy response groups when a linked concern exists.

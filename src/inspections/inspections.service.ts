@@ -299,6 +299,8 @@ export class InspectionsService {
       },
     }).catch(() => {});
 
+    await this.syncActionableResponsesToConcerns(id, inspection.job_id);
+
     return updated;
   }
 
@@ -340,5 +342,63 @@ export class InspectionsService {
     const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
     if (exact) return exact.key;
     return stages.find((stage) => stage.isActive && stage.systemCategory === 'active')?.key ?? null;
+  }
+
+  private async syncActionableResponsesToConcerns(inspectionId: string, jobId: string) {
+    const responses = await this.prisma.tenant.inspection_responses.findMany({
+      where: { inspection_id: inspectionId },
+      include: { inspection_items: true },
+      orderBy: { recorded_at: 'asc' },
+    });
+    const actionable = responses.filter((response: any) => {
+      const traffic = inspectionTrafficLight(response.value, response.urgency, response.inspection_items?.input_type);
+      return traffic === 'amber' || traffic === 'red';
+    });
+    if (!actionable.length) return;
+
+    let nextSortOrder = await this.prisma.tenant.job_concerns.count({ where: { job_id: jobId } });
+    for (const response of actionable as any[]) {
+      const title = response.inspection_items?.label || 'Inspection finding';
+      const description = [
+        response.value ? `Result: ${response.value}` : null,
+        response.urgency && response.urgency !== 'none' ? `Urgency: ${response.urgency}` : null,
+      ].filter(Boolean).join(' • ') || null;
+      const technicianFinding = response.tech_notes || description || null;
+
+      const existing = await this.prisma.tenant.job_concerns.findFirst({
+        where: { job_id: jobId, inspection_response_id: response.id },
+      });
+
+      const concern = existing
+        ? await this.prisma.tenant.job_concerns.update({
+            where: { id: existing.id },
+            data: {
+              title,
+              description,
+              technician_finding: technicianFinding,
+              status: 'finding_ready',
+            },
+          })
+        : await this.prisma.tenant.job_concerns.create({
+            data: {
+              id: uuid(),
+              job_id: jobId,
+              code: `C${nextSortOrder + 1}`,
+              title,
+              description,
+              status: 'finding_ready',
+              technician_finding: technicianFinding,
+              sort_order: nextSortOrder++,
+              inspection_response_id: response.id,
+            },
+          });
+
+      // Bug fix: make media uploaded against the inspection finding visible on
+      // the structured customer concern used by estimates and the portal.
+      await this.prisma.tenant.media_files.updateMany({
+        where: { inspection_response_id: response.id, is_deleted: false },
+        data: { concern_id: concern.id },
+      }).catch(() => {});
+    }
   }
 }
