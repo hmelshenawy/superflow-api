@@ -470,7 +470,7 @@ export interface InspectionResponse {
   urgency: string | null;
   tech_notes: string | null;
   media_count: number | null;
-  traffic_light: "green" | "amber" | "red" | null;
+  traffic_light: "green" | "amber" | "red" | "none" | null;
   media_files?: MediaFile[];
   recorded_at: string | null;
 }
@@ -631,7 +631,7 @@ export interface QcChecklistResponse {
   value: string | null;
   notes: string | null;
   media_count: number | null;
-  traffic_light: "green" | "red" | null;
+  traffic_light: "green" | "red" | "none" | null;
   recorded_at: string | null;
   qc_checklist_items?: QcChecklistItem;
   media_files?: any[];

@@ -144,7 +144,7 @@ New computed fields:
   "available_options": ["pass", "fail"], // derived from input_type or parsed from options JSON
 
   // On each inspection response:
-  "traffic_light": "amber"              // "green" | "amber" | "red" — from urgency/value
+  "traffic_light": "amber"              // "green" | "amber" | "red" | "none" — odometer/fuel become green when filled
 }
 ```
 
@@ -162,7 +162,7 @@ New computed fields:
   "available_options": ["pass", "fail"], // derived from input_type
 
   // On each QC response:
-  "traffic_light": "red"                // "green" | "red" — from value (2-tier)
+  "traffic_light": "red"                // "green" | "red" | "none" — from value (2-tier)
 }
 ```
 

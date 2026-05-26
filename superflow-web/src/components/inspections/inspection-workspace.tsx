@@ -31,9 +31,16 @@ import type { Inspection } from "@/types";
 
 type TrafficLight = "green" | "amber" | "red" | "none";
 
-function optimisticInspectionTrafficLight(value: string | null | undefined, urgency: string | null | undefined, isInformational?: boolean): TrafficLight {
-  if (isInformational) return "none";
-  const normalizedValue = String(value ?? "").toLowerCase();
+function optimisticInspectionTrafficLight(
+  value: string | null | undefined,
+  urgency: string | null | undefined,
+  item?: { input_type?: string | null; is_informational?: boolean },
+): TrafficLight {
+  const normalizedValue = String(value ?? "").trim().toLowerCase();
+  if (item?.input_type === "odometer" || item?.input_type === "fuel_level") {
+    return normalizedValue ? "green" : "none";
+  }
+  if (item?.is_informational) return "none";
   if (["ok", "pass", "yes"].includes(normalizedValue)) return "green";
   if (normalizedValue === "warn") return "amber";
   if (["fail", "no"].includes(normalizedValue)) return "red";
@@ -425,7 +432,10 @@ export function InspectionWorkspace({
                               placeholder={item.input_type === "odometer" ? "Mileage" : undefined}
                               value={value.value}
                               onChange={(e) =>
-                                setItem(item.id, { value: e.target.value, traffic_light: "none" })
+                                setItem(item.id, {
+                                  value: e.target.value,
+                                  traffic_light: optimisticInspectionTrafficLight(e.target.value, value.urgency, item),
+                                })
                               }
                             />
                             {(item.unit || item.input_type === "odometer") && (
@@ -448,7 +458,7 @@ export function InspectionWorkspace({
                             onValueChange={(v) =>
                               setItem(item.id, {
                                 value: v ?? "",
-                                traffic_light: optimisticInspectionTrafficLight(v, value.urgency, item.is_informational),
+                                traffic_light: optimisticInspectionTrafficLight(v, value.urgency, item),
                               })
                             }
                           >
@@ -482,7 +492,7 @@ export function InspectionWorkspace({
                           onValueChange={(v) =>
                             setItem(item.id, {
                               urgency: v ?? "none",
-                              traffic_light: optimisticInspectionTrafficLight(value.value, v, item.is_informational),
+                              traffic_light: optimisticInspectionTrafficLight(value.value, v, item),
                             })
                           }
                         >

@@ -1,4 +1,4 @@
-export type TrafficLight = 'green' | 'amber' | 'red';
+export type TrafficLight = 'green' | 'amber' | 'red' | 'none';
 
 const INSPECTION_URGENCY_TO_TRAFFIC_LIGHT: Record<string, TrafficLight> = {
   low: 'green',
@@ -24,21 +24,29 @@ const QC_VALUE_TO_TRAFFIC_LIGHT: Record<string, TrafficLight> = {
   no: 'red',
 };
 
-export function inspectionTrafficLight(value: string | null, urgency?: string | null): TrafficLight {
-  if (value && INSPECTION_VALUE_TO_TRAFFIC_LIGHT[value]) {
-    return INSPECTION_VALUE_TO_TRAFFIC_LIGHT[value];
+export function inspectionTrafficLight(value: string | null, urgency?: string | null, inputType?: string | null): TrafficLight {
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  if ((inputType === 'odometer' || inputType === 'fuel_level') && normalizedValue) {
+    return 'green';
+  }
+  if (inputType && isInformationalInputType(inputType)) {
+    return 'none';
+  }
+  if (normalizedValue && INSPECTION_VALUE_TO_TRAFFIC_LIGHT[normalizedValue]) {
+    return INSPECTION_VALUE_TO_TRAFFIC_LIGHT[normalizedValue];
   }
   if (urgency && INSPECTION_URGENCY_TO_TRAFFIC_LIGHT[urgency]) {
     return INSPECTION_URGENCY_TO_TRAFFIC_LIGHT[urgency];
   }
-  return 'green';
+  return normalizedValue ? 'green' : 'none';
 }
 
 export function qcTrafficLight(value: string | null): TrafficLight {
-  if (value && QC_VALUE_TO_TRAFFIC_LIGHT[value]) {
-    return QC_VALUE_TO_TRAFFIC_LIGHT[value];
+  const normalizedValue = String(value ?? '').trim().toLowerCase();
+  if (normalizedValue && QC_VALUE_TO_TRAFFIC_LIGHT[normalizedValue]) {
+    return QC_VALUE_TO_TRAFFIC_LIGHT[normalizedValue];
   }
-  return 'green';
+  return normalizedValue ? 'green' : 'none';
 }
 
 const INFORMATIONAL_INPUT_TYPES = new Set(['photo', 'odometer', 'fuel_level', 'text']);

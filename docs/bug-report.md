@@ -358,3 +358,20 @@ Audit date: 2026-05-25
 **Root cause**: Traffic-light precedence was wrong. Neutral urgency was allowed to override the actual inspection result.
 
 **Fix**: Inspection traffic-light logic now checks the selected result first, and only uses urgency when no result mapping exists.
+
+## Bug 21: Mileage and fuel level do not turn green when filled
+
+**Status**: Fixed
+**Severity**: Low
+**Location**: `superflow-web/src/components/inspections/inspection-workspace.tsx`, `src/common/utils/traffic-light.ts`
+**Found in**: Live QA checklist color pass
+
+**Description**: Odometer/mileage and fuel-level inspection items stayed neutral after entering a value.
+
+**Expected behavior**: Mileage and fuel level should show green when a value is present.
+
+**Actual behavior**: They were treated as informational items and always mapped to neutral in the edit UI.
+
+**Root cause**: Informational item handling did not distinguish value-bearing inspection fields from text/photo fields.
+
+**Fix**: Odometer and fuel-level items now map to green when filled and neutral when empty, both optimistically in the frontend and after backend reload.
