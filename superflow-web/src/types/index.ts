@@ -292,6 +292,8 @@ export interface JobConcern {
   work_note: string | null;
   qc_note: string | null;
   customer_decision: string | null;
+  advisor_decision: string | null;
+  advisor_decision_note: string | null;
   sort_order: number | null;
   inspection_response_id: string | null;
   created_at: string | null;
@@ -436,7 +438,24 @@ export interface JobAuthorisationStatus {
   } | null;
   decisions: JobAuthorisationDecision[];
   decisionByLine: Record<string, JobAuthorisationDecision>;
+  concernApprovals: ConcernApprovalStatus[];
 }
+
+export interface ConcernApprovalStatus {
+  concernId: string;
+  advisorDecision: string | null;
+  advisorDecisionNote: string | null;
+  customerDecision: "approved" | "declined" | "deferred" | "mixed" | null;
+  isLocked: boolean;
+}
+
+export const WORKFLOW_STATUS_LABELS: Record<string, string> = {
+  reviewing: "Under inspection",
+  finding_ready: "Diagnosis ready",
+  priced: "Pending approval",
+  in_progress: "In progress",
+  qc_complete: "Completed",
+};
 
 // ─── Inspections ────────────────────────────────────────
 export type InspectionStatus =

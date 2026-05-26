@@ -5,7 +5,6 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { runWithWorkshop } from '../prisma/workshop-context';
 import { DecideDto } from './dto/decide.dto';
-import { canTransition } from '../jobs/jobs.state-machine';
 import { WorkflowService } from '../admin/workflow.service';
 
 @Injectable()
@@ -130,27 +129,18 @@ export class AuthorisationService {
     const baseUrl = process.env.CUSTOMER_PORTAL_URL || 'http://127.0.0.1:3002';
     const portalUrl = `${baseUrl.replace(/\/$/, '')}/portal/${raw}`;
 
-    // Generating an approval link is also a business event: the workshop has
-    // effectively sent the estimate to the customer, so the job moves forward.
-    if (job.status !== 'estimate_sent' && canTransition(job.status as any, 'estimate_sent')) {
-      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('estimate_sent');
-      await this.prisma.$transaction([
-        this.prisma.tenant.jobs.update({
-          where: { id: job.id },
-          data: { status: 'estimate_sent' as any, workflow_stage_key: workflowStageKey, workshop_stage: null },
-        }),
-        this.prisma.tenant.job_status_history.create({
-          data: {
-            id: uuid(),
-            job_id: job.id,
-            from_status: job.status,
-            to_status: 'estimate_sent',
-            changed_by: null,
-            reason: 'Approval link generated',
-          },
-        }),
-      ]).catch(() => {});
+    // Sending a new approval request always moves the job back to estimate_sent
+    // and releases a portal snapshot so the customer sees the latest data.
+    const shouldMoveToEstimateSent =
+      job.status !== 'estimate_sent' &&
+      job.status !== 'closed' &&
+      job.status !== 'no_show';
+    if (shouldMoveToEstimateSent) {
+      await this.moveJobToEstimateSent(job.id, job.status);
     }
+
+    // Release a portal snapshot so the customer sees the latest estimate data.
+    await this.releasePortalSnapshot(job.id, raw);
 
     const customerRecipient = sentTo || (channel === 'email' ? job.customers?.email : job.customers?.phone) || job.customers?.email || job.customers?.phone || 'customer';
     const customerMessage = [
@@ -258,6 +248,7 @@ export class AuthorisationService {
       where: { id: jobId },
       include: {
         estimate_lines: true,
+        job_concerns: true,
         approval_tokens: {
           orderBy: { issued_at: 'desc' },
           include: { authorisation_decisions: true },
@@ -313,10 +304,42 @@ export class AuthorisationService {
       !token.is_revoked && (!token.expires_at || new Date(token.expires_at) > new Date()) && !token.used_at,
     );
 
+    // Derive per-concern approval status from advisor decision on the concern
+    // and customer decisions on the concern's estimate lines.
+    const concernApprovals = (job.job_concerns ?? []).map((concern: any) => {
+      const concernLineIds = (job.estimate_lines ?? [])
+        .filter((l: any) => l.concern_id === concern.id)
+        .map((l: any) => l.id);
+      const lineDecisions = concernLineIds
+        .map((id: string) => decisionByLine[id])
+        .filter(Boolean);
+      const hasApproved = lineDecisions.some((d: any) => d.decision === 'approved');
+      const hasDeclined = lineDecisions.some((d: any) => d.decision === 'declined');
+      const hasDeferred = lineDecisions.some((d: any) => d.decision === 'deferred');
+      const isLocked = lineDecisions.length > 0;
+
+      let customerDecision: string | null = null;
+      if (isLocked) {
+        if (hasApproved && hasDeclined) customerDecision = 'mixed';
+        else if (hasApproved) customerDecision = 'approved';
+        else if (hasDeclined) customerDecision = 'declined';
+        else if (hasDeferred) customerDecision = 'deferred';
+      }
+
+      return {
+        concernId: concern.id,
+        advisorDecision: concern.advisor_decision ?? null,
+        advisorDecisionNote: concern.advisor_decision_note ?? null,
+        customerDecision,
+        isLocked,
+      };
+    });
+
     return {
       jobId,
       counts,
       hasActiveToken,
+      concernApprovals,
       latestSnapshot: job.customer_portal_snapshots?.[0] ?? null,
       latestToken: latestToken
         ? {
@@ -364,6 +387,115 @@ export class AuthorisationService {
     if (status === 'approved' || status === 'in_progress' || status === 'waiting_parts') return 'work_in_progress';
     if (status === 'quality_check' || status === 'ready' || status === 'closed') return 'final_report';
     return 'initial_findings';
+  }
+
+  async resetConcernApproval(jobId: string, concernId: string, userId: string, reason: string) {
+    const concern = await this.prisma.tenant.job_concerns.findFirst({
+      where: { id: concernId, job_id: jobId },
+    });
+    if (!concern) throw new NotFoundException('Concern not found');
+
+    // Find all estimate lines for this concern
+    const lines = await this.prisma.tenant.estimate_lines.findMany({
+      where: { concern_id: concernId },
+      select: { id: true },
+    });
+    const lineIds = lines.map((l: { id: string }) => l.id);
+
+    // Delete all authorisation decisions for those lines
+    const deleteResult = await this.prisma.tenant.authorisation_decisions.deleteMany({
+      where: { estimate_line_id: { in: lineIds } },
+    });
+
+    // Reset advisor decision on the concern
+    await this.prisma.tenant.job_concerns.update({
+      where: { id: concernId },
+      data: { advisor_decision: null, advisor_decision_note: null },
+    });
+
+    // Audit trail
+    await this.prisma.tenant.approval_reset_audit.create({
+      data: {
+        id: uuid(),
+        concern_id: concernId,
+        job_id: jobId,
+        reset_by: userId,
+        reason,
+        lines_cleared: deleteResult.count,
+      },
+    });
+
+    return { concernId, linesCleared: deleteResult.count };
+  }
+
+  private async moveJobToApproved(
+    tx: Prisma.TransactionClient,
+    jobId: string,
+    currentStatus: string,
+  ) {
+    const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
+    const shouldRecordHistory = currentStatus !== 'approved';
+    await tx.jobs.update({
+      where: { id: jobId },
+      data: {
+        status: 'approved',
+        workflow_stage_key: workflowStageKey,
+        workshop_stage: null,
+        ...(shouldRecordHistory ? {} : {}),
+      },
+    });
+    if (shouldRecordHistory) {
+      await tx.job_status_history.create({
+        data: {
+          id: uuid(),
+          job_id: jobId,
+          from_status: currentStatus,
+          to_status: 'approved',
+          changed_by: null,
+          reason: 'Customer submitted approval response from portal',
+        },
+      });
+    }
+  }
+
+  private async moveJobToEstimateSent(jobId: string, currentStatus: string) {
+    const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('estimate_sent');
+    await this.prisma.tenant.jobs.update({
+      where: { id: jobId },
+      data: { status: 'estimate_sent', workflow_stage_key: workflowStageKey, workshop_stage: null },
+    });
+    await this.prisma.tenant.job_status_history.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        from_status: currentStatus,
+        to_status: 'estimate_sent',
+        changed_by: null,
+        reason: 'Approval link generated',
+      },
+    });
+  }
+
+  private async releasePortalSnapshot(jobId: string, rawToken: string) {
+    const payload = await this.loadPortal(rawToken, false);
+    const latest = await this.prisma.tenant.customer_portal_snapshots.findFirst({
+      where: { job_id: jobId },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    }).catch(() => null);
+    const version = (latest?.version ?? 0) + 1;
+    const stage = (payload as any).stage || this.portalStageForStatus('estimate_sent');
+    await this.prisma.tenant.customer_portal_snapshots.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        version,
+        stage,
+        payload_json: JSON.stringify(payload),
+        release_note: null,
+        released_by: null,
+      },
+    });
   }
 
   private async defaultWorkflowStageKeyForStatus(status: string) {
@@ -739,39 +871,12 @@ export class AuthorisationService {
         data: { used_at: new Date(), ip_address: ip, user_agent: userAgent || null },
       });
 
-      // Bug fix: repeat customer approvals can arrive after work has already
-      // started. That is a workflow backtrack/interruption, so it must not be
-      // blocked by the normal forward state-machine transition guard.
+      // Both first and repeat customer approvals move the job to "approved" with
+      // workshop_stage null, using a single shared function.
       const jobId = token.job_id;
       const currentStatus = token.jobs?.status;
-      const shouldReturnToApproval =
-        jobId &&
-        currentStatus &&
-        currentStatus !== 'approved' &&
-        currentStatus !== 'closed' &&
-        currentStatus !== 'no_show';
-      if (shouldReturnToApproval) {
-        const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
-        await tx.jobs.update({
-          where: { id: jobId },
-          data: { status: 'approved' as any, workflow_stage_key: workflowStageKey, workshop_stage: null },
-        });
-        await tx.job_status_history.create({
-          data: {
-            id: uuid(),
-            job_id: jobId,
-            from_status: currentStatus,
-            to_status: 'approved',
-            changed_by: null,
-            reason: 'Customer submitted approval response from portal',
-          },
-        });
-      } else if (jobId && currentStatus === 'approved') {
-        const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
-        await tx.jobs.update({
-          where: { id: jobId },
-          data: { workflow_stage_key: workflowStageKey, workshop_stage: null },
-        });
+      if (jobId && currentStatus && currentStatus !== 'closed' && currentStatus !== 'no_show') {
+        await this.moveJobToApproved(tx, jobId, currentStatus);
       }
 
       return rows;

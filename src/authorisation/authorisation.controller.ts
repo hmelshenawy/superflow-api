@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthorisationService } from './authorisation.service';
 import { DecideDto } from './dto/decide.dto';
 import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
+import { ResetApprovalDto } from './dto/reset-approval.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, AUTH_REQUEST, AUTH_STATUS } from '../common/permissions';
@@ -41,6 +42,14 @@ export class AuthorisationController {
   @ApiOperation({ summary: 'Publish the current customer portal snapshot for a job' })
   releasePortal(@Param('id') jobId: string, @Body() body: { note?: string }, @CurrentUser('sub') userId: string) {
     return this.service.releasePortalUpdate(jobId, userId, body?.note);
+  }
+
+  @Post(':id/concerns/:concernId/reset-approval')
+  @RequirePlanFeature('customer_approval')
+  @RequirePermission(AUTH_REQUEST)
+  @ApiOperation({ summary: 'Reset customer approval decisions for a concern and allow resend' })
+  resetApproval(@Param('id') jobId: string, @Param('concernId') concernId: string, @Body() dto: ResetApprovalDto, @CurrentUser('sub') userId: string) {
+    return this.service.resetConcernApproval(jobId, concernId, userId, dto.reason);
   }
 }
 
