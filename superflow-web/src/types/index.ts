@@ -276,6 +276,7 @@ export interface Job {
   media_files?: MediaFile[];
   job_status_history?: JobStatusHistory[];
   job_concerns?: JobConcern[];
+  job_parts?: JobPart[];
   latest_portal_snapshot?: CustomerPortalSnapshot | null;
   meta?: JobMeta;
 }
@@ -805,8 +806,14 @@ export type JobPartStatus = 'reserved' | 'used' | 'returned' | 'cancelled';
 export interface JobPart {
   id: string;
   job_id: string;
-  part_id: string;
-  warehouse_id: string;
+  part_id: string | null;
+  partId?: string | null;
+  part_name?: string | null;
+  partName?: string | null;
+  part_number?: string | null;
+  partNumber?: string | null;
+  source?: 'catalog' | 'adhoc';
+  warehouse_id: string | null;
   quantity: number;
   unit_cost: number | null;
   unit_price: number | null;

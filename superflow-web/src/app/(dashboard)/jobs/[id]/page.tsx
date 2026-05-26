@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getValidTransitions, getPriorityTone, getActionUrgencyClass } from "@/lib/jobs-data";
-import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity, User as UserType } from "@/types";
+import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity, User as UserType, Part, Warehouse, JobPart } from "@/types";
 
 // ─── Priority API result shape (mirrors backend) ──────────
 interface PriorityFactor { key: string; weight: number; description: string; category: string; }
@@ -282,6 +282,19 @@ export default function JobDetailPage() {
   const [draftCustomerEmail, setDraftCustomerEmail] = useState("");
   const [draftCustomerPhone, setDraftCustomerPhone] = useState("");
   const [savingCustomerContact, setSavingCustomerContact] = useState(false);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [partEntryMode, setPartEntryMode] = useState<"catalog" | "adhoc">("catalog");
+  const [partSearch, setPartSearch] = useState("");
+  const [partOptions, setPartOptions] = useState<Part[]>([]);
+  const [selectedPartId, setSelectedPartId] = useState("");
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [partQuantity, setPartQuantity] = useState("1");
+  const [partUnitCost, setPartUnitCost] = useState("");
+  const [partUnitPrice, setPartUnitPrice] = useState("");
+  const [adhocPartName, setAdhocPartName] = useState("");
+  const [adhocPartNumber, setAdhocPartNumber] = useState("");
+  const [savingJobPart, setSavingJobPart] = useState(false);
+  const [actingJobPartId, setActingJobPartId] = useState<string | null>(null);
 
   const saveConcern = async () => {
     if (!job) return;
@@ -475,6 +488,118 @@ export default function JobDetailPage() {
     }
   };
 
+  const loadWarehouses = async () => {
+    try {
+      const { data } = await api.get<Warehouse[]>("/warehouses");
+      setWarehouses(Array.isArray(data) ? data : []);
+    } catch {
+      setWarehouses([]);
+    }
+  };
+
+  const searchCatalogParts = async (query: string) => {
+    setPartSearch(query);
+    setSelectedPartId("");
+    if (query.trim().length < 2) {
+      setPartOptions([]);
+      return;
+    }
+    try {
+      const { data } = await api.get<Part[]>("/parts/search", { params: { q: query.trim() } });
+      setPartOptions(data ?? []);
+    } catch {
+      setPartOptions([]);
+    }
+  };
+
+  const resetJobPartForm = () => {
+    setPartSearch("");
+    setPartOptions([]);
+    setSelectedPartId("");
+    setSelectedWarehouseId("");
+    setPartQuantity("1");
+    setPartUnitCost("");
+    setPartUnitPrice("");
+    setAdhocPartName("");
+    setAdhocPartNumber("");
+  };
+
+  const reserveJobPart = async () => {
+    if (!job) return;
+    const quantity = Number(partQuantity);
+    const unitCost = partUnitCost.trim() ? Number(partUnitCost) : undefined;
+    const unitPrice = partUnitPrice.trim() ? Number(partUnitPrice) : undefined;
+
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      toast.error("Quantity must be at least 1");
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      job_id: job.id,
+      quantity,
+    };
+    if (unitCost !== undefined) payload.unit_cost = unitCost;
+
+    if (partEntryMode === "catalog") {
+      if (!selectedPartId) {
+        toast.error("Select a catalog part");
+        return;
+      }
+      if (!selectedWarehouseId) {
+        toast.error("Select a warehouse");
+        return;
+      }
+      payload.partId = selectedPartId;
+      payload.warehouse_id = selectedWarehouseId;
+      if (unitPrice !== undefined) payload.unitPrice = unitPrice;
+    } else {
+      if (!adhocPartName.trim()) {
+        toast.error("Part name is required");
+        return;
+      }
+      if (unitPrice === undefined || !Number.isFinite(unitPrice)) {
+        toast.error("Unit price is required for ad-hoc parts");
+        return;
+      }
+      payload.partName = adhocPartName.trim();
+      if (adhocPartNumber.trim()) payload.partNumber = adhocPartNumber.trim();
+      if (selectedWarehouseId) payload.warehouse_id = selectedWarehouseId;
+      payload.unitPrice = unitPrice;
+    }
+
+    setSavingJobPart(true);
+    try {
+      await api.post("/job-parts/reserve", payload);
+      resetJobPartForm();
+      await refreshJob();
+      toast.success(partEntryMode === "catalog" ? "Catalog part reserved" : "Ad-hoc part added");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to add part");
+    } finally {
+      setSavingJobPart(false);
+    }
+  };
+
+  const updateJobPartStatus = async (jobPart: JobPart, action: "consume" | "return" | "cancel") => {
+    setActingJobPartId(jobPart.id);
+    try {
+      if (action === "consume") {
+        await api.post("/job-parts/consume", { job_part_id: jobPart.id });
+      } else if (action === "return") {
+        await api.post("/job-parts/return", { job_part_id: jobPart.id });
+      } else {
+        await api.post(`/job-parts/${jobPart.id}/cancel`);
+      }
+      await refreshJob();
+      toast.success(action === "consume" ? "Part marked used" : action === "return" ? "Part returned" : "Part cancelled");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to update part");
+    } finally {
+      setActingJobPartId(null);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -486,6 +611,7 @@ export default function JobDetailPage() {
       }
     })();
     loadUsers();
+    loadWarehouses();
   }, [id]);
 
   useEffect(() => {
@@ -618,6 +744,7 @@ export default function JobDetailPage() {
   const plate = job.vehicle?.plate || "No plate";
   const mediaCount = job.media_files?.length ?? 0;
   const estimateCount = job.estimate_lines?.length ?? 0;
+  const jobParts = job.job_parts ?? [];
   const inspectionState = inspectionDetail?.status || job.inspection?.status || "not started";
   const inspectionLocked = ["submitted", "reviewed", "approved"].includes(inspectionState);
   const approvalCounts = authStatus?.counts;
@@ -957,6 +1084,9 @@ export default function JobDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="estimate" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <Wrench className="mr-2 h-4 w-4" /> Quote & authorization
+          </TabsTrigger>
+          <TabsTrigger value="parts" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <Wrench className="mr-2 h-4 w-4" /> Parts
           </TabsTrigger>
           <TabsTrigger value="inspection" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ClipboardList className="mr-2 h-4 w-4" /> Inspection
@@ -1336,6 +1466,146 @@ export default function JobDetailPage() {
                   No previous service history found for this vehicle yet.
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="parts" className="space-y-4">
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle className="text-lg">Job parts</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">Add catalog stock or free-text ad-hoc parts to this job card.</p>
+              </div>
+              <div className="flex rounded-xl border border-border bg-muted p-1">
+                <Button type="button" size="sm" variant={partEntryMode === "catalog" ? "default" : "ghost"} className="h-8 rounded-lg" onClick={() => setPartEntryMode("catalog")}>Catalog</Button>
+                <Button type="button" size="sm" variant={partEntryMode === "adhoc" ? "default" : "ghost"} className="h-8 rounded-lg" onClick={() => setPartEntryMode("adhoc")}>Ad-hoc</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5 p-5">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                {partEntryMode === "catalog" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Catalog part</p>
+                      <Input value={partSearch} onChange={(event) => searchCatalogParts(event.target.value)} placeholder="Search by part name, number, barcode, brand..." className="bg-card" />
+                      {partOptions.length > 0 && !selectedPartId ? (
+                        <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-border bg-card">
+                          {partOptions.map((part) => (
+                            <button
+                              key={part.id}
+                              type="button"
+                              className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
+                              onClick={() => {
+                                setSelectedPartId(part.id);
+                                setPartSearch(`${part.name}${part.part_number ? ` (${part.part_number})` : ""}`);
+                                setPartOptions([]);
+                              }}
+                            >
+                              <span className="font-medium text-foreground">{part.name}</span>
+                              <span className="text-xs text-muted-foreground">{part.part_number || part.brand || "Catalog"}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+                    <div>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Part name</p>
+                      <Input value={adhocPartName} onChange={(event) => setAdhocPartName(event.target.value)} placeholder="e.g. Custom bracket, trim clip, hose" className="bg-card" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Part number</p>
+                      <Input value={adhocPartNumber} onChange={(event) => setAdhocPartNumber(event.target.value)} placeholder="Optional" className="bg-card" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 grid gap-3 md:grid-cols-5">
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Warehouse</p>
+                    <Select value={selectedWarehouseId || "__none"} onValueChange={(value) => setSelectedWarehouseId(value && value !== "__none" ? value : "")}>
+                      <SelectTrigger className="h-10 rounded-xl bg-card"><SelectValue placeholder="Warehouse" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">{partEntryMode === "catalog" ? "Select warehouse" : "No warehouse hint"}</SelectItem>
+                        {warehouses.map((warehouse) => (
+                          <SelectItem key={warehouse.id} value={warehouse.id}>{warehouse.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Qty</p>
+                    <Input type="number" min="1" value={partQuantity} onChange={(event) => setPartQuantity(event.target.value)} className="bg-card" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Unit cost</p>
+                    <Input type="number" step="0.01" value={partUnitCost} onChange={(event) => setPartUnitCost(event.target.value)} placeholder="Optional" className="bg-card" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Unit price</p>
+                    <Input type="number" step="0.01" value={partUnitPrice} onChange={(event) => setPartUnitPrice(event.target.value)} placeholder={partEntryMode === "adhoc" ? "Required" : "Optional"} className="bg-card" />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" className="h-10 w-full rounded-xl" onClick={reserveJobPart} disabled={savingJobPart}>
+                      {savingJobPart ? "Adding..." : partEntryMode === "catalog" ? "Reserve" : "Add part"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-border">
+                <div className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] gap-3 bg-muted px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span>Part</span>
+                  <span className="text-right">Qty</span>
+                  <span className="text-right">Cost</span>
+                  <span className="text-right">Price</span>
+                  <span>Status</span>
+                  <span>Warehouse</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                {jobParts.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">No parts have been added to this job yet.</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {jobParts.map((part) => {
+                      const partName = part.partName ?? part.part_name ?? part.parts?.name ?? "Unnamed part";
+                      const partNumber = part.partNumber ?? part.part_number ?? part.parts?.part_number ?? null;
+                      const isAdhoc = part.source === "adhoc";
+                      const isBusy = actingJobPartId === part.id;
+                      return (
+                        <div key={part.id} className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] items-center gap-3 px-4 py-3 text-sm">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate font-semibold text-foreground">{partName}</span>
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", isAdhoc ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200")}>{isAdhoc ? "Ad-hoc" : "Catalog"}</span>
+                            </div>
+                            {partNumber ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{partNumber}</p> : null}
+                          </div>
+                          <div className="text-right font-medium tabular-nums">{part.quantity}</div>
+                          <div className="text-right tabular-nums">{part.unit_cost != null ? `AED ${Number(part.unit_cost).toFixed(2)}` : "-"}</div>
+                          <div className="text-right tabular-nums">{part.unit_price != null ? `AED ${Number(part.unit_price).toFixed(2)}` : "-"}</div>
+                          <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold capitalize text-foreground/80">{part.status}</span></div>
+                          <div className="truncate text-muted-foreground">{part.warehouses?.name || (part.warehouse_id ? part.warehouse_id.slice(0, 8) : "-")}</div>
+                          <div className="flex justify-end gap-2">
+                            {part.status === "reserved" ? (
+                              <>
+                                <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "consume")}>Use</Button>
+                                {!isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "return")}>Return</Button> : null}
+                                <Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "cancel")}>Cancel</Button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No actions</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

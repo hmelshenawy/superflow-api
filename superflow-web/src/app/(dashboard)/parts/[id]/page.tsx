@@ -668,7 +668,7 @@ export default function PartDetailPage() {
                                 {jp.status}
                               </span>
                             </TableCell>
-                            <TableCell>{jp.warehouses?.name || jp.warehouse_id.slice(0, 8)}</TableCell>
+                            <TableCell>{jp.warehouses?.name || (jp.warehouse_id ? jp.warehouse_id.slice(0, 8) : "—")}</TableCell>
                           </TableRow>
                         );
                       })
