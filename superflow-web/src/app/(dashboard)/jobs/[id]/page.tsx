@@ -802,6 +802,11 @@ export default function JobDetailPage() {
     if (!concern) return concernId.slice(0, 8);
     return `${concern.code ? `${concern.code} - ` : ""}${concern.title}`;
   };
+  const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]));
+  const warehouseLabel = (warehouseId: string | null | undefined) => {
+    if (!warehouseId) return partEntryMode === "catalog" ? "Select warehouse" : "No warehouse hint";
+    return warehouseById.get(warehouseId)?.name ?? warehouseId.slice(0, 8);
+  };
   const quotePartLines = (job.estimate_lines ?? []).filter((line) => line.type === "part");
   const linkedEstimateLineIds = new Set(jobParts.map((part) => part.estimateLineId ?? part.estimate_line_id).filter(Boolean));
   const unfulfilledQuotePartLines = quotePartLines.filter((line) => line.id && !linkedEstimateLineIds.has(line.id));
@@ -1603,7 +1608,9 @@ export default function JobDetailPage() {
                   <div>
                     <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Warehouse</p>
                     <Select value={selectedWarehouseId || "__none"} onValueChange={(value) => setSelectedWarehouseId(value && value !== "__none" ? value : "")}>
-                      <SelectTrigger className="h-10 rounded-xl bg-card"><SelectValue placeholder="Warehouse" /></SelectTrigger>
+                      <SelectTrigger className="h-10 rounded-xl bg-card">
+                        <SelectValue placeholder="Warehouse">{warehouseLabel(selectedWarehouseId)}</SelectValue>
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none">{partEntryMode === "catalog" ? "Select warehouse" : "No warehouse hint"}</SelectItem>
                         {warehouses.map((warehouse) => (
