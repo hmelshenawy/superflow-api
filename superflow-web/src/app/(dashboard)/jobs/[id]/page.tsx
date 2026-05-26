@@ -1547,7 +1547,9 @@ export default function JobDetailPage() {
                 <div className="mb-3">
                   <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Quote concern</p>
                   <Select value={selectedConcernId || "__none"} onValueChange={(value) => setSelectedConcernId(value && value !== "__none" ? value : "")}>
-                    <SelectTrigger className="h-10 rounded-xl bg-card"><SelectValue placeholder="Select concern" /></SelectTrigger>
+                    <SelectTrigger className="h-10 rounded-xl bg-card">
+                      <SelectValue placeholder="Select concern">{selectedConcernId ? concernLabel(selectedConcernId) : "Select concern"}</SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none">Select concern</SelectItem>
                       {jobConcerns.map((concern) => (
