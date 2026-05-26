@@ -597,91 +597,70 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                          <th className="pb-1.5 text-left font-medium">Description</th>
-                          <th className="pb-1.5 text-center font-medium">Type</th>
-                          <th className="pb-1.5 text-center font-medium">Qty</th>
-                          <th className="pb-1.5 text-right font-medium">Amount</th>
+                          <th className="pb-1.5 text-left font-medium" style={{width: "35%"}}>Description</th>
+                          <th className="pb-1.5 text-center font-medium" style={{width: "80px"}}>Type</th>
+                          <th className="pb-1.5 text-center font-medium" style={{width: "52px"}}>Qty</th>
+                          <th className="pb-1.5 text-right font-medium" style={{width: "100px"}}>Unit price</th>
+                          <th className="pb-1.5 text-right font-medium" style={{width: "52px"}}>Disc%</th>
+                          <th className="pb-1.5 text-right font-medium" style={{width: "90px"}}>Total</th>
+                          <th className="pb-1.5 text-center font-medium" style={{width: "28px"}}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {[...group.lines].sort((a, b) => { const order: Record<EstimateLineType, number> = { labour: 0, part: 1, sublet: 2 }; return (order[a.type] ?? 3) - (order[b.type] ?? 3); }).map((line) => (
-                          <tr key={line.id} className="border-b border-border/50 group cursor-pointer hover:bg-muted/50" onClick={() => { /* future: inline edit row */ }}>
-                            <td className="py-2 text-[13px] text-foreground">{line.description || <span className="text-muted-foreground italic">Untitled</span>}</td>
-                            <td className="py-2 text-center">
-                              <span className={`inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium ${line.type === "labour" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200" : line.type === "part" ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200" : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-200"}`}>{line.type === "labour" ? "Labour" : line.type === "part" ? "Part" : "Sublet"}</span>
+                          <tr key={line.id} className="border-b border-border/50">
+                            <td className="py-1.5 pr-1">
+                              <Input className="h-7 text-[12px]" value={line.description ?? ""} onChange={(e) => updateLine(line.id, { description: e.target.value })} placeholder="Description" />
                             </td>
-                            <td className="py-2 text-center text-[13px] text-muted-foreground">{Number(line.quantity ?? 0)}</td>
-                            <td className="py-2 text-right text-[13px] font-medium text-foreground">{defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}</td>
+                            <td className="py-1.5 px-0.5">
+                              <Select value={line.type} onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}>
+                                <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="labour"><span className="text-blue-700">Labour</span></SelectItem>
+                                  <SelectItem value="part"><span className="text-green-700">Part</span></SelectItem>
+                                  <SelectItem value="sublet"><span className="text-amber-700">Sublet</span></SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="py-1.5 px-0.5">
+                              <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.5} value={line.quantity ?? 1} onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })} />
+                            </td>
+                            <td className="py-1.5 px-0.5">
+                              {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
+                                <Select value={getMatchedLabourRateId(line)} onValueChange={(v) => { if (v === "custom") return; const m = defaults.labour_rates?.find((r) => r.id === v); if (!m) return; updateLine(line.id, { unit_price: Number(m.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); }}>
+                                  <SelectTrigger className="h-7 text-[10px]"><SelectValue>{getLabourRateLabel(line)}</SelectValue></SelectTrigger>
+                                  <SelectContent>
+                                    {(defaults.labour_rates ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} • {defaults.currency} {r.rate_per_hour.toFixed(2)}</SelectItem>)}
+                                    <SelectItem value="custom">Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })} />
+                              )}
+                            </td>
+                            <td className="py-1.5 px-0.5">
+                              <Input className="h-7 text-right text-[12px]" type="number" min={0} max={100} value={line.discount_pct ?? 0} onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })} />
+                            </td>
+                            <td className="py-1.5 pl-0.5">
+                              <div className="flex h-7 items-center justify-end rounded-md border border-border bg-muted px-2 text-[12px] font-semibold text-foreground">{defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}</div>
+                            </td>
+                            <td className="py-1.5 px-0">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600" aria-label="Remove line" onClick={() => removeLine(line.id)}><Trash2 className="h-3 w-3" /></Button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
-                  <div className="mt-2 flex gap-1.5 flex-wrap">
-                    <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Labour</Button>
-                    <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Part</Button>
-                    <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Sublet</Button>
-                  </div>
-                  <div className="mt-3 flex justify-end gap-1.5 text-[12px] text-muted-foreground">
-                    Concern total: <span className="font-semibold text-foreground">{defaults.currency} {groupTotal.toFixed(2)}</span>
-                  </div>
-
-                  {/* Inline line editor — shown below the read-only table for editing */}
-                  <div className="mt-2 space-y-2">
-                    {group.lines.map((line) => (
-                      <div key={line.id} className="rounded-lg border border-border bg-card p-2.5">
-                        <div className="grid grid-cols-[1fr_80px_50px_90px_50px_50px_90px_28px] gap-1.5 text-[11px]">
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Desc</p>
-                            <Input className="h-7 text-[12px]" value={line.description ?? ""} onChange={(e) => updateLine(line.id, { description: e.target.value })} placeholder="Description" />
-                          </div>
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Type</p>
-                            <Select value={line.type} onValueChange={(v) => updateLine(line.id, { type: v as EstimateLineType })}>
-                              <SelectTrigger className="h-7 text-[12px]"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="labour">Labour</SelectItem>
-                                <SelectItem value="part">Part</SelectItem>
-                                <SelectItem value="sublet">Sublet</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Qty</p>
-                            <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.5} value={line.quantity ?? 1} onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })} />
-                          </div>
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Unit price</p>
-                            {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
-                              <Select value={getMatchedLabourRateId(line)} onValueChange={(v) => { if (v === "custom") return; const m = defaults.labour_rates?.find((r) => r.id === v); if (!m) return; updateLine(line.id, { unit_price: Number(m.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); }}>
-                                <SelectTrigger className="h-7 text-[11px]"><SelectValue>{getLabourRateLabel(line)}</SelectValue></SelectTrigger>
-                                <SelectContent>
-                                  {(defaults.labour_rates ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} • {defaults.currency} {r.rate_per_hour.toFixed(2)}</SelectItem>)}
-                                  <SelectItem value="custom">Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })} />
-                            )}
-                          </div>
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Disc%</p>
-                            <Input className="h-7 text-right text-[12px]" type="number" min={0} max={100} value={line.discount_pct ?? 0} onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })} />
-                          </div>
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Tax%</p>
-                            <Input className="h-7 text-right text-[12px]" type="number" min={0} max={100} value={line.tax_rate_pct ?? defaults.default_tax_rate} onChange={(e) => updateLine(line.id, { tax_rate_pct: parseFloat(e.target.value) || 0 })} />
-                          </div>
-                          <div>
-                            <p className="mb-0.5 text-[10px] text-muted-foreground">Total</p>
-                            <div className="flex h-7 items-center justify-end rounded-md border border-border bg-muted px-2 text-[12px] font-semibold text-foreground">{defaults.currency} {Number(line.line_total ?? 0).toFixed(2)}</div>
-                          </div>
-                          <div className="flex items-end justify-center">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600" aria-label="Remove line" onClick={() => removeLine(line.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex gap-1.5">
+                      <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Labour</Button>
+                      <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Part</Button>
+                      <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Sublet</Button>
+                    </div>
+                    <div className="text-[12px] text-muted-foreground">
+                      Concern total: <span className="font-semibold text-foreground">{defaults.currency} {groupTotal.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
