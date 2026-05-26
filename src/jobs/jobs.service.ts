@@ -194,7 +194,7 @@ export class JobsService {
         customer_portal_snapshots: { orderBy: { version: 'desc' }, take: 1 },
         inspections: { include: { inspection_responses: { select: { id: true, item_id: true, value: true, urgency: true, tech_notes: true, media_count: true, recorded_at: true } } } },
         qc_checklists: { select: { id: true, status: true } },
-        job_parts: { include: { parts: true, warehouses: true } },
+        job_parts: { include: { parts: true, warehouses: true, estimate_lines: true, job_concerns: true } },
         media_files: { where: { is_deleted: false } },
         approval_tokens: { include: { authorisation_decisions: true } },
         job_status_history: {
@@ -215,9 +215,13 @@ export class JobsService {
       job_parts: (job.job_parts ?? []).map((jobPart: any) => ({
         ...jobPart,
         partId: jobPart.part_id,
+        estimateLineId: jobPart.estimate_line_id,
+        concernId: jobPart.concern_id,
         partName: jobPart.part_name ?? jobPart.parts?.name ?? null,
         partNumber: jobPart.part_number ?? jobPart.parts?.part_number ?? null,
         source: jobPart.source,
+        estimateLine: jobPart.estimate_lines ?? null,
+        concern: jobPart.job_concerns ?? null,
       })),
       latest_portal_snapshot: job.customer_portal_snapshots?.[0] ?? null,
     };

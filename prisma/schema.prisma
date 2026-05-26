@@ -441,6 +441,7 @@ model job_concerns {
   jobs                 jobs                   @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_jc_job")
   inspection_responses inspection_responses?  @relation(fields: [inspection_response_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jc_response")
   estimate_lines       estimate_lines[]
+  job_parts            job_parts[]
   workshops            workshops?             @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jc_workshop")
   media_files          media_files[]
   approval_reset_audit approval_reset_audit[]
@@ -501,6 +502,7 @@ model estimate_lines {
   job_concerns            job_concerns?             @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_el_concern")
   quote_groups            quote_groups?             @relation(fields: [quote_group_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_el_quote_group")
   workshops               workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_workshop")
+  job_parts               job_parts[]
 
   @@index([added_by], map: "fk_el_added_by")
   @@index([concern_id], map: "idx_el_concern")
@@ -1443,6 +1445,7 @@ enum stock_movements_type {
 }
 
 enum job_parts_status {
+  memo
   reserved
   used
   returned
@@ -1657,6 +1660,8 @@ model job_parts {
   part_name    String?          @db.VarChar(180)
   part_number  String?          @db.VarChar(60)
   source       job_parts_source @default(catalog)
+  estimate_line_id String?      @db.Char(36)
+  concern_id   String?          @db.Char(36)
   warehouse_id String?          @db.Char(36)
   quantity     Int              @db.Int
   unit_cost    Decimal?         @db.Decimal(10, 2)
@@ -1666,12 +1671,16 @@ model job_parts {
   created_at   DateTime?        @default(now()) @db.DateTime(0)
   updated_at   DateTime?        @default(now()) @db.DateTime(0)
 
-  jobs       jobs        @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_job")
-  parts      parts?      @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_part")
-  warehouses warehouses? @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_warehouse")
-  workshops  workshops?  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_workshop")
+  jobs           jobs            @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_job")
+  estimate_lines estimate_lines? @relation(fields: [estimate_line_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jp_estimate_line")
+  job_concerns   job_concerns?   @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jp_concern")
+  parts          parts?          @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_part")
+  warehouses     warehouses?     @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_warehouse")
+  workshops      workshops?      @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_workshop")
 
   @@index([job_id], map: "idx_jp_job")
+  @@index([estimate_line_id], map: "idx_jp_estimate_line")
+  @@index([concern_id], map: "idx_jp_concern")
   @@index([part_id], map: "idx_jp_part")
   @@index([warehouse_id], map: "idx_jp_warehouse")
   @@index([status], map: "idx_jp_status")

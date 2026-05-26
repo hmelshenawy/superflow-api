@@ -24,9 +24,16 @@ export class JobPartsController {
 
   @Post('reserve')
   @RequirePermission(JOB_PARTS_RESERVE)
-  @ApiOperation({ summary: 'Reserve a part for a job' })
+  @ApiOperation({ summary: 'Add a memo part to a job and quote concern' })
   reserveForJob(@Body() dto: ReservePartDto, @CurrentUser('sub') userId: string) {
     return this.service.reserveForJob(dto, userId);
+  }
+
+  @Post(':id/reserve')
+  @RequirePermission(JOB_PARTS_RESERVE)
+  @ApiOperation({ summary: 'Reserve catalog stock for a memo job part' })
+  reserveExistingForJob(@Param('id') id: string, @CurrentUser('sub') userId: string) {
+    return this.service.reserveExistingForJob(id, userId);
   }
 
   @Post('consume')

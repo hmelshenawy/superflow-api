@@ -287,6 +287,7 @@ export default function JobDetailPage() {
   const [partSearch, setPartSearch] = useState("");
   const [partOptions, setPartOptions] = useState<Part[]>([]);
   const [selectedPartId, setSelectedPartId] = useState("");
+  const [selectedConcernId, setSelectedConcernId] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [partQuantity, setPartQuantity] = useState("1");
   const [partUnitCost, setPartUnitCost] = useState("");
@@ -535,8 +536,14 @@ export default function JobDetailPage() {
       return;
     }
 
+    if (!selectedConcernId) {
+      toast.error("Select a quote concern");
+      return;
+    }
+
     const payload: Record<string, unknown> = {
       job_id: job.id,
+      concernId: selectedConcernId,
       quantity,
     };
     if (unitCost !== undefined) payload.unit_cost = unitCost;
@@ -573,7 +580,7 @@ export default function JobDetailPage() {
       await api.post("/job-parts/reserve", payload);
       resetJobPartForm();
       await refreshJob();
-      toast.success(partEntryMode === "catalog" ? "Catalog part reserved" : "Ad-hoc part added");
+      toast.success(partEntryMode === "catalog" ? "Catalog part added to quote memo" : "Ad-hoc part added to quote memo");
     } catch (error) {
       toast.error(getApiError(error).message || "Failed to add part");
     } finally {
@@ -581,10 +588,12 @@ export default function JobDetailPage() {
     }
   };
 
-  const updateJobPartStatus = async (jobPart: JobPart, action: "consume" | "return" | "cancel") => {
+  const updateJobPartStatus = async (jobPart: JobPart, action: "reserve" | "consume" | "return" | "cancel") => {
     setActingJobPartId(jobPart.id);
     try {
-      if (action === "consume") {
+      if (action === "reserve") {
+        await api.post(`/job-parts/${jobPart.id}/reserve`);
+      } else if (action === "consume") {
         await api.post("/job-parts/consume", { job_part_id: jobPart.id });
       } else if (action === "return") {
         await api.post("/job-parts/return", { job_part_id: jobPart.id });
@@ -592,11 +601,41 @@ export default function JobDetailPage() {
         await api.post(`/job-parts/${jobPart.id}/cancel`);
       }
       await refreshJob();
-      toast.success(action === "consume" ? "Part marked used" : action === "return" ? "Part returned" : "Part cancelled");
+      toast.success(action === "reserve" ? "Part reserved" : action === "consume" ? "Part marked used" : action === "return" ? "Part returned" : "Part cancelled");
     } catch (error) {
       toast.error(getApiError(error).message || "Failed to update part");
     } finally {
       setActingJobPartId(null);
+    }
+  };
+
+  const addQuoteLineToPartsMemo = async (line: NonNullable<Job["estimate_lines"]>[number]) => {
+    if (!job || !line.concern_id) {
+      toast.error("Quote line must belong to a concern");
+      return;
+    }
+    const unitPrice = Number(line.unit_price ?? 0);
+    if (!line.description?.trim()) {
+      toast.error("Quote line needs a part description");
+      return;
+    }
+    setSavingJobPart(true);
+    try {
+      await api.post("/job-parts/reserve", {
+        job_id: job.id,
+        concernId: line.concern_id,
+        estimateLineId: line.id,
+        partName: line.description.trim(),
+        partNumber: line.part_number || undefined,
+        quantity: Math.max(1, Number(line.quantity ?? 1)),
+        unitPrice,
+      });
+      await refreshJob();
+      toast.success("Quote part linked to parts memo");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to link quote part");
+    } finally {
+      setSavingJobPart(false);
     }
   };
 
@@ -618,6 +657,16 @@ export default function JobDetailPage() {
     setDraftCustomerEmail(job?.customer?.email || "");
     setDraftCustomerPhone(job?.customer?.phone || "");
   }, [job?.customer?.email, job?.customer?.phone]);
+
+  useEffect(() => {
+    const concerns = job?.job_concerns ?? [];
+    if (!selectedConcernId && concerns.length > 0) {
+      setSelectedConcernId(concerns[0].id);
+    }
+    if (selectedConcernId && concerns.length > 0 && !concerns.some((concern) => concern.id === selectedConcernId)) {
+      setSelectedConcernId(concerns[0].id);
+    }
+  }, [job?.job_concerns, selectedConcernId]);
 
   /* ── Auto-poll auth status only while active token exists ── */
   const prevAuthCounts = useRef<{ approved: number; declined: number; deferred: number } | null>(null);
@@ -745,6 +794,26 @@ export default function JobDetailPage() {
   const mediaCount = job.media_files?.length ?? 0;
   const estimateCount = job.estimate_lines?.length ?? 0;
   const jobParts = job.job_parts ?? [];
+  const jobConcerns = job.job_concerns ?? [];
+  const quotePartLines = (job.estimate_lines ?? []).filter((line) => line.type === "part");
+  const linkedEstimateLineIds = new Set(jobParts.map((part) => part.estimateLineId ?? part.estimate_line_id).filter(Boolean));
+  const unfulfilledQuotePartLines = quotePartLines.filter((line) => line.id && !linkedEstimateLineIds.has(line.id));
+  const partConcernGroups = [
+    ...jobConcerns.map((concern) => ({
+      id: concern.id,
+      title: concern.title || concern.code || "Concern",
+      code: concern.code,
+      parts: jobParts.filter((part) => (part.concernId ?? part.concern_id) === concern.id),
+      quoteLines: unfulfilledQuotePartLines.filter((line) => line.concern_id === concern.id),
+    })),
+    {
+      id: "__unlinked",
+      title: "Unlinked",
+      code: null,
+      parts: jobParts.filter((part) => !(part.concernId ?? part.concern_id)),
+      quoteLines: unfulfilledQuotePartLines.filter((line) => !line.concern_id),
+    },
+  ].filter((group) => group.id !== "__unlinked" || group.parts.length > 0 || group.quoteLines.length > 0);
   const inspectionState = inspectionDetail?.status || job.inspection?.status || "not started";
   const inspectionLocked = ["submitted", "reviewed", "approved"].includes(inspectionState);
   const approvalCounts = authStatus?.counts;
@@ -1484,6 +1553,20 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent className="space-y-5 p-5">
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                <div className="mb-3">
+                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Quote concern</p>
+                  <Select value={selectedConcernId || "__none"} onValueChange={(value) => setSelectedConcernId(value && value !== "__none" ? value : "")}>
+                    <SelectTrigger className="h-10 rounded-xl bg-card"><SelectValue placeholder="Select concern" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">Select concern</SelectItem>
+                      {jobConcerns.map((concern) => (
+                        <SelectItem key={concern.id} value={concern.id}>
+                          {concern.code ? `${concern.code} - ` : ""}{concern.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {partEntryMode === "catalog" ? (
                   <div className="space-y-3">
                     <div>
@@ -1550,61 +1633,96 @@ export default function JobDetailPage() {
                   </div>
                   <div className="flex items-end">
                     <Button type="button" className="h-10 w-full rounded-xl" onClick={reserveJobPart} disabled={savingJobPart}>
-                      {savingJobPart ? "Adding..." : partEntryMode === "catalog" ? "Reserve" : "Add part"}
+                      {savingJobPart ? "Adding..." : "Add memo"}
                     </Button>
                   </div>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-border">
-                <div className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] gap-3 bg-muted px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  <span>Part</span>
-                  <span className="text-right">Qty</span>
-                  <span className="text-right">Cost</span>
-                  <span className="text-right">Price</span>
-                  <span>Status</span>
-                  <span>Warehouse</span>
-                  <span className="text-right">Actions</span>
-                </div>
-                {jobParts.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">No parts have been added to this job yet.</div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {jobParts.map((part) => {
-                      const partName = part.partName ?? part.part_name ?? part.parts?.name ?? "Unnamed part";
-                      const partNumber = part.partNumber ?? part.part_number ?? part.parts?.part_number ?? null;
-                      const isAdhoc = part.source === "adhoc";
-                      const isBusy = actingJobPartId === part.id;
-                      return (
-                        <div key={part.id} className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] items-center gap-3 px-4 py-3 text-sm">
+              <div className="space-y-4">
+                {partConcernGroups.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                    No parts have been added to this job yet.
+                  </div>
+                ) : partConcernGroups.map((group) => (
+                  <div key={group.id} className="overflow-hidden rounded-2xl border border-border">
+                    <div className="flex items-center justify-between gap-3 bg-muted px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{group.code ? `${group.code} - ` : ""}{group.title}</p>
+                        <p className="text-xs text-muted-foreground">{group.parts.length} parts memo {group.quoteLines.length ? `+ ${group.quoteLines.length} quote line${group.quoteLines.length === 1 ? "" : "s"} not in parts memo` : ""}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] gap-3 border-t border-border bg-muted/50 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span>Part</span>
+                      <span className="text-right">Qty</span>
+                      <span className="text-right">Cost</span>
+                      <span className="text-right">Price</span>
+                      <span>Status</span>
+                      <span>Warehouse</span>
+                      <span className="text-right">Actions</span>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {group.parts.map((part) => {
+                        const partName = part.partName ?? part.part_name ?? part.parts?.name ?? "Unnamed part";
+                        const partNumber = part.partNumber ?? part.part_number ?? part.parts?.part_number ?? null;
+                        const isAdhoc = part.source === "adhoc";
+                        const isBusy = actingJobPartId === part.id;
+                        return (
+                          <div key={part.id} className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] items-center gap-3 px-4 py-3 text-sm">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate font-semibold text-foreground">{partName}</span>
+                                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", isAdhoc ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200")}>{isAdhoc ? "Ad-hoc" : "Catalog"}</span>
+                              </div>
+                              {partNumber ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{partNumber}</p> : null}
+                            </div>
+                            <div className="text-right font-medium tabular-nums">{part.quantity}</div>
+                            <div className="text-right tabular-nums">{part.unit_cost != null ? `AED ${Number(part.unit_cost).toFixed(2)}` : "-"}</div>
+                            <div className="text-right tabular-nums">{part.unit_price != null ? `AED ${Number(part.unit_price).toFixed(2)}` : "-"}</div>
+                            <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold capitalize text-foreground/80">{part.status}</span></div>
+                            <div className="truncate text-muted-foreground">{part.warehouses?.name || (part.warehouse_id ? part.warehouse_id.slice(0, 8) : "-")}</div>
+                            <div className="flex justify-end gap-2">
+                              {part.status === "memo" ? (
+                                <>
+                                  {!isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "reserve")}>Reserve</Button> : null}
+                                  {isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "consume")}>Use</Button> : null}
+                                  <Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "cancel")}>Cancel</Button>
+                                </>
+                              ) : part.status === "reserved" ? (
+                                <>
+                                  <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "consume")}>Use</Button>
+                                  {!isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "return")}>Return</Button> : null}
+                                  <Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "cancel")}>Cancel</Button>
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No actions</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {group.quoteLines.map((line) => (
+                        <div key={line.id} className="grid grid-cols-[1.3fr_90px_110px_110px_120px_1fr_210px] items-center gap-3 bg-muted/20 px-4 py-3 text-sm">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="truncate font-semibold text-foreground">{partName}</span>
-                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", isAdhoc ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200")}>{isAdhoc ? "Ad-hoc" : "Catalog"}</span>
+                              <span className="truncate font-semibold text-foreground">{line.description || "Quote part"}</span>
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-200">Quote line</span>
                             </div>
-                            {partNumber ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{partNumber}</p> : null}
+                            {line.part_number ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{line.part_number}</p> : null}
                           </div>
-                          <div className="text-right font-medium tabular-nums">{part.quantity}</div>
-                          <div className="text-right tabular-nums">{part.unit_cost != null ? `AED ${Number(part.unit_cost).toFixed(2)}` : "-"}</div>
-                          <div className="text-right tabular-nums">{part.unit_price != null ? `AED ${Number(part.unit_price).toFixed(2)}` : "-"}</div>
-                          <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold capitalize text-foreground/80">{part.status}</span></div>
-                          <div className="truncate text-muted-foreground">{part.warehouses?.name || (part.warehouse_id ? part.warehouse_id.slice(0, 8) : "-")}</div>
-                          <div className="flex justify-end gap-2">
-                            {part.status === "reserved" ? (
-                              <>
-                                <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "consume")}>Use</Button>
-                                {!isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "return")}>Return</Button> : null}
-                                <Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "cancel")}>Cancel</Button>
-                              </>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">No actions</span>
-                            )}
+                          <div className="text-right font-medium tabular-nums">{Number(line.quantity ?? 1)}</div>
+                          <div className="text-right tabular-nums">-</div>
+                          <div className="text-right tabular-nums">{line.unit_price != null ? `AED ${Number(line.unit_price).toFixed(2)}` : "-"}</div>
+                          <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold text-foreground/80">quote only</span></div>
+                          <div className="truncate text-muted-foreground">-</div>
+                          <div className="flex justify-end">
+                            <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={savingJobPart} onClick={() => addQuoteLineToPartsMemo(line)}>Add memo</Button>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
             </CardContent>
           </Card>

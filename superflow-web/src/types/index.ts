@@ -801,7 +801,7 @@ export interface StockMovement {
   users?: User;
 }
 
-export type JobPartStatus = 'reserved' | 'used' | 'returned' | 'cancelled';
+export type JobPartStatus = 'memo' | 'reserved' | 'used' | 'returned' | 'cancelled';
 
 export interface JobPart {
   id: string;
@@ -813,6 +813,10 @@ export interface JobPart {
   part_number?: string | null;
   partNumber?: string | null;
   source?: 'catalog' | 'adhoc';
+  estimate_line_id?: string | null;
+  estimateLineId?: string | null;
+  concern_id?: string | null;
+  concernId?: string | null;
   warehouse_id: string | null;
   quantity: number;
   unit_cost: number | null;
@@ -823,6 +827,8 @@ export interface JobPart {
   updated_at: string;
   parts?: Part;
   warehouses?: Warehouse;
+  estimateLine?: EstimateLine | null;
+  concern?: JobConcern | null;
 }
 
 export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partially_received' | 'received' | 'cancelled';

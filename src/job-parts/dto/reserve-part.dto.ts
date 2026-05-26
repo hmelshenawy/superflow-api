@@ -20,23 +20,23 @@ class JobPartCatalogOrAdhocConstraint implements ValidatorConstraintInterface {
     const dto = args.object as ReservePartDto;
     const hasPartId = Boolean(dto.partId);
     const hasPartName = Boolean(dto.partName?.trim());
-    const hasWarehouseId = Boolean(dto.warehouse_id);
+    const hasConcernId = Boolean(dto.concernId);
 
     if (hasPartId) {
-      return hasWarehouseId;
+      return hasConcernId;
     }
 
-    return hasPartName;
+    return hasPartName && hasConcernId;
   }
 
   defaultMessage(args: ValidationArguments) {
     const dto = args.object as ReservePartDto;
 
     if (dto.partId) {
-      return 'warehouse_id is required when reserving a catalog part';
+      return 'concernId is required when adding a catalog part';
     }
 
-    return 'partName is required when adding an ad-hoc part';
+    return 'partName and concernId are required when adding an ad-hoc part';
   }
 }
 
@@ -44,6 +44,15 @@ export class ReservePartDto {
   @ApiProperty()
   @IsString()
   job_id: string;
+
+  @ApiProperty()
+  @IsUUID()
+  concernId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  estimateLineId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -64,6 +73,7 @@ export class ReservePartDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsUUID()
   @IsString()
   warehouse_id?: string;
 
