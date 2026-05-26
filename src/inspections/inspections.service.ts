@@ -109,7 +109,7 @@ export class InspectionsService {
       }
     }
     for (const resp of inspection.inspection_responses ?? []) {
-      (resp as any).traffic_light = inspectionTrafficLight(resp.value, (resp as any).urgency);
+      (resp as any).traffic_light = inspectionTrafficLight(resp.value, (resp as any).urgency, resp.inspection_items?.input_type);
     }
     const responseByItem = new Map((inspection.inspection_responses ?? []).map((resp: any) => [resp.item_id, resp]));
     const summary = { green: 0, amber: 0, red: 0, unset: 0 };

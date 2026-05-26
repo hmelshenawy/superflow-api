@@ -185,7 +185,7 @@ Returns backend-computed dashboard metrics, including:
     "value": "fail",
     "urgency": "high",
     "tech_notes": "...",
-    "traffic_light": "red",              // computed: "green" | "amber" | "red"
+    "traffic_light": "red",              // computed: "green" | "amber" | "red" | "none"
     "inspection_items": {
       "id": "uuid",
       "label": "Brake pads",
@@ -249,7 +249,7 @@ Returns backend-computed dashboard metrics, including:
     "id": "uuid",
     "value": "pass",
     "notes": null,
-    "traffic_light": "green",            // computed: "green" | "red" (2-tier for QC)
+    "traffic_light": "green",            // computed: "green" | "red" | "none" (2-tier for QC)
     "qc_checklist_items": {
       "id": "uuid",
       "label": "Paint quality",
