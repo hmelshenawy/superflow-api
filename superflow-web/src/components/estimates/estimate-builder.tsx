@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
 import { AlertTriangle, ChevronDown, ChevronRight, Image as ImageIcon, Lock, Plus, RefreshCw, Trash2, User, XCircle } from "lucide-react";
@@ -116,6 +117,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     default_tax_rate: 5, currency: "AED", standard_labour_rate: 0, standard_labour_rate_name: "Standard", labour_rates: [],
   });
   const [concernStatusOptions, setConcernStatusOptions] = useState<ConcernStatusOption[]>([]);
+  const [labourRateOpen, setLabourRateOpen] = useState<string | null>(null);
 
   // Optimistic only: the backend recalculates and returns authoritative money fields on save.
   const recalc = (line: Partial<EstimateLine>) => {
@@ -627,13 +629,26 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                             </td>
                             <td className="py-1.5 px-0.5">
                               {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
-                                <Select value={getMatchedLabourRateId(line)} onValueChange={(v) => { if (v === "custom") return; const m = defaults.labour_rates?.find((r) => r.id === v); if (!m) return; updateLine(line.id, { unit_price: Number(m.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); }}>
-                                  <SelectTrigger className="h-7 text-[10px]"><SelectValue>{getLabourRateLabel(line)}</SelectValue></SelectTrigger>
-                                  <SelectContent>
-                                    {(defaults.labour_rates ?? []).map((r) => <SelectItem key={r.id} value={r.id}>{r.name} • {defaults.currency} {r.rate_per_hour.toFixed(2)}</SelectItem>)}
-                                    <SelectItem value="custom">Custom • {defaults.currency} {Number(line.unit_price ?? 0).toFixed(2)}</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <div className="flex items-center gap-1">
+                                  <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => { updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 }); }} />
+                                  <Popover open={labourRateOpen === line.id} onOpenChange={(open) => setLabourRateOpen(open ? line.id : null)}>
+                                    <PopoverTrigger className="shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-card hover:text-foreground">
+                                      {(defaults.labour_rates ?? []).find((r) => Number(r.rate_per_hour) === Number(line.unit_price ?? 0))?.name?.split(" ")[0] ?? "Custom"}
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-48 p-1" align="end">
+                                      {(defaults.labour_rates ?? []).map((r) => (
+                                        <button key={r.id} type="button" className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-[12px] hover:bg-muted ${Number(r.rate_per_hour) === Number(line.unit_price ?? 0) ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                                          onClick={() => { updateLine(line.id, { unit_price: Number(r.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); setLabourRateOpen(null); }}>
+                                            <span>{r.name}</span><span>{defaults.currency} {r.rate_per_hour.toFixed(2)}</span>
+                                          </button>
+                                      ))}
+                                      <button type="button" className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[12px] text-muted-foreground hover:bg-muted"
+                                        onClick={() => { updateLine(line.id, { unit_price: 0 }); setLabourRateOpen(null); }}>
+                                        <span>Custom</span><span>{defaults.currency} 0.00</span>
+                                      </button>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
                               ) : (
                                 <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })} />
                               )}
@@ -653,10 +668,13 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                     </table>
                   )}
                   <div className="mt-2 flex items-center justify-between">
-                    <div className="flex gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("labour", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Labour</Button>
                       <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Part</Button>
                       <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Sublet</Button>
+                      <Button size="sm" className="h-7 rounded-md bg-foreground px-3 text-[12px] text-background hover:bg-foreground/80" disabled={saving} onClick={save}>
+                        {saving ? "Saving…" : "Save lines"}
+                      </Button>
                     </div>
                     <div className="text-[12px] text-muted-foreground">
                       Concern total: <span className="font-semibold text-foreground">{defaults.currency} {groupTotal.toFixed(2)}</span>
