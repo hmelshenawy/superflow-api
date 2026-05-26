@@ -248,7 +248,11 @@ export default function PortalPage() {
   ];
   const activeStageIndex = Math.max(stageSteps.findIndex((s) => s.key === stage), 0);
   const isExpired = data.token.is_expired;
-  const approvedTotal = data.approved_total;
+  const approvedTotal = data.approved_total + grouped_estimate.reduce((sum, group) => {
+    const groupDecision = decisions[group.key]?.decision;
+    if (groupDecision !== "approved") return sum;
+    return sum + getActionableLines(group).reduce((lineSum, line) => lineSum + Number(line.line_total || 0), 0);
+  }, 0);
 
   /* ── Submitted ────────────────────────────────────── */
   if (submitted)
