@@ -460,3 +460,20 @@ Audit date: 2026-05-25
 **Root cause**: `EstimateBuilder` accepted `decisionByLine` from `/jobs/:id/auth-status` but did not use it when calculating concern group badges.
 
 **Fix**: The estimate builder now derives group decision badges from `decisionByLine` first, then falls back to backend `group_decision_summary` on estimate lines.
+
+## Bug 27: New customer approval does not move active job back to approval lane
+
+**Status**: Fixed
+**Severity**: High
+**Location**: `src/authorisation/authorisation.service.ts`
+**Found in**: User-reported repeat approval workflow
+
+**Description**: When a new customer approval is submitted after the job has already moved into workshop work, the job can stay in its current workflow lane.
+
+**Expected behavior**: A new customer portal approval response should move the job card back to the approval stage in the job detail page and Overall Kanban.
+
+**Actual behavior**: Portal submit only moved the job to `approved` if `canTransition(currentStatus, 'approved')` returned true. Active workshop statuses such as `in_progress` cannot transition back to `approved` through that state-machine guard.
+
+**Root cause**: Repeat customer approval is a workflow interruption/backtrack, but the portal submit code treated it like a normal forward state-machine transition.
+
+**Fix**: Portal submit now explicitly sets non-terminal jobs to `approved`, updates `workflow_stage_key` to the configured approved lane, clears `workshop_stage`, and writes history when the customer submits a new approval response.

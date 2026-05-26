@@ -739,23 +739,38 @@ export class AuthorisationService {
         data: { used_at: new Date(), ip_address: ip, user_agent: userAgent || null },
       });
 
-      // The customer has now responded to the estimate, so the job can move to
-      // approved when the workflow allows it.
-      if (token.job_id && token.jobs?.status && token.jobs.status !== 'approved' && canTransition(token.jobs.status as any, 'approved')) {
+      // Bug fix: repeat customer approvals can arrive after work has already
+      // started. That is a workflow backtrack/interruption, so it must not be
+      // blocked by the normal forward state-machine transition guard.
+      const jobId = token.job_id;
+      const currentStatus = token.jobs?.status;
+      const shouldReturnToApproval =
+        jobId &&
+        currentStatus &&
+        currentStatus !== 'approved' &&
+        currentStatus !== 'closed' &&
+        currentStatus !== 'no_show';
+      if (shouldReturnToApproval) {
         const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
         await tx.jobs.update({
-          where: { id: token.job_id },
+          where: { id: jobId },
           data: { status: 'approved' as any, workflow_stage_key: workflowStageKey, workshop_stage: null },
         });
         await tx.job_status_history.create({
           data: {
             id: uuid(),
-            job_id: token.job_id,
-            from_status: token.jobs.status,
+            job_id: jobId,
+            from_status: currentStatus,
             to_status: 'approved',
             changed_by: null,
             reason: 'Customer submitted approval response from portal',
           },
+        });
+      } else if (jobId && currentStatus === 'approved') {
+        const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
+        await tx.jobs.update({
+          where: { id: jobId },
+          data: { workflow_stage_key: workflowStageKey, workshop_stage: null },
         });
       }
 
