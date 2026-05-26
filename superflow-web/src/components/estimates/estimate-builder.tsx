@@ -602,7 +602,23 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                           <th className="pb-1.5 text-left font-medium" style={{width: "35%"}}>Description</th>
                           <th className="pb-1.5 text-center font-medium" style={{width: "80px"}}>Type</th>
                           <th className="pb-1.5 text-center font-medium" style={{width: "52px"}}>Qty</th>
-                          <th className="pb-1.5 text-right font-medium" style={{width: "100px"}}>Unit price</th>
+                          <th className="pb-1.5 text-right font-medium" style={{width: "100px"}}>
+                            <span className="inline-flex items-center gap-1">Unit price{group.lines.some((l) => l.type === "labour") && (defaults.labour_rates?.length ?? 0) > 0 && (
+                              <Popover open={labourRateOpen === "__header__"} onOpenChange={(open) => setLabourRateOpen(open ? "__header__" : null)}>
+                                <PopoverTrigger className="rounded border border-border bg-muted px-1 py-px text-[9px] font-medium text-muted-foreground hover:bg-card hover:text-foreground">
+                                  {(defaults.labour_rates ?? []).find((r) => Number(r.rate_per_hour) === Number(defaults.standard_labour_rate))?.name?.split(" ")[0] ?? "Rate"}
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-1" align="end">
+                                  {(defaults.labour_rates ?? []).map((r) => (
+                                    <button key={r.id} type="button" className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-[12px] hover:bg-muted ${Number(r.rate_per_hour) === Number(defaults.standard_labour_rate) ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                                      onClick={() => { group.lines.filter((l) => l.type === "labour").forEach((l) => { updateLine(l.id, { unit_price: Number(r.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); }); setLabourRateOpen(null); }}>
+                                      <span>{r.name}</span><span>{defaults.currency} {r.rate_per_hour.toFixed(2)}</span>
+                                    </button>
+                                  ))}
+                                </PopoverContent>
+                              </Popover>
+                            )}</span>
+                          </th>
                           <th className="pb-1.5 text-right font-medium" style={{width: "52px"}}>Disc%</th>
                           <th className="pb-1.5 text-right font-medium" style={{width: "90px"}}>Total</th>
                           <th className="pb-1.5 text-center font-medium" style={{width: "28px"}}></th>
@@ -628,30 +644,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                               <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.5} value={line.quantity ?? 1} onChange={(e) => updateLine(line.id, { quantity: parseFloat(e.target.value) || 0 })} />
                             </td>
                             <td className="py-1.5 px-0.5">
-                              {line.type === "labour" && (defaults.labour_rates?.length ?? 0) > 0 ? (
-                                <div className="flex items-center gap-1">
-                                  <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => { updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 }); }} />
-                                  <Popover open={labourRateOpen === line.id} onOpenChange={(open) => setLabourRateOpen(open ? line.id : null)}>
-                                    <PopoverTrigger className="shrink-0 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-card hover:text-foreground">
-                                      {(defaults.labour_rates ?? []).find((r) => Number(r.rate_per_hour) === Number(line.unit_price ?? 0))?.name?.split(" ")[0] ?? "Custom"}
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-48 p-1" align="end">
-                                      {(defaults.labour_rates ?? []).map((r) => (
-                                        <button key={r.id} type="button" className={`flex w-full items-center justify-between rounded px-2 py-1.5 text-[12px] hover:bg-muted ${Number(r.rate_per_hour) === Number(line.unit_price ?? 0) ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-                                          onClick={() => { updateLine(line.id, { unit_price: Number(r.rate_per_hour ?? 0), tax_rate_pct: defaults.default_tax_rate }); setLabourRateOpen(null); }}>
-                                            <span>{r.name}</span><span>{defaults.currency} {r.rate_per_hour.toFixed(2)}</span>
-                                          </button>
-                                      ))}
-                                      <button type="button" className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[12px] text-muted-foreground hover:bg-muted"
-                                        onClick={() => { updateLine(line.id, { unit_price: 0 }); setLabourRateOpen(null); }}>
-                                        <span>Custom</span><span>{defaults.currency} 0.00</span>
-                                      </button>
-                                    </PopoverContent>
-                                  </Popover>
-                                </div>
-                              ) : (
-                                <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })} />
-                              )}
+                              <Input className="h-7 text-right text-[12px]" type="number" min={0} step={0.01} value={line.unit_price ?? 0} onChange={(e) => updateLine(line.id, { unit_price: parseFloat(e.target.value) || 0 })} />
                             </td>
                             <td className="py-1.5 px-0.5">
                               <Input className="h-7 text-right text-[12px]" type="number" min={0} max={100} value={line.discount_pct ?? 0} onChange={(e) => updateLine(line.id, { discount_pct: parseFloat(e.target.value) || 0 })} />
@@ -673,7 +666,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                       <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("part", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Part</Button>
                       <Button variant="outline" size="sm" className="h-7 rounded-md border-dashed px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => addLine("sublet", { inspectionResponseId: group.responseId, quoteGroupId: group.quoteGroupId, concernId: group.concernId })}><Plus className="mr-0.5 h-3 w-3" /> Sublet</Button>
                       <Button size="sm" className="h-7 rounded-md bg-foreground px-3 text-[12px] text-background hover:bg-foreground/80" disabled={saving} onClick={save}>
-                        {saving ? "Saving…" : "Save lines"}
+                        {saving ? "Saving…" : "Confirm"}
                       </Button>
                     </div>
                     <div className="text-[12px] text-muted-foreground">
