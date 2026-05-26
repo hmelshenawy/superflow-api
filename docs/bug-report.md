@@ -426,3 +426,20 @@ Audit date: 2026-05-25
 **Root cause**: The backend captured inspection responses and technician notes, but did not bridge actionable findings into the newer customer concern model.
 
 **Fix**: Inspection submit now creates or updates `job_concerns` for amber/red responses, copies technician notes into `technician_finding`, links media to the concern, and the estimate builder suppresses legacy response groups when a linked concern exists.
+
+## Bug 25: New customer concern estimate lines default VAT to zero
+
+**Status**: Fixed
+**Severity**: Medium
+**Location**: `src/estimates/estimates.service.ts`, `superflow-web/src/components/estimates/estimate-builder.tsx`
+**Found in**: User-reported quotation builder regression
+
+**Description**: Labour and part lines added under a new customer concern can receive `tax_rate_pct = 0`.
+
+**Expected behavior**: New estimate lines should use the workshop admin default VAT/tax rate.
+
+**Actual behavior**: If the frontend defaults payload resolves to zero, new lines are created and saved with zero VAT.
+
+**Root cause**: `GET /estimates/defaults` returned zero when no tax setting was found, and bulk save treated an incoming zero tax rate as authoritative for new lines.
+
+**Fix**: Estimate defaults now distinguish missing/blank settings from explicit values and fall back to `5`; bulk save applies the workshop default tax rate to newly created lines when the incoming tax rate is missing or zero; the frontend also normalizes missing/invalid default tax values.
