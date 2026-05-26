@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import type { EstimateLine, EstimateLineType, JobAuthorisationDecision, JobConcern, QuoteGroup } from "@/types";
+import type { ConcernApprovalStatus, EstimateLine, EstimateLineType, JobAuthorisationDecision, JobConcern, QuoteGroup, WORKFLOW_STATUS_LABELS } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
-import { AlertTriangle, ChevronDown, ChevronRight, Image as ImageIcon, Plus, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Image as ImageIcon, Lock, Plus, Trash2, User, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_COLORS: Record<EstimateLineType, string> = {
@@ -32,6 +32,7 @@ interface Props {
   inspection?: any | null;
   jobConcerns?: JobConcern[];
   decisionByLine?: Record<string, JobAuthorisationDecision>;
+  concernApprovals?: ConcernApprovalStatus[];
 }
 
 interface LabourRateOption {
@@ -99,7 +100,7 @@ function normalizeDefaultTaxRate(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
 
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [], decisionByLine = {} }: Props) {
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [], decisionByLine = {}, concernApprovals = [] }: Props) {
   const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
   const [saving, setSaving] = useState(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
@@ -420,29 +421,53 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         const isCustom = Boolean(group.quoteGroupId);
         const isCollapsed = collapsedGroups.has(group.key);
         const groupDecision = group.groupDecisionSummary;
-        const groupDecisionTone = groupDecision === "approved"
-          ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200"
-          : groupDecision === "declined"
-            ? "bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200"
-            : groupDecision === "deferred"
-              ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200"
-              : groupDecision === "pending"
-                ? "bg-muted text-foreground/80"
-                : "bg-muted text-foreground/80";
-        const groupDecisionLabel = groupDecision === "approved"
-          ? "Approved"
-          : groupDecision === "declined"
-            ? "Rejected"
-            : groupDecision === "deferred"
-              ? "Deferred"
-              : groupDecision === "pending"
-                ? "Pending"
-                : groupDecision === "mixed"
-                  ? "Mixed"
-                  : null;
+
+        // Two-channel approval status for this concern
+        const concernApproval = group.concernId
+          ? concernApprovals.find((ca) => ca.concernId === group.concernId)
+          : null;
+
+        // Left border color based on approval status
+        const approvalBorderClass = concernApproval?.isLocked
+          ? concernApproval.customerDecision === "approved"
+            ? "border-l-4 border-l-emerald-400"
+            : concernApproval.customerDecision === "declined"
+              ? "border-l-4 border-l-rose-400"
+              : concernApproval.customerDecision === "deferred"
+                ? "border-l-4 border-l-amber-400"
+                : "border-l-4 border-l-muted-foreground/30"
+          : concernApproval?.advisorDecision === "approved"
+            ? "border-l-4 border-l-emerald-400"
+            : concernApproval?.advisorDecision === "declined"
+              ? "border-l-4 border-l-rose-400"
+              : concernApproval?.advisorDecision === "deferred"
+                ? "border-l-4 border-l-amber-400"
+                : "border-l-4 border-l-muted-foreground/30";
+
+        // Dimmed if rejected/deferred
+        const dimmedClass = (concernApproval?.customerDecision === "declined" || concernApproval?.advisorDecision === "declined")
+          ? "opacity-60"
+          : (concernApproval?.customerDecision === "deferred" || concernApproval?.advisorDecision === "deferred")
+            ? "opacity-75"
+            : "";
+
+        // Two-channel approval badge
+        const approvalBadge = (() => {
+          if (!concernApproval) return null;
+          if (concernApproval.isLocked) {
+            if (concernApproval.customerDecision === "approved") return <Badge className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200"><Lock className="mr-1 h-3 w-3" />Approved by customer</Badge>;
+            if (concernApproval.customerDecision === "declined") return <Badge className="bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200"><Lock className="mr-1 h-3 w-3" />Rejected by customer</Badge>;
+            if (concernApproval.customerDecision === "deferred") return <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200"><Lock className="mr-1 h-3 w-3" />Deferred by customer</Badge>;
+            if (concernApproval.customerDecision === "mixed") return <Badge className="bg-muted text-foreground/80"><Lock className="mr-1 h-3 w-3" />Mixed</Badge>;
+          }
+          if (concernApproval.advisorDecision === "approved") return <Badge className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200"><User className="mr-1 h-3 w-3" />Approved by advisor</Badge>;
+          if (concernApproval.advisorDecision === "declined") return <Badge className="bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200"><User className="mr-1 h-3 w-3" />Rejected by advisor</Badge>;
+          if (concernApproval.advisorDecision === "deferred") return <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200"><User className="mr-1 h-3 w-3" />Deferred by advisor</Badge>;
+          return <Badge className="bg-muted text-foreground/80">Pending approval</Badge>;
+        })();
 
         return (
-          <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone}`}>
+          <div key={group.key} className={`rounded-2xl border p-4 ${meta.tone} ${approvalBorderClass} ${dimmedClass}`}>
             {/* Header — always visible */}
             <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); } }} className="cursor-pointer select-none" onClick={() => { if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); }}>
               <div className="flex items-center justify-between gap-3">
@@ -479,7 +504,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                   </Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {groupDecisionLabel ? <Badge className={groupDecisionTone}>{groupDecisionLabel}</Badge> : null}
+                  {approvalBadge}
                   <div className="rounded-xl bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
                     Total: <span className="font-semibold text-foreground">{defaults.currency} {groupTotal.toFixed(2)}</span>
                   </div>
@@ -510,6 +535,69 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
               {(group.detail && !isCustom) ? <p className="mt-1.5 text-xs text-muted-foreground">{group.detail}</p> : null}
               {!isCollapsed && group.concern ? (
                 <form className="mt-3 rounded-xl border border-border bg-card/80 p-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); updateConcernFeedback(group.concernId as string, event.currentTarget); }}>
+                  {/* Advisor approval decision */}
+                  {concernApproval && (
+                    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Approval status</p>
+                      {concernApproval.isLocked ? (
+                        <div className="flex items-center gap-2">
+                          {approvalBadge}
+                          <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg px-2 text-xs" onClick={async () => {
+                            const reason = prompt("Reset customer decisions for this concern. Enter reason (mandatory):");
+                            if (!reason?.trim()) return;
+                            try {
+                              await api.post(`/jobs/${jobId}/concerns/${group.concernId}/reset-approval`, { reason: reason.trim() });
+                              toast.success("Approval reset. You can now resend.");
+                              onUpdate();
+                            } catch { toast.error("Failed to reset approval"); }
+                          }}>
+                            <Lock className="mr-1 h-3 w-3" /> Reset &amp; resend
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="h-8 rounded-lg border border-border bg-background px-2 text-sm"
+                            defaultValue={concernApproval.advisorDecision || ""}
+                            onChange={async (e) => {
+                              const val = e.target.value || null;
+                              if (val && !concernApproval.advisorDecision) {
+                                const note = prompt("Advisor decision note (required):");
+                                if (!note?.trim()) { e.target.value = ""; return; }
+                                try {
+                                  await api.patch(`/jobs/${jobId}/concerns/${group.concernId}`, { advisor_decision: val, advisor_decision_note: note.trim() });
+                                  toast.success("Advisor decision saved");
+                                  onUpdate();
+                                } catch { toast.error("Failed to save advisor decision"); e.target.value = ""; }
+                              } else if (val) {
+                                const note = prompt("Update advisor decision note:");
+                                if (!note?.trim()) { return; }
+                                try {
+                                  await api.patch(`/jobs/${jobId}/concerns/${group.concernId}`, { advisor_decision: val, advisor_decision_note: note.trim() });
+                                  toast.success("Advisor decision updated");
+                                  onUpdate();
+                                } catch { toast.error("Failed to update advisor decision"); }
+                              } else {
+                                try {
+                                  await api.patch(`/jobs/${jobId}/concerns/${group.concernId}`, { advisor_decision: null, advisor_decision_note: null });
+                                  toast.success("Advisor decision cleared");
+                                  onUpdate();
+                                } catch { toast.error("Failed to clear advisor decision"); }
+                              }
+                            }}
+                          >
+                            <option value="">Pending approval</option>
+                            <option value="approved">Approved by advisor</option>
+                            <option value="deferred">Deferred by advisor</option>
+                            <option value="declined">Rejected by advisor</option>
+                          </select>
+                          {concernApproval.advisorDecision && (
+                            <span className="text-xs text-muted-foreground">{concernApproval.advisorDecisionNote}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="grid gap-3 lg:grid-cols-[160px_1fr_1fr_auto]">
                     <div>
                       <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Concern status</p>

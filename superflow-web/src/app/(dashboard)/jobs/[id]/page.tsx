@@ -1405,7 +1405,7 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent>
               <ComponentErrorBoundary label="Quote builder">
-                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
+                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} concernApprovals={authStatus?.concernApprovals ?? []} />
               </ComponentErrorBoundary>
             </CardContent>
           </Card>
