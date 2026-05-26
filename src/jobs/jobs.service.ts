@@ -219,13 +219,11 @@ export class JobsService {
 
   concernStatusOptions() {
     return [
-      { value: 'reviewing', label: 'Initial checking' },
-      { value: 'finding_ready', label: 'Tech feedback ready' },
-      { value: 'priced', label: 'Needs approval' },
-      { value: 'approved', label: 'Approved' },
-      { value: 'declined', label: 'Declined' },
-      { value: 'in_progress', label: 'Work in progress' },
-      { value: 'qc_complete', label: 'QC complete' },
+      { value: 'reviewing', label: 'Under inspection' },
+      { value: 'finding_ready', label: 'Diagnosis ready' },
+      { value: 'priced', label: 'Pending approval' },
+      { value: 'in_progress', label: 'In progress' },
+      { value: 'qc_complete', label: 'Completed' },
     ];
   }
 
@@ -260,6 +258,18 @@ export class JobsService {
     if (data.work_note === '') data.work_note = null;
     if (data.qc_note === '') data.qc_note = null;
     if (data.inspection_response_id === '') data.inspection_response_id = null;
+    // Validate advisor decision: note is mandatory when a non-null decision is set
+    if (data.advisor_decision && !data.advisor_decision_note) {
+      throw new BadRequestException('Advisor decision note is required when setting an advisor decision');
+    }
+    if (data.advisor_decision === null || data.advisor_decision === '') {
+      data.advisor_decision = null;
+      data.advisor_decision_note = null;
+    }
+    const validDecisions = ['approved', 'declined', 'deferred'];
+    if (data.advisor_decision && !validDecisions.includes(data.advisor_decision)) {
+      throw new BadRequestException(`Invalid advisor decision. Must be one of: ${validDecisions.join(', ')}`);
+    }
     return this.prisma.tenant.job_concerns.update({ where: { id: concernId }, data });
   }
 

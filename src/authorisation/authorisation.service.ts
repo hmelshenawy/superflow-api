@@ -248,6 +248,7 @@ export class AuthorisationService {
       where: { id: jobId },
       include: {
         estimate_lines: true,
+        job_concerns: true,
         approval_tokens: {
           orderBy: { issued_at: 'desc' },
           include: { authorisation_decisions: true },
@@ -303,10 +304,42 @@ export class AuthorisationService {
       !token.is_revoked && (!token.expires_at || new Date(token.expires_at) > new Date()) && !token.used_at,
     );
 
+    // Derive per-concern approval status from advisor decision on the concern
+    // and customer decisions on the concern's estimate lines.
+    const concernApprovals = (job.job_concerns ?? []).map((concern: any) => {
+      const concernLineIds = (job.estimate_lines ?? [])
+        .filter((l: any) => l.concern_id === concern.id)
+        .map((l: any) => l.id);
+      const lineDecisions = concernLineIds
+        .map((id: string) => decisionByLine[id])
+        .filter(Boolean);
+      const hasApproved = lineDecisions.some((d: any) => d.decision === 'approved');
+      const hasDeclined = lineDecisions.some((d: any) => d.decision === 'declined');
+      const hasDeferred = lineDecisions.some((d: any) => d.decision === 'deferred');
+      const isLocked = lineDecisions.length > 0;
+
+      let customerDecision: string | null = null;
+      if (isLocked) {
+        if (hasApproved && hasDeclined) customerDecision = 'mixed';
+        else if (hasApproved) customerDecision = 'approved';
+        else if (hasDeclined) customerDecision = 'declined';
+        else if (hasDeferred) customerDecision = 'deferred';
+      }
+
+      return {
+        concernId: concern.id,
+        advisorDecision: concern.advisor_decision ?? null,
+        advisorDecisionNote: concern.advisor_decision_note ?? null,
+        customerDecision,
+        isLocked,
+      };
+    });
+
     return {
       jobId,
       counts,
       hasActiveToken,
+      concernApprovals,
       latestSnapshot: job.customer_portal_snapshots?.[0] ?? null,
       latestToken: latestToken
         ? {
@@ -354,6 +387,45 @@ export class AuthorisationService {
     if (status === 'approved' || status === 'in_progress' || status === 'waiting_parts') return 'work_in_progress';
     if (status === 'quality_check' || status === 'ready' || status === 'closed') return 'final_report';
     return 'initial_findings';
+  }
+
+  async resetConcernApproval(jobId: string, concernId: string, userId: string, reason: string) {
+    const concern = await this.prisma.tenant.job_concerns.findFirst({
+      where: { id: concernId, job_id: jobId },
+    });
+    if (!concern) throw new NotFoundException('Concern not found');
+
+    // Find all estimate lines for this concern
+    const lines = await this.prisma.tenant.estimate_lines.findMany({
+      where: { concern_id: concernId },
+      select: { id: true },
+    });
+    const lineIds = lines.map((l: { id: string }) => l.id);
+
+    // Delete all authorisation decisions for those lines
+    const deleteResult = await this.prisma.tenant.authorisation_decisions.deleteMany({
+      where: { estimate_line_id: { in: lineIds } },
+    });
+
+    // Reset advisor decision on the concern
+    await this.prisma.tenant.job_concerns.update({
+      where: { id: concernId },
+      data: { advisor_decision: null, advisor_decision_note: null },
+    });
+
+    // Audit trail
+    await this.prisma.tenant.approval_reset_audit.create({
+      data: {
+        id: uuid(),
+        concern_id: concernId,
+        job_id: jobId,
+        reset_by: userId,
+        reason,
+        lines_cleared: deleteResult.count,
+      },
+    });
+
+    return { concernId, linesCleared: deleteResult.count };
   }
 
   private async moveJobToApproved(
