@@ -5,7 +5,6 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { runWithWorkshop } from '../prisma/workshop-context';
 import { DecideDto } from './dto/decide.dto';
-import { canTransition } from '../jobs/jobs.state-machine';
 import { WorkflowService } from '../admin/workflow.service';
 
 @Injectable()
@@ -130,27 +129,18 @@ export class AuthorisationService {
     const baseUrl = process.env.CUSTOMER_PORTAL_URL || 'http://127.0.0.1:3002';
     const portalUrl = `${baseUrl.replace(/\/$/, '')}/portal/${raw}`;
 
-    // Generating an approval link is also a business event: the workshop has
-    // effectively sent the estimate to the customer, so the job moves forward.
-    if (job.status !== 'estimate_sent' && canTransition(job.status as any, 'estimate_sent')) {
-      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('estimate_sent');
-      await this.prisma.$transaction([
-        this.prisma.tenant.jobs.update({
-          where: { id: job.id },
-          data: { status: 'estimate_sent' as any, workflow_stage_key: workflowStageKey, workshop_stage: null },
-        }),
-        this.prisma.tenant.job_status_history.create({
-          data: {
-            id: uuid(),
-            job_id: job.id,
-            from_status: job.status,
-            to_status: 'estimate_sent',
-            changed_by: null,
-            reason: 'Approval link generated',
-          },
-        }),
-      ]).catch(() => {});
+    // Sending a new approval request always moves the job back to estimate_sent
+    // and releases a portal snapshot so the customer sees the latest data.
+    const shouldMoveToEstimateSent =
+      job.status !== 'estimate_sent' &&
+      job.status !== 'closed' &&
+      job.status !== 'no_show';
+    if (shouldMoveToEstimateSent) {
+      await this.moveJobToEstimateSent(job.id, job.status);
     }
+
+    // Release a portal snapshot so the customer sees the latest estimate data.
+    await this.releasePortalSnapshot(job.id, raw);
 
     const customerRecipient = sentTo || (channel === 'email' ? job.customers?.email : job.customers?.phone) || job.customers?.email || job.customers?.phone || 'customer';
     const customerMessage = [
@@ -394,6 +384,46 @@ export class AuthorisationService {
         },
       });
     }
+  }
+
+  private async moveJobToEstimateSent(jobId: string, currentStatus: string) {
+    const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('estimate_sent');
+    await this.prisma.tenant.jobs.update({
+      where: { id: jobId },
+      data: { status: 'estimate_sent', workflow_stage_key: workflowStageKey, workshop_stage: null },
+    });
+    await this.prisma.tenant.job_status_history.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        from_status: currentStatus,
+        to_status: 'estimate_sent',
+        changed_by: null,
+        reason: 'Approval link generated',
+      },
+    });
+  }
+
+  private async releasePortalSnapshot(jobId: string, rawToken: string) {
+    const payload = await this.loadPortal(rawToken, false);
+    const latest = await this.prisma.tenant.customer_portal_snapshots.findFirst({
+      where: { job_id: jobId },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    }).catch(() => null);
+    const version = (latest?.version ?? 0) + 1;
+    const stage = (payload as any).stage || this.portalStageForStatus('estimate_sent');
+    await this.prisma.tenant.customer_portal_snapshots.create({
+      data: {
+        id: uuid(),
+        job_id: jobId,
+        version,
+        stage,
+        payload_json: JSON.stringify(payload),
+        release_note: null,
+        released_by: null,
+      },
+    });
   }
 
   private async defaultWorkflowStageKeyForStatus(status: string) {
