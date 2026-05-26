@@ -341,3 +341,20 @@ Audit date: 2026-05-25
 **Root cause**: Backend `traffic_light` became authoritative, but the frontend still needs optimistic display state while editing unsaved responses.
 
 **Fix**: Checklist workspaces now apply backend-equivalent traffic-light color for unsaved selections, then sync back to backend `traffic_light` after save/reload.
+
+## Bug 20: Inspection fail/warn values are overridden by `urgency = none`
+
+**Status**: Fixed
+**Severity**: High
+**Location**: `src/common/utils/traffic-light.ts`, `superflow-web/src/components/inspections/inspection-workspace.tsx`
+**Found in**: Live QA on job `b525a449-2c78-48fb-9925-48be2b31cd42`
+
+**Description**: Inspection checklist cards showed green for failed or warning values when urgency was `none`.
+
+**Expected behavior**: `ok/pass/yes` should be green, `warn` should be amber, and `fail/no` should be red.
+
+**Actual behavior**: Backend and optimistic frontend logic treated `urgency = none` as green before checking the selected value.
+
+**Root cause**: Traffic-light precedence was wrong. Neutral urgency was allowed to override the actual inspection result.
+
+**Fix**: Inspection traffic-light logic now checks the selected result first, and only uses urgency when no result mapping exists.
