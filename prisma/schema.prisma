@@ -1428,6 +1428,11 @@ enum job_parts_status {
   cancelled
 }
 
+enum job_parts_source {
+  catalog
+  adhoc
+}
+
 enum purchase_orders_status {
   draft
   ordered
@@ -1625,22 +1630,25 @@ model stock_movements {
 }
 
 model job_parts {
-  id           String          @id @db.Char(36)
-  job_id       String          @db.Char(36)
-  part_id      String          @db.Char(36)
-  warehouse_id String          @db.Char(36)
-  quantity     Int             @db.Int
-  unit_cost    Decimal?        @db.Decimal(10, 2)
-  unit_price   Decimal?        @db.Decimal(10, 2)
+  id           String           @id @db.Char(36)
+  job_id       String           @db.Char(36)
+  part_id      String?          @db.Char(36)
+  part_name    String?          @db.VarChar(180)
+  part_number  String?          @db.VarChar(60)
+  source       job_parts_source @default(catalog)
+  warehouse_id String?          @db.Char(36)
+  quantity     Int              @db.Int
+  unit_cost    Decimal?         @db.Decimal(10, 2)
+  unit_price   Decimal?         @db.Decimal(10, 2)
   status       job_parts_status @default(reserved)
-  workshop_id  String?         @db.Char(36)
-  created_at   DateTime?       @default(now()) @db.DateTime(0)
-  updated_at   DateTime?       @default(now()) @db.DateTime(0)
+  workshop_id  String?          @db.Char(36)
+  created_at   DateTime?        @default(now()) @db.DateTime(0)
+  updated_at   DateTime?        @default(now()) @db.DateTime(0)
 
-  jobs        jobs        @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_job")
-  parts       parts       @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_part")
-  warehouses  warehouses @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_warehouse")
-  workshops   workshops?  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_workshop")
+  jobs       jobs        @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_job")
+  parts      parts?      @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_part")
+  warehouses warehouses? @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_warehouse")
+  workshops  workshops?  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_workshop")
 
   @@index([job_id], map: "idx_jp_job")
   @@index([part_id], map: "idx_jp_part")
