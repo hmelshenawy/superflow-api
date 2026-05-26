@@ -1,7 +1,6 @@
 export type TrafficLight = 'green' | 'amber' | 'red';
 
 const INSPECTION_URGENCY_TO_TRAFFIC_LIGHT: Record<string, TrafficLight> = {
-  none: 'green',
   low: 'green',
   medium: 'amber',
   high: 'red',
@@ -26,11 +25,11 @@ const QC_VALUE_TO_TRAFFIC_LIGHT: Record<string, TrafficLight> = {
 };
 
 export function inspectionTrafficLight(value: string | null, urgency?: string | null): TrafficLight {
-  if (urgency && INSPECTION_URGENCY_TO_TRAFFIC_LIGHT[urgency]) {
-    return INSPECTION_URGENCY_TO_TRAFFIC_LIGHT[urgency];
-  }
   if (value && INSPECTION_VALUE_TO_TRAFFIC_LIGHT[value]) {
     return INSPECTION_VALUE_TO_TRAFFIC_LIGHT[value];
+  }
+  if (urgency && INSPECTION_URGENCY_TO_TRAFFIC_LIGHT[urgency]) {
+    return INSPECTION_URGENCY_TO_TRAFFIC_LIGHT[urgency];
   }
   return 'green';
 }

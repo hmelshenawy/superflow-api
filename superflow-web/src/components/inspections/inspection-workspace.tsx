@@ -34,15 +34,15 @@ type TrafficLight = "green" | "amber" | "red" | "none";
 
 function optimisticInspectionTrafficLight(value: string | null | undefined, urgency: string | null | undefined, isInformational?: boolean): TrafficLight {
   if (isInformational) return "none";
-  const normalizedUrgency = String(urgency ?? "").toLowerCase();
-  if (["none", "low"].includes(normalizedUrgency)) return "green";
-  if (normalizedUrgency === "medium") return "amber";
-  if (["high", "critical"].includes(normalizedUrgency)) return "red";
-
   const normalizedValue = String(value ?? "").toLowerCase();
   if (["ok", "pass", "yes"].includes(normalizedValue)) return "green";
   if (normalizedValue === "warn") return "amber";
   if (["fail", "no"].includes(normalizedValue)) return "red";
+
+  const normalizedUrgency = String(urgency ?? "").toLowerCase();
+  if (normalizedUrgency === "low") return "green";
+  if (normalizedUrgency === "medium") return "amber";
+  if (["high", "critical"].includes(normalizedUrgency)) return "red";
   return "none";
 }
 
