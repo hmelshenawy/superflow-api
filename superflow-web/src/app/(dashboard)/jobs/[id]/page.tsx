@@ -34,6 +34,11 @@ interface VehicleServiceHistoryResponse {
   totals: { jobs: number; closedJobs: number; revenue: number };
   entries: VehicleServiceHistoryEntry[];
 }
+
+interface EstimateDefaults {
+  default_tax_rate: number;
+  currency: string;
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -187,6 +192,11 @@ function estimateTotal(job: Job | null) {
   );
 }
 
+function normalizeDefaultTaxRate(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 5;
+}
+
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="min-w-0 rounded-2xl border border-border bg-muted p-4">
@@ -282,6 +292,7 @@ export default function JobDetailPage() {
   const [draftCustomerEmail, setDraftCustomerEmail] = useState("");
   const [draftCustomerPhone, setDraftCustomerPhone] = useState("");
   const [savingCustomerContact, setSavingCustomerContact] = useState(false);
+  const [estimateDefaults, setEstimateDefaults] = useState<EstimateDefaults>({ default_tax_rate: 5, currency: "AED" });
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [partEntryMode, setPartEntryMode] = useState<"catalog" | "adhoc">("catalog");
   const [partSearch, setPartSearch] = useState("");
@@ -498,6 +509,18 @@ export default function JobDetailPage() {
     }
   };
 
+  const loadEstimateDefaults = async () => {
+    try {
+      const { data } = await api.get<Partial<EstimateDefaults>>("/estimates/defaults");
+      setEstimateDefaults({
+        default_tax_rate: normalizeDefaultTaxRate(data.default_tax_rate),
+        currency: data.currency || "AED",
+      });
+    } catch {
+      setEstimateDefaults({ default_tax_rate: 5, currency: "AED" });
+    }
+  };
+
   const searchCatalogParts = async (query: string) => {
     setPartSearch(query);
     setSelectedPartId("");
@@ -651,6 +674,7 @@ export default function JobDetailPage() {
     })();
     loadUsers();
     loadWarehouses();
+    loadEstimateDefaults();
   }, [id]);
 
   useEffect(() => {
@@ -789,6 +813,7 @@ export default function JobDetailPage() {
 
   const currentStep = ALL_STATUSES.indexOf(job.status);
   const total = estimateTotal(job);
+  const formatMoney = (value: number | string | null | undefined) => `${estimateDefaults.currency || "AED"} ${Number(value ?? 0).toFixed(2)}`;
   const vehicle = vehicleLabel(job);
   const plate = job.vehicle?.plate || "No plate";
   const mediaCount = job.media_files?.length ?? 0;
@@ -952,7 +977,7 @@ export default function JobDetailPage() {
         <div className="grid gap-5 bg-muted/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
+              <StatCard label="Estimate" value={formatMoney(total)} hint={`${estimateCount} lines`} />
               <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
               <StatCard label="Media" value={`${mediaCount}`} hint="files" />
               <StatCard label="Approval" value={approvalStatusLabel} />
@@ -1217,7 +1242,7 @@ export default function JobDetailPage() {
                   <div className="rounded-2xl border border-border bg-card p-4">
                     <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Commercial readiness</p>
                     <p className="mt-2 text-lg font-bold text-foreground">{estimateCount} lines</p>
-                    <p className="mt-1 text-xs text-muted-foreground">AED {total.toFixed(2)} quote total</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatMoney(total)} quote total</p>
                   </div>
                   <div className="rounded-2xl border border-border bg-card p-4">
                     <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Evidence readiness</p>
@@ -1459,7 +1484,7 @@ export default function JobDetailPage() {
               <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[480px]">
                 <StatCard label="Visits" value={String(serviceHistory?.totals.jobs ?? 0)} />
                 <StatCard label="Closed jobs" value={String(serviceHistory?.totals.closedJobs ?? 0)} />
-                <StatCard label="Total quoted" value={`AED ${Number(serviceHistory?.totals.revenue ?? 0).toFixed(2)}`} />
+                <StatCard label="Total quoted" value={formatMoney(serviceHistory?.totals.revenue ?? 0)} />
               </div>
             </CardHeader>
             <CardContent className="space-y-4 p-5">
@@ -1487,7 +1512,7 @@ export default function JobDetailPage() {
                         <div className="grid grid-cols-3 gap-2 text-center lg:min-w-[300px]">
                           <div className="rounded-xl bg-muted p-3">
                             <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Quote</p>
-                            <p className="mt-1 text-sm font-bold text-foreground">{typeof entry.estimate_total === "number" ? `AED ${entry.estimate_total.toFixed(2)}` : "-"}</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{typeof entry.estimate_total === "number" ? formatMoney(entry.estimate_total) : "-"}</p>
                           </div>
                           <div className="rounded-xl bg-muted p-3">
                             <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Lines</p>
@@ -1510,7 +1535,7 @@ export default function JobDetailPage() {
                               <div key={line.id} className="grid grid-cols-[1fr_90px_110px] gap-3 px-3 py-2 text-sm">
                                 <span className="truncate text-foreground">{line.description || line.type}</span>
                                 <span className="text-right text-muted-foreground">{line.quantity ?? "-"}</span>
-                                <span className="text-right font-semibold text-foreground">AED {Number(line.line_total ?? 0).toFixed(2)}</span>
+                                <span className="text-right font-semibold text-foreground">{formatMoney(line.line_total ?? 0)}</span>
                               </div>
                             ))}
                           </div>
@@ -1670,8 +1695,8 @@ export default function JobDetailPage() {
                           </div>
                           <div className="truncate text-muted-foreground">{concernLabel(part.concernId ?? part.concern_id)}</div>
                           <div className="text-right font-medium tabular-nums">{part.quantity}</div>
-                          <div className="text-right tabular-nums">{part.unit_cost != null ? `AED ${Number(part.unit_cost).toFixed(2)}` : "-"}</div>
-                          <div className="text-right tabular-nums">{part.unit_price != null ? `AED ${Number(part.unit_price).toFixed(2)}` : "-"}</div>
+                          <div className="text-right tabular-nums">{part.unit_cost != null ? formatMoney(part.unit_cost) : "-"}</div>
+                          <div className="text-right tabular-nums">{part.unit_price != null ? formatMoney(part.unit_price) : "-"}</div>
                           <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold capitalize text-foreground/80">{part.status}</span></div>
                           <div className="truncate text-muted-foreground">{part.warehouses?.name || (part.warehouse_id ? part.warehouse_id.slice(0, 8) : "-")}</div>
                           <div className="flex justify-end gap-2">
@@ -1706,7 +1731,7 @@ export default function JobDetailPage() {
                         <div className="truncate text-muted-foreground">{concernLabel(line.concern_id)}</div>
                         <div className="text-right font-medium tabular-nums">{Number(line.quantity ?? 1)}</div>
                         <div className="text-right tabular-nums">-</div>
-                        <div className="text-right tabular-nums">{line.unit_price != null ? `AED ${Number(line.unit_price).toFixed(2)}` : "-"}</div>
+                        <div className="text-right tabular-nums">{line.unit_price != null ? formatMoney(line.unit_price) : "-"}</div>
                         <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold text-foreground/80">quote only</span></div>
                         <div className="truncate text-muted-foreground">-</div>
                         <div className="flex justify-end">
@@ -1735,9 +1760,15 @@ export default function JobDetailPage() {
             const approvedLabour = approvedLines.filter((l) => l.type === "labour").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
             const approvedParts = approvedLines.filter((l) => l.type === "part").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
             const approvedSublet = approvedLines.filter((l) => l.type === "sublet").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
-            const avgTaxRate = approvedLines.length > 0 ? approvedLines.reduce((s, l) => s + Number(l.tax_rate_pct ?? 0), 0) / approvedLines.length : 0;
-            const approvedVat = (approvedLabour + approvedParts + approvedSublet) * (avgTaxRate / 100);
             const approvedTotal = approvedLines.reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedVat = approvedLines.reduce((sum, line) => {
+              const taxAmount = Number(line.tax_amount);
+              if (Number.isFinite(taxAmount) && taxAmount > 0) return sum + taxAmount;
+              const lineTaxRate = Number(line.tax_rate_pct);
+              const taxRate = Number.isFinite(lineTaxRate) && lineTaxRate > 0 ? lineTaxRate : estimateDefaults.default_tax_rate;
+              return sum + (Number(line.line_total ?? 0) * (taxRate / 100));
+            }, 0);
+            const effectiveTaxRate = approvedTotal > 0 ? (approvedVat / approvedTotal) * 100 : estimateDefaults.default_tax_rate;
             const hasApproved = approvedConcerns.length > 0;
             return (
           <Card className="overflow-hidden rounded-2xl border-border shadow-sm">
@@ -1751,7 +1782,7 @@ export default function JobDetailPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Quote total</p>
-                    <p className="text-[22px] font-medium leading-tight text-foreground">AED {total.toFixed(2)}</p>
+                    <p className="text-[22px] font-medium leading-tight text-foreground">{formatMoney(total)}</p>
                   </div>
                   {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="rounded-md">Add lines first</Button>}
                 </div>
@@ -1786,24 +1817,24 @@ export default function JobDetailPage() {
             </div>
 
             {/* Zone 3 — Footer with totals */}
-            <div className="border-t border-border px-5 py-4">
-              <div className="grid grid-cols-2 gap-x-10">
+            <div className="border-t border-border px-7 py-6">
+              <div className="grid grid-cols-2 gap-x-12">
                 <div>
-                  <p className="border-b border-border pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
-                  <div className="mt-2 flex justify-between text-[14px] font-medium text-foreground">
+                  <p className="border-b border-border pb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
+                  <div className="mt-2 flex justify-between text-[16px] font-medium text-foreground">
                     <span>Grand total</span>
-                    <span>AED {total.toFixed(2)}</span>
+                    <span>{formatMoney(total)}</span>
                   </div>
                 </div>
                 <div className={hasApproved ? "" : "opacity-40"}>
                   <p className="border-b border-border pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Approved</p>
                   {hasApproved ? (
                     <div className="mt-2 space-y-0.5">
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Labour</span><span>AED {approvedLabour.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Parts</span><span>AED {approvedParts.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Sublet</span><span>AED {approvedSublet.toFixed(2)}</span></div>
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>VAT ({avgTaxRate.toFixed(1)}%)</span><span>AED {approvedVat.toFixed(2)}</span></div>
-                      <div className="mt-1.5 flex justify-between border-t border-border pt-2 text-[14px] font-medium text-foreground"><span>Total approved</span><span>AED {(approvedTotal + approvedVat).toFixed(2)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Labour</span><span>{formatMoney(approvedLabour)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Parts</span><span>{formatMoney(approvedParts)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Sublet</span><span>{formatMoney(approvedSublet)}</span></div>
+                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Tax ({effectiveTaxRate.toFixed(1)}%)</span><span>{formatMoney(approvedVat)}</span></div>
+                      <div className="mt-1.5 flex justify-between border-t border-border pt-2 text-[14px] font-medium text-foreground"><span>Total approved</span><span>{formatMoney(approvedTotal + approvedVat)}</span></div>
                     </div>
                   ) : (
                     <p className="mt-2 text-[13px] text-muted-foreground">No concerns approved yet</p>
