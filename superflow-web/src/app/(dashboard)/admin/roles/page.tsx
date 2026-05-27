@@ -180,7 +180,7 @@ function isFullAccessRole(role: { name?: string | null; permissions?: string[] |
   return perms.length === 1 && perms[0] === "*";
 }
 
-export function RolesPermissionsPanel() {
+export function RolesPermissionsPanel({ showHeader = true }: { showHeader?: boolean } = {}) {
   const { user } = useAuthStore();
   const isAdmin = user?.role?.name === "admin" || user?.role?.name === "administrator" || user?.role?.name === "platform_admin" || user?.role?.name === "workshop_admin";
 
@@ -334,12 +334,23 @@ export function RolesPermissionsPanel() {
   return (
     <RequirePermission permissions={["admin:roles"]}>
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Roles & Permissions</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage role-based access control. Admin always has full access.</p>
+      {showHeader ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Roles & Permissions</h1>
+            <p className="text-sm text-muted-foreground mt-1">Manage role-based access control. Admin always has full access.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={fetchData} aria-label="Refresh" disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" /> New Role
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
+      ) : (
+        <div className="flex justify-end gap-2">
           <Button variant="outline" size="icon" onClick={fetchData} aria-label="Refresh" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
@@ -347,7 +358,7 @@ export function RolesPermissionsPanel() {
             <Plus className="mr-2 h-4 w-4" /> New Role
           </Button>
         </div>
-      </div>
+      )}
 
       {loadError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">

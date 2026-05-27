@@ -19,7 +19,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
@@ -35,7 +34,7 @@ import { RequirePermission } from "@/components/auth/require-permission";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RolesPermissionsPanel } from "../roles/page";
 
-export default function UsersRolesPage() {
+export function UsersPanel({ showHeader = true }: { showHeader?: boolean } = {}) {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,19 +146,13 @@ export default function UsersRolesPage() {
 
   return (
     <RequirePermission permissions={["admin:users"]}>
-    <Tabs defaultValue="users" className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Users & Permissions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage team members, roles, and access from one place.</p>
-        </div>
-        <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>
-        </TabsList>
-      </div>
-
-      <TabsContent value="users" className="space-y-4">
+      <div className="space-y-4">
+        {showHeader && (
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Users</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage team members and access.</p>
+          </div>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="icon" onClick={fetchUsers} aria-label="Refresh users" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -281,12 +274,32 @@ export default function UsersRolesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
+    </RequirePermission>
+  );
+}
+
+export default function UsersRolesPage() {
+  return (
+    <Tabs defaultValue="users" className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Users & Permissions</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage team members, roles, and access from one place.</p>
+        </div>
+        <TabsList>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="roles">Roles & Permissions</TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="users" className="space-y-4">
+        <UsersPanel showHeader={false} />
       </TabsContent>
 
       <TabsContent value="roles" className="space-y-4">
         <RolesPermissionsPanel />
       </TabsContent>
     </Tabs>
-    </RequirePermission>
   );
 }
