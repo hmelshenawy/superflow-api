@@ -195,6 +195,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
     description: 'Connect workshop manager — controls loading, WIP, bottlenecks, capacity, and team performance',
     permissions: [
       JOBS_READ, JOBS_UPDATE, JOBS_ASSIGN, JOBS_TRANSITION,
+      IMPORT_PARSE, IMPORT_RUN,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
       CUSTOMERS_READ, VEHICLES_READ,
@@ -226,6 +227,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       MEDIA_UPLOAD,
       AUTH_REQUEST, AUTH_STATUS,
       DEFERRED_READ, DEFERRED_MANAGE, DEFERRED_BOOK,
+      IMPORT_PARSE, IMPORT_RUN,
       ADMIN_SETTINGS,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,

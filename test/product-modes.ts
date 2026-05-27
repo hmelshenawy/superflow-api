@@ -16,6 +16,7 @@ async function main() {
 
   const connectModules = defaultEnabledModules('CONNECT');
   assert(connectModules.includes(MODULE_KEYS.DMS_INTEGRATION), 'Connect should include DMS integration');
+  assert(connectModules.includes(MODULE_KEYS.BOOKING_IMPORT), 'Connect should include booking import');
   assert(connectModules.includes(MODULE_KEYS.PRIORITY_ENGINE), 'Connect should include priority engine');
   assert(!connectModules.includes(MODULE_KEYS.STOCK), 'Connect should not include native stock');
   assert(!connectModules.includes(MODULE_KEYS.INVOICING), 'Connect should not include native invoicing');

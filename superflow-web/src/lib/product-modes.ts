@@ -5,6 +5,7 @@ import {
   Boxes,
   CalendarDays,
   ClipboardList,
+  FileUp,
   Gauge,
   LayoutDashboard,
   LayoutGrid,
@@ -32,6 +33,7 @@ export const MODULES = {
   WIP: "wip",
   OPERATIONAL_ANALYTICS: "operationalAnalytics",
   DMS_INTEGRATION: "dmsIntegration",
+  BOOKING_IMPORT: "bookingImport",
   WORKSHOP_LOADING: "workshopLoading",
   CAPACITY_MANAGEMENT: "capacityManagement",
   PRIORITY_ENGINE: "priorityEngine",
@@ -65,6 +67,7 @@ export const PRODUCT_MODULES: Record<ProductMode, ModuleKey[]> = {
   ],
   CONNECT: [
     MODULES.DMS_INTEGRATION,
+    MODULES.BOOKING_IMPORT,
     MODULES.WORKSHOP_LOADING,
     MODULES.CAPACITY_MANAGEMENT,
     MODULES.WIP,
@@ -105,6 +108,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
   ],
   CONNECT: [
     { href: "/dashboard", label: "Command Center", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
+    { href: "/admin/booking-import", label: "Import Booking", icon: FileUp, module: MODULES.BOOKING_IMPORT, requirePermission: "import:parse", roles: ["service_advisor", "manager", "workshop_manager", "admin", "workshop_admin"] },
     { href: "/jobs", label: "WIP Board", icon: LayoutGrid, module: MODULES.WIP },
     { href: "/jobs", label: "Workshop Loading", icon: Boxes, module: MODULES.WORKSHOP_LOADING },
     { href: "/insights", label: "Capacity", icon: SlidersHorizontal, module: MODULES.CAPACITY_MANAGEMENT, requirePermission: "insights:dashboard" },
@@ -126,6 +130,7 @@ export const ROUTE_MODULES: Array<{ prefix: string; module: ModuleKey; modes?: P
   { prefix: "/suppliers", module: MODULES.STOCK, modes: ["WORKSHOP"] },
   { prefix: "/advisor", module: MODULES.PRIORITY_ENGINE, modes: ["CONNECT"] },
   { prefix: "/blockers", module: MODULES.BOTTLENECK_DETECTION, modes: ["CONNECT"] },
+  { prefix: "/admin/booking-import", module: MODULES.BOOKING_IMPORT, modes: ["CONNECT"] },
   { prefix: "/insights", module: MODULES.OPERATIONAL_ANALYTICS },
   { prefix: "/jobs", module: MODULES.WIP },
 ];
