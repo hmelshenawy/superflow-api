@@ -54,7 +54,7 @@ export class InvoicePdfService {
       const chunks: Buffer[] = [];
       doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', (err) => { console.error('[InvoicePdf] PDF stream error:', err); reject(err); });
+      doc.on('error', (err: Error) => { console.error('[InvoicePdf] PDF stream error:', err); reject(err); });
 
       try {
         let y = 50;

@@ -10,10 +10,12 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE, ESTIMATES_DELETE } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Estimates')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.ESTIMATES)
 @Controller('estimates')
 export class EstimatesController {
   constructor(private service: EstimatesService) {}

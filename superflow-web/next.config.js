@@ -1,4 +1,5 @@
 const { withSentryConfig } = require("@sentry/nextjs");
+const path = require("path");
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -28,7 +29,7 @@ const cspDirectives = [
   `connect-src ${connectSrc.join(" ")}`,
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
-  "frame-src 'none'",
+  "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -75,6 +76,9 @@ const securityHeaders = [
 const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async headers() {
     return [
       {

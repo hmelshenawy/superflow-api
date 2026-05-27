@@ -3,16 +3,77 @@ import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
+import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules, normalizeProductMode } from '../common/product-modes';
+
+const DEFAULT_QC_TEMPLATE = [
+  { name: 'Work Completion', icon: '✅', items: [
+    { label: 'All work per estimate completed', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: true },
+    { label: 'No loose fasteners or missing clips', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+    { label: 'Fluid levels checked and topped up', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: false },
+    { label: 'No fluid leaks visible', input_type: 'pass_fail', requires_photo: true, requires_note_on_fail: true },
+  ]},
+  { name: 'Workmanship Quality', icon: '🔧', items: [
+    { label: 'Paint/panel fit and finish', input_type: 'pass_fail', requires_photo: true, requires_note_on_fail: true },
+    { label: 'No scratches or marks on work area', input_type: 'pass_fail', requires_photo: true, requires_note_on_fail: false },
+    { label: 'All parts properly torqued', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: true },
+    { label: 'Wiring and hoses properly routed', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+  ]},
+  { name: 'Safety Verification', icon: '⚠️', items: [
+    { label: 'Brake system verified', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+    { label: 'Steering system checked', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+    { label: 'No warning lights on dashboard', input_type: 'yes_no', requires_photo: true, requires_note_on_fail: true },
+    { label: 'Tyre condition and pressures confirmed', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: false },
+    { label: 'Seatbelt and airbag systems OK', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: true },
+  ]},
+  { name: 'Customer-Facing Readiness', icon: '🚗', items: [
+    { label: 'Vehicle cleaned and presentable', input_type: 'yes_no', requires_photo: true, requires_note_on_fail: false },
+    { label: 'Interior left tidy', input_type: 'pass_fail', requires_photo: false, requires_note_on_fail: false },
+    { label: 'Odometer reading recorded', input_type: 'text', requires_photo: false, requires_note_on_fail: false },
+    { label: 'Final test drive completed', input_type: 'yes_no', requires_photo: false, requires_note_on_fail: true },
+  ]},
+];
 
 @Injectable()
 export class WorkshopsService {
   constructor(private prisma: PrismaService) {}
 
+  private productConfigData(dto: Partial<CreateWorkshopDto & UpdateWorkshopDto>) {
+    const productMode = normalizeProductMode(dto.productMode);
+    const modules = dto.enabledModules ?? defaultEnabledModules(productMode);
+    return {
+      product_mode: productMode,
+      dms_integration_enabled: dto.dmsIntegrationEnabled ?? productMode === 'CONNECT',
+      enabled_modules: JSON.stringify(modules),
+      package_name: dto.packageName || PRODUCT_MODE_DISPLAY_NAMES[productMode],
+      display_name: dto.displayName,
+    };
+  }
+
+  private updateProductConfigData(dto: UpdateWorkshopDto) {
+    const data: any = {};
+    if (dto.productMode !== undefined) {
+      const productMode = normalizeProductMode(dto.productMode);
+      data.product_mode = productMode;
+      data.package_name = dto.packageName || PRODUCT_MODE_DISPLAY_NAMES[productMode];
+      if (dto.enabledModules === undefined) {
+        data.enabled_modules = JSON.stringify(defaultEnabledModules(productMode));
+      }
+      if (dto.dmsIntegrationEnabled === undefined) {
+        data.dms_integration_enabled = productMode === 'CONNECT';
+      }
+    }
+    if (dto.dmsIntegrationEnabled !== undefined) data.dms_integration_enabled = dto.dmsIntegrationEnabled;
+    if (dto.enabledModules !== undefined) data.enabled_modules = JSON.stringify(dto.enabledModules);
+    if (dto.packageName !== undefined) data.package_name = dto.packageName;
+    if (dto.displayName !== undefined) data.display_name = dto.displayName;
+    return data;
+  }
+
   async create(dto: CreateWorkshopDto) {
     const existing = await this.prisma.raw.workshops.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new BadRequestException('Workshop slug already exists');
 
-    return this.prisma.raw.workshops.create({
+    const workshop = await this.prisma.raw.workshops.create({
       data: {
         id: uuid(),
         name: dto.name,
@@ -21,8 +82,58 @@ export class WorkshopsService {
         phone: dto.phone,
         email: dto.email,
         timezone: dto.timezone,
+        ...this.productConfigData(dto),
       },
     });
+
+    // Seed default QC checklist template for the new workshop
+    this.seedDefaultQcTemplate(workshop.id).catch(() => {});
+
+    return workshop;
+  }
+
+  private async seedDefaultQcTemplate(workshopId: string) {
+    const template = await (this.prisma.raw as any).qc_checklist_templates.create({
+      data: {
+        id: uuid(),
+        name: 'Final Quality Control',
+        description: 'Standard quality control checklist for completed work',
+        is_default: true,
+        is_active: true,
+        workshop_id: workshopId,
+      },
+    });
+
+    for (let si = 0; si < DEFAULT_QC_TEMPLATE.length; si++) {
+      const sec = DEFAULT_QC_TEMPLATE[si];
+      const section = await (this.prisma.raw as any).qc_checklist_sections.create({
+        data: {
+          id: uuid(),
+          template_id: template.id,
+          name: sec.name,
+          icon: sec.icon,
+          sort_order: si + 1,
+          is_active: true,
+          workshop_id: workshopId,
+        },
+      });
+      for (let ii = 0; ii < sec.items.length; ii++) {
+        const item = sec.items[ii];
+        await (this.prisma.raw as any).qc_checklist_items.create({
+          data: {
+            id: uuid(),
+            section_id: section.id,
+            label: item.label,
+            input_type: item.input_type,
+            requires_photo: item.requires_photo,
+            requires_note_on_fail: item.requires_note_on_fail,
+            sort_order: ii + 1,
+            is_active: true,
+            workshop_id: workshopId,
+          },
+        });
+      }
+    }
   }
 
   async findAll() {
@@ -72,9 +183,10 @@ export class WorkshopsService {
 
   async update(id: string, dto: UpdateWorkshopDto) {
     await this.findOne(id);
+    const { productMode, dmsIntegrationEnabled, enabledModules, packageName, displayName, ...workshopDto } = dto;
     const updated = await this.prisma.raw.workshops.update({
       where: { id },
-      data: dto,
+      data: { ...workshopDto, ...this.updateProductConfigData(dto) } as any,
     });
     if (dto.is_active === false) {
       await this.revokeWorkshopSessions(id);

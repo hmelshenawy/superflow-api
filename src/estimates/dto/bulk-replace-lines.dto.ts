@@ -65,6 +65,11 @@ export class BulkEstimateLineDto {
   @IsOptional()
   @IsString()
   quote_group_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  concern_id?: string;
 }
 
 export class BulkReplaceLinesDto {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Upload, MapPin, Play, Save, ArrowLeft, ArrowRight, CheckCircle, XCircle, SkipForward, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -139,7 +140,7 @@ export default function BookingImportPage() {
       setMappings(autoMap(data.headers));
       setStep("mapping");
     } catch (err: any) {
-      const message = err.response?.data?.message || "Failed to parse file";
+      const message = getApiError(err).message;
       setParseError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -169,7 +170,7 @@ export default function BookingImportPage() {
       );
       toast.success(`Applied template: ${data.name}`);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load template";
+      const message = getApiError(err).message;
       setMappingError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     }
@@ -191,7 +192,7 @@ export default function BookingImportPage() {
       setTemplateName("");
       loadTemplates();
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to save template";
+      const message = getApiError(err).message;
       setMappingError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -216,7 +217,7 @@ export default function BookingImportPage() {
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
       if (selectedTemplateId === templateId) setSelectedTemplateId("");
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to delete template";
+      const message = getApiError(err).message;
       setMappingError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -240,7 +241,7 @@ export default function BookingImportPage() {
       setStep("result");
       if (data.created > 0) toast.success(`Imported ${data.created} bookings!`);
     } catch (err: any) {
-      const message = err.response?.data?.message || "Import failed";
+      const message = getApiError(err).message;
       setMappingError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -267,7 +268,7 @@ export default function BookingImportPage() {
       const { data } = await api.delete<{ deleted: number }>("/jobs");
       toast.success(`Cleared ${data.deleted} booked jobs`);
     } catch (err: any) {
-      const message = err.response?.data?.message || "Failed to clear jobs";
+      const message = getApiError(err).message;
       setResultError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -276,6 +277,7 @@ export default function BookingImportPage() {
   };
 
   return (
+    <RequirePermission permissions={["import:parse"]}>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -581,5 +583,6 @@ export default function BookingImportPage() {
         </Card>
       )}
     </div>
+    </RequirePermission>
   );
 }

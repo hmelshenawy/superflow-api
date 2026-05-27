@@ -6,16 +6,19 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
+import { BulkDeleteJobsDto } from './dto/bulk-delete.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION } from '../common/permissions';
 import { PlanFeatureGuard } from '../common/guards/plan-feature.guard';
 import { RequirePlanFeature } from '../common/plan-features/require-plan-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.WIP)
 @Controller('jobs')
 export class JobsController {
   constructor(private service: JobsService) {}
@@ -31,6 +34,11 @@ export class JobsController {
     return this.service.findAll(query, query.status, query.search, userId, role);
   }
 
+  @Get('concern-status-options')
+  @RequirePermission(JOBS_READ)
+  @ApiOperation({ summary: 'Valid customer/job concern status options' })
+  concernStatusOptions() { return this.service.concernStatusOptions(); }
+
   @Get(':id')
   @RequirePermission(JOBS_READ)
   @ApiOperation({ summary: 'Full job details' })
@@ -42,6 +50,21 @@ export class JobsController {
   @RequirePlanFeature('jobs')
   @ApiOperation({ summary: 'Create job' })
   create(@Body() dto: CreateJobDto, @CurrentUser('sub') userId: string) { return this.service.create(dto, userId); }
+
+  @Post(':id/concerns')
+  @RequirePermission(JOBS_UPDATE)
+  @ApiOperation({ summary: 'Create a customer/job concern' })
+  createConcern(@Param('id') id: string, @Body() dto: any) { return this.service.createConcern(id, dto); }
+
+  @Patch(':id/concerns/:concernId')
+  @RequirePermission(JOBS_UPDATE)
+  @ApiOperation({ summary: 'Update a customer/job concern' })
+  updateConcern(@Param('id') id: string, @Param('concernId') concernId: string, @Body() dto: any) { return this.service.updateConcern(id, concernId, dto); }
+
+  @Delete(':id/concerns/:concernId')
+  @RequirePermission(JOBS_UPDATE)
+  @ApiOperation({ summary: 'Delete a customer/job concern' })
+  removeConcern(@Param('id') id: string, @Param('concernId') concernId: string) { return this.service.removeConcern(id, concernId); }
 
   @Patch(':id')
   @RequirePermission(JOBS_UPDATE)
@@ -84,5 +107,10 @@ export class JobsController {
   @Delete()
   @RequirePermission(JOBS_DELETE)
   @ApiOperation({ summary: 'Delete ALL jobs (bulk clear)' })
-  removeAll() { return this.service.removeAll(); }
+  removeAll(@Body() dto: BulkDeleteJobsDto) {
+    if (!dto.confirm) {
+      throw new Error('Bulk delete requires confirm: true');
+    }
+    return this.service.removeAll();
+  }
 }

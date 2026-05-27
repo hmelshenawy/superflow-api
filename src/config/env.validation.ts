@@ -78,6 +78,11 @@ export function validateEnvironment(config: Env) {
     if (isBlank(config.JWT_SECRET)) warn('JWT_SECRET is not set; authenticated flows will fail until configured.');
   }
 
+  if (!isBlank(config.WHATSAPP_PHONE_NUMBER_ID) || !isBlank(config.WHATSAPP_ACCESS_TOKEN)) {
+    if (isBlank(config.WHATSAPP_PHONE_NUMBER_ID)) warn('WHATSAPP_PHONE_NUMBER_ID is missing; WhatsApp direct sending will be disabled.');
+    if (isBlank(config.WHATSAPP_ACCESS_TOKEN)) warn('WHATSAPP_ACCESS_TOKEN is missing; WhatsApp direct sending will be disabled.');
+  }
+
   if (errors.length) {
     throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
   }

@@ -9,6 +9,20 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class DeferredService {
   constructor(private prisma: PrismaService) {}
 
+  private availableActions(status: string | null) {
+    const actions: string[] = [];
+    if (status === 'pending' || status === 'reminded') actions.push('can_remind');
+    if (status !== 'closed') actions.push('can_close');
+    return actions;
+  }
+
+  private withComputedFields<T extends { status: string | null }>(item: T) {
+    return {
+      ...item,
+      available_actions: this.availableActions(item.status),
+    };
+  }
+
   async findAll(pagination: PaginationDto, status?: string) {
     const skip = (pagination.page - 1) * pagination.limit;
     const where = status ? { status: status as any } : {};
@@ -26,7 +40,7 @@ export class DeferredService {
       }),
       this.prisma.tenant.deferred_work.count({ where }),
     ]);
-    const data = items.map((item: (typeof items)[number]) => ({
+    const data = items.map((item: (typeof items)[number]) => this.withComputedFields({
       ...item,
       customer: item.customers,
       vehicle: item.vehicles,
@@ -47,14 +61,15 @@ export class DeferredService {
       },
     });
     if (!item) throw new NotFoundException('Deferred work not found');
-    return item;
+    return this.withComputedFields(item);
   }
 
   async update(id: string, dto: UpdateDeferredDto) {
     await this.findOne(id);
     const data: any = { ...dto };
     if (dto.remind_after) data.remind_after = new Date(dto.remind_after);
-    return this.prisma.tenant.deferred_work.update({ where: { id }, data });
+    const updated = await this.prisma.tenant.deferred_work.update({ where: { id }, data });
+    return this.withComputedFields(updated);
   }
 
   async remindNow(id: string) {
@@ -169,9 +184,10 @@ export class DeferredService {
   async getDueReminders() {
     // Returns deferred items where remind_after has passed, used by any
     // future cron or polling mechanism for automated reminders.
-    return this.prisma.tenant.deferred_work.findMany({
+    const items = await this.prisma.tenant.deferred_work.findMany({
       where: { status: 'pending', remind_after: { lte: new Date() } },
       include: { customers: true, vehicles: true },
     });
+    return items.map((item: (typeof items)[number]) => this.withComputedFields(item));
   }
 }

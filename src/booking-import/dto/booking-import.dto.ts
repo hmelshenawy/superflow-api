@@ -11,7 +11,7 @@ export class ColumnMappingDto {
   source: string;
 
   @ApiProperty({
-    description: 'Target field in SuperFlow',
+    description: 'Target field in PrioraFlow',
     enum: [
       // Customer fields
       'customer_name', 'customer_email', 'customer_phone',

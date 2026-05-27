@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { LabourRate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 export default function LabourRatesPage() {
   const [rates, setRates] = useState<LabourRate[]>([]);
@@ -39,7 +40,7 @@ export default function LabourRatesPage() {
       setRates(ratesRes.data);
       setCurrency(defaultsRes.data.currency || "AED");
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load labour rates";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -67,7 +68,7 @@ export default function LabourRatesPage() {
       setEditingId(null);
       fetchRates();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save rate");
+      toast.error(getApiError(err).message);
     } finally {
       setSaving(false);
     }
@@ -81,7 +82,7 @@ export default function LabourRatesPage() {
       toast.success("Rate deleted");
       fetchRates();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete rate");
+      toast.error(getApiError(err).message);
     } finally {
       setDeletingId(null);
     }
@@ -100,6 +101,7 @@ export default function LabourRatesPage() {
   };
 
   return (
+    <RequirePermission permissions={["admin:labour-rates"]}>
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Labour Rates</h1>
@@ -193,5 +195,6 @@ export default function LabourRatesPage() {
         </Table>
       </div>
     </div>
+    </RequirePermission>
   );
 }

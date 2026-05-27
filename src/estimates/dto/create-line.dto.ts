@@ -13,4 +13,5 @@ export class CreateLineDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_recommended?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() inspection_response_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() quote_group_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() concern_id?: string;
 }

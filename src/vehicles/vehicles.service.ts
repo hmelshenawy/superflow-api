@@ -94,6 +94,107 @@ export class VehiclesService {
     return vehicle;
   }
 
+  async serviceHistory(id: string) {
+    await this.findOne(id);
+
+    const [jobs, manualEntries] = await Promise.all([
+      this.prisma.tenant.jobs.findMany({
+        where: { vehicle_id: id, is_deleted: false },
+        include: {
+          customers: { select: { id: true, name: true, phone: true } },
+          users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
+          users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
+          estimate_lines: {
+            select: {
+              id: true,
+              type: true,
+              description: true,
+              quantity: true,
+              line_total: true,
+              is_recommended: true,
+              created_at: true,
+            },
+            orderBy: { created_at: 'asc' },
+          },
+          inspections: { select: { id: true, status: true, started_at: true, submitted_at: true } },
+          media_files: { where: { is_deleted: false }, select: { id: true } },
+        },
+        orderBy: [{ completed_at: 'desc' }, { created_at: 'desc' }],
+      }),
+      this.prisma.tenant.vehicle_service_history.findMany({
+        where: { vehicle_id: id },
+        include: { jobs: { select: { id: true, job_number: true } } },
+        orderBy: [{ serviced_at: 'desc' }],
+      }),
+    ]);
+
+    const jobEntries = jobs.map((job: any) => ({
+      id: job.id,
+      type: 'job',
+      job_id: job.id,
+      job_number: job.job_number,
+      status: job.status,
+      workshop_stage: job.workshop_stage,
+      parts_status: job.parts_status,
+      customer: job.customers,
+      advisor: job.users_jobs_advisor_idTousers,
+      technician: job.users_jobs_technician_idTousers,
+      odometer_km: job.odometer_in,
+      summary: job.customer_concern,
+      service_date: job.completed_at || job.invoiced_at || job.created_at,
+      promised_at: job.promised_at,
+      completed_at: job.completed_at,
+      created_at: job.created_at,
+      estimate_total: (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0),
+      estimate_lines: job.estimate_lines ?? [],
+      inspection: job.inspections ?? null,
+      media_count: job.media_files?.length ?? 0,
+      dms_ro_number: job.dms_ro_number,
+    }));
+
+    const manualHistory = manualEntries.map((entry: any) => ({
+      id: entry.id,
+      type: 'manual',
+      job_id: entry.job_id,
+      job_number: entry.jobs?.job_number ?? null,
+      status: null,
+      workshop_stage: null,
+      parts_status: null,
+      customer: null,
+      advisor: null,
+      technician: null,
+      odometer_km: entry.odometer_km,
+      summary: entry.summary,
+      service_date: entry.serviced_at || entry.created_at,
+      promised_at: null,
+      completed_at: null,
+      created_at: entry.created_at,
+      estimate_total: null,
+      estimate_lines: [],
+      inspection: null,
+      media_count: 0,
+      dms_ro_number: null,
+    }));
+
+    const entries = [...jobEntries, ...manualHistory].sort((a, b) => {
+      const left = a.service_date ? new Date(a.service_date).getTime() : 0;
+      const right = b.service_date ? new Date(b.service_date).getTime() : 0;
+      return right - left;
+    });
+
+    const totals = entries.reduce(
+      (acc, entry: any) => {
+        if (entry.type === 'job') acc.jobs += 1;
+        if (entry.status === 'closed') acc.closedJobs += 1;
+        if (typeof entry.estimate_total === 'number') acc.revenue += entry.estimate_total;
+        return acc;
+      },
+      { jobs: 0, closedJobs: 0, revenue: 0 },
+    );
+
+    return { vehicleId: id, totals, entries };
+  }
+
   async findByVin(vin: string) {
     // VIN must be exactly 17 characters — enforced here because the DB
     // unique constraint only guarantees uniqueness, not format correctness.

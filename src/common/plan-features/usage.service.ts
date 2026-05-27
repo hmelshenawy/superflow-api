@@ -111,7 +111,7 @@ export class UsageService {
       }),
     ]);
 
-    const usageMap = new Map(usageRecords.map(r => [r.feature_key, r.count]));
+    const usageMap = new Map(usageRecords.map((r: typeof usageRecords[number]) => [r.feature_key, r.count]));
 
     // Get live counts for capacity features
     const [userCount] = await Promise.all([
@@ -122,7 +122,7 @@ export class UsageService {
       max_locations: 1,
     };
 
-    return planFeatures.map(pf => ({
+    return planFeatures.map((pf: typeof planFeatures[number]) => ({
       featureKey: pf.feature_key,
       count: liveCounts[pf.feature_key] ?? usageMap.get(pf.feature_key) ?? 0,
       ceiling: pf.ceiling,

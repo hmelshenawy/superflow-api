@@ -28,7 +28,7 @@ export class BillingService {
       priceByPlanRegion.set(`${pr.plan_id}:${pr.region}`, pr);
     }
 
-    return plans.map(plan => {
+    return plans.map((plan: typeof plans[number]) => {
       const regionPrice = priceByPlanRegion.get(`${plan.id}:${region}`);
       const features = featuresByPlan.get(plan.id) || [];
       return {
@@ -38,7 +38,7 @@ export class BillingService {
         price: regionPrice?.price_monthly_cents ?? plan.price_monthly_cents,
         currency: regionPrice?.currency ?? plan.currency,
         displayName: regionPrice?.display_name ?? plan.name,
-        features: features.map(f => ({
+        features: features.map((f: typeof planFeatures[number]) => ({
           key: f.feature_key,
           isIncluded: f.is_included,
           ceiling: f.ceiling,
@@ -88,7 +88,7 @@ export class BillingService {
         price: regionPrice?.price_monthly_cents ?? plan?.price_monthly_cents,
         currency: regionPrice?.currency ?? plan?.currency,
       },
-      features: features.map(f => ({
+      features: features.map((f: typeof features[number]) => ({
         key: f.feature_key,
         isIncluded: f.is_included,
         ceiling: f.ceiling,
@@ -265,7 +265,7 @@ export class BillingService {
 
     return {
       ...base,
-      invoices: invoices.map(inv => ({
+      invoices: invoices.map((inv: typeof invoices[number]) => ({
         id: inv.id,
         invoiceNumber: inv.invoice_number,
         status: inv.status,
@@ -274,7 +274,7 @@ export class BillingService {
         dueAt: inv.due_at,
         issuedAt: inv.issued_at,
         paidAt: inv.paid_at,
-        items: inv.invoice_items.map(ii => ({
+        items: inv.invoice_items.map((ii: typeof inv.invoice_items[number]) => ({
           id: ii.id,
           description: ii.description,
           quantity: ii.quantity,
@@ -283,7 +283,7 @@ export class BillingService {
           type: ii.type,
           period: ii.period,
         })),
-        payments: inv.payments.map(p => ({
+        payments: inv.payments.map((p: typeof inv.payments[number]) => ({
           id: p.id,
           status: p.status,
           amountCents: p.amount_cents,
@@ -342,16 +342,16 @@ export class BillingService {
       by: ['workshop_id'],
       _count: { workshop_id: true },
     });
-    const userCountMap = new Map(userCounts.map(r => [r.workshop_id, r._count.workshop_id]));
+    const userCountMap = new Map(userCounts.map((r: typeof userCounts[number]) => [r.workshop_id, r._count.workshop_id]));
 
-    return workshops.map(w => {
+    return workshops.map((w: typeof workshops[number]) => {
       const sub = subByWorkshop.get(w.id);
       const planId = sub?.plan_id || w.plan_id || 'free_trial';
       const planFeatures = featuresByPlan.get(planId) || [];
       const workshopUsage = usageByWorkshop.get(w.id) || new Map<string, number>();
 
       // Build usage summary keyed by feature
-      const usage = planFeatures.map(pf => {
+      const usage = planFeatures.map((pf: typeof planFeatures[number]) => {
         const liveCount = pf.feature_key === 'max_users'
           ? (userCountMap.get(w.id) ?? 0)
           : pf.feature_key === 'max_locations'

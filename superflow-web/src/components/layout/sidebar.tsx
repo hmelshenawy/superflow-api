@@ -6,77 +6,38 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
+import { hasAnyPermission, isAdmin as isAdminCheck, isPlatformAdmin } from "@/lib/permissions";
+import { PRODUCT_LABELS, PRODUCT_NAV, getEnabledModules, getWorkshopProductMode, hasProductModule, type NavItem } from "@/lib/product-modes";
 import {
   BadgeCheck,
   Building2,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
-  Clock3,
-  LayoutGrid,
   LogOut,
   Lock,
   Menu,
   Settings,
   Shield,
   Users,
-  Wrench,
   BarChart3,
-  Upload,
   X,
   ScrollText,
-  AlertTriangle,
-  Crosshair,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
 
-type NavItem = { href: string; label: string; icon: typeof LayoutGrid; requirePermission?: string; platformOnly?: boolean };
-
-const NAV_ITEMS: NavItem[] = [
-  { href: "/insights", label: "Insights", icon: BarChart3, requirePermission: "insights:dashboard" },
-  { href: "/advisor", label: "My Cockpit", icon: Crosshair, requirePermission: "priority:read" },
-  { href: "/jobs", label: "Workshop Board", icon: LayoutGrid },
-  { href: "/deferred", label: "Deferred Work", icon: Clock3, requirePermission: "deferred:read" },
-  { href: "/blockers", label: "Blockers", icon: AlertTriangle, requirePermission: "blockers:read" },
+const SHARED_ADMIN_NAV: NavItem[] = [
   { href: "/admin/users-roles", label: "Users & Roles", icon: Users, requirePermission: "admin:users" },
   { href: "/admin/roles", label: "Roles & Permissions", icon: Shield, requirePermission: "admin:roles" },
-  { href: "/admin/labour-rates", label: "Labour Rates", icon: Wrench, requirePermission: "admin:labour-rates" },
-  { href: "/admin/templates", label: "Inspection Templates", icon: ClipboardList, requirePermission: "admin:templates" },
-  { href: "/admin/booking-import", label: "Booking Import", icon: Upload, requirePermission: "import:parse" },
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
-  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/admin/workshops", label: "Workshops", icon: Building2, requirePermission: "workshops:read" },
   { href: "/admin/usage", label: "Usage Overview", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
 ];
 
-function isPlatformAdmin(user: { role?: { name?: string | null } | null } | null): boolean {
-  return user?.role?.name?.toLowerCase() === "platform_admin";
-}
-
-function isAdmin(user: { role?: { name?: string | null } | null; role_id?: string | null } | null): boolean {
-  if (!user) return false;
-  const roleName = user.role?.name?.toLowerCase();
-  if (roleName === "admin" || roleName === "administrator" || roleName === "super_admin" || roleName === "platform_admin" || roleName === "workshop_admin") return true;
-  const roleId = user.role_id;
-  if (roleId === "admin" || roleId === "super_admin") return true;
-  return false;
-}
-
-function getUserPermissions(user: { role?: { name?: string | null; permissions?: string[] | string | null } | null } | null): Set<string> {
-  if (!user) return new Set();
-  if (isAdmin(user)) return new Set(["*"]);
-  const perms = user.role?.permissions;
-  if (!perms) return new Set();
-  if (Array.isArray(perms)) return new Set(perms);
-  try { return new Set(JSON.parse(String(perms))); } catch { return new Set(); }
-}
-
 function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
   if (item.platformOnly && !isPlatformAdmin(user)) return false;
   if (!item.requirePermission) return true;
-  if (isAdmin(user)) return true;
-  return getUserPermissions(user).has(item.requirePermission);
+  return hasAnyPermission(user, [item.requirePermission]);
 }
 
 export function Sidebar() {
@@ -86,7 +47,10 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const admin = isAdmin(user);
+  const admin = isAdminCheck(user);
+  const currentWorkshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
+  const productMode = getWorkshopProductMode(currentWorkshop);
+  const productLabel = currentWorkshop?.packageName || currentWorkshop?.package_name || PRODUCT_LABELS[productMode];
 
   // Initialize from localStorage after hydration
   useEffect(() => {
@@ -122,7 +86,11 @@ export function Sidebar() {
     });
   }, []);
 
-  const filteredItems = NAV_ITEMS.filter((item) => canSeeNavItem(item, user));
+  const filteredItems = [...PRODUCT_NAV[productMode], ...SHARED_ADMIN_NAV].filter((item) => {
+    const roleName = user?.role?.name || "";
+    if (item.roles && !item.roles.includes(roleName)) return false;
+    return canSeeNavItem(item, user) && hasProductModule(currentWorkshop, item.module);
+  });
 
   useEffect(() => {
     setMobileOpen(false);
@@ -146,8 +114,8 @@ export function Sidebar() {
           </div>
           {!isCollapsed && (
             <div className="min-w-0 leading-tight">
-              <h2 className="truncate text-[15px] font-bold tracking-tight text-foreground dark:text-white">PrioraFlow</h2>
-              <p className="truncate text-[11px] font-medium text-muted-foreground dark:text-slate-400">Clarity in every step</p>
+              <h2 className="truncate text-[15px] font-bold tracking-tight text-foreground dark:text-white">{productLabel}</h2>
+              <p className="truncate text-[11px] font-medium text-muted-foreground dark:text-slate-400">{getEnabledModules(currentWorkshop).length} modules enabled</p>
             </div>
           )}
         </div>
@@ -174,12 +142,12 @@ export function Sidebar() {
         </div>
       )}
 
-      <nav className={cn("flex-1 space-y-1 px-2 py-3", isCollapsed && "px-1.5")}>
+      <nav className={cn("flex-1 space-y-1 overflow-y-auto px-2 py-3 scrollbar-hide", isCollapsed && "px-1.5")}>
         {filteredItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname.startsWith(item.href);
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const featureKey = NAV_FEATURE_MAP[item.href];
-          const locked = featureKey ? !hasFeature(featureKey) : false;
+          const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
           return (
             <Link
               key={item.href}
@@ -296,8 +264,8 @@ export function Sidebar() {
                   <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={512} height={512} className="h-8 w-8 object-contain" priority />
                 </div>
                 <div className="leading-tight">
-                  <h2 className="text-[15px] font-bold tracking-tight text-foreground dark:text-white">PrioraFlow</h2>
-                  <p className="text-[11px] font-medium text-muted-foreground dark:text-slate-400">Clarity in every step</p>
+                  <h2 className="text-[15px] font-bold tracking-tight text-foreground dark:text-white">{productLabel}</h2>
+                  <p className="text-[11px] font-medium text-muted-foreground dark:text-slate-400">{currentWorkshop?.name || "Workspace"}</p>
                 </div>
               </div>
               <button
@@ -308,12 +276,12 @@ export function Sidebar() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 space-y-1 px-2 py-3">
+            <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3 scrollbar-hide">
               {filteredItems.map((item) => {
                 const Icon = item.icon;
-                const active = pathname.startsWith(item.href);
+                const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                 const featureKey = NAV_FEATURE_MAP[item.href];
-                const locked = featureKey ? !hasFeature(featureKey) : false;
+                const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
                 return (
                   <Link
                     key={item.href}

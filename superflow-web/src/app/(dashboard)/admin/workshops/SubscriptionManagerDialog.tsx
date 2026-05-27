@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { Plan, WorkshopBillingOverview } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -109,7 +109,8 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
         setInvoicePlanId(pricingRes.data[0].id);
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to load billing data");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -140,7 +141,7 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
       toast.success(comped ? "Subscription activated (free)" : "Subscription activated");
       refreshBilling();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to activate subscription");
+      toast.error(getApiError(err).message);
     } finally {
       setActivating(false);
     }
@@ -162,7 +163,7 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
       setPeriodStart("");
       setPeriodEnd("");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to create invoice");
+      toast.error(getApiError(err).message);
     } finally {
       setCreatingInvoice(false);
     }
@@ -181,7 +182,7 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
       setPaymentMethod("manual");
       setPaymentReference("");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to mark invoice as paid");
+      toast.error(getApiError(err).message);
     } finally {
       setMarkingPaidId(null);
     }
@@ -199,7 +200,7 @@ export default function SubscriptionManagerDialog({ open, onOpenChange, workshop
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to download invoice PDF");
+      toast.error(getApiError(err).message);
     }
   };
 

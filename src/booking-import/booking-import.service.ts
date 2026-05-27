@@ -153,7 +153,7 @@ async function parseXlsxRows(file: Express.Multer.File): Promise<Record<string, 
 
   const headerRow = sheet.getRow(1);
   const headers: { column: number; name: string }[] = [];
-  headerRow.eachCell({ includeEmpty: false }, (cell, column) => {
+  headerRow.eachCell({ includeEmpty: false }, (cell: ExcelJS.Cell, column: number) => {
     const name = cleanCell(cell.value);
     if (name) headers.push({ column, name });
   });

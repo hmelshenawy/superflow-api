@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { initSentry } from './common/sentry/sentry.init';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { PrismaService } from './prisma/prisma.service';
 
 // ─── Initialize Sentry before anything else ─────────────────
 initSentry();
@@ -37,7 +38,6 @@ async function bootstrap() {
             "'self'",
             // Next.js needs inline scripts for hydration
             "'unsafe-inline'",
-            "'unsafe-eval'",
           ],
           styleSrc: [
             "'self'",
@@ -70,17 +70,31 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Health check
-  app.use('/health', (_req: Request, res: Response) => res.json({
-    status: 'ok',
-    service: 'superflow-api',
-    version: appVersion,
-    environment: process.env.NODE_ENV || 'development',
-    branch: process.env.GIT_BRANCH || 'unknown',
-    commit: process.env.GIT_COMMIT || 'unknown',
-    uptimeSeconds: Math.round(process.uptime()),
-    timestamp: new Date().toISOString(),
-  }));
+  // Health check — verifies DB and Redis connectivity
+  const prisma = app.get(PrismaService);
+  app.use('/health', async (_req: Request, res: Response) => {
+    const checks: Record<string, string> = {};
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.database = 'ok';
+    } catch {
+      checks.database = 'error';
+    }
+    // Redis is optional — degraded mode without it
+    try {
+      const redis = app.get('REDIS_CONNECTION') as import('ioredis').default;
+      const pong = await redis.ping();
+      checks.redis = pong === 'PONG' ? 'ok' : 'error';
+    } catch {
+      checks.redis = 'unavailable';
+    }
+    const healthy = checks.database === 'ok';
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'ok' : 'degraded',
+      ...checks,
+      timestamp: new Date().toISOString(),
+    });
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -94,7 +108,7 @@ async function bootstrap() {
   // Swagger docs only in non-production environments
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('SuperFlow API')
+      .setTitle('PrioraFlow API')
       .setDescription('Workshop Management System')
       .setVersion('0.1.0')
       .addBearerAuth()
@@ -103,8 +117,11 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
+  // Ensure Prisma/Redis connections are closed gracefully on SIGTERM
+  app.enableShutdownHooks();
+
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 SuperFlow API running on http://localhost:${port}/api`);
+  console.log(`PrioraFlow API running on http://localhost:${port}/api`);
 }
 bootstrap();

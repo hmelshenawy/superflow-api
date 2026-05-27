@@ -9,104 +9,124 @@ datasource db {
 }
 
 model workshops {
-  id          String    @id @db.Char(36)
-  name        String    @db.VarChar(120)
-  slug        String    @unique(map: "workshop_slug") @db.VarChar(60)
-  address     String?   @db.Text
-  phone       String?   @db.VarChar(30)
-  email       String?   @db.VarChar(255)
-  timezone    String?   @default("Asia/Dubai") @db.VarChar(50)
-  region      String?   @default("gcc") @db.VarChar(10)
-  is_active   Boolean?  @default(true)
-  plan_id     String?   @default("free_trial") @db.VarChar(60)
+  id            String    @id @db.Char(36)
+  name          String    @db.VarChar(120)
+  slug          String    @unique(map: "workshop_slug") @db.VarChar(60)
+  address       String?   @db.Text
+  phone         String?   @db.VarChar(30)
+  email         String?   @db.VarChar(255)
+  timezone      String?   @default("Asia/Dubai") @db.VarChar(50)
+  region        String?   @default("gcc") @db.VarChar(10)
+  is_active     Boolean?  @default(true)
+  plan_id       String?   @default("free_trial") @db.VarChar(60)
+  product_mode  String    @default("WORKSHOP") @db.VarChar(20)
+  dms_integration_enabled Boolean @default(false)
+  enabled_modules String? @db.LongText
+  package_name  String?   @default("PrioraFlow Workshop") @db.VarChar(120)
+  display_name  String?   @db.VarChar(120)
   trial_ends_at DateTime? @db.DateTime(0)
-  created_at  DateTime? @default(now()) @db.DateTime(0)
-  updated_at  DateTime? @default(now()) @db.DateTime(0)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
 
-  user_workshop_access   user_workshop_access[]
-  subscriptions          subscriptions[]
-  invoices               invoices[]
-  payments               payments[]
-  usage_records          usage_records[]
-  approval_tokens        approval_tokens[]
-  audit_logs             audit_logs[]
-  authorisation_decisions authorisation_decisions[]
-  booking_import_templates booking_import_templates[]
-  customers              customers[]
-  deferred_work          deferred_work[]
-  deferred_work_reminders deferred_work_reminders[]
-  estimate_line_history  estimate_line_history[]
-  estimate_lines         estimate_lines[]
-  inspection_items        inspection_items[]
-  inspection_responses   inspection_responses[]
-  inspection_sections    inspection_sections[]
-  inspection_templates   inspection_templates[]
-  inspections            inspections[]
-  integrations           integrations[]
-  integration_events     integration_events[]
-  job_status_history     job_status_history[]
-  jobs                   jobs[]
-  labour_rates           labour_rates[]
-  media_files            media_files[]
-  notification_templates notification_templates[]
-  notifications          notifications[]
-  quote_groups           quote_groups[]
-  settings               settings[]
-  vehicle_service_history vehicle_service_history[]
-  vehicles               vehicles[]
-  blockers                blockers[]
+  user_workshop_access      user_workshop_access[]
+  subscriptions             subscriptions[]
+  invoices                  invoices[]
+  payments                  payments[]
+  usage_records             usage_records[]
+  approval_tokens           approval_tokens[]
+  audit_logs                audit_logs[]
+  authorisation_decisions   authorisation_decisions[]
+  booking_import_templates  booking_import_templates[]
+  customers                 customers[]
+  job_concerns              job_concerns[]
+  customer_portal_snapshots customer_portal_snapshots[]
+  deferred_work             deferred_work[]
+  deferred_work_reminders   deferred_work_reminders[]
+  estimate_line_history     estimate_line_history[]
+  estimate_lines            estimate_lines[]
+  inspection_items          inspection_items[]
+  inspection_responses      inspection_responses[]
+  inspection_sections       inspection_sections[]
+  inspection_templates      inspection_templates[]
+  inspections               inspections[]
+  integrations              integrations[]
+  qc_checklist_templates    qc_checklist_templates[]
+  qc_checklist_sections     qc_checklist_sections[]
+  qc_checklist_items        qc_checklist_items[]
+  qc_checklists             qc_checklists[]
+  qc_checklist_responses    qc_checklist_responses[]
+  integration_events        integration_events[]
+  job_status_history        job_status_history[]
+  jobs                      jobs[]
+  labour_rates              labour_rates[]
+  media_files               media_files[]
+  notification_templates    notification_templates[]
+  notifications             notifications[]
+  quote_groups              quote_groups[]
+  settings                  settings[]
+  vehicle_service_history   vehicle_service_history[]
+  vehicles                  vehicles[]
+  blockers                  blockers[]
+  suppliers                 suppliers[]
+  warehouses                warehouses[]
+  parts                     parts[]
+  part_fitments             part_fitments[]
+  inventory                 inventory[]
+  stock_movements           stock_movements[]
+  job_parts                 job_parts[]
+  purchase_orders           purchase_orders[]
+  purchase_order_items      purchase_order_items[]
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
 }
 
-
 model plans {
-  id                    String          @id @db.VarChar(60)
-  name                  String          @db.VarChar(120)
-  description           String?         @db.Text
-  price_monthly_cents   Int?            @default(0)
-  currency              String?         @default("AED") @db.VarChar(3)
-  max_users             Int?
-  max_jobs_per_month    Int?
-  max_workshops         Int?            @default(1)
-  is_active             Boolean?        @default(true)
-  created_at            DateTime?       @default(now()) @db.DateTime(0)
-  updated_at            DateTime?       @default(now()) @db.DateTime(0)
+  id                  String    @id @db.VarChar(60)
+  name                String    @db.VarChar(120)
+  description         String?   @db.Text
+  price_monthly_cents Int?      @default(0)
+  currency            String?   @default("AED") @db.VarChar(3)
+  max_users           Int?
+  max_jobs_per_month  Int?
+  max_workshops       Int?      @default(1)
+  is_active           Boolean?  @default(true)
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_at          DateTime? @default(now()) @db.DateTime(0)
 
-  subscriptions         subscriptions[]
-  plan_features         plan_features[]
-  plan_regions          plan_regions[]
+  subscriptions subscriptions[]
+  plan_features plan_features[]
+  plan_regions  plan_regions[]
 }
 
 model subscriptions {
-  id                         String     @id @db.Char(36)
-  workshop_id                String     @db.Char(36)
-  plan_id                    String     @db.VarChar(60)
-  region                     String?    @default("gcc") @db.VarChar(10)
-  additional_locations       Int?       @default(0)
-  billing_model              String?    @default("flat") @db.VarChar(20)
-  status                     String     @default("trialing") @db.VarChar(40)
-  trial_ends_at              DateTime?  @db.DateTime(0)
-  current_period_starts_at   DateTime?  @db.DateTime(0)
-  current_period_ends_at     DateTime?  @db.DateTime(0)
-  provider_name              String?    @db.VarChar(60)
-  provider_customer_id       String?    @db.VarChar(120)
-  provider_subscription_id   String?    @db.VarChar(120)
-  stripe_customer_id         String?    @db.VarChar(120)
-  stripe_subscription_id     String?    @db.VarChar(120)
-  billing_email              String?    @db.VarChar(255)
-  cancel_at_period_end       Boolean?   @default(false)
-  price_override_cents       Int?       @db.Int
-  discount_pct               Int?       @db.Int
-  internal_notes             String?    @db.Text
-  created_at                 DateTime?  @default(now()) @db.DateTime(0)
-  updated_at                 DateTime?  @default(now()) @db.DateTime(0)
+  id                       String    @id @db.Char(36)
+  workshop_id              String    @db.Char(36)
+  plan_id                  String    @db.VarChar(60)
+  region                   String?   @default("gcc") @db.VarChar(10)
+  additional_locations     Int?      @default(0)
+  billing_model            String?   @default("flat") @db.VarChar(20)
+  status                   String    @default("trialing") @db.VarChar(40)
+  trial_ends_at            DateTime? @db.DateTime(0)
+  current_period_starts_at DateTime? @db.DateTime(0)
+  current_period_ends_at   DateTime? @db.DateTime(0)
+  provider_name            String?   @db.VarChar(60)
+  provider_customer_id     String?   @db.VarChar(120)
+  provider_subscription_id String?   @db.VarChar(120)
+  stripe_customer_id       String?   @db.VarChar(120)
+  stripe_subscription_id   String?   @db.VarChar(120)
+  billing_email            String?   @db.VarChar(255)
+  cancel_at_period_end     Boolean?  @default(false)
+  price_override_cents     Int?      @db.Int
+  discount_pct             Int?      @db.Int
+  internal_notes           String?   @db.Text
+  created_at               DateTime? @default(now()) @db.DateTime(0)
+  updated_at               DateTime? @default(now()) @db.DateTime(0)
 
-  workshops                  workshops  @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_subscriptions_workshop")
-  plans                      plans      @relation(fields: [plan_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_subscriptions_plan")
-  invoices                   invoices[]
-  payments                   payments[]
+  workshops workshops  @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_subscriptions_workshop")
+  plans     plans      @relation(fields: [plan_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_subscriptions_plan")
+  invoices  invoices[]
+  payments  payments[]
 
   @@index([workshop_id], map: "idx_subscriptions_workshop")
   @@index([plan_id], map: "idx_subscriptions_plan")
@@ -116,46 +136,46 @@ model subscriptions {
 }
 
 model payment_gateways {
-  id                    String    @id @db.VarChar(60)
-  name                  String    @db.VarChar(120)
-  status                String    @default("available") @db.VarChar(40)
-  supported_currencies  String?   @db.VarChar(255)
-  notes                 String?   @db.Text
-  is_active             Boolean?  @default(true)
-  created_at            DateTime? @default(now()) @db.DateTime(0)
-  updated_at            DateTime? @default(now()) @db.DateTime(0)
+  id                   String    @id @db.VarChar(60)
+  name                 String    @db.VarChar(120)
+  status               String    @default("available") @db.VarChar(40)
+  supported_currencies String?   @db.VarChar(255)
+  notes                String?   @db.Text
+  is_active            Boolean?  @default(true)
+  created_at           DateTime? @default(now()) @db.DateTime(0)
+  updated_at           DateTime? @default(now()) @db.DateTime(0)
 
-  payments              payments[]
+  payments payments[]
 
   @@index([status], map: "idx_payment_gateways_status")
   @@index([is_active], map: "idx_payment_gateways_active")
 }
 
 model invoices {
-  id                    String          @id @db.Char(36)
-  workshop_id           String          @db.Char(36)
-  subscription_id       String?         @db.Char(36)
-  invoice_number        String          @unique(map: "idx_invoices_number") @db.VarChar(40)
-  status                String          @default("draft") @db.VarChar(40)
-  currency              String?         @default("AED") @db.VarChar(3)
-  subtotal_cents        Int             @default(0)
-  tax_cents             Int             @default(0)
-  total_cents           Int             @default(0)
-  amount_paid_cents     Int             @default(0)
-  due_at                DateTime?       @db.DateTime(0)
-  issued_at             DateTime?       @db.DateTime(0)
-  paid_at               DateTime?       @db.DateTime(0)
-  provider_name         String?         @db.VarChar(60)
-  provider_invoice_id   String?         @db.VarChar(120)
-  provider_checkout_url String?         @db.Text
-  notes                 String?         @db.Text
-  created_at            DateTime?       @default(now()) @db.DateTime(0)
-  updated_at            DateTime?       @default(now()) @db.DateTime(0)
+  id                    String    @id @db.Char(36)
+  workshop_id           String    @db.Char(36)
+  subscription_id       String?   @db.Char(36)
+  invoice_number        String    @unique(map: "idx_invoices_number") @db.VarChar(40)
+  status                String    @default("draft") @db.VarChar(40)
+  currency              String?   @default("AED") @db.VarChar(3)
+  subtotal_cents        Int       @default(0)
+  tax_cents             Int       @default(0)
+  total_cents           Int       @default(0)
+  amount_paid_cents     Int       @default(0)
+  due_at                DateTime? @db.DateTime(0)
+  issued_at             DateTime? @db.DateTime(0)
+  paid_at               DateTime? @db.DateTime(0)
+  provider_name         String?   @db.VarChar(60)
+  provider_invoice_id   String?   @db.VarChar(120)
+  provider_checkout_url String?   @db.Text
+  notes                 String?   @db.Text
+  created_at            DateTime? @default(now()) @db.DateTime(0)
+  updated_at            DateTime? @default(now()) @db.DateTime(0)
 
-  workshops             workshops       @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoices_workshop")
-  subscriptions         subscriptions?  @relation(fields: [subscription_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_invoices_subscription")
-  invoice_items         invoice_items[]
-  payments              payments[]
+  workshops     workshops       @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoices_workshop")
+  subscriptions subscriptions?  @relation(fields: [subscription_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_invoices_subscription")
+  invoice_items invoice_items[]
+  payments      payments[]
 
   @@index([workshop_id], map: "idx_invoices_workshop")
   @@index([subscription_id], map: "idx_invoices_subscription")
@@ -164,46 +184,46 @@ model invoices {
 }
 
 model invoice_items {
-  id                    String    @id @db.Char(36)
-  invoice_id            String    @db.Char(36)
-  description           String    @db.VarChar(255)
-  quantity              Int       @default(1)
-  unit_amount_cents     Int       @default(0)
-  total_cents           Int       @default(0)
-  feature_key           String?   @db.VarChar(80)
-  type                  String    @default("plan") @db.VarChar(20)
-  period                String?   @db.VarChar(7)
-  add_on_id             String?   @db.Char(36)
-  created_at            DateTime? @default(now()) @db.DateTime(0)
+  id                String    @id @db.Char(36)
+  invoice_id        String    @db.Char(36)
+  description       String    @db.VarChar(255)
+  quantity          Int       @default(1)
+  unit_amount_cents Int       @default(0)
+  total_cents       Int       @default(0)
+  feature_key       String?   @db.VarChar(80)
+  type              String    @default("plan") @db.VarChar(20)
+  period            String?   @db.VarChar(7)
+  add_on_id         String?   @db.Char(36)
+  created_at        DateTime? @default(now()) @db.DateTime(0)
 
-  invoices              invoices  @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_items_invoice")
+  invoices invoices @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invoice_items_invoice")
 
   @@index([invoice_id], map: "idx_invoice_items_invoice")
 }
 
 model payments {
-  id                    String            @id @db.Char(36)
-  workshop_id           String            @db.Char(36)
-  subscription_id       String?           @db.Char(36)
-  invoice_id            String?           @db.Char(36)
-  gateway_id            String?           @db.VarChar(60)
-  status                String            @default("pending") @db.VarChar(40)
-  amount_cents          Int               @default(0)
-  currency              String?           @default("AED") @db.VarChar(3)
-  method                String?           @db.VarChar(60)
-  provider_name         String?           @db.VarChar(60)
-  provider_payment_id   String?           @db.VarChar(120)
-  provider_reference    String?           @db.VarChar(120)
-  paid_at               DateTime?         @db.DateTime(0)
-  failed_at             DateTime?         @db.DateTime(0)
-  failure_reason        String?           @db.Text
-  created_at            DateTime?         @default(now()) @db.DateTime(0)
-  updated_at            DateTime?         @default(now()) @db.DateTime(0)
+  id                  String    @id @db.Char(36)
+  workshop_id         String    @db.Char(36)
+  subscription_id     String?   @db.Char(36)
+  invoice_id          String?   @db.Char(36)
+  gateway_id          String?   @db.VarChar(60)
+  status              String    @default("pending") @db.VarChar(40)
+  amount_cents        Int       @default(0)
+  currency            String?   @default("AED") @db.VarChar(3)
+  method              String?   @db.VarChar(60)
+  provider_name       String?   @db.VarChar(60)
+  provider_payment_id String?   @db.VarChar(120)
+  provider_reference  String?   @db.VarChar(120)
+  paid_at             DateTime? @db.DateTime(0)
+  failed_at           DateTime? @db.DateTime(0)
+  failure_reason      String?   @db.Text
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_at          DateTime? @default(now()) @db.DateTime(0)
 
-  workshops             workshops         @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payments_workshop")
-  subscriptions         subscriptions?    @relation(fields: [subscription_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_subscription")
-  invoices              invoices?         @relation(fields: [invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_invoice")
-  payment_gateways      payment_gateways? @relation(fields: [gateway_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_gateway")
+  workshops        workshops         @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payments_workshop")
+  subscriptions    subscriptions?    @relation(fields: [subscription_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_subscription")
+  invoices         invoices?         @relation(fields: [invoice_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_invoice")
+  payment_gateways payment_gateways? @relation(fields: [gateway_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_payments_gateway")
 
   @@index([workshop_id], map: "idx_payments_workshop")
   @@index([subscription_id], map: "idx_payments_subscription")
@@ -245,7 +265,7 @@ model approval_tokens {
   revoked_by              String?                   @db.Char(36)
   jobs                    jobs?                     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_at_job")
   users                   users?                    @relation(fields: [revoked_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_at_revoked_by")
-  workshops               workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_at_workshop")
+  workshops               workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_at_workshop")
   authorisation_decisions authorisation_decisions[]
 
   @@index([revoked_by], map: "fk_at_revoked_by")
@@ -255,17 +275,17 @@ model approval_tokens {
 }
 
 model audit_logs {
-  id          String    @id @db.Char(36)
-  user_id     String?   @db.Char(36)
-  entity_type String?   @db.VarChar(60)
-  entity_id   String?   @db.Char(36)
-  action      String?   @db.VarChar(30)
-  old_values  String?   @db.LongText
-  new_values  String?   @db.LongText
-  ip_address  String?   @db.VarChar(45)
-  workshop_id  String?   @db.Char(36)
-  created_at  DateTime? @default(now()) @db.DateTime(0)
-  users       users?    @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_al_user")
+  id          String     @id @db.Char(36)
+  user_id     String?    @db.Char(36)
+  entity_type String?    @db.VarChar(60)
+  entity_id   String?    @db.Char(36)
+  action      String?    @db.VarChar(30)
+  old_values  String?    @db.LongText
+  new_values  String?    @db.LongText
+  ip_address  String?    @db.VarChar(45)
+  workshop_id String?    @db.Char(36)
+  created_at  DateTime?  @default(now()) @db.DateTime(0)
+  users       users?     @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_al_user")
   workshops   workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_al_workshop")
 
   @@index([created_at(sort: Desc)], map: "idx_al_created")
@@ -281,7 +301,7 @@ model authorisation_decisions {
   decision         authorisation_decisions_decision
   customer_comment String?                          @db.Text
   ip_address       String?                          @db.VarChar(45)
-  workshop_id       String?                          @db.Char(36)
+  workshop_id      String?                          @db.Char(36)
   decided_at       DateTime?                        @default(now()) @db.DateTime(0)
   estimate_lines   estimate_lines?                  @relation(fields: [estimate_line_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ad_line")
   approval_tokens  approval_tokens?                 @relation(fields: [token_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ad_token")
@@ -291,6 +311,23 @@ model authorisation_decisions {
   @@index([estimate_line_id], map: "fk_ad_line")
   @@index([decision], map: "idx_ad_decision")
   @@index([workshop_id], map: "idx_ad_workshop")
+}
+
+model approval_reset_audit {
+  id            String    @id @db.Char(36)
+  concern_id    String    @db.Char(36)
+  job_id        String?   @db.Char(36)
+  reset_by      String?   @db.Char(36)
+  reason        String    @db.Text
+  lines_cleared Int       @default(0)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+
+  concern job_concerns @relation(fields: [concern_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_ara_concern")
+  job     jobs?        @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_ara_job")
+  user    users?       @relation(fields: [reset_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ara_user")
+
+  @@index([concern_id], map: "idx_ara_concern")
+  @@index([job_id], map: "idx_ara_job")
 }
 
 model customers {
@@ -310,7 +347,7 @@ model customers {
   jobs              jobs[]
   notifications     notifications[]
   vehicles          vehicles[]
-  workshops         workshops?                  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_customers_workshop")
+  workshops         workshops?                   @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_customers_workshop")
 
   @@index([dms_customer_id], map: "idx_customers_dms")
   @@index([email], map: "idx_customers_email")
@@ -379,7 +416,7 @@ model estimate_line_history {
   changed_at     DateTime?       @default(now()) @db.DateTime(0)
   users          users?          @relation(fields: [changed_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_elh_changed_by")
   estimate_lines estimate_lines? @relation(fields: [line_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_elh_line")
-  workshops      workshops?     @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_elh_workshop")
+  workshops      workshops?      @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_elh_workshop")
 
   @@index([changed_by], map: "fk_elh_changed_by")
   @@index([changed_at], map: "idx_elh_changed_at")
@@ -387,11 +424,65 @@ model estimate_line_history {
   @@index([workshop_id], map: "idx_elh_workshop")
 }
 
+model job_concerns {
+  id                     String    @id @db.Char(36)
+  job_id                 String    @db.Char(36)
+  code                   String?   @db.VarChar(10)
+  title                  String    @db.VarChar(180)
+  description            String?   @db.Text
+  status                 String?   @default("reviewing") @db.VarChar(40)
+  technician_finding     String?   @db.Text
+  work_note              String?   @db.Text
+  qc_note                String?   @db.Text
+  customer_decision      String?   @db.VarChar(20)
+  advisor_decision       String?   @db.VarChar(20)
+  advisor_decision_note  String?   @db.Text
+  sort_order             Int?      @default(0) @db.SmallInt
+  inspection_response_id String?   @db.Char(36)
+  workshop_id            String?   @db.Char(36)
+  created_at             DateTime? @default(now()) @db.DateTime(0)
+  updated_at             DateTime? @default(now()) @db.DateTime(0)
+
+  jobs                 jobs                   @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_jc_job")
+  inspection_responses inspection_responses?  @relation(fields: [inspection_response_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jc_response")
+  estimate_lines       estimate_lines[]
+  job_parts            job_parts[]
+  workshops            workshops?             @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jc_workshop")
+  media_files          media_files[]
+  approval_reset_audit approval_reset_audit[]
+
+  @@index([job_id], map: "idx_jc_job")
+  @@index([inspection_response_id], map: "idx_jc_response")
+  @@index([workshop_id], map: "idx_jc_workshop")
+}
+
+model customer_portal_snapshots {
+  id           String    @id @db.Char(36)
+  job_id       String    @db.Char(36)
+  version      Int       @db.Int
+  stage        String?   @db.VarChar(40)
+  payload_json String    @db.LongText
+  release_note String?   @db.Text
+  released_by  String?   @db.Char(36)
+  workshop_id  String?   @db.Char(36)
+  released_at  DateTime? @default(now()) @db.DateTime(0)
+  created_at   DateTime? @default(now()) @db.DateTime(0)
+
+  jobs      jobs       @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_cps_job")
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_cps_workshop")
+
+  @@unique([job_id, version], map: "uk_cps_job_version")
+  @@index([job_id], map: "idx_cps_job")
+  @@index([workshop_id], map: "idx_cps_workshop")
+  @@index([released_at], map: "idx_cps_released_at")
+}
+
 model estimate_lines {
   id                      String                    @id @db.Char(36)
   job_id                  String?                   @db.Char(36)
   inspection_response_id  String?                   @db.Char(36)
   quote_group_id          String?                   @db.Char(36)
+  concern_id              String?                   @db.Char(36)
   type                    estimate_lines_type
   description             String?                   @db.Text
   part_number             String?                   @db.VarChar(60)
@@ -413,10 +504,13 @@ model estimate_lines {
   users                   users?                    @relation(fields: [added_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_added_by")
   jobs                    jobs?                     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_job")
   inspection_responses    inspection_responses?     @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_response")
+  job_concerns            job_concerns?             @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_el_concern")
   quote_groups            quote_groups?             @relation(fields: [quote_group_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_el_quote_group")
   workshops               workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_el_workshop")
+  job_parts               job_parts[]
 
   @@index([added_by], map: "fk_el_added_by")
+  @@index([concern_id], map: "idx_el_concern")
   @@index([inspection_response_id], map: "fk_el_response")
   @@index([job_id], map: "idx_el_job")
   @@index([is_recommended], map: "idx_el_recommended")
@@ -426,16 +520,16 @@ model estimate_lines {
 }
 
 model quote_groups {
-  id             String          @id @db.Char(36)
-  job_id         String?         @db.Char(36)
-  workshop_id    String?         @db.Char(36)
-  title          String?         @db.VarChar(120)
-  sort_order     Int?            @default(0) @db.SmallInt
-  created_at     DateTime?       @default(now()) @db.DateTime(0)
-  updated_at     DateTime?       @default(now()) @db.DateTime(0)
-  jobs           jobs?           @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qg_job")
+  id             String           @id @db.Char(36)
+  job_id         String?          @db.Char(36)
+  workshop_id    String?          @db.Char(36)
+  title          String?          @db.VarChar(120)
+  sort_order     Int?             @default(0) @db.SmallInt
+  created_at     DateTime?        @default(now()) @db.DateTime(0)
+  updated_at     DateTime?        @default(now()) @db.DateTime(0)
+  jobs           jobs?            @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qg_job")
   estimate_lines estimate_lines[]
-  workshops      workshops?      @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qg_workshop")
+  workshops      workshops?       @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qg_workshop")
 
   @@index([job_id], map: "idx_qg_job")
   @@index([workshop_id], map: "idx_qg_workshop")
@@ -474,10 +568,11 @@ model inspection_responses {
   media_count      Int?                          @default(0) @db.TinyInt
   recorded_at      DateTime?                     @default(now()) @db.DateTime(0)
   estimate_lines   estimate_lines[]
+  job_concerns     job_concerns[]
   inspections      inspections?                  @relation(fields: [inspection_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_inspection")
   inspection_items inspection_items?             @relation(fields: [item_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_item")
   media_files      media_files[]
-  workshops        workshops?                   @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_workshop")
+  workshops        workshops?                    @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_ir_workshop")
 
   @@unique([inspection_id, item_id], map: "idx_ir_inspection_item")
   @@index([item_id], map: "fk_ir_item")
@@ -548,6 +643,111 @@ model inspections {
   @@index([workshop_id], map: "idx_ins_workshop")
 }
 
+model qc_checklist_templates {
+  id          String    @id @db.Char(36)
+  name        String?   @db.VarChar(120)
+  description String?   @db.Text
+  is_default  Boolean?  @default(false)
+  is_active   Boolean?  @default(true)
+  created_by  String?   @db.Char(36)
+  workshop_id String?   @db.Char(36)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+
+  qc_checklist_sections qc_checklist_sections[]
+  qc_checklists         qc_checklists[]
+  users                 users?                  @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qct_created_by")
+  workshops             workshops?              @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qct_workshop")
+
+  @@index([created_by], map: "fk_qct_created_by")
+  @@index([is_default], map: "idx_qct_is_default")
+  @@index([workshop_id], map: "idx_qct_workshop")
+}
+
+model qc_checklist_sections {
+  id          String   @id @db.Char(36)
+  template_id String?  @db.Char(36)
+  workshop_id String?  @db.Char(36)
+  name        String?  @db.VarChar(80)
+  icon        String?  @db.VarChar(10)
+  sort_order  Int?     @db.SmallInt
+  is_active   Boolean? @default(true)
+
+  qc_checklist_items     qc_checklist_items[]
+  qc_checklist_templates qc_checklist_templates? @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcs_template")
+  workshops              workshops?              @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcs_workshop")
+
+  @@index([template_id, sort_order], map: "idx_qcs_sort")
+  @@index([template_id], map: "idx_qcs_template")
+  @@index([workshop_id], map: "idx_qcs_workshop")
+}
+
+model qc_checklist_items {
+  id                    String                         @id @db.Char(36)
+  section_id            String?                        @db.Char(36)
+  workshop_id           String?                        @db.Char(36)
+  label                 String?                        @db.VarChar(180)
+  input_type            qc_checklist_items_input_type? @default(pass_fail)
+  requires_photo        Boolean?                       @default(false)
+  requires_note_on_fail Boolean?                       @default(false)
+  help_text             String?                        @db.Text
+  sort_order            Int?                           @db.SmallInt
+  is_active             Boolean?                       @default(true)
+
+  qc_checklist_responses qc_checklist_responses[]
+  qc_checklist_sections  qc_checklist_sections?   @relation(fields: [section_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qci_section")
+  workshops              workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qci_workshop")
+
+  @@index([section_id], map: "idx_qci_section")
+  @@index([section_id, sort_order], map: "idx_qci_sort")
+  @@index([workshop_id], map: "idx_qci_workshop")
+}
+
+model qc_checklists {
+  id             String                @id @db.Char(36)
+  job_id         String?               @unique(map: "qc_job_id") @db.Char(36)
+  template_id    String?               @db.Char(36)
+  checker_id     String?               @db.Char(36)
+  status         qc_checklists_status? @default(draft)
+  overall_result qc_checklists_result?
+  workshop_id    String?               @db.Char(36)
+  started_at     DateTime?             @db.DateTime(0)
+  submitted_at   DateTime?             @db.DateTime(0)
+  created_at     DateTime?             @default(now()) @db.DateTime(0)
+
+  qc_checklist_responses qc_checklist_responses[]
+  jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_job")
+  users                  users?                   @relation(fields: [checker_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_checker")
+  qc_checklist_templates qc_checklist_templates?  @relation(fields: [template_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_template")
+  workshops              workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qc_workshop")
+
+  @@index([checker_id], map: "fk_qc_checker")
+  @@index([template_id], map: "fk_qc_template")
+  @@index([job_id], map: "idx_qc_job")
+  @@index([status], map: "idx_qc_status")
+  @@index([workshop_id], map: "idx_qc_workshop")
+}
+
+model qc_checklist_responses {
+  id           String    @id @db.Char(36)
+  checklist_id String?   @db.Char(36)
+  item_id      String?   @db.Char(36)
+  workshop_id  String?   @db.Char(36)
+  value        String?   @db.VarChar(100)
+  notes        String?   @db.Text
+  media_count  Int?      @default(0) @db.TinyInt
+  recorded_at  DateTime? @default(now()) @db.DateTime(0)
+
+  qc_checklists      qc_checklists?      @relation(fields: [checklist_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcr_checklist")
+  qc_checklist_items qc_checklist_items? @relation(fields: [item_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcr_item")
+  media_files        media_files[]
+  workshops          workshops?          @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_qcr_workshop")
+
+  @@unique([checklist_id, item_id], map: "idx_qcr_checklist_item")
+  @@index([item_id], map: "fk_qcr_item")
+  @@index([workshop_id], map: "idx_qcr_workshop")
+}
+
 model integration_events {
   id             String                       @id @db.Char(36)
   integration_id String?                      @db.Char(36)
@@ -589,16 +789,16 @@ model integrations {
 }
 
 model job_status_history {
-  id          String    @id @db.Char(36)
-  job_id      String?   @db.Char(36)
-  from_status String?   @db.VarChar(20)
-  to_status   String?   @db.VarChar(20)
-  changed_by  String?   @db.Char(36)
-  workshop_id String?   @db.Char(36)
-  reason      String?   @db.Text
-  changed_at  DateTime? @default(now()) @db.DateTime(0)
-  users       users?    @relation(fields: [changed_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_changed_by")
-  jobs        jobs?     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_job")
+  id          String     @id @db.Char(36)
+  job_id      String?    @db.Char(36)
+  from_status String?    @db.VarChar(20)
+  to_status   String?    @db.VarChar(20)
+  changed_by  String?    @db.Char(36)
+  workshop_id String?    @db.Char(36)
+  reason      String?    @db.Text
+  changed_at  DateTime?  @default(now()) @db.DateTime(0)
+  users       users?     @relation(fields: [changed_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_changed_by")
+  jobs        jobs?      @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_job")
   workshops   workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jsh_workshop")
 
   @@index([changed_by], map: "fk_jsh_changed_by")
@@ -608,48 +808,55 @@ model job_status_history {
 }
 
 model jobs {
-  id                                                String                    @id @db.Char(36)
-  job_number                                        String?                   @db.VarChar(20)
-  customer_id                                       String?                   @db.Char(36)
-  vehicle_id                                        String?                   @db.Char(36)
-  advisor_id                                        String?                   @db.Char(36)
-  owner_code                                        String?                   @db.VarChar(20)
-  technician_id                                     String?                   @db.Char(36)
-  status                                            jobs_status               @default(booked)
-  workshop_stage                                    jobs_workshop_stage?      @default(waiting_technician)
-  parts_status                                      jobs_parts_status?        @default(no_parts)
-  workshop_id                                       String?                   @db.Char(36)
-  customer_informed                                 Boolean?                  @default(false)
-  is_customer_waiting                               Boolean?                  @default(false)
-  customer_sensitivity                              String?                   @default("normal") @db.VarChar(40)
-  customer_concern                                  String?                   @db.Text
-  internal_notes                                    String?                   @db.Text
-  odometer_in                                       Int?                      @db.UnsignedInt
-  promised_at                                       DateTime?                 @db.DateTime(0)
-  arrived_at                                        DateTime?                 @db.DateTime(0)
-  dms_ro_number                                     String?                   @db.VarChar(60)
-  dms_synced_at                                     DateTime?                 @db.DateTime(0)
-  completed_at                                      DateTime?                 @db.DateTime(0)
-  invoiced_at                                       DateTime?                 @db.DateTime(0)
-  archived_at                                       DateTime?                 @db.DateTime(0)
-  is_deleted                                        Boolean?                  @default(false)
-  created_at                                        DateTime?                 @default(now()) @db.DateTime(0)
-  updated_at                                        DateTime?                 @default(now()) @db.DateTime(0)
+  id                                                String                      @id @db.Char(36)
+  job_number                                        String?                     @db.VarChar(20)
+  customer_id                                       String?                     @db.Char(36)
+  vehicle_id                                        String?                     @db.Char(36)
+  advisor_id                                        String?                     @db.Char(36)
+  owner_code                                        String?                     @db.VarChar(20)
+  technician_id                                     String?                     @db.Char(36)
+  status                                            jobs_status                 @default(booked)
+  workshop_stage                                    jobs_workshop_stage?        @default(waiting_technician)
+  workflow_stage_key                                String?                     @db.VarChar(80)
+  parts_status                                      jobs_parts_status?          @default(no_parts)
+  workshop_id                                       String?                     @db.Char(36)
+  customer_informed                                 Boolean?                    @default(false)
+  is_customer_waiting                               Boolean?                    @default(false)
+  customer_sensitivity                              String?                     @default("normal") @db.VarChar(40)
+  customer_concern                                  String?                     @db.Text
+  internal_notes                                    String?                     @db.Text
+  odometer_in                                       Int?                        @db.UnsignedInt
+  promised_at                                       DateTime?                   @db.DateTime(0)
+  arrived_at                                        DateTime?                   @db.DateTime(0)
+  dms_ro_number                                     String?                     @db.VarChar(60)
+  dms_synced_at                                     DateTime?                   @db.DateTime(0)
+  completed_at                                      DateTime?                   @db.DateTime(0)
+  invoiced_at                                       DateTime?                   @db.DateTime(0)
+  archived_at                                       DateTime?                   @db.DateTime(0)
+  is_deleted                                        Boolean?                    @default(false)
+  created_at                                        DateTime?                   @default(now()) @db.DateTime(0)
+  updated_at                                        DateTime?                   @default(now()) @db.DateTime(0)
   approval_tokens                                   approval_tokens[]
-  deferred_work_deferred_work_booked_job_idTojobs   deferred_work[]           @relation("deferred_work_booked_job_idTojobs")
-  deferred_work_deferred_work_original_job_idTojobs deferred_work[]           @relation("deferred_work_original_job_idTojobs")
+  deferred_work_deferred_work_booked_job_idTojobs   deferred_work[]             @relation("deferred_work_booked_job_idTojobs")
+  deferred_work_deferred_work_original_job_idTojobs deferred_work[]             @relation("deferred_work_original_job_idTojobs")
   estimate_lines                                    estimate_lines[]
   quote_groups                                      quote_groups[]
+  job_concerns                                      job_concerns[]
+  customer_portal_snapshots                         customer_portal_snapshots[]
   inspections                                       inspections?
+  qc_checklists                                     qc_checklists?
   job_status_history                                job_status_history[]
-  users_jobs_advisor_idTousers                      users?                    @relation("jobs_advisor_idTousers", fields: [advisor_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_advisor")
-  customers                                         customers?                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_customer")
-  users_jobs_technician_idTousers                   users?                    @relation("jobs_technician_idTousers", fields: [technician_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_technician")
-  vehicles                                          vehicles?                 @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_vehicle")
-  workshops                                         workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_workshop")
+  users_jobs_advisor_idTousers                      users?                      @relation("jobs_advisor_idTousers", fields: [advisor_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_advisor")
+  customers                                         customers?                  @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_customer")
+  users_jobs_technician_idTousers                   users?                      @relation("jobs_technician_idTousers", fields: [technician_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_technician")
+  vehicles                                          vehicles?                   @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_vehicle")
+  workshops                                         workshops?                  @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_workshop")
   media_files                                       media_files[]
   notifications                                     notifications[]
   vehicle_service_history                           vehicle_service_history[]
+  job_parts                                         job_parts[]
+  blockers                                          blockers[]
+  approval_reset_audit                              approval_reset_audit[]
 
   @@unique([job_number, workshop_id], map: "idx_jobs_number_workshop")
   @@index([advisor_id], map: "idx_jobs_advisor")
@@ -657,6 +864,7 @@ model jobs {
   @@index([customer_id], map: "idx_jobs_customer")
   @@index([status], map: "idx_jobs_status")
   @@index([workshop_stage], map: "idx_jobs_workshop_stage")
+  @@index([workflow_stage_key], map: "idx_jobs_workflow_stage_key")
   @@index([parts_status], map: "idx_jobs_parts_status")
   @@index([is_customer_waiting], map: "idx_jobs_customer_waiting")
   @@index([customer_sensitivity], map: "idx_jobs_customer_sensitivity")
@@ -665,50 +873,55 @@ model jobs {
   @@index([archived_at], map: "idx_jobs_archived_at")
   @@index([is_deleted], map: "idx_jobs_is_deleted")
   @@index([workshop_id], map: "idx_jobs_workshop")
-  blockers blockers[]
 }
 
 model labour_rates {
-  id            String    @id @db.Char(36)
-  name          String?   @db.VarChar(80)
-  rate_per_hour Decimal?  @db.Decimal(8, 2)
-  currency      String?   @default("AED") @db.Char(3)
-  workshop_id   String?   @db.Char(36)
-  is_active     Boolean?  @default(true)
-  created_at    DateTime? @default(now()) @db.DateTime(0)
-  updated_at    DateTime? @default(now()) @db.DateTime(0)
+  id            String     @id @db.Char(36)
+  name          String?    @db.VarChar(80)
+  rate_per_hour Decimal?   @db.Decimal(8, 2)
+  currency      String?    @default("AED") @db.Char(3)
+  workshop_id   String?    @db.Char(36)
+  is_active     Boolean?   @default(true)
+  created_at    DateTime?  @default(now()) @db.DateTime(0)
+  updated_at    DateTime?  @default(now()) @db.DateTime(0)
   workshops     workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_lr_workshop")
 
   @@index([workshop_id], map: "idx_lr_workshop")
 }
 
 model media_files {
-  id                     String                   @id @db.Char(36)
-  job_id                 String?                  @db.Char(36)
-  inspection_response_id String?                  @db.Char(36)
-  uploaded_by            String?                  @db.Char(36)
-  workshop_id            String?                  @db.Char(36)
-  s3_bucket              String?                  @db.VarChar(100)
-  s3_key                 String?                  @db.VarChar(500)
-  file_type              media_files_file_type?   @default(photo)
-  mime_type              String?                  @db.VarChar(60)
-  original_filename      String?                  @db.VarChar(255)
-  size_bytes             BigInt?                  @db.UnsignedBigInt
-  width_px               Int?                     @db.UnsignedSmallInt
-  height_px              Int?                     @db.UnsignedSmallInt
-  duration_sec           Int?                     @db.UnsignedSmallInt
-  thumbnail_key          String?                  @db.VarChar(500)
-  scan_status            media_files_scan_status? @default(pending)
-  is_deleted             Boolean?                 @default(false)
-  uploaded_at            DateTime?                @default(now()) @db.DateTime(0)
-  jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_job")
-  inspection_responses   inspection_responses?    @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_response")
-  users                  users?                   @relation(fields: [uploaded_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_uploaded_by")
-  workshops              workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_workshop")
+  id                       String                   @id @db.Char(36)
+  job_id                   String?                  @db.Char(36)
+  inspection_response_id   String?                  @db.Char(36)
+  concern_id               String?                  @db.Char(36)
+  qc_checklist_response_id String?                  @db.Char(36)
+  uploaded_by              String?                  @db.Char(36)
+  workshop_id              String?                  @db.Char(36)
+  s3_bucket                String?                  @db.VarChar(100)
+  s3_key                   String?                  @db.VarChar(500)
+  file_type                media_files_file_type?   @default(photo)
+  mime_type                String?                  @db.VarChar(60)
+  original_filename        String?                  @db.VarChar(255)
+  size_bytes               BigInt?                  @db.UnsignedBigInt
+  width_px                 Int?                     @db.UnsignedSmallInt
+  height_px                Int?                     @db.UnsignedSmallInt
+  duration_sec             Int?                     @db.UnsignedSmallInt
+  thumbnail_key            String?                  @db.VarChar(500)
+  scan_status              media_files_scan_status? @default(pending)
+  is_deleted               Boolean?                 @default(false)
+  uploaded_at              DateTime?                @default(now()) @db.DateTime(0)
+  jobs                     jobs?                    @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_job")
+  inspection_responses     inspection_responses?    @relation(fields: [inspection_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_response")
+  qc_checklist_responses   qc_checklist_responses?  @relation(fields: [qc_checklist_response_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_qc_response")
+  job_concerns             job_concerns?            @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_mf_concern")
+  users                    users?                   @relation(fields: [uploaded_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_uploaded_by")
+  workshops                workshops?               @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_mf_workshop")
 
   @@index([uploaded_by], map: "fk_mf_uploaded_by")
   @@index([job_id], map: "idx_media_job")
+  @@index([concern_id], map: "idx_media_concern")
   @@index([inspection_response_id], map: "idx_media_response")
+  @@index([qc_checklist_response_id], map: "idx_media_qc_response")
   @@index([scan_status], map: "idx_media_scan")
   @@index([workshop_id], map: "idx_media_workshop")
 }
@@ -763,13 +976,13 @@ model notifications {
 }
 
 model password_reset_tokens {
-  id          String    @id @db.Char(36)
-  user_id     String?   @db.Char(36)
-  token_hash  String    @unique(map: "token_hash") @db.VarChar(255)
-  expires_at  DateTime  @db.DateTime(0)
-  used_at     DateTime? @db.DateTime(0)
-  created_at  DateTime? @default(now()) @db.DateTime(0)
-  users       users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_prt_user")
+  id         String    @id @db.Char(36)
+  user_id    String?   @db.Char(36)
+  token_hash String    @unique(map: "token_hash") @db.VarChar(255)
+  expires_at DateTime  @db.DateTime(0)
+  used_at    DateTime? @db.DateTime(0)
+  created_at DateTime? @default(now()) @db.DateTime(0)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_prt_user")
 
   @@index([expires_at], map: "idx_prt_expires")
   @@index([user_id], map: "idx_prt_user_id")
@@ -818,52 +1031,56 @@ model settings {
 }
 
 model users {
-  id                             String                  @id @db.Char(36)
-  role_id                        String?                 @db.Char(36)
-  name                           String?                 @db.VarChar(120)
-  email                          String?                 @unique(map: "email") @db.VarChar(255)
-  password_hash                  String?                 @db.VarChar(255)
-  is_active                      Boolean?                @default(true)
-  employee_code                  String?                 @db.VarChar(20)
-  avatar_url                     String?                 @db.VarChar(500)
-  last_login_at                  DateTime?               @db.DateTime(0)
-  failed_login_attempts          Int                     @default(0)
-  locked_until                   DateTime?               @db.DateTime(0)
-  created_at                     DateTime?               @default(now()) @db.DateTime(0)
-  updated_at                     DateTime?               @default(now()) @db.DateTime(0)
+  id                             String                     @id @db.Char(36)
+  role_id                        String?                    @db.Char(36)
+  name                           String?                    @db.VarChar(120)
+  email                          String?                    @unique(map: "email") @db.VarChar(255)
+  password_hash                  String?                    @db.VarChar(255)
+  is_active                      Boolean?                   @default(true)
+  employee_code                  String?                    @db.VarChar(20)
+  avatar_url                     String?                    @db.VarChar(500)
+  last_login_at                  DateTime?                  @db.DateTime(0)
+  failed_login_attempts          Int                        @default(0)
+  locked_until                   DateTime?                  @db.DateTime(0)
+  created_at                     DateTime?                  @default(now()) @db.DateTime(0)
+  updated_at                     DateTime?                  @default(now()) @db.DateTime(0)
   approval_tokens                approval_tokens[]
   audit_logs                     audit_logs[]
   estimate_line_history          estimate_line_history[]
   estimate_lines                 estimate_lines[]
   inspection_templates           inspection_templates[]
   inspections                    inspections[]
+  qc_checklist_templates         qc_checklist_templates[]
+  qc_checklists                  qc_checklists[]
   job_status_history             job_status_history[]
-  jobs_jobs_advisor_idTousers    jobs[]                  @relation("jobs_advisor_idTousers")
-  jobs_jobs_technician_idTousers jobs[]                  @relation("jobs_technician_idTousers")
+  jobs_jobs_advisor_idTousers    jobs[]                     @relation("jobs_advisor_idTousers")
+  jobs_jobs_technician_idTousers jobs[]                     @relation("jobs_technician_idTousers")
   media_files                    media_files[]
   refresh_tokens                 refresh_tokens[]
   password_reset_tokens          password_reset_tokens[]
   settings                       settings[]
   booking_import_templates       booking_import_templates[]
-  roles                          roles?                  @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_users_role")
+  roles                          roles?                     @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_users_role")
   user_workshop_access           user_workshop_access[]
-  blockers_blocked_by             blockers[]              @relation("blockers_blocked_by")
-  blockers_resolved_by           blockers[]              @relation("blockers_resolved_by")
+  blockers_blocked_by            blockers[]                 @relation("blockers_blocked_by")
+  blockers_resolved_by           blockers[]                 @relation("blockers_resolved_by")
+  stock_movements                stock_movements[]
+  approval_reset_audit           approval_reset_audit[]
 
   @@index([email], map: "idx_users_email")
   @@index([role_id], map: "idx_users_role_id")
 }
 
 model vehicle_service_history {
-  id          String    @id @db.Char(36)
-  vehicle_id  String?   @db.Char(36)
-  job_id      String?   @db.Char(36)
-  workshop_id String?   @db.Char(36)
-  odometer_km Int?      @db.UnsignedInt
-  summary     String?   @db.Text
-  serviced_at DateTime? @db.DateTime(0)
-  jobs        jobs?     @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_job")
-  vehicles    vehicles? @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_vehicle")
+  id          String     @id @db.Char(36)
+  vehicle_id  String?    @db.Char(36)
+  job_id      String?    @db.Char(36)
+  workshop_id String?    @db.Char(36)
+  odometer_km Int?       @db.UnsignedInt
+  summary     String?    @db.Text
+  serviced_at DateTime?  @db.DateTime(0)
+  jobs        jobs?      @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_job")
+  vehicles    vehicles?  @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_vehicle")
   workshops   workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vsh_workshop")
 
   @@index([job_id], map: "idx_vsh_job")
@@ -886,7 +1103,7 @@ model vehicles {
   engine                  String?                   @db.VarChar(60)
   dms_vehicle_id          String?                   @db.VarChar(60)
   workshop_id             String?                   @db.Char(36)
-  is_deleted                      Boolean?                  @default(false)
+  is_deleted              Boolean?                  @default(false)
   created_at              DateTime?                 @default(now()) @db.DateTime(0)
   updated_at              DateTime?                 @default(now()) @db.DateTime(0)
   deferred_work           deferred_work[]
@@ -903,16 +1120,16 @@ model vehicles {
 }
 
 model plan_features {
-  id                  String    @id @db.Char(36)
-  plan_id             String    @db.VarChar(60)
-  feature_key         String    @db.VarChar(80)
-  is_included         Boolean   @default(false)
-  ceiling             Int?
-  overage_unit_cents  Int       @default(0)
-  created_at          DateTime? @default(now()) @db.DateTime(0)
-  updated_at          DateTime? @default(now()) @db.DateTime(0)
+  id                 String    @id @db.Char(36)
+  plan_id            String    @db.VarChar(60)
+  feature_key        String    @db.VarChar(80)
+  is_included        Boolean   @default(false)
+  ceiling            Int?
+  overage_unit_cents Int       @default(0)
+  created_at         DateTime? @default(now()) @db.DateTime(0)
+  updated_at         DateTime? @default(now()) @db.DateTime(0)
 
-  plans               plans     @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pf_plan")
+  plans plans @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pf_plan")
 
   @@unique([plan_id, feature_key], map: "uk_plan_feature")
   @@index([plan_id], map: "idx_pf_plan")
@@ -920,58 +1137,58 @@ model plan_features {
 }
 
 model plan_regions {
-  id                    String    @id @db.Char(36)
-  plan_id               String    @db.VarChar(60)
-  region                String    @db.VarChar(10)
-  currency              String    @default("USD") @db.Char(3)
-  price_monthly_cents   Int       @default(0)
-  display_name          String?   @db.VarChar(120)
-  created_at            DateTime? @default(now()) @db.DateTime(0)
-  updated_at            DateTime? @default(now()) @db.DateTime(0)
+  id                  String    @id @db.Char(36)
+  plan_id             String    @db.VarChar(60)
+  region              String    @db.VarChar(10)
+  currency            String    @default("USD") @db.Char(3)
+  price_monthly_cents Int       @default(0)
+  display_name        String?   @db.VarChar(120)
+  created_at          DateTime? @default(now()) @db.DateTime(0)
+  updated_at          DateTime? @default(now()) @db.DateTime(0)
 
-  plans                 plans     @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pr_plan")
+  plans plans @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_pr_plan")
 
   @@unique([plan_id, region], map: "uk_plan_region")
   @@index([plan_id], map: "idx_pr_plan")
 }
 
 model plan_add_ons {
-  id              String    @id @db.Char(36)
-  slug            String    @unique(map: "uk_addon_slug") @db.VarChar(60)
-  name            String    @db.VarChar(120)
-  description     String?   @db.Text
-  pricing_model   String    @default("flat") @db.VarChar(20)
-  created_at      DateTime? @default(now()) @db.DateTime(0)
-  updated_at      DateTime? @default(now()) @db.DateTime(0)
+  id            String    @id @db.Char(36)
+  slug          String    @unique(map: "uk_addon_slug") @db.VarChar(60)
+  name          String    @db.VarChar(120)
+  description   String?   @db.Text
+  pricing_model String    @default("flat") @db.VarChar(20)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
 
   plan_add_on_prices plan_add_on_prices[]
 }
 
 model plan_add_on_prices {
-  id                    String    @id @db.Char(36)
-  add_on_id             String    @db.Char(36)
-  region                String    @db.VarChar(10)
-  currency              String    @default("USD") @db.Char(3)
-  price_per_unit_cents  Int       @default(0)
-  created_at            DateTime? @default(now()) @db.DateTime(0)
-  updated_at            DateTime? @default(now()) @db.DateTime(0)
+  id                   String    @id @db.Char(36)
+  add_on_id            String    @db.Char(36)
+  region               String    @db.VarChar(10)
+  currency             String    @default("USD") @db.Char(3)
+  price_per_unit_cents Int       @default(0)
+  created_at           DateTime? @default(now()) @db.DateTime(0)
+  updated_at           DateTime? @default(now()) @db.DateTime(0)
 
-  plan_add_ons          plan_add_ons @relation(fields: [add_on_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_aop_addon")
+  plan_add_ons plan_add_ons @relation(fields: [add_on_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_aop_addon")
 
   @@unique([add_on_id, region], map: "uk_addon_region")
   @@index([add_on_id], map: "idx_aop_addon")
 }
 
 model usage_records {
-  id              String    @id @db.Char(36)
-  workshop_id     String    @db.Char(36)
-  feature_key     String    @db.VarChar(80)
-  period          String    @db.VarChar(7)
-  count           Int       @default(0)
-  created_at      DateTime? @default(now()) @db.DateTime(0)
-  updated_at      DateTime? @default(now()) @db.DateTime(0)
+  id          String    @id @db.Char(36)
+  workshop_id String    @db.Char(36)
+  feature_key String    @db.VarChar(80)
+  period      String    @db.VarChar(7)
+  count       Int       @default(0)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
 
-  workshops       workshops @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ur_workshop")
+  workshops workshops @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ur_workshop")
 
   @@unique([workshop_id, feature_key, period], map: "uk_usage_workshop_feature_period")
   @@index([workshop_id, period], map: "idx_usage_workshop_period")
@@ -1178,6 +1395,27 @@ enum media_files_scan_status {
   failed
 }
 
+enum qc_checklists_status {
+  draft
+  in_progress
+  submitted
+  approved
+}
+
+enum qc_checklist_items_input_type {
+  pass_fail
+  yes_no
+  ok_fail
+  photo
+  text
+}
+
+enum qc_checklists_result {
+  pass
+  fail
+  na
+}
+
 enum blockers_type {
   parts
   customer_approval
@@ -1200,25 +1438,57 @@ enum blockers_status {
   dismissed
 }
 
-model blockers {
-  id              String          @id @db.Char(36)
-  job_id          String          @db.Char(36)
-  type            blockers_type   @default(other)
-  description     String          @db.Text
-  severity        blockers_severity @default(medium)
-  status          blockers_status @default(active)
-  blocked_by      String?         @db.Char(36)
-  resolved_by     String?         @db.Char(36)
-  resolved_at     DateTime?       @db.DateTime(0)
-  resolution_note String?         @db.Text
-  created_at      DateTime?       @default(now()) @db.DateTime(0)
-  updated_at      DateTime?       @default(now()) @db.DateTime(0)
-  workshop_id     String?         @db.Char(36)
+enum stock_movements_type {
+  purchase_in
+  job_reserve
+  job_consume
+  job_return
+  adjustment_in
+  adjustment_out
+  transfer_in
+  transfer_out
+}
 
-  jobs            jobs            @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_blockers_job")
-  users_blocked_by users?          @relation("blockers_blocked_by", fields: [blocked_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_blocked_by")
-  users_resolved_by users?        @relation("blockers_resolved_by", fields: [resolved_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_resolved_by")
-  workshops       workshops?     @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_workshop")
+enum job_parts_status {
+  memo
+  reserved
+  used
+  returned
+  cancelled
+}
+
+enum job_parts_source {
+  catalog
+  adhoc
+}
+
+enum purchase_orders_status {
+  draft
+  ordered
+  partially_received
+  received
+  cancelled
+}
+
+model blockers {
+  id              String            @id @db.Char(36)
+  job_id          String            @db.Char(36)
+  type            blockers_type     @default(other)
+  description     String            @db.Text
+  severity        blockers_severity @default(medium)
+  status          blockers_status   @default(active)
+  blocked_by      String?           @db.Char(36)
+  resolved_by     String?           @db.Char(36)
+  resolved_at     DateTime?         @db.DateTime(0)
+  resolution_note String?           @db.Text
+  created_at      DateTime?         @default(now()) @db.DateTime(0)
+  updated_at      DateTime?         @default(now()) @db.DateTime(0)
+  workshop_id     String?           @db.Char(36)
+
+  jobs              jobs       @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_blockers_job")
+  users_blocked_by  users?     @relation("blockers_blocked_by", fields: [blocked_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_blocked_by")
+  users_resolved_by users?     @relation("blockers_resolved_by", fields: [resolved_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_resolved_by")
+  workshops         workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_blockers_workshop")
 
   @@index([job_id], map: "idx_blockers_job")
   @@index([status], map: "idx_blockers_status")
@@ -1227,15 +1497,15 @@ model blockers {
 }
 
 model booking_import_templates {
-  id          String   @id @db.Char(36)
-  name        String   @db.VarChar(120)
-  mappings    String   @db.LongText
-  is_active   Boolean  @default(true)
-  created_by  String?  @db.Char(36)
-  workshop_id String?  @db.Char(36)
-  created_at  DateTime @default(now()) @db.DateTime(0)
-  updated_at  DateTime @default(now()) @db.DateTime(0)
-  users       users?   @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_bit_created_by")
+  id          String     @id @db.Char(36)
+  name        String     @db.VarChar(120)
+  mappings    String     @db.LongText
+  is_active   Boolean    @default(true)
+  created_by  String?    @db.Char(36)
+  workshop_id String?    @db.Char(36)
+  created_at  DateTime   @default(now()) @db.DateTime(0)
+  updated_at  DateTime   @default(now()) @db.DateTime(0)
+  users       users?     @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_bit_created_by")
   workshops   workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_bit_workshop")
 
   @@index([created_by], map: "fk_bit_created_by")
@@ -1243,3 +1513,219 @@ model booking_import_templates {
   @@index([workshop_id], map: "idx_bit_workshop")
 }
 
+model suppliers {
+  id            String    @id @db.Char(36)
+  name          String    @db.VarChar(120)
+  phone         String?   @db.VarChar(30)
+  email         String?   @db.VarChar(255)
+  address       String?   @db.Text
+  payment_terms String?   @db.VarChar(120)
+  is_active     Boolean?  @default(true)
+  workshop_id   String?   @db.Char(36)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+
+  purchase_orders purchase_orders[]
+  parts           parts[]
+
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_suppliers_workshop")
+
+  @@index([workshop_id], map: "idx_suppliers_workshop")
+  @@index([name], map: "idx_suppliers_name")
+  @@index([is_active], map: "idx_suppliers_active")
+}
+
+model warehouses {
+  id          String    @id @db.Char(36)
+  name        String    @db.VarChar(120)
+  location    String?   @db.VarChar(255)
+  is_default  Boolean?  @default(false)
+  workshop_id String?   @db.Char(36)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+
+  inventory       inventory[]
+  job_parts       job_parts[]
+  stock_movements stock_movements[]
+
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_warehouses_workshop")
+
+  @@index([workshop_id], map: "idx_warehouses_workshop")
+}
+
+model parts {
+  id            String    @id @db.Char(36)
+  part_number   String?   @db.VarChar(60)
+  name          String    @db.VarChar(180)
+  brand         String?   @db.VarChar(80)
+  category      String?   @db.VarChar(60)
+  unit          String?   @db.VarChar(20)
+  cost_price    Decimal?  @db.Decimal(10, 2)
+  selling_price Decimal?  @db.Decimal(10, 2)
+  barcode       String?   @db.VarChar(80)
+  supplier_id   String?   @db.Char(36)
+  min_stock     Int?      @default(0) @db.Int
+  is_active     Boolean?  @default(true)
+  workshop_id   String?   @db.Char(36)
+  created_at    DateTime? @default(now()) @db.DateTime(0)
+  updated_at    DateTime? @default(now()) @db.DateTime(0)
+
+  inventory            inventory[]
+  job_parts            job_parts[]
+  stock_movements      stock_movements[]
+  purchase_order_items purchase_order_items[]
+  part_fitments        part_fitments[]
+
+  suppliers suppliers? @relation(fields: [supplier_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_parts_supplier")
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_parts_workshop")
+
+  @@index([supplier_id], map: "fk_parts_supplier")
+  @@index([workshop_id], map: "idx_parts_workshop")
+  @@index([category], map: "idx_parts_category")
+  @@index([part_number], map: "idx_parts_part_number")
+  @@index([is_active], map: "idx_parts_active")
+}
+
+model part_fitments {
+  id          String    @id @db.Char(36)
+  part_id     String    @db.Char(36)
+  make        String    @db.VarChar(80)
+  model       String?   @db.VarChar(120)
+  variant     String?   @db.VarChar(120)
+  engine      String?   @db.VarChar(120)
+  year_from   Int?      @db.SmallInt
+  year_to     Int?      @db.SmallInt
+  notes       String?   @db.Text
+  workshop_id String?   @db.Char(36)
+  created_at  DateTime? @default(now()) @db.DateTime(0)
+  updated_at  DateTime? @default(now()) @db.DateTime(0)
+
+  parts     parts      @relation(fields: [part_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_part_fitments_part")
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_part_fitments_workshop")
+
+  @@index([part_id], map: "idx_part_fitments_part")
+  @@index([workshop_id], map: "idx_part_fitments_workshop")
+  @@index([make, model], map: "idx_part_fitments_make_model")
+  @@index([year_from, year_to], map: "idx_part_fitments_years")
+}
+
+model inventory {
+  id                 String    @id @db.Char(36)
+  part_id            String    @db.Char(36)
+  warehouse_id       String    @db.Char(36)
+  quantity_on_hand   Int       @default(0) @db.Int
+  reserved_quantity  Int       @default(0) @db.Int
+  available_quantity Int       @default(0) @db.Int
+  workshop_id        String?   @db.Char(36)
+  created_at         DateTime? @default(now()) @db.DateTime(0)
+  updated_at         DateTime? @default(now()) @db.DateTime(0)
+
+  parts      parts      @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventory_part")
+  warehouses warehouses @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventory_warehouse")
+  workshops  workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventory_workshop")
+
+  @@unique([part_id, warehouse_id], map: "uk_inventory_part_warehouse")
+  @@index([part_id], map: "idx_inventory_part")
+  @@index([warehouse_id], map: "idx_inventory_warehouse")
+  @@index([workshop_id], map: "idx_inventory_workshop")
+}
+
+model stock_movements {
+  id             String               @id @db.Char(36)
+  part_id        String               @db.Char(36)
+  warehouse_id   String               @db.Char(36)
+  type           stock_movements_type
+  quantity       Int                  @db.Int
+  unit_cost      Decimal?             @db.Decimal(10, 2)
+  reference_type String?              @db.VarChar(40)
+  reference_id   String?              @db.Char(36)
+  notes          String?              @db.Text
+  created_by     String?              @db.Char(36)
+  workshop_id    String?              @db.Char(36)
+  created_at     DateTime?            @default(now()) @db.DateTime(0)
+
+  parts      parts      @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_part")
+  warehouses warehouses @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_warehouse")
+  users      users?     @relation(fields: [created_by], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_user")
+  workshops  workshops? @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_sm_workshop")
+
+  @@index([part_id], map: "idx_sm_part")
+  @@index([warehouse_id], map: "idx_sm_warehouse")
+  @@index([created_by], map: "fk_sm_user")
+  @@index([type], map: "idx_sm_type")
+  @@index([created_at], map: "idx_sm_created")
+  @@index([reference_type, reference_id], map: "idx_sm_reference")
+  @@index([workshop_id], map: "idx_sm_workshop")
+}
+
+model job_parts {
+  id           String           @id @db.Char(36)
+  job_id       String           @db.Char(36)
+  part_id      String?          @db.Char(36)
+  part_name    String?          @db.VarChar(180)
+  part_number  String?          @db.VarChar(60)
+  source       job_parts_source @default(catalog)
+  estimate_line_id String?      @db.Char(36)
+  concern_id   String?          @db.Char(36)
+  warehouse_id String?          @db.Char(36)
+  quantity     Int              @db.Int
+  unit_cost    Decimal?         @db.Decimal(10, 2)
+  unit_price   Decimal?         @db.Decimal(10, 2)
+  status       job_parts_status @default(reserved)
+  workshop_id  String?          @db.Char(36)
+  created_at   DateTime?        @default(now()) @db.DateTime(0)
+  updated_at   DateTime?        @default(now()) @db.DateTime(0)
+
+  jobs           jobs            @relation(fields: [job_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_job")
+  estimate_lines estimate_lines? @relation(fields: [estimate_line_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jp_estimate_line")
+  job_concerns   job_concerns?   @relation(fields: [concern_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jp_concern")
+  parts          parts?          @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_part")
+  warehouses     warehouses?     @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_warehouse")
+  workshops      workshops?      @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jp_workshop")
+
+  @@index([job_id], map: "idx_jp_job")
+  @@index([estimate_line_id], map: "idx_jp_estimate_line")
+  @@index([concern_id], map: "idx_jp_concern")
+  @@index([part_id], map: "idx_jp_part")
+  @@index([warehouse_id], map: "idx_jp_warehouse")
+  @@index([status], map: "idx_jp_status")
+  @@index([workshop_id], map: "idx_jp_workshop")
+}
+
+model purchase_orders {
+  id          String                 @id @db.Char(36)
+  supplier_id String?                @db.Char(36)
+  status      purchase_orders_status @default(draft)
+  total_cost  Decimal?               @db.Decimal(12, 2)
+  workshop_id String?                @db.Char(36)
+  created_at  DateTime?              @default(now()) @db.DateTime(0)
+  updated_at  DateTime?              @default(now()) @db.DateTime(0)
+
+  suppliers            suppliers?             @relation(fields: [supplier_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_po_supplier")
+  workshops            workshops?             @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_po_workshop")
+  purchase_order_items purchase_order_items[]
+
+  @@index([supplier_id], map: "fk_po_supplier")
+  @@index([status], map: "idx_po_status")
+  @@index([workshop_id], map: "idx_po_workshop")
+}
+
+model purchase_order_items {
+  id                String    @id @db.Char(36)
+  purchase_order_id String    @db.Char(36)
+  part_id           String    @db.Char(36)
+  ordered_qty       Int       @db.Int
+  received_qty      Int       @default(0) @db.Int
+  unit_cost         Decimal?  @db.Decimal(10, 2)
+  workshop_id       String?   @db.Char(36)
+  created_at        DateTime? @default(now()) @db.DateTime(0)
+  updated_at        DateTime? @default(now()) @db.DateTime(0)
+
+  purchase_orders purchase_orders @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_poi_purchase_order")
+  parts           parts           @relation(fields: [part_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_poi_part")
+  workshops       workshops?      @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_poi_workshop")
+
+  @@index([purchase_order_id], map: "idx_poi_purchase_order")
+  @@index([part_id], map: "idx_poi_part")
+  @@index([workshop_id], map: "idx_poi_workshop")
+}

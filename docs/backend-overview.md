@@ -15,7 +15,7 @@ The backend supports a workshop/service-advisor workflow:
 7. execute the work
 8. close and archive jobs
 
-The API is built with **NestJS**, uses **Prisma** for database access, **MySQL/MariaDB** as the database, **BullMQ + Redis** for queued notifications, and **S3/MinIO** for media storage.
+The API is built with **NestJS**, uses **Prisma** for database access, **MySQL/MariaDB** as the database, **BullMQ + Redis** for queued notifications, and **Backblaze B2** for media storage.
 
 ## 2. Application bootstrap
 
@@ -28,7 +28,10 @@ Key startup behavior:
 - CORS enabled from `CORS_ORIGINS`
 - request validation via Nest `ValidationPipe`
 - audit logging via global `AuditInterceptor`
-- Helmet enabled, but CSP is intentionally disabled for current web compatibility
+- Helmet enabled; CSP allows `'self'` and `'unsafe-inline'` but **not** `'unsafe-eval'`
+- S3 storage uses Backblaze B2 (not MinIO) — bucket `PrioraFlow` in `us-east-005`
+- Health endpoint at `/health` checks DB and Redis connectivity; returns 503 if degraded
+- Graceful shutdown enabled via `enableShutdownHooks()`
 - Swagger is exposed only outside production
 
 Root module: `src/app.module.ts`
@@ -135,7 +138,48 @@ Media is not exposed by direct storage URL in customer-facing flows. Instead:
 - customer portal media is proxied through `/api/portal/:token/media/:mediaId`
 - portal token validation happens before streaming customer-visible media
 
-## 7. Background processing
+## 7. Error responses
+
+All API errors return a consistent JSON shape with a machine-readable `code` field:
+
+```json
+{
+  "statusCode": 403,
+  "code": "AUTH_PERMISSION_DENIED",
+  "message": "Missing permission: JOBS_DELETE",
+  "method": "GET",
+  "path": "/api/jobs",
+  "timestamp": "2026-05-13T12:00:00.000Z"
+}
+```
+
+### Error codes
+
+| Code | HTTP Status | When |
+|---|---|---|
+| `AUTH_INVALID_CREDENTIALS` | 401 | Wrong email or password |
+| `AUTH_TOKEN_EXPIRED` | 401 | JWT has expired |
+| `AUTH_TOKEN_INVALID` | 401 | Missing, malformed, or invalid token |
+| `AUTH_FORBIDDEN` | 403 | No access to resource (general) |
+| `AUTH_PERMISSION_DENIED` | 403 | Missing role permission |
+| `AUTH_TRIAL_EXPIRED` | 402 | Workshop trial period has ended |
+| `AUTH_WORKSHOP_REQUIRED` | 403 | No workshop context selected |
+| `PLAN_FEATURE_REQUIRED` | 403 | Feature locked behind higher plan tier |
+| `PLAN_LIMIT_REACHED` | 402 | Usage ceiling hit for plan |
+| `NOT_FOUND` | 404 | Resource not found |
+| `VALIDATION_ERROR` | 400 | DTO validation failed (field constraints) |
+| `BAD_REQUEST` | 400 | Generic client error |
+| `CONFLICT` | 409 | Duplicate resource or state conflict |
+| `RATE_LIMITED` | 429 | Request throttled |
+| `MEDIA_FILE_BLOCKED` | 403 | File blocked by security scan |
+| `MEDIA_FILE_PENDING` | 403 | File pending security scan |
+| `MEDIA_FILE_TYPE_NOT_ALLOWED` | 400 | File extension or MIME type rejected |
+| `MEDIA_FILE_TOO_LARGE` | 400 | File exceeds size limit for its type |
+| `INTERNAL_ERROR` | 500 | Unhandled server error |
+
+Custom errors are thrown using `AppException` subclasses in `src/common/errors/app-errors.ts`. Standard NestJS exceptions (e.g., `NotFoundException`, `ForbiddenException`) that haven't been migrated yet still get an inferred code based on HTTP status.
+
+## 8. Background processing
 
 ### Scheduler
 `SchedulerService` runs on startup and nightly:
@@ -153,7 +197,7 @@ Delivery flow:
 
 If no webhook exists for a channel, the system marks it as sent with provider `noop`.
 
-## 8. Backend architectural strengths
+## 9. Backend architectural strengths
 
 Current strengths:
 - clear module separation by domain
@@ -162,7 +206,7 @@ Current strengths:
 - notification delivery is resilient because DB is the source of truth
 - audit/history tables exist for important areas
 
-## 9. Backend architectural caveats
+## 10. Backend architectural caveats
 
 Important caveats for developers:
 
@@ -171,7 +215,7 @@ Important caveats for developers:
 - Some rules are duplicated or partially duplicated across modules, so changes should be made carefully.
 - The current deployment assumes existing external infrastructure for Traefik and MariaDB.
 
-## 10. Best way to read this backend
+## 11. Best way to read this backend
 
 Recommended order for new developers:
 

@@ -2,15 +2,43 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getValidTransitions, getPriorityTone, getActionUrgencyClass } from "@/lib/jobs-data";
-import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity } from "@/types";
+import type { Job, JobAuthorisationStatus, JobStatus, WorkshopStage, PartsStatus, CustomerSensitivity, User as UserType, Part, Warehouse, JobPart } from "@/types";
 
 // ─── Priority API result shape (mirrors backend) ──────────
 interface PriorityFactor { key: string; weight: number; description: string; category: string; }
 interface NextActionResult { title: string; reason: string; urgency: "low"|"normal"|"high"|"critical"; owner: string; actionType: string; score: number; signals: string[]; }
 interface PriorityResult { jobId: string; jobNumber: string | null; score: number; level: "low"|"normal"|"high"|"critical"; factors: PriorityFactor[]; idleHours: number; hoursToPromise: number | null; isOverdue: boolean; nextAction: NextActionResult; }
+interface VehicleServiceHistoryLine { id: string; type: string; description: string | null; quantity: number | null; line_total: number | string | null; is_recommended: boolean | null; }
+interface VehicleServiceHistoryEntry {
+  id: string;
+  type: "job" | "manual";
+  job_id: string | null;
+  job_number: string | null;
+  status: JobStatus | null;
+  odometer_km: number | null;
+  summary: string | null;
+  service_date: string | null;
+  completed_at: string | null;
+  estimate_total: number | null;
+  estimate_lines: VehicleServiceHistoryLine[];
+  media_count: number;
+  dms_ro_number: string | null;
+  advisor?: Pick<UserType, "id" | "name" | "email"> | null;
+  technician?: Pick<UserType, "id" | "name" | "email"> | null;
+  inspection?: { id: string; status: string | null } | null;
+}
+interface VehicleServiceHistoryResponse {
+  totals: { jobs: number; closedJobs: number; revenue: number };
+  entries: VehicleServiceHistoryEntry[];
+}
+
+interface EstimateDefaults {
+  default_tax_rate: number;
+  currency: string;
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,9 +55,11 @@ import dynamic from "next/dynamic";
 
 const EstimateBuilder = dynamic(() => import("@/components/estimates/estimate-builder").then((m) => ({ default: m.EstimateBuilder })), { ssr: false });
 const InspectionWorkspace = dynamic(() => import("@/components/inspections/inspection-workspace").then((m) => ({ default: m.InspectionWorkspace })), { ssr: false });
+const QcChecklistWorkspace = dynamic(() => import("@/components/qc-checklists/qc-checklist-workspace").then((m) => ({ default: m.QcChecklistWorkspace })), { ssr: false });
 import { SendApprovalButton } from "@/components/estimates/send-approval-button";
 import { MediaUploader } from "@/components/media/media-uploader";
 import { MediaThumbnail } from "@/components/media/media-thumbnail";
+import { ComponentErrorBoundary } from "@/components/error-boundary";
 import {
   ArrowLeft,
   ArrowRight,
@@ -46,6 +76,7 @@ import {
   Send,
   User,
   Wrench,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -151,18 +182,26 @@ function formatDate(value?: string | null, withTime = false) {
   }).format(date);
 }
 
-function estimateTotal(job: Job) {
+function estimateTotal(job: Job | null) {
+  if (!job) return 0;
+  const meta = job.meta;
+  if (meta?.estimateTotal !== undefined) return meta.estimateTotal;
   return (job.estimate_lines ?? []).reduce(
     (sum, line) => sum + Number(line.line_total ?? 0),
     0,
   );
 }
 
+function normalizeDefaultTaxRate(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 5;
+}
+
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-muted p-4">
+    <div className="min-w-0 rounded-2xl border border-border bg-muted p-4">
       <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-foreground">{value}</p>
+      <p className="mt-2 truncate text-lg font-semibold text-foreground">{value}</p>
       {hint ? <p className="mt-1 text-sm text-muted-foreground">{hint}</p> : null}
     </div>
   );
@@ -186,15 +225,25 @@ export default function JobDetailPage() {
   const [priority, setPriority] = useState<PriorityResult | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
   const [authStatus, setAuthStatus] = useState<JobAuthorisationStatus | null>(null);
+  const [releasingPortal, setReleasingPortal] = useState(false);
+  const [serviceHistory, setServiceHistory] = useState<VehicleServiceHistoryResponse | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [inspectionRev, setInspectionRev] = useState(0);
   const [loading, setLoading] = useState(true);
   const [startingInspection, setStartingInspection] = useState(false);
   const [reopeningInspection, setReopeningInspection] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [qcChecklistDetail, setQcChecklistDetail] = useState<any | null>(null);
+  const [qcRev, setQcRev] = useState(0);
+  const [startingQc, setStartingQc] = useState(false);
+  const [reopeningQc, setReopeningQc] = useState(false);
 
   /** Most logical next status in the forward flow */
   const nextFlowStatus = useMemo(() => {
     if (!job) return "";
+    const meta = job.meta;
+    if (meta?.nextFlowStatus) return meta.nextFlowStatus as JobStatus | "";
+    // Fallback (removed after meta is verified)
     const TRANSITIONS: Record<string, string[]> = {
       booked: ["checking"],
       checking: ["estimate_sent"],
@@ -207,7 +256,7 @@ export default function JobDetailPage() {
       closed: [],
     };
     return (TRANSITIONS[job.status]?.[0] ?? "") as JobStatus | "";
-  }, [job?.status]);
+  }, [job?.status, job?.meta?.nextFlowStatus]);
   const [users, setUsers] = useState<any[]>([]);
   const [assigningAdvisor, setAssigningAdvisor] = useState(false);
   const [assigningTech, setAssigningTech] = useState(false);
@@ -216,20 +265,48 @@ export default function JobDetailPage() {
   const [savingCustomerInformed, setSavingCustomerInformed] = useState(false);
 
   /** True when the job is still in reception / advisor phase - workshop fields are irrelevant. */
-  const isWorkshopStageDisabled = job ? WORKSHOP_STAGE_DISABLED_STATUSES.includes(job.status) : false;
-  const isPartsStatusDisabled = job ? PARTS_STATUS_DISABLED_STATUSES.includes(job.status) : false;
+  const meta = job?.meta ?? null;
+  const isWorkshopStageDisabled = job ? !(meta?.editableFields?.includes("workshop_stage") ?? !WORKSHOP_STAGE_DISABLED_STATUSES.includes(job.status)) : false;
+  const isPartsStatusDisabled = job ? !(meta?.editableFields?.includes("parts_status") ?? !PARTS_STATUS_DISABLED_STATUSES.includes(job.status)) : false;
   const [savingCustomerPriority, setSavingCustomerPriority] = useState(false);
+  const currentWorkshopStage = useMemo<WorkshopStage | null>(() => {
+    if (!job) return null;
+    const stage = meta?.resolvedWorkshopStage ?? job.workshop_stage;
+    return stage && WORKSHOP_STAGE_META[stage] ? stage : null;
+  }, [job, meta?.resolvedWorkshopStage]);
 
   // Inline editing states
   const [editingConcern, setEditingConcern] = useState(false);
   const [draftConcern, setDraftConcern] = useState("");
   const [savingConcern, setSavingConcern] = useState(false);
+  const [newConcernTitle, setNewConcernTitle] = useState("");
+  const [newConcernFinding, setNewConcernFinding] = useState("");
+  const [savingStructuredConcern, setSavingStructuredConcern] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [draftNotes, setDraftNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [editingPromise, setEditingPromise] = useState(false);
   const [draftPromise, setDraftPromise] = useState("");
   const [savingPromise, setSavingPromise] = useState(false);
+  const [editingCustomerContact, setEditingCustomerContact] = useState(false);
+  const [draftCustomerEmail, setDraftCustomerEmail] = useState("");
+  const [draftCustomerPhone, setDraftCustomerPhone] = useState("");
+  const [savingCustomerContact, setSavingCustomerContact] = useState(false);
+  const [estimateDefaults, setEstimateDefaults] = useState<EstimateDefaults>({ default_tax_rate: 5, currency: "AED" });
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [partEntryMode, setPartEntryMode] = useState<"catalog" | "adhoc">("catalog");
+  const [partSearch, setPartSearch] = useState("");
+  const [partOptions, setPartOptions] = useState<Part[]>([]);
+  const [selectedPartId, setSelectedPartId] = useState("");
+  const [selectedConcernId, setSelectedConcernId] = useState("");
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [partQuantity, setPartQuantity] = useState("1");
+  const [partUnitCost, setPartUnitCost] = useState("");
+  const [partUnitPrice, setPartUnitPrice] = useState("");
+  const [adhocPartName, setAdhocPartName] = useState("");
+  const [adhocPartNumber, setAdhocPartNumber] = useState("");
+  const [savingJobPart, setSavingJobPart] = useState(false);
+  const [actingJobPartId, setActingJobPartId] = useState<string | null>(null);
 
   const saveConcern = async () => {
     if (!job) return;
@@ -243,6 +320,42 @@ export default function JobDetailPage() {
       toast.error("Failed to update concern");
     } finally {
       setSavingConcern(false);
+    }
+  };
+
+  const addStructuredConcern = async () => {
+    if (!job || !newConcernTitle.trim()) return;
+    setSavingStructuredConcern(true);
+    try {
+      await api.post(`/jobs/${job.id}/concerns`, {
+        title: newConcernTitle.trim(),
+        technician_finding: newConcernFinding.trim() || undefined,
+      });
+      setNewConcernTitle("");
+      setNewConcernFinding("");
+      await refreshJob();
+      toast.success("Concern added to portal draft");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to add concern");
+    } finally {
+      setSavingStructuredConcern(false);
+    }
+  };
+
+  const updateStructuredConcern = async (concernId: string, form: HTMLFormElement) => {
+    if (!job) return;
+    const values = new FormData(form);
+    try {
+      await api.patch(`/jobs/${job.id}/concerns/${concernId}`, {
+        status: values.get("status") || undefined,
+        technician_finding: values.get("technician_finding") || "",
+        work_note: values.get("work_note") || "",
+        qc_note: values.get("qc_note") || "",
+      });
+      await refreshJob();
+      toast.success("Technician feedback saved");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to save feedback");
     }
   };
 
@@ -273,6 +386,46 @@ export default function JobDetailPage() {
       toast.error("Failed to update promise time");
     } finally {
       setSavingPromise(false);
+    }
+  };
+
+  const saveCustomerContact = async () => {
+    if (!job?.customer?.id) return;
+    const email = draftCustomerEmail.trim();
+    const phone = draftCustomerPhone.trim();
+
+    setSavingCustomerContact(true);
+    try {
+      await api.patch(`/customers/${job.customer.id}`, {
+        email: email || undefined,
+        phone: phone || undefined,
+      });
+      await refreshJob();
+      setEditingCustomerContact(false);
+      toast.success("Customer contact updated");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to update customer contact");
+    } finally {
+      setSavingCustomerContact(false);
+    }
+  };
+
+
+  const releasePortalUpdate = async () => {
+    if (!job) return;
+    setReleasingPortal(true);
+    try {
+      const { data } = await api.post(`/jobs/${job.id}/portal-release`, { note: `Released from job workspace` });
+      await refreshJob();
+      const url = data?.portalUrl;
+      if (url && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url).catch(() => undefined);
+      }
+      toast.success(url ? "Portal update released. Link copied." : "Portal update released");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to release portal update");
+    } finally {
+      setReleasingPortal(false);
     }
   };
 
@@ -312,12 +465,28 @@ export default function JobDetailPage() {
 
     setJob(data); fetchPriority(data.id);
     setAuthStatus(authRes?.data ?? null);
+    if (data.vehicle_id) {
+      setHistoryLoading(true);
+      api.get<VehicleServiceHistoryResponse>(`/vehicles/${data.vehicle_id}/service-history`)
+        .then((res) => setServiceHistory(res.data))
+        .catch(() => setServiceHistory(null))
+        .finally(() => setHistoryLoading(false));
+    } else {
+      setServiceHistory(null);
+    }
     if (data.inspection?.id) {
       const inspectionRes = await api.get(`/inspections/${data.inspection.id}`);
       setInspectionDetail(inspectionRes.data);
       setInspectionRev((r) => r + 1);
     } else {
       setInspectionDetail(null);
+    }
+    if (data.qc_checklists?.id) {
+      const qcRes = await api.get(`/qc-checklists/${data.qc_checklists.id}`);
+      setQcChecklistDetail(qcRes.data);
+      setQcRev((r) => r + 1);
+    } else {
+      setQcChecklistDetail(null);
     }
   };
 
@@ -328,6 +497,168 @@ export default function JobDetailPage() {
       setUsers(list);
     } catch {
       // ignore — may not have permission
+    }
+  };
+
+  const loadWarehouses = async () => {
+    try {
+      const { data } = await api.get<Warehouse[]>("/warehouses");
+      setWarehouses(Array.isArray(data) ? data : []);
+    } catch {
+      setWarehouses([]);
+    }
+  };
+
+  const loadEstimateDefaults = async () => {
+    try {
+      const { data } = await api.get<Partial<EstimateDefaults>>("/estimates/defaults");
+      setEstimateDefaults({
+        default_tax_rate: normalizeDefaultTaxRate(data.default_tax_rate),
+        currency: data.currency || "AED",
+      });
+    } catch {
+      setEstimateDefaults({ default_tax_rate: 5, currency: "AED" });
+    }
+  };
+
+  const searchCatalogParts = async (query: string) => {
+    setPartSearch(query);
+    setSelectedPartId("");
+    if (query.trim().length < 2) {
+      setPartOptions([]);
+      return;
+    }
+    try {
+      const { data } = await api.get<Part[]>("/parts/search", { params: { q: query.trim() } });
+      setPartOptions(data ?? []);
+    } catch {
+      setPartOptions([]);
+    }
+  };
+
+  const resetJobPartForm = () => {
+    setPartSearch("");
+    setPartOptions([]);
+    setSelectedPartId("");
+    setSelectedWarehouseId("");
+    setPartQuantity("1");
+    setPartUnitCost("");
+    setPartUnitPrice("");
+    setAdhocPartName("");
+    setAdhocPartNumber("");
+  };
+
+  const reserveJobPart = async () => {
+    if (!job) return;
+    const quantity = Number(partQuantity);
+    const unitCost = partUnitCost.trim() ? Number(partUnitCost) : undefined;
+    const unitPrice = partUnitPrice.trim() ? Number(partUnitPrice) : undefined;
+
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      toast.error("Quantity must be at least 1");
+      return;
+    }
+
+    if (!selectedConcernId) {
+      toast.error("Select a quote concern");
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      job_id: job.id,
+      concernId: selectedConcernId,
+      quantity,
+    };
+    if (unitCost !== undefined) payload.unit_cost = unitCost;
+
+    if (partEntryMode === "catalog") {
+      if (!selectedPartId) {
+        toast.error("Select a catalog part");
+        return;
+      }
+      if (!selectedWarehouseId) {
+        toast.error("Select a warehouse");
+        return;
+      }
+      payload.partId = selectedPartId;
+      payload.warehouse_id = selectedWarehouseId;
+      if (unitPrice !== undefined) payload.unitPrice = unitPrice;
+    } else {
+      if (!adhocPartName.trim()) {
+        toast.error("Part name is required");
+        return;
+      }
+      if (unitPrice === undefined || !Number.isFinite(unitPrice)) {
+        toast.error("Unit price is required for ad-hoc parts");
+        return;
+      }
+      payload.partName = adhocPartName.trim();
+      if (adhocPartNumber.trim()) payload.partNumber = adhocPartNumber.trim();
+      if (selectedWarehouseId) payload.warehouse_id = selectedWarehouseId;
+      payload.unitPrice = unitPrice;
+    }
+
+    setSavingJobPart(true);
+    try {
+      await api.post("/job-parts/reserve", payload);
+      resetJobPartForm();
+      await refreshJob();
+      toast.success(partEntryMode === "catalog" ? "Catalog part added to quote memo" : "Ad-hoc part added to quote memo");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to add part");
+    } finally {
+      setSavingJobPart(false);
+    }
+  };
+
+  const updateJobPartStatus = async (jobPart: JobPart, action: "reserve" | "consume" | "return" | "cancel") => {
+    setActingJobPartId(jobPart.id);
+    try {
+      if (action === "reserve") {
+        await api.post(`/job-parts/${jobPart.id}/reserve`);
+      } else if (action === "consume") {
+        await api.post("/job-parts/consume", { job_part_id: jobPart.id });
+      } else if (action === "return") {
+        await api.post("/job-parts/return", { job_part_id: jobPart.id });
+      } else {
+        await api.post(`/job-parts/${jobPart.id}/cancel`);
+      }
+      await refreshJob();
+      toast.success(action === "reserve" ? "Part reserved" : action === "consume" ? "Part marked used" : action === "return" ? "Part returned" : "Part cancelled");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to update part");
+    } finally {
+      setActingJobPartId(null);
+    }
+  };
+
+  const addQuoteLineToPartsMemo = async (line: NonNullable<Job["estimate_lines"]>[number]) => {
+    if (!job || !line.concern_id) {
+      toast.error("Quote line must belong to a concern");
+      return;
+    }
+    const unitPrice = Number(line.unit_price ?? 0);
+    if (!line.description?.trim()) {
+      toast.error("Quote line needs a part description");
+      return;
+    }
+    setSavingJobPart(true);
+    try {
+      await api.post("/job-parts/reserve", {
+        job_id: job.id,
+        concernId: line.concern_id,
+        estimateLineId: line.id,
+        partName: line.description.trim(),
+        partNumber: line.part_number || undefined,
+        quantity: Math.max(1, Number(line.quantity ?? 1)),
+        unitPrice,
+      });
+      await refreshJob();
+      toast.success("Quote part linked to parts memo");
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to link quote part");
+    } finally {
+      setSavingJobPart(false);
     }
   };
 
@@ -342,7 +673,24 @@ export default function JobDetailPage() {
       }
     })();
     loadUsers();
+    loadWarehouses();
+    loadEstimateDefaults();
   }, [id]);
+
+  useEffect(() => {
+    setDraftCustomerEmail(job?.customer?.email || "");
+    setDraftCustomerPhone(job?.customer?.phone || "");
+  }, [job?.customer?.email, job?.customer?.phone]);
+
+  useEffect(() => {
+    const concerns = job?.job_concerns ?? [];
+    if (!selectedConcernId && concerns.length > 0) {
+      setSelectedConcernId(concerns[0].id);
+    }
+    if (selectedConcernId && concerns.length > 0 && !concerns.some((concern) => concern.id === selectedConcernId)) {
+      setSelectedConcernId(concerns[0].id);
+    }
+  }, [job?.job_concerns, selectedConcernId]);
 
   /* ── Auto-poll auth status only while active token exists ── */
   const prevAuthCounts = useRef<{ approved: number; declined: number; deferred: number } | null>(null);
@@ -375,7 +723,7 @@ export default function JobDetailPage() {
   }, [authStatus?.hasActiveToken, id]);
 
   const availableStatuses = useMemo(
-    () => (job ? getValidTransitions(job.status) : []),
+    () => (job ? getValidTransitions(job) : []),
     [job],
   );
 
@@ -411,10 +759,47 @@ export default function JobDetailPage() {
       await refreshJob();
       toast.success("Inspection reopened");
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to reopen inspection");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setReopeningInspection(false);
+    }
+  };
+
+  const startQcChecklist = async () => {
+    if (!job) return;
+    setStartingQc(true);
+    try {
+      const templateRes = await api.get<any[]>("/qc-checklist-templates");
+      const templates = templateRes.data || [];
+      const template = templates.find((entry: any) => entry.is_default) || templates[0];
+      if (!template) {
+        toast.error("No QC checklist template available");
+        return;
+      }
+      await api.post("/qc-checklists", { jobId: job.id, templateId: template.id });
+      await refreshJob();
+      toast.success("QC checklist started");
+    } catch (err: any) {
+      toast.error(getApiError(err).message || "Failed to start QC checklist");
+    } finally {
+      setStartingQc(false);
+    }
+  };
+
+  const reopenQcChecklist = async () => {
+    if (!qcChecklistDetail?.id && !job?.qc_checklists?.id) return;
+    const checklistId = qcChecklistDetail?.id || job?.qc_checklists?.id;
+    setReopeningQc(true);
+    try {
+      await api.post(`/qc-checklists/${checklistId}/reopen`);
+      await refreshJob();
+      toast.success("QC checklist reopened");
+    } catch (err: any) {
+      const { message } = getApiError(err);
+      toast.error(message);
+    } finally {
+      setReopeningQc(false);
     }
   };
 
@@ -428,10 +813,28 @@ export default function JobDetailPage() {
 
   const currentStep = ALL_STATUSES.indexOf(job.status);
   const total = estimateTotal(job);
+  const formatMoney = (value: number | string | null | undefined) => `${estimateDefaults.currency || "$"} ${Number(value ?? 0).toFixed(2)}`;
   const vehicle = vehicleLabel(job);
   const plate = job.vehicle?.plate || "No plate";
   const mediaCount = job.media_files?.length ?? 0;
   const estimateCount = job.estimate_lines?.length ?? 0;
+  const jobParts = job.job_parts ?? [];
+  const jobConcerns = job.job_concerns ?? [];
+  const concernById = new Map(jobConcerns.map((concern) => [concern.id, concern]));
+  const concernLabel = (concernId: string | null | undefined) => {
+    if (!concernId) return "-";
+    const concern = concernById.get(concernId);
+    if (!concern) return concernId.slice(0, 8);
+    return `${concern.code ? `${concern.code} - ` : ""}${concern.title}`;
+  };
+  const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]));
+  const warehouseLabel = (warehouseId: string | null | undefined) => {
+    if (!warehouseId) return partEntryMode === "catalog" ? "Select warehouse" : "No warehouse hint";
+    return warehouseById.get(warehouseId)?.name ?? warehouseId.slice(0, 8);
+  };
+  const quotePartLines = (job.estimate_lines ?? []).filter((line) => line.type === "part");
+  const linkedEstimateLineIds = new Set(jobParts.map((part) => part.estimateLineId ?? part.estimate_line_id).filter(Boolean));
+  const unfulfilledQuotePartLines = quotePartLines.filter((line) => line.id && !linkedEstimateLineIds.has(line.id));
   const inspectionState = inspectionDetail?.status || job.inspection?.status || "not started";
   const inspectionLocked = ["submitted", "reviewed", "approved"].includes(inspectionState);
   const approvalCounts = authStatus?.counts;
@@ -492,8 +895,8 @@ export default function JobDetailPage() {
                     await api.patch(`/jobs/${job.id}/status`, { to_status: to });
                     await refreshJob();
                     toast.success(`Status changed to ${STATUS_META[to].label}`);
-                  } catch {
-                    toast.error("Failed to change status");
+                  } catch (err: any) {
+                    toast.error(getApiError(err).message || "Failed to change status");
                   } finally {
                     setChangingStatus(false);
                   }
@@ -516,8 +919,8 @@ export default function JobDetailPage() {
                       await api.patch(`/jobs/${job.id}/status`, { to_status: nextFlowStatus });
                       await refreshJob();
                       toast.success(`Status changed to ${STATUS_META[nextFlowStatus].label}`);
-                    } catch {
-                      toast.error("Failed to change status");
+                    } catch (err: any) {
+                      toast.error(getApiError(err).message || "Failed to change status");
                     } finally {
                       setChangingStatus(false);
                     }
@@ -573,8 +976,8 @@ export default function JobDetailPage() {
 
         <div className="grid gap-5 bg-muted/70 p-5 lg:p-6 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-              <StatCard label="Estimate" value={`AED ${total.toFixed(2)}`} hint={`${estimateCount} lines`} />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Estimate" value={formatMoney(total)} hint={`${estimateCount} lines`} />
               <StatCard label="Inspection" value={String(inspectionState).replaceAll("_", " ")} />
               <StatCard label="Media" value={`${mediaCount}`} hint="files" />
               <StatCard label="Approval" value={approvalStatusLabel} />
@@ -642,12 +1045,9 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
-                <ClipboardList className="mr-2 h-4 w-4" /> Inspection
-              </Button>
-              <Button variant="outline" className="h-12 rounded-2xl border-border bg-card shadow-sm" onClick={() => router.push(`/jobs/${job.id}#media`)}>
-                <ImageIcon className="mr-2 h-4 w-4" /> Media
+            <div className="flex gap-3">
+              <Button variant="outline" className="h-12 rounded-2xl border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100" onClick={releasePortalUpdate} disabled={releasingPortal}>
+                <Send className="mr-2 h-4 w-4" /> {releasingPortal ? "Releasing..." : "Release portal"}
               </Button>
               {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-12 rounded-2xl">Approval link</Button>}
             </div>
@@ -696,18 +1096,18 @@ export default function JobDetailPage() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Workshop stage {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-muted-foreground">— not available</span>}</p>
-                  <Select value={job.workshop_stage ?? "waiting_technician"} onValueChange={async (value) => {
-                    const workshopStage = value as WorkshopStage;
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Workshop phase {isWorkshopStageDisabled && <span className="ml-1 text-[10px] normal-case text-muted-foreground">- not available</span>}</p>
+                  <Select value={currentWorkshopStage ?? ""} onValueChange={async (value) => {
+                    const nextStage = value as WorkshopStage;
+                    if (!WORKSHOP_STAGE_META[nextStage]) return;
                     setSavingWorkshopStage(true);
                     try {
-                      await api.patch(`/jobs/${job.id}`, { workshop_stage: workshopStage });
+                      await api.patch(`/jobs/${job.id}`, { workshop_stage: nextStage });
                       await refreshJob();
-                      const syncMsg = workshopStage === 'work_in_progress' ? ' - Overall moved to In Progress' : workshopStage === 'quality_check' ? ' - Overall moved to Quality Check' : workshopStage === 'ready_handover' ? ' - Overall moved to Ready' : '';
-                      toast.success(`Workshop stage updated to ${WORKSHOP_STAGE_META[workshopStage].label}${syncMsg}`);
+                      toast.success(`Workshop phase updated to ${WORKSHOP_STAGE_META[nextStage].label}`);
                     } catch { toast.error("Failed to update workshop stage"); } finally { setSavingWorkshopStage(false); }
                   }} disabled={savingWorkshopStage || isWorkshopStageDisabled}>
-                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workshop stage">{WORKSHOP_STAGE_META[(job.workshop_stage ?? "waiting_technician") as WorkshopStage]?.label ?? "Workshop stage"}</SelectValue></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl border-border bg-muted"><SelectValue placeholder="Workshop phase">{currentWorkshopStage ? WORKSHOP_STAGE_META[currentWorkshopStage].label : "Workshop phase"}</SelectValue></SelectTrigger>
                     <SelectContent className="min-w-[360px]">{WORKSHOP_STAGES.map((stage) => (<SelectItem key={stage} value={stage}>{WORKSHOP_STAGE_META[stage].label} - {WORKSHOP_STAGE_META[stage].hint}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
@@ -769,11 +1169,20 @@ export default function JobDetailPage() {
           <TabsTrigger value="customer" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <User className="mr-2 h-4 w-4" /> Customer
           </TabsTrigger>
+          <TabsTrigger value="service-history" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <History className="mr-2 h-4 w-4" /> Service history
+          </TabsTrigger>
           <TabsTrigger value="estimate" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <Wrench className="mr-2 h-4 w-4" /> Quote & authorization
           </TabsTrigger>
+          <TabsTrigger value="parts" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <Wrench className="mr-2 h-4 w-4" /> Parts
+          </TabsTrigger>
           <TabsTrigger value="inspection" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ClipboardList className="mr-2 h-4 w-4" /> Inspection
+          </TabsTrigger>
+          <TabsTrigger value="qc" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+            <ShieldCheck className="mr-2 h-4 w-4" /> QC
           </TabsTrigger>
           <TabsTrigger value="media" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ImageIcon className="mr-2 h-4 w-4" /> Media
@@ -833,7 +1242,7 @@ export default function JobDetailPage() {
                   <div className="rounded-2xl border border-border bg-card p-4">
                     <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Commercial readiness</p>
                     <p className="mt-2 text-lg font-bold text-foreground">{estimateCount} lines</p>
-                    <p className="mt-1 text-xs text-muted-foreground">AED {total.toFixed(2)} quote total</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatMoney(total)} quote total</p>
                   </div>
                   <div className="rounded-2xl border border-border bg-card p-4">
                     <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Evidence readiness</p>
@@ -854,12 +1263,6 @@ export default function JobDetailPage() {
                 <CardTitle className="text-lg">Quick actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={() => router.push(`/jobs/${job.id}#inspection`)}>
-                  <ClipboardList className="mr-2 h-4 w-4" /> Open inspection workspace
-                </Button>
-                <Button variant="outline" className="h-11 w-full justify-start rounded-xl" onClick={() => router.push(`/jobs/${job.id}#media`)}>
-                  <ImageIcon className="mr-2 h-4 w-4" /> Open media evidence
-                </Button>
                 {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-11 w-full rounded-xl">Add quote lines before approval</Button>}
               </CardContent>
             </Card>
@@ -881,11 +1284,66 @@ export default function JobDetailPage() {
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
                   <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Phone</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.phone || "No phone"}</p>
+                  {editingCustomerContact ? (
+                    <Input
+                      className="h-9 text-right text-sm"
+                      placeholder="Customer phone / WhatsApp"
+                      value={draftCustomerPhone}
+                      onChange={(event) => setDraftCustomerPhone(event.target.value)}
+                    />
+                  ) : (
+                    <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.phone || "No phone"}</p>
+                  )}
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-start gap-3 py-3">
                   <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Email</p>
-                  <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.email || "No email"}</p>
+                  {editingCustomerContact ? (
+                    <Input
+                      className="h-9 text-right text-sm"
+                      placeholder="customer@example.com"
+                      type="email"
+                      value={draftCustomerEmail}
+                      onChange={(event) => setDraftCustomerEmail(event.target.value)}
+                    />
+                  ) : (
+                    <p className="break-all text-right text-sm font-semibold leading-5 text-foreground">{job.customer?.email || "No email"}</p>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 py-3">
+                  {editingCustomerContact ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 rounded-lg"
+                        onClick={() => {
+                          setDraftCustomerEmail(job.customer?.email || "");
+                          setDraftCustomerPhone(job.customer?.phone || "");
+                          setEditingCustomerContact(false);
+                        }}
+                        disabled={savingCustomerContact}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="button" size="sm" className="h-8 rounded-lg" onClick={saveCustomerContact} disabled={savingCustomerContact || !job.customer?.id}>
+                        {savingCustomerContact ? "Saving…" : "Save contact"}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg"
+                      onClick={() => setEditingCustomerContact(true)}
+                      disabled={!job.customer?.id}
+                      title={!job.customer?.id ? "No customer is linked to this job" : undefined}
+                    >
+                      <Pencil className="mr-2 h-3.5 w-3.5" />
+                      Edit email / phone
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -934,76 +1392,459 @@ export default function JobDetailPage() {
                 </div>
               </div>
             </div>
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Customer portal concerns</CardTitle>
+              <p className="text-sm text-muted-foreground">Build the structured customer journey. These stay draft until you release the portal update.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+                <Input placeholder="Concern title e.g. Brake noise" value={newConcernTitle} onChange={(e) => setNewConcernTitle(e.target.value)} />
+                <Input placeholder="Technician finding (optional)" value={newConcernFinding} onChange={(e) => setNewConcernFinding(e.target.value)} />
+                <Button className="rounded-xl" onClick={addStructuredConcern} disabled={savingStructuredConcern || !newConcernTitle.trim()}>
+                  {savingStructuredConcern ? "Adding…" : "Add concern"}
+                </Button>
+              </div>
+              {job.job_concerns?.length ? (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {job.job_concerns.map((concern) => (
+                    <div key={concern.id} className="rounded-2xl border border-border bg-muted/40 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{concern.code || "Concern"}</p>
+                          <p className="mt-1 font-semibold text-foreground">{concern.title}</p>
+                        </div>
+                        <span className="rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">{concern.status || "reviewing"}</span>
+                      </div>
+
+                      <form className="mt-4 space-y-3" onSubmit={(event) => { event.preventDefault(); updateStructuredConcern(concern.id, event.currentTarget); }}>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Status</p>
+                            <Select name="status" defaultValue={concern.status || "reviewing"}>
+                              <SelectTrigger className="h-10 rounded-xl bg-card"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="reviewing">Reviewing</SelectItem>
+                                <SelectItem value="finding_ready">Finding ready</SelectItem>
+                                <SelectItem value="priced">Priced</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="declined">Declined</SelectItem>
+                                <SelectItem value="in_progress">In progress</SelectItem>
+                                <SelectItem value="qc_complete">QC complete</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-end justify-end">
+                            <MediaUploader jobId={job.id} concernId={concern.id} onUploaded={refreshJob} />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Technician finding / feedback</p>
+                          <Textarea name="technician_finding" defaultValue={concern.technician_finding || ""} placeholder="What did the technician find?" className="min-h-[80px] bg-card" />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Work progress note</p>
+                            <Textarea name="work_note" defaultValue={concern.work_note || ""} placeholder="What work is being done / progress update" className="min-h-[70px] bg-card" />
+                          </div>
+                          <div>
+                            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">QC / final note</p>
+                            <Textarea name="qc_note" defaultValue={concern.qc_note || ""} placeholder="QC result or final report note" className="min-h-[70px] bg-card" />
+                          </div>
+                        </div>
+                        {concern.media_files?.length ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {concern.media_files.map((file) => (
+                              <MediaThumbnail key={file.id} file={{ ...file, original_filename: file.original_filename || undefined, file_type: file.file_type || undefined, mime_type: file.mime_type || undefined, size_bytes: file.size_bytes == null ? undefined : Number(file.size_bytes), scan_status: file.scan_status || undefined }} onDeleted={refreshJob} />
+                            ))}
+                          </div>
+                        ) : null}
+                        <Button type="submit" size="sm" className="rounded-xl bg-slate-950 text-white hover:bg-slate-800">Save feedback</Button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">No structured concerns yet. Add one from customer complaint or technician finding.</div>
+              )}
+            </CardContent>
+          </Card>
           </div>
         </TabsContent>
 
-
-        <TabsContent value="estimate" className="space-y-4">
+        <TabsContent value="service-history" className="space-y-4">
           <Card className="rounded-2xl border-border shadow-sm">
-            <CardHeader className="gap-4">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div>
-                  <CardTitle className="text-lg">Quote builder & authorization</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">Parts, labour, totals, and customer approval in one workspace.</p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[360px]">
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Quote total</p>
-                    <p className="mt-2 text-xl font-semibold text-foreground">AED {total.toFixed(2)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Live total from estimate lines</p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">Authorization</p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">{approvalStatusLabel}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {approvalCounts
-                        ? `${approvalCounts.approved} approved · ${approvalCounts.declined} rejected · ${approvalCounts.deferred} deferred · ${approvalCounts.pending} pending`
-                        : `${estimateCount} line item${estimateCount === 1 ? "" : "s"}`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted p-4 lg:flex-row lg:items-center lg:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Send the customer approval link once the quote and media evidence are ready.
+            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle className="text-lg">Vehicle service history</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  All previous jobs recorded for this vehicle, including concerns, odometer, quote value, inspection and media count.
                 </p>
-                <div className="w-full lg:w-auto">
-                  {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="w-full rounded-xl">Add estimate lines first</Button>}
-                </div>
               </div>
-
-              {authStatus ? (
-                <div className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
-                  <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground">Customer approval feedback</p>
-                      <p className="text-xs text-muted-foreground">
-                        {latestApprovalToken?.used_at
-                          ? `Customer submitted a response on ${formatDate(latestApprovalToken.used_at, true)}.`
-                          : latestApprovalToken?.first_opened_at
-                            ? `Customer viewed the quote on ${formatDate(latestApprovalToken.first_opened_at, true)} but has not submitted yet.`
-                            : latestApprovalToken?.issued_at
-                              ? `Approval link sent on ${formatDate(latestApprovalToken.issued_at, true)}.`
-                              : "No approval request has been sent yet."}
-                      </p>
-                    </div>
-                    {approvalCounts ? (
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-3 py-1 font-semibold text-emerald-800 dark:text-emerald-200">Approved: {approvalCounts.approved}</span>
-                        <span className="rounded-full bg-rose-100 dark:bg-rose-900/50 px-3 py-1 font-semibold text-rose-800 dark:text-rose-200">Rejected: {approvalCounts.declined}</span>
-                        <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-3 py-1 font-semibold text-amber-800 dark:text-amber-200">Deferred: {approvalCounts.deferred}</span>
-                        <span className="rounded-full bg-muted px-3 py-1 font-semibold text-foreground/80">Pending: {approvalCounts.pending}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
+              <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[480px]">
+                <StatCard label="Visits" value={String(serviceHistory?.totals.jobs ?? 0)} />
+                <StatCard label="Closed jobs" value={String(serviceHistory?.totals.closedJobs ?? 0)} />
+                <StatCard label="Total quoted" value={formatMoney(serviceHistory?.totals.revenue ?? 0)} />
+              </div>
             </CardHeader>
-            <CardContent>
-              <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} />
+            <CardContent className="space-y-4 p-5">
+              {historyLoading ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">Loading service history...</div>
+              ) : serviceHistory?.entries?.length ? (
+                <div className="space-y-4">
+                  {serviceHistory.entries.map((entry) => (
+                    <div key={`${entry.type}-${entry.id}`} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-bold text-foreground">{entry.job_number || (entry.type === "manual" ? "Manual history" : "Job")}</span>
+                            {entry.status ? <StatusBadge status={entry.status} /> : null}
+                            {entry.dms_ro_number ? <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">RO {entry.dms_ro_number}</span> : null}
+                          </div>
+                          <p className="mt-3 text-base font-semibold text-foreground">{entry.summary || "No concern / summary recorded"}</p>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <span>Service date: {formatDate(entry.service_date, true)}</span>
+                            <span>Odometer: {entry.odometer_km ? `${new Intl.NumberFormat("en-GB").format(Number(entry.odometer_km))} km` : "-"}</span>
+                            <span>Advisor: {entry.advisor?.name || "-"}</span>
+                            <span>Technician: {entry.technician?.name || "-"}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center lg:min-w-[300px]">
+                          <div className="rounded-xl bg-muted p-3">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Quote</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{typeof entry.estimate_total === "number" ? formatMoney(entry.estimate_total) : "-"}</p>
+                          </div>
+                          <div className="rounded-xl bg-muted p-3">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Lines</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{entry.estimate_lines?.length ?? 0}</p>
+                          </div>
+                          <div className="rounded-xl bg-muted p-3">
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">Media</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{entry.media_count ?? 0}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {entry.estimate_lines?.length ? (
+                        <div className="mt-4 overflow-hidden rounded-xl border border-border">
+                          <div className="grid grid-cols-[1fr_90px_110px] bg-muted px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+                            <span>Description</span><span className="text-right">Qty</span><span className="text-right">Total</span>
+                          </div>
+                          <div className="divide-y divide-border">
+                            {entry.estimate_lines.slice(0, 6).map((line) => (
+                              <div key={line.id} className="grid grid-cols-[1fr_90px_110px] gap-3 px-3 py-2 text-sm">
+                                <span className="truncate text-foreground">{line.description || line.type}</span>
+                                <span className="text-right text-muted-foreground">{line.quantity ?? "-"}</span>
+                                <span className="text-right font-semibold text-foreground">{formatMoney(line.line_total ?? 0)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {entry.estimate_lines.length > 6 ? <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">+{entry.estimate_lines.length - 6} more lines</p> : null}
+                        </div>
+                      ) : null}
+
+                      {entry.job_id ? (
+                        <Button variant="outline" size="sm" className="mt-4 rounded-xl" onClick={() => router.push(`/jobs/${entry.job_id}`)}>
+                          Open job card
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
+                  No previous service history found for this vehicle yet.
+                </div>
+              )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="parts" className="space-y-4">
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle className="text-lg">Job parts</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">Add catalog stock or free-text ad-hoc parts to this job card.</p>
+              </div>
+              <div className="flex rounded-xl border border-border bg-muted p-1">
+                <Button type="button" size="sm" variant={partEntryMode === "catalog" ? "default" : "ghost"} className="h-8 rounded-lg" onClick={() => setPartEntryMode("catalog")}>Catalog</Button>
+                <Button type="button" size="sm" variant={partEntryMode === "adhoc" ? "default" : "ghost"} className="h-8 rounded-lg" onClick={() => setPartEntryMode("adhoc")}>Ad-hoc</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5 p-5">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                <div className="mb-3">
+                  <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Quote concern</p>
+                  <Select value={selectedConcernId || "__none"} onValueChange={(value) => setSelectedConcernId(value && value !== "__none" ? value : "")}>
+                    <SelectTrigger className="h-10 rounded-xl bg-card">
+                      <SelectValue placeholder="Select concern">{selectedConcernId ? concernLabel(selectedConcernId) : "Select concern"}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">Select concern</SelectItem>
+                      {jobConcerns.map((concern) => (
+                        <SelectItem key={concern.id} value={concern.id}>
+                          {concern.code ? `${concern.code} - ` : ""}{concern.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {partEntryMode === "catalog" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Catalog part</p>
+                      <Input value={partSearch} onChange={(event) => searchCatalogParts(event.target.value)} placeholder="Search by part name, number, barcode, brand..." className="bg-card" />
+                      {partOptions.length > 0 && !selectedPartId ? (
+                        <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-border bg-card">
+                          {partOptions.map((part) => (
+                            <button
+                              key={part.id}
+                              type="button"
+                              className="flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
+                              onClick={() => {
+                                setSelectedPartId(part.id);
+                                setPartSearch(`${part.name}${part.part_number ? ` (${part.part_number})` : ""}`);
+                                setPartOptions([]);
+                              }}
+                            >
+                              <span className="font-medium text-foreground">{part.name}</span>
+                              <span className="text-xs text-muted-foreground">{part.part_number || part.brand || "Catalog"}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+                    <div>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Part name</p>
+                      <Input value={adhocPartName} onChange={(event) => setAdhocPartName(event.target.value)} placeholder="e.g. Custom bracket, trim clip, hose" className="bg-card" />
+                    </div>
+                    <div>
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Part number</p>
+                      <Input value={adhocPartNumber} onChange={(event) => setAdhocPartNumber(event.target.value)} placeholder="Optional" className="bg-card" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 grid gap-3 md:grid-cols-5">
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Warehouse</p>
+                    <Select value={selectedWarehouseId || "__none"} onValueChange={(value) => setSelectedWarehouseId(value && value !== "__none" ? value : "")}>
+                      <SelectTrigger className="h-10 rounded-xl bg-card">
+                        <SelectValue placeholder="Warehouse">{warehouseLabel(selectedWarehouseId)}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">{partEntryMode === "catalog" ? "Select warehouse" : "No warehouse hint"}</SelectItem>
+                        {warehouses.map((warehouse) => (
+                          <SelectItem key={warehouse.id} value={warehouse.id}>{warehouse.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Qty</p>
+                    <Input type="number" min="1" value={partQuantity} onChange={(event) => setPartQuantity(event.target.value)} className="bg-card" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Unit cost</p>
+                    <Input type="number" step="0.01" value={partUnitCost} onChange={(event) => setPartUnitCost(event.target.value)} placeholder="Optional" className="bg-card" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Unit price</p>
+                    <Input type="number" step="0.01" value={partUnitPrice} onChange={(event) => setPartUnitPrice(event.target.value)} placeholder={partEntryMode === "adhoc" ? "Required" : "Optional"} className="bg-card" />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" className="h-10 w-full rounded-xl" onClick={reserveJobPart} disabled={savingJobPart}>
+                      {savingJobPart ? "Adding..." : "Add memo"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-border">
+                <div className="grid grid-cols-[1.3fr_1fr_80px_100px_100px_110px_1fr_200px] gap-3 bg-muted px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <span>Part</span>
+                  <span>Concern</span>
+                  <span className="text-right">Qty</span>
+                  <span className="text-right">Cost</span>
+                  <span className="text-right">Price</span>
+                  <span>Status</span>
+                  <span>Warehouse</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                {jobParts.length === 0 && unfulfilledQuotePartLines.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">No parts have been added to this job yet.</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {jobParts.map((part) => {
+                      const partName = part.partName ?? part.part_name ?? part.parts?.name ?? "Unnamed part";
+                      const partNumber = part.partNumber ?? part.part_number ?? part.parts?.part_number ?? null;
+                      const isAdhoc = part.source === "adhoc";
+                      const isBusy = actingJobPartId === part.id;
+                      return (
+                        <div key={part.id} className="grid grid-cols-[1.3fr_1fr_80px_100px_100px_110px_1fr_200px] items-center gap-3 px-4 py-3 text-sm">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate font-semibold text-foreground">{partName}</span>
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", isAdhoc ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200")}>{isAdhoc ? "Ad-hoc" : "Catalog"}</span>
+                            </div>
+                            {partNumber ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{partNumber}</p> : null}
+                          </div>
+                          <div className="truncate text-muted-foreground">{concernLabel(part.concernId ?? part.concern_id)}</div>
+                          <div className="text-right font-medium tabular-nums">{part.quantity}</div>
+                          <div className="text-right tabular-nums">{part.unit_cost != null ? formatMoney(part.unit_cost) : "-"}</div>
+                          <div className="text-right tabular-nums">{part.unit_price != null ? formatMoney(part.unit_price) : "-"}</div>
+                          <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold capitalize text-foreground/80">{part.status}</span></div>
+                          <div className="truncate text-muted-foreground">{part.warehouses?.name || (part.warehouse_id ? part.warehouse_id.slice(0, 8) : "-")}</div>
+                          <div className="flex justify-end gap-2">
+                            {part.status === "memo" ? (
+                              <>
+                                {!isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "reserve")}>Reserve</Button> : null}
+                                {isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "consume")}>Use</Button> : null}
+                                <Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "cancel")}>Cancel</Button>
+                              </>
+                            ) : part.status === "reserved" ? (
+                              <>
+                                <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "consume")}>Use</Button>
+                                {!isAdhoc ? <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "return")}>Return</Button> : null}
+                                <Button type="button" size="sm" variant="ghost" className="h-8 rounded-lg" disabled={isBusy} onClick={() => updateJobPartStatus(part, "cancel")}>Cancel</Button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No actions</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {unfulfilledQuotePartLines.map((line) => (
+                      <div key={line.id} className="grid grid-cols-[1.3fr_1fr_80px_100px_100px_110px_1fr_200px] items-center gap-3 bg-muted/20 px-4 py-3 text-sm">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate font-semibold text-foreground">{line.description || "Quote part"}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700 dark:bg-slate-800 dark:text-slate-200">Quote line</span>
+                          </div>
+                          {line.part_number ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{line.part_number}</p> : null}
+                        </div>
+                        <div className="truncate text-muted-foreground">{concernLabel(line.concern_id)}</div>
+                        <div className="text-right font-medium tabular-nums">{Number(line.quantity ?? 1)}</div>
+                        <div className="text-right tabular-nums">-</div>
+                        <div className="text-right tabular-nums">{line.unit_price != null ? formatMoney(line.unit_price) : "-"}</div>
+                        <div><span className="rounded-full bg-muted px-2 py-1 text-xs font-semibold text-foreground/80">quote only</span></div>
+                        <div className="truncate text-muted-foreground">-</div>
+                        <div className="flex justify-end">
+                          <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg" disabled={savingJobPart} onClick={() => addQuoteLineToPartsMemo(line)}>Add memo</Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
+        <TabsContent value="estimate" className="space-y-0">
+          {(() => {
+            const concerns = job.job_concerns ?? [];
+            const ca = authStatus?.concernApprovals ?? [];
+            const allLines = job.estimate_lines ?? [];
+            const approvedConcerns = concerns.filter((c) => {
+              const a = ca.find((x) => x.concernId === c.id);
+              return a?.advisorDecision === "approved" || a?.customerDecision === "approved";
+            });
+            const approvedLines = approvedConcerns.flatMap((c) => allLines.filter((l) => l.concern_id === c.id));
+            const approvedLabour = approvedLines.filter((l) => l.type === "labour").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedParts = approvedLines.filter((l) => l.type === "part").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedSublet = approvedLines.filter((l) => l.type === "sublet").reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedTotal = approvedLines.reduce((s, l) => s + Number(l.line_total ?? 0), 0);
+            const approvedVat = approvedLines.reduce((sum, line) => {
+              const taxAmount = Number(line.tax_amount);
+              if (Number.isFinite(taxAmount) && taxAmount > 0) return sum + taxAmount;
+              const lineTaxRate = Number(line.tax_rate_pct);
+              const taxRate = Number.isFinite(lineTaxRate) && lineTaxRate > 0 ? lineTaxRate : estimateDefaults.default_tax_rate;
+              return sum + (Number(line.line_total ?? 0) * (taxRate / 100));
+            }, 0);
+            const effectiveTaxRate = approvedTotal > 0 ? (approvedVat / approvedTotal) * 100 : estimateDefaults.default_tax_rate;
+            const hasApproved = approvedConcerns.length > 0;
+            return (
+          <Card className="overflow-hidden rounded-2xl border-border shadow-sm">
+            {/* Zone 1 — Header */}
+            <div className="border-b border-border px-5 py-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-[12px] text-muted-foreground">WO-{job.job_number ?? "..."} &middot; {job.vehicle ? [job.vehicle.year, job.vehicle.make, job.vehicle.model].filter(Boolean).join(" ") : "No vehicle"} &middot; {job.customer?.name || "Walk-in"}</p>
+                  <p className="mt-0.5 text-[15px] font-medium text-foreground">Quote builder &amp; approval</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Quote total</p>
+                    <p className="text-[22px] font-medium leading-tight text-foreground">{formatMoney(total)}</p>
+                  </div>
+                  {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="rounded-md">Add lines first</Button>}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                {latestApprovalToken ? (
+                  <>
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${latestApprovalToken?.used_at ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200" : latestApprovalToken?.first_opened_at ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200" : "bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200"}`}>
+                      {latestApprovalToken?.used_at ? "Replied" : latestApprovalToken?.first_opened_at ? "Viewed" : "Sent"}
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">{formatDate(latestApprovalToken?.issued_at, true)}</span>
+                  </>
+                ) : (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">Draft</span>
+                )}
+                {approvalCounts ? (
+                  <>
+                    {approvalCounts.approved > 0 && <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">{approvalCounts.approved} approved</span>}
+                    {approvalCounts.declined > 0 && <span className="rounded-full bg-rose-100 dark:bg-rose-900/50 px-2 py-0.5 text-[11px] font-medium text-rose-800 dark:text-rose-200">{approvalCounts.declined} rejected</span>}
+                    {approvalCounts.deferred > 0 && <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">{approvalCounts.deferred} deferred</span>}
+                    {approvalCounts.pending > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">{approvalCounts.pending} pending</span>}
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Zone 2 — Concerns list */}
+            <div>
+              <ComponentErrorBoundary label="Quote builder">
+                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} concernApprovals={authStatus?.concernApprovals ?? []} />
+              </ComponentErrorBoundary>
+            </div>
+
+            {/* Zone 3 — Footer with totals */}
+            <div className="border-2 border-border rounded-2xl px-7 py-6 border-x-[3px] border-x-border bg-background dark:bg-zinc-900">
+              <div className="grid grid-cols-2 gap-x-12">
+                <div>
+                  <p className="border-b border-border pb-2 text-[16px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
+                  <div className="mt-2 flex justify-between text-[14px] font-medium text-foreground">
+                    <span>Grand total</span>
+                    <span>{formatMoney(total)}</span>
+                  </div>
+                </div>
+                <div className={hasApproved ? "" : "opacity-40"}>
+                  <p className="border-b border-border pb-2 text-[16px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Approved</p>
+                  {hasApproved ? (
+                    <div className="mt-2 space-y-0.5">
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Labour</span><span>{formatMoney(approvedLabour)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Parts</span><span>{formatMoney(approvedParts)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Sublet</span><span>{formatMoney(approvedSublet)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Tax ({effectiveTaxRate.toFixed(1)}%)</span><span>{formatMoney(approvedVat)}</span></div>
+                      <div className="mt-1.5 flex justify-between border-t border-border pt-2 text-[16px] font-medium text-foreground"><span>Total approved</span><span>{formatMoney(approvedTotal + approvedVat)}</span></div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[13px] text-muted-foreground">No concerns approved yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="inspection" className="space-y-4" id="inspection">
@@ -1031,7 +1872,9 @@ export default function JobDetailPage() {
                 ) : null}
               </CardHeader>
               <CardContent>
+<ComponentErrorBoundary label="Inspection">
                 <InspectionWorkspace key={inspectionRev} inspection={inspectionDetail} onChanged={refreshJob} />
+                </ComponentErrorBoundary>
               </CardContent>
             </Card>
           ) : (
@@ -1051,8 +1894,53 @@ export default function JobDetailPage() {
           )}
         </TabsContent>
 
-
-
+        <TabsContent value="qc" className="space-y-4" id="qc">
+          {qcChecklistDetail ? (
+            <Card className="rounded-2xl border-border shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg">Quality Control</CardTitle>
+                  {["submitted", "approved"].includes(qcChecklistDetail.status) ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      This QC checklist is locked. Re-open it to continue editing.
+                    </p>
+                  ) : null}
+                </div>
+                {["submitted", "approved"].includes(qcChecklistDetail.status) ? (
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={reopenQcChecklist}
+                    disabled={reopeningQc}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    {reopeningQc ? "Re-opening..." : "Re-open QC checklist"}
+                  </Button>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                <ComponentErrorBoundary label="QC Checklist">
+                  <QcChecklistWorkspace key={qcRev} checklist={qcChecklistDetail} onChanged={refreshJob} />
+                </ComponentErrorBoundary>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl border-border shadow-sm">
+              <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+                <div>
+                  <p className="text-lg font-semibold text-foreground">No QC checklist started yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Start a quality control checklist to verify the work that was done on this job.
+                  </p>
+                </div>
+                <Button className="rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800" onClick={startQcChecklist} disabled={startingQc}>
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {startingQc ? "Starting..." : "Start QC Checklist"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4">
           <Card className="rounded-2xl border-border shadow-sm">
@@ -1101,13 +1989,15 @@ export default function JobDetailPage() {
                 <CardTitle className="text-lg">Media evidence</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">Attach photos, videos, or documents that support the quote and inspection.</p>
               </div>
-              <MediaUploader jobId={job.id} onUploaded={refreshJob} />
+              <ComponentErrorBoundary label="Media upload">
+                <MediaUploader jobId={job.id} onUploaded={refreshJob} />
+              </ComponentErrorBoundary>
             </CardHeader>
             <CardContent>
               {job.media_files && job.media_files.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   {job.media_files.map((file: any) => (
-                    <MediaThumbnail key={file.id} file={file} onDeleted={refreshJob} />
+                    <MediaThumbnail key={file.id} file={{ ...file, original_filename: file.original_filename || undefined, file_type: file.file_type || undefined, mime_type: file.mime_type || undefined, size_bytes: file.size_bytes == null ? undefined : Number(file.size_bytes), scan_status: file.scan_status || undefined }} onDeleted={refreshJob} />
                   ))}
                 </div>
               ) : (

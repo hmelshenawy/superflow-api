@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import type { Role } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 import { redirect } from "next/navigation";
 
 // Permission categories for the UI
@@ -62,6 +63,11 @@ const PERMISSION_CATEGORIES: { key: string; label: string; permissions: string[]
     key: "inspections",
     label: "Inspections",
     permissions: ["inspections:read", "inspections:create", "inspections:submit", "inspections:reopen"],
+  },
+  {
+    key: "qc",
+    label: "Quality Control",
+    permissions: ["qc:read", "qc:create", "qc:submit", "qc:reopen"],
   },
   {
     key: "customers",
@@ -89,9 +95,44 @@ const PERMISSION_CATEGORIES: { key: string; label: string; permissions: string[]
     permissions: ["deferred:read", "deferred:manage", "deferred:book"],
   },
   {
+    key: "blockers",
+    label: "Blockers",
+    permissions: ["blockers:read", "blockers:manage"],
+  },
+  {
     key: "import",
     label: "Booking Import",
     permissions: ["import:parse", "import:run"],
+  },
+  {
+    key: "parts",
+    label: "Parts & Stock",
+    permissions: ["parts:read", "parts:create", "parts:update", "parts:delete"],
+  },
+  {
+    key: "suppliers",
+    label: "Suppliers",
+    permissions: ["suppliers:read", "suppliers:create", "suppliers:update"],
+  },
+  {
+    key: "warehouses",
+    label: "Warehouses",
+    permissions: ["warehouses:read", "warehouses:create", "warehouses:update"],
+  },
+  {
+    key: "stock",
+    label: "Stock Operations",
+    permissions: ["stock:adjust", "stock:transfer", "stock:analytics"],
+  },
+  {
+    key: "purchase_orders",
+    label: "Purchase Orders",
+    permissions: ["purchase_orders:read", "purchase_orders:create", "purchase_orders:update"],
+  },
+  {
+    key: "job_parts",
+    label: "Job Parts",
+    permissions: ["job_parts:read", "job_parts:reserve", "job_parts:consume", "job_parts:return"],
   },
   {
     key: "admin",
@@ -100,8 +141,13 @@ const PERMISSION_CATEGORIES: { key: string; label: string; permissions: string[]
       "admin:settings", "admin:settings:edit", "admin:roles",
       "admin:users", "admin:users:create", "admin:users:delete",
       "admin:audit", "admin:integrations", "admin:templates",
-      "admin:labour-rates", "admin:stats",
+      "admin:labour-rates", "admin:stats", "admin:billing",
     ],
+  },
+  {
+    key: "workshops",
+    label: "Workshops",
+    permissions: ["workshops:read", "workshops:create", "workshops:update", "workshops:delete", "workshops:assign-users"],
   },
   {
     key: "priority",
@@ -125,6 +171,13 @@ function normalizePermissions(p: string[] | string | null | undefined): string[]
   } catch {
     return [];
   }
+}
+
+function isFullAccessRole(role: { name?: string | null; permissions?: string[] | string | null } | null): boolean {
+  if (!role) return false;
+  if (role.name === "admin" || role.name === "workshop_admin") return true;
+  const perms = normalizePermissions(role.permissions);
+  return perms.length === 1 && perms[0] === "*";
 }
 
 export default function RolesPermissionsPage() {
@@ -162,7 +215,7 @@ export default function RolesPermissionsPage() {
       setRoles(rolesRes.data);
       setAllPermissions(permsRes.data.permissions);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load roles";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -192,7 +245,9 @@ export default function RolesPermissionsPage() {
     setEditingRole(role);
     setFormName(role.name ?? "");
     setFormDesc(role.description ?? "");
-    setFormPermissions(new Set(normalizePermissions(role.permissions)));
+    const perms = normalizePermissions(role.permissions);
+    // Wildcard roles get all permissions in the editor
+    setFormPermissions(perms.length === 1 && perms[0] === "*" ? new Set(allPermissions) : new Set(perms));
     setExpandedCategories(new Set(PERMISSION_CATEGORIES.map((c) => c.key)));
     setDialogOpen(true);
   };
@@ -250,7 +305,7 @@ export default function RolesPermissionsPage() {
       setDialogOpen(false);
       fetchData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save role");
+      toast.error(getApiError(err).message);
     } finally {
       setSaving(false);
     }
@@ -267,7 +322,7 @@ export default function RolesPermissionsPage() {
       setSelectedRoleId(null);
       fetchData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete role");
+      toast.error(getApiError(err).message);
     } finally {
       setDeleting(false);
     }
@@ -277,6 +332,7 @@ export default function RolesPermissionsPage() {
   const selectedPerms = useMemo(() => normalizePermissions(selectedRole?.permissions), [selectedRole]);
 
   return (
+    <RequirePermission permissions={["admin:roles"]}>
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -345,7 +401,8 @@ export default function RolesPermissionsPage() {
                             <div className="font-medium flex items-center gap-2">
                               {role.name}
                               {role.name === "workshop_admin" && <Badge variant="default" className="text-[10px]">Always Full</Badge>}
-                              {isDefault && role.name !== "workshop_admin" && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
+                              {(role.name === "admin" || isFullAccessRole(role)) && role.name !== "workshop_admin" && <Badge variant="default" className="text-[10px]">Full Access</Badge>}
+                              {isDefault && role.name !== "workshop_admin" && !isFullAccessRole(role) && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
                             </div>
                             {role.description && (
                               <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">{role.description}</div>
@@ -353,7 +410,7 @@ export default function RolesPermissionsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="outline">{perms.length}</Badge>
+                          <Badge variant="outline">{isFullAccessRole(role) ? "All" : perms.length}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -410,9 +467,13 @@ export default function RolesPermissionsPage() {
               </div>
 
               <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline">{selectedPerms.length} of {allPermissions.length} permissions</Badge>
-                {selectedRole.name === "admin" && (
-                  <span className="text-xs text-muted-foreground">Admin bypasses all checks regardless of listed permissions</span>
+                {isFullAccessRole(selectedRole) ? (
+                  <Badge variant="default" className="bg-green-600 text-white">Full access — all permissions granted</Badge>
+                ) : (
+                  <Badge variant="outline">{selectedPerms.length} of {allPermissions.length} permissions</Badge>
+                )}
+                {(selectedRole.name === "admin" || selectedRole.name === "workshop_admin") && !isFullAccessRole(selectedRole) && (
+                  <span className="text-xs text-muted-foreground">This role bypasses all permission checks regardless of listed permissions</span>
                 )}
               </div>
 
@@ -422,7 +483,8 @@ export default function RolesPermissionsPage() {
                 {PERMISSION_CATEGORIES.map((cat) => {
                   const catPerms = cat.permissions.filter((p) => allPermissions.includes(p));
                   if (catPerms.length === 0) return null;
-                  const granted = catPerms.filter((p) => selectedPerms.includes(p));
+                  const isWildcard = isFullAccessRole(selectedRole);
+                  const granted = isWildcard ? catPerms : catPerms.filter((p) => selectedPerms.includes(p));
                   const allGranted = granted.length === catPerms.length;
                   const noneGranted = granted.length === 0;
 
@@ -443,8 +505,8 @@ export default function RolesPermissionsPage() {
                       </div>
                       <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
                         {catPerms.map((perm) => {
-                          const has = selectedPerms.includes(perm);
-                          const [, action] = perm.split(":");
+                          const has = isWildcard || selectedPerms.includes(perm);
+                          const action = perm.includes(":") ? perm.substring(perm.indexOf(":") + 1) : perm;
                           return (
                             <Badge
                               key={perm}
@@ -573,7 +635,7 @@ export default function RolesPermissionsPage() {
                       <div className="border-t px-3 py-2.5 space-y-2">
                         {catPerms.map((perm) => {
                           const has = formPermissions.has(perm);
-                          const [, action] = perm.split(":");
+                          const action = perm.includes(":") ? perm.substring(perm.indexOf(":") + 1) : perm;
                           return (
                             <label
                               key={perm}
@@ -625,32 +687,24 @@ export default function RolesPermissionsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </RequirePermission>
   );
 }
 
 // Default role templates for the quick-fill dropdown
 const ROLES_TEMPLATES: Record<string, string[]> = {
   platform_admin: [
-    "jobs:read","jobs:create","jobs:update","jobs:delete","jobs:assign","jobs:transition",
-    "estimates:read","estimates:create","estimates:update","estimates:delete",
-    "inspections:read","inspections:create","inspections:submit","inspections:reopen",
-    "customers:read","customers:create","customers:update","customers:delete",
-    "vehicles:read","vehicles:create","vehicles:update",
-    "media:upload","media:delete",
-    "auth:request","auth:status",
-    "deferred:read","deferred:manage","deferred:book",
-    "import:parse","import:run",
+    "workshops:read","workshops:create","workshops:update","workshops:delete","workshops:assign-users",
     "admin:settings","admin:settings:edit","admin:roles",
     "admin:users","admin:users:create","admin:users:delete",
     "admin:audit","admin:integrations","admin:templates",
-    "admin:labour-rates","admin:stats",
-    "workshops:read","workshops:create","workshops:update","workshops:delete","workshops:assign-users",
-    "priority:read","insights:dashboard",
+    "admin:labour-rates","admin:stats","admin:billing",
   ],
   admin: [
     "jobs:read","jobs:create","jobs:update","jobs:delete","jobs:assign","jobs:transition",
     "estimates:read","estimates:create","estimates:update","estimates:delete",
     "inspections:read","inspections:create","inspections:submit","inspections:reopen",
+    "qc:read","qc:create","qc:submit","qc:reopen",
     "customers:read","customers:create","customers:update","customers:delete",
     "vehicles:read","vehicles:create","vehicles:update",
     "media:upload","media:delete",
@@ -660,13 +714,22 @@ const ROLES_TEMPLATES: Record<string, string[]> = {
     "admin:settings","admin:settings:edit","admin:roles",
     "admin:users","admin:users:create","admin:users:delete",
     "admin:audit","admin:integrations","admin:templates",
-    "admin:labour-rates","admin:stats",
+    "admin:labour-rates","admin:stats","admin:billing",
+    "workshops:read","workshops:create","workshops:update","workshops:delete","workshops:assign-users",
     "priority:read","insights:dashboard",
+    "blockers:read","blockers:manage",
+    "parts:read","parts:create","parts:update","parts:delete",
+    "suppliers:read","suppliers:create","suppliers:update",
+    "warehouses:read","warehouses:create","warehouses:update",
+    "stock:adjust","stock:transfer","stock:analytics",
+    "purchase_orders:read","purchase_orders:create","purchase_orders:update",
+    "job_parts:read","job_parts:reserve","job_parts:consume","job_parts:return",
   ],
   manager: [
     "jobs:read","jobs:create","jobs:update","jobs:delete","jobs:assign","jobs:transition",
     "estimates:read","estimates:create","estimates:update","estimates:delete",
     "inspections:read","inspections:create","inspections:submit",
+    "qc:read","qc:create","qc:submit","qc:reopen",
     "customers:read","customers:create","customers:update",
     "vehicles:read","vehicles:create","vehicles:update",
     "media:upload","media:delete",
@@ -675,14 +738,21 @@ const ROLES_TEMPLATES: Record<string, string[]> = {
     "import:parse","import:run",
     "admin:settings","admin:settings:edit","admin:roles",
     "admin:users","admin:users:create",
-    "admin:integrations","admin:templates",
-    "admin:labour-rates","admin:stats",
+    "admin:integrations","admin:templates","admin:labour-rates","admin:stats",
     "priority:read","insights:dashboard",
+    "blockers:read","blockers:manage",
+    "parts:read","parts:create","parts:update",
+    "suppliers:read","suppliers:create","suppliers:update",
+    "warehouses:read","warehouses:create","warehouses:update",
+    "stock:adjust","stock:transfer","stock:analytics",
+    "purchase_orders:read","purchase_orders:create","purchase_orders:update",
+    "job_parts:read","job_parts:reserve","job_parts:consume","job_parts:return",
   ],
   service_advisor: [
     "jobs:read","jobs:create","jobs:update","jobs:transition",
     "estimates:read","estimates:create","estimates:update",
     "inspections:read","inspections:create","inspections:submit",
+    "qc:read","qc:create","qc:submit",
     "customers:read","customers:create","customers:update",
     "vehicles:read","vehicles:create","vehicles:update",
     "media:upload",
@@ -690,29 +760,47 @@ const ROLES_TEMPLATES: Record<string, string[]> = {
     "deferred:read","deferred:manage","deferred:book",
     "admin:settings",
     "priority:read","insights:dashboard",
+    "blockers:read","blockers:manage",
+    "parts:read",
+    "suppliers:read",
+    "warehouses:read",
+    "job_parts:read","job_parts:reserve","job_parts:consume","job_parts:return",
+    "purchase_orders:read",
   ],
   workshop_teamleader: [
     "jobs:read","jobs:update","jobs:assign","jobs:transition",
     "estimates:read","estimates:create","estimates:update",
     "inspections:read","inspections:create","inspections:submit","inspections:reopen",
+    "qc:read","qc:create","qc:submit","qc:reopen",
     "customers:read","vehicles:read",
     "media:upload",
     "auth:status",
     "deferred:read",
     "priority:read","insights:dashboard",
+    "blockers:read","blockers:manage",
+    "parts:read",
+    "warehouses:read",
+    "job_parts:read","job_parts:reserve","job_parts:consume","job_parts:return",
   ],
   technician: [
     "jobs:read","jobs:transition",
     "estimates:read",
     "inspections:read","inspections:create","inspections:submit",
+    "qc:read",
     "customers:read","vehicles:read",
     "media:upload",
     "auth:status",
     "deferred:read",
+    "blockers:read",
+    "parts:read",
+    "warehouses:read",
+    "job_parts:read",
   ],
   receptionist: [
     "jobs:read","jobs:create",
+    "qc:read",
     "customers:read","customers:create","customers:update",
     "vehicles:read","vehicles:create",
+    "import:parse","import:run",
   ],
 };

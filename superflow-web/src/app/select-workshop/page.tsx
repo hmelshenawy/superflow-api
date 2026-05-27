@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import type { Workshop } from "@/types";
+import { getApiError } from "@/lib/api";
 
 export default function SelectWorkshopPage() {
   const router = useRouter();
@@ -29,8 +30,8 @@ export default function SelectWorkshopPage() {
     try {
       await selectWorkshop(workshopId);
       router.push("/jobs");
-    } catch {
-      setError("Failed to select workshop. Please try again.");
+    } catch (err: any) {
+      setError(getApiError(err).message);
     } finally {
       setLoading(null);
     }

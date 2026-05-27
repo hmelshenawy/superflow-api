@@ -3,6 +3,8 @@ import { getWorkshopContext } from './workshop-context';
 
 const TENANT_SCOPED_MODELS = new Set([
   'jobs',
+  'job_concerns',
+  'customer_portal_snapshots',
   'customers',
   'vehicles',
   'estimate_lines',
@@ -28,6 +30,20 @@ const TENANT_SCOPED_MODELS = new Set([
   'authorisation_decisions',
   'integrations',
   'integration_events',
+  'suppliers',
+  'warehouses',
+  'parts',
+  'part_fitments',
+  'inventory',
+  'stock_movements',
+  'job_parts',
+  'purchase_orders',
+  'purchase_order_items',
+  'qc_checklists',
+  'qc_checklist_sections',
+  'qc_checklist_items',
+  'qc_checklist_templates',
+  'qc_checklist_responses',
 ]);
 
 const READ_OPS = new Set(['findMany', 'findFirst', 'count', 'aggregate', 'groupBy']);

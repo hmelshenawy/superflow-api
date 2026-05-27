@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { Subscription, PlanFeature } from "@/types";
 
 interface PlanState {
@@ -42,7 +42,8 @@ export const usePlanStore = create<PlanState>()((set, get) => ({
         loading: false,
       });
     } catch (err: any) {
-      set({ error: err.response?.data?.message || "Failed to load subscription", loading: false });
+      const { code, message } = getApiError(err);
+      set({ error: code === "AUTH_TRIAL_EXPIRED" ? "Your trial has expired. Please upgrade to continue." : message, loading: false });
     }
   },
 
@@ -84,12 +85,14 @@ export const FEATURES = {
   ADVISOR_WORKLOAD: "advisor_workload",
   AI_MESSAGE_DRAFTS: "ai_message_drafts",
   ANALYTICS: "analytics",
+  QC_CHECKLISTS: "qc_checklists",
 } as const;
 
 // Map nav items to feature keys for lock display
 export const NAV_FEATURE_MAP: Record<string, string> = {
   "/insights": FEATURES.ANALYTICS,
   "/advisor": FEATURES.PRIORITY_ENGINE,
+  "/admin/templates": FEATURES.QC_CHECKLISTS,
 };
 
 // Map feature keys to upgrade plan suggestions
@@ -103,4 +106,5 @@ export const FEATURE_UPGRADE_MAP: Record<string, { plan: string; label: string }
   [FEATURES.AI_MESSAGE_DRAFTS]: { plan: "enterprise", label: "Enterprise" },
   [FEATURES.DVI_REPORTS]: { plan: "starter", label: "Starter" },
   [FEATURES.CUSTOMER_APPROVAL]: { plan: "starter", label: "Starter" },
+  [FEATURES.QC_CHECKLISTS]: { plan: "starter", label: "Starter" },
 };

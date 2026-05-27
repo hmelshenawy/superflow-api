@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,7 +104,7 @@ export default function UsageOverviewPage() {
       const { data: res } = await api.get("/billing/admin/usage-overview");
       setData(res);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load usage data");
+      setError(getApiError(err).message);
     } finally {
       setLoading(false);
     }

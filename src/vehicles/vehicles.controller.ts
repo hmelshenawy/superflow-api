@@ -30,6 +30,11 @@ export class VehiclesController {
   @ApiOperation({ summary: 'List vehicles for a customer' })
   findByCustomer(@Param('customerId') customerId: string) { return this.service.findByCustomer(customerId); }
 
+  @Get(':id/service-history')
+  @RequirePermission(VEHICLES_READ)
+  @ApiOperation({ summary: 'Vehicle service history across jobs' })
+  serviceHistory(@Param('id') id: string) { return this.service.serviceHistory(id); }
+
   @Get(':id')
   @RequirePermission(VEHICLES_READ)
   @ApiOperation({ summary: 'Vehicle details' })

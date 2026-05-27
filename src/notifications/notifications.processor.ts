@@ -46,7 +46,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
           status: terminal ? 'failed' : 'queued',
           error_message: error?.message || 'Unknown notification failure',
         },
-      }).catch(() => {});
+      }).catch((e: Error) => this.logger.error(`Failed to update notification ${notificationId} status: ${e?.message}`));
 
       this.logger.warn(`Notification ${notificationId} failed (${attemptsMade}/${maxAttempts}): ${error?.message}`);
     });
@@ -55,7 +55,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     // Poll-based requeue is a safety net for cases where the worker or queue was
     // unavailable earlier but the DB still contains queued notifications.
     this.pollTimer = setInterval(() => {
-      this.notificationsService.requeuePendingDbNotifications().catch(() => {});
+      this.notificationsService.requeuePendingDbNotifications().catch((e) => this.logger.warn(`Requeue poll failed: ${e?.message}`));
     }, 5000);
   }
 
@@ -104,6 +104,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
         text: body,
         html,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const text = await response.text();
@@ -115,6 +116,103 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
     } catch {
       return null;
     }
+  }
+
+  private normalizeWhatsAppRecipient(recipient?: string | null) {
+    const normalized = String(recipient || '')
+      .trim()
+      .replace(/^00/, '')
+      .replace(/\D/g, '');
+
+    if (!normalized) throw new Error('WhatsApp notification is missing recipient');
+
+    return normalized;
+  }
+
+  private async sendWhatsAppWithMeta(notification: any) {
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const version = process.env.WHATSAPP_API_VERSION || 'v25.0';
+    const templateName = process.env.WHATSAPP_TEMPLATE_NAME;
+
+    if (!phoneNumberId || !accessToken) return null;
+
+    const recipient = this.normalizeWhatsAppRecipient(notification.recipient);
+    const body = String(notification.body_rendered || notification.subject || 'PrioraFlow notification');
+    const apiVersion = version.startsWith('v') ? version : `v${version}`;
+    const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+
+    // Try template message first (required for numbers outside the 24-hour window),
+    // then fall back to text message if no template is configured.
+    const attempts: { type: string; payload: any }[] = [];
+
+    if (templateName) {
+      // Use the body text as a single parameter in the template.
+      // The template must have exactly one body variable: {{1}}
+      attempts.push({
+        type: 'template',
+        payload: {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: recipient,
+          type: 'template',
+          template: {
+            name: templateName,
+            language: { code: 'en' },
+            components: [
+              {
+                type: 'body',
+                parameters: [{ type: 'text', text: body.slice(0, 3000) }],
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    // Free-form text only works within the 24-hour customer service window
+    attempts.push({
+      type: 'text',
+      payload: {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: recipient,
+        type: 'text',
+        text: { preview_url: false, body: body.slice(0, 4096) },
+      },
+    });
+
+    let lastError: string | null = null;
+    for (const attempt of attempts) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(attempt.payload),
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      const text = await response.text();
+      if (response.ok) {
+        try {
+          const json = JSON.parse(text || '{}');
+          this.logger.log(`WhatsApp ${attempt.type} message sent to ${recipient}`);
+          return json.messages?.[0]?.id || null;
+        } catch {
+          return null;
+        }
+      }
+
+      lastError = `WhatsApp Cloud API ${attempt.type} ${response.status}: ${text}`;
+      this.logger.warn(lastError);
+
+      // If template fails, continue to text attempt. If text fails, throw.
+      if (attempt.type === 'template') continue;
+    }
+
+    throw new Error(lastError || 'WhatsApp delivery failed');
   }
 
   private async markSent(notification: any, provider: string, providerMessageId: string | null) {
@@ -143,6 +241,14 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    if (notification.channel === 'whatsapp') {
+      const metaMessageId = await this.sendWhatsAppWithMeta(notification);
+      if (metaMessageId !== null) {
+        await this.markSent(notification, 'whatsapp_cloud', metaMessageId);
+        return { delivered: true, provider: 'whatsapp_cloud', providerMessageId: metaMessageId };
+      }
+    }
+
     const webhook = this.getWebhook(notification.channel);
 
     if (!webhook) {
@@ -164,6 +270,7 @@ export class NotificationsProcessor implements OnModuleInit, OnModuleDestroy {
         jobId: notification.job_id,
         customerId: notification.customer_id,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const text = await response.text();

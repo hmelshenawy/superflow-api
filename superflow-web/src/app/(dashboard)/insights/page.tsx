@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { usePlanStore, FEATURES } from "@/hooks/use-plan-features";
 import { LockedFeatureOverlay } from "@/components/locked-feature-overlay";
 import {
@@ -73,8 +73,10 @@ interface DashboardData {
     byStatus: { status: string; lines: number; total: number; tax: number }[];
   };
   inspectionCompletionRate: number;
+  inspectionCounts: { completed: number; inProgress: number };
   approvalRate: number;
-  approvalCounts: { approved: number; declined: number; total: number };
+  approvalCounts: { approved: number; declined: number; pending: number; total: number };
+  notificationDeliveryRate: number;
   deferredByStatus: { status: string; count: number }[];
   overdueReminders: number;
   avgTurnaroundHours: number | null;
@@ -214,7 +216,7 @@ export default function InsightsPage() {
       const { data } = await api.get<DashboardData>("/insights/dashboard");
       setData(data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load insights");
+      setError(getApiError(err).message);
     } finally {
       setLoading(false);
     }
@@ -246,21 +248,17 @@ export default function InsightsPage() {
 
   if (!data) return null;
 
-  const notifRate = data.counts.notifications > 0
-    ? Math.round((data.counts.sentNotifications / data.counts.notifications) * 100)
-    : 0;
-
   // Pie data for approvals
   const approvalPieData = [
     { name: "Approved", value: data.approvalCounts.approved },
     { name: "Declined", value: data.approvalCounts.declined },
-    { name: "Pending", value: Math.max(0, data.approvalCounts.total - data.approvalCounts.approved - data.approvalCounts.declined) },
+    { name: "Pending", value: data.approvalCounts.pending },
   ].filter((d) => d.value > 0);
 
   // Pie data for inspections
   const inspectionPieData = [
-    { name: "Completed", value: Math.round(data.inspectionCompletionRate * data.counts.inspections / 100) },
-    { name: "In Progress", value: data.counts.inspections - Math.round(data.inspectionCompletionRate * data.counts.inspections / 100) },
+    { name: "Completed", value: data.inspectionCounts.completed },
+    { name: "In Progress", value: data.inspectionCounts.inProgress },
   ].filter((d) => d.value > 0);
 
   return (
@@ -602,9 +600,9 @@ export default function InsightsPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         <StatCard
           label="Notification Delivery Rate"
-          value={`${notifRate}%`}
+          value={`${data.notificationDeliveryRate}%`}
           icon={CheckCircle2}
-          tone={notifRate >= 90 ? "emerald" : notifRate >= 70 ? "amber" : "rose"}
+          tone={data.notificationDeliveryRate >= 90 ? "emerald" : data.notificationDeliveryRate >= 70 ? "amber" : "rose"}
           sub={`${data.counts.sentNotifications} sent of ${data.counts.notifications} total`}
         />
         <StatCard

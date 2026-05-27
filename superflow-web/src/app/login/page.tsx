@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { Wrench, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { getApiError } from "@/lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -21,9 +22,14 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email, password);
-      router.push("/jobs");
-    } catch {
-      toast.error("Invalid email or password");
+      router.push("/dashboard");
+    } catch (err: any) {
+      const { code } = getApiError(err);
+      if (code === "AUTH_TRIAL_EXPIRED") {
+        toast.error("Your trial has expired. Please contact support to upgrade.");
+      } else {
+        toast.error("Invalid email or password");
+      }
     }
   };
 

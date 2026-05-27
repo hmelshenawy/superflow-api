@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Wrench, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -39,7 +39,8 @@ export default function ResetPasswordPage() {
       setSuccess(true);
       toast.success("Password reset successfully");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to reset password. The link may have expired.";
+      const { code, message } = getApiError(err);
+      const msg = code === "AUTH_TOKEN_EXPIRED" ? "This reset link has expired. Please request a new one." : message;
       setError(msg);
       toast.error(msg);
     } finally {

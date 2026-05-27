@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { hasAnyPermission, SETTINGS_TAB_PERMISSIONS } from "@/lib/permissions";
+import { PRODUCT_LABELS, PRODUCT_MODULES, getEnabledModules, getWorkshopProductMode } from "@/lib/product-modes";
+import type { WorkflowStageConfig, WorkflowTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +38,9 @@ import {
   CalendarDays,
   FileText,
   Receipt,
+  Wrench,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -264,7 +270,7 @@ function PasswordSection() {
       setNext("");
       setConfirm("");
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Failed to change password";
+      const msg = getApiError(err).message;
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -500,6 +506,56 @@ function WorkshopSection() {
   );
 }
 
+function ProductConfigurationSection() {
+  const { workshops, currentWorkshopId } = useAuthStore();
+  const workshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
+  const mode = getWorkshopProductMode(workshop);
+  const modules = getEnabledModules(workshop);
+  const dmsEnabled = Boolean(workshop?.dmsIntegrationEnabled ?? workshop?.dms_integration_enabled);
+
+  return (
+    <SectionCard title="Product Configuration" description="Product mode and module availability for this workspace.">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Product</p>
+          <p className="mt-2 text-lg font-bold text-foreground">{workshop?.packageName || workshop?.package_name || PRODUCT_LABELS[mode]}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{mode === "CONNECT" ? "DMS intelligence layer" : "Standalone operating system"}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">DMS integration</p>
+          <p className="mt-2 text-lg font-bold text-foreground">{dmsEnabled ? "Enabled" : "Not enabled"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{mode === "CONNECT" ? "Required for live DMS sync" : "Optional add-on"}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Branches</p>
+          <p className="mt-2 text-lg font-bold text-foreground">Primary branch</p>
+          <p className="mt-1 text-sm text-muted-foreground">Multi-branch analytics unlocks when additional locations are configured.</p>
+        </div>
+      </div>
+      <Separator />
+      <div>
+        <p className="text-sm font-semibold text-foreground">Enabled modules</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PRODUCT_MODULES[mode].map((moduleKey) => (
+            <span key={moduleKey} className={`rounded-full px-3 py-1 text-xs font-semibold ${modules.includes(moduleKey) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+              {moduleKey.replace(/([A-Z])/g, " $1")}
+            </span>
+          ))}
+        </div>
+      </div>
+      <Separator />
+      <div>
+        <p className="text-sm font-semibold text-foreground">Role views</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          {["Service Advisor", "Workshop Manager", "General Manager", "Admin"].map((role) => (
+            <div key={role} className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">{role}</div>
+          ))}
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 
 // ─── Priority Matrix Section ──────────────────────────
 function PriorityMatrixSection() {
@@ -717,7 +773,7 @@ function IntegrationsSection() {
     } catch (err: any) {
       setTestResult((prev) => ({
         ...prev,
-        [name]: { ok: false, msg: err.response?.data?.message || "Connection failed" },
+        [name]: { ok: false, msg: getApiError(err).message },
       }));
     } finally {
       setTesting(null);
@@ -1085,8 +1141,12 @@ function BillingSection() {
 // ─── Main Page ────────────────────────────────────────
 export default function SettingsPage() {
   const user = useAuthStore((state) => state.user);
-  const roleName = useMemo(() => user?.role?.name || "", [user?.role?.name]);
-  const canSeeBilling = ["workshop_admin", "platform_admin"].includes(roleName);
+
+  const visibleTabs = useMemo(() => {
+    return Object.entries(SETTINGS_TAB_PERMISSIONS)
+      .filter(([_, perms]) => perms.length === 0 || hasAnyPermission(user, perms))
+      .map(([key]) => key);
+  }, [user]);
 
   return (
     <div className="space-y-6">
@@ -1097,64 +1157,242 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="account" className="w-full">
-        <TabsList className="w-full overflow-x-auto">
-          <TabsTrigger value="account">
-            <User className="mr-1.5 h-4 w-4" />
-            Account
-          </TabsTrigger>
-          <TabsTrigger value="workshop">
-            <Settings2 className="mr-1.5 h-4 w-4" />
-            Workshop
-          </TabsTrigger>
-          <TabsTrigger value="priority">
-            <Settings2 className="mr-1.5 h-4 w-4" />
-            Priority Matrix
-          </TabsTrigger>
-          {canSeeBilling ? (
+      <Tabs defaultValue={visibleTabs.includes("account") ? "account" : visibleTabs[0]} className="w-full">
+        <TabsList className="h-auto min-h-8 w-full flex-wrap justify-start overflow-visible">
+          {visibleTabs.includes("account") && (
+            <TabsTrigger value="account">
+              <User className="mr-1.5 h-4 w-4" />
+              Account
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("workshop") && (
+            <TabsTrigger value="workshop">
+              <Settings2 className="mr-1.5 h-4 w-4" />
+              Workshop
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("workflow") && (
+            <TabsTrigger value="workflow">
+              <Wrench className="mr-1.5 h-4 w-4" />
+              Workflow
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("priority") && (
+            <TabsTrigger value="priority">
+              <Settings2 className="mr-1.5 h-4 w-4" />
+              Priority Matrix
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("billing") && (
             <TabsTrigger value="billing">
               <CreditCard className="mr-1.5 h-4 w-4" />
               Billing
             </TabsTrigger>
-          ) : null}
-          <TabsTrigger value="notifications">
-            <Bell className="mr-1.5 h-4 w-4" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="integrations">
-            <Link2 className="mr-1.5 h-4 w-4" />
-            Integrations
-          </TabsTrigger>
+          )}
+          {visibleTabs.includes("notifications") && (
+            <TabsTrigger value="notifications">
+              <Bell className="mr-1.5 h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("integrations") && (
+            <TabsTrigger value="integrations">
+              <Link2 className="mr-1.5 h-4 w-4" />
+              Integrations
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="account" className="mt-6 space-y-6">
-          <ProfileSection />
-          <PasswordSection />
-          <SessionsSection />
-        </TabsContent>
+        {visibleTabs.includes("account") && (
+          <TabsContent value="account" className="mt-6 space-y-6">
+            <ProfileSection />
+            <PasswordSection />
+            <SessionsSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="workshop" className="mt-6 space-y-6">
-          <WorkshopSection />
-        </TabsContent>
+        {visibleTabs.includes("workshop") && (
+          <TabsContent value="workshop" className="mt-6 space-y-6">
+            <ProductConfigurationSection />
+            <WorkshopSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="priority" className="mt-6 space-y-6">
-          <PriorityMatrixSection />
-        </TabsContent>
+        {visibleTabs.includes("workflow") && (
+          <TabsContent value="workflow" className="mt-6 space-y-6">
+            <WorkflowSection />
+          </TabsContent>
+        )}
 
-        {canSeeBilling ? (
+        {visibleTabs.includes("priority") && (
+          <TabsContent value="priority" className="mt-6 space-y-6">
+            <PriorityMatrixSection />
+          </TabsContent>
+        )}
+
+        {visibleTabs.includes("billing") && (
           <TabsContent value="billing" className="mt-6 space-y-6">
             <BillingSection />
           </TabsContent>
-        ) : null}
+        )}
 
-        <TabsContent value="notifications" className="mt-6 space-y-6">
-          <NotificationsSection />
-        </TabsContent>
+        {visibleTabs.includes("notifications") && (
+          <TabsContent value="notifications" className="mt-6 space-y-6">
+            <NotificationsSection />
+          </TabsContent>
+        )}
 
-        <TabsContent value="integrations" className="mt-6 space-y-6">
-          <IntegrationsSection />
-        </TabsContent>
+        {visibleTabs.includes("integrations") && (
+          <TabsContent value="integrations" className="mt-6 space-y-6">
+            <IntegrationsSection />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
+  );
+}
+
+function WorkflowSection() {
+  const { currentWorkshopId, workshops } = useAuthStore();
+  const [stages, setStages] = useState<WorkflowStageConfig[]>([]);
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get<{ stages: WorkflowStageConfig[]; templates: WorkflowTemplate[] }>("/admin/workflow");
+      setStages((data.stages || []).sort((a, b) => a.sortOrder - b.sortOrder));
+      setTemplates(data.templates || []);
+    } catch {
+      toast.error("Failed to load workflow stages");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const updateStage = (key: string, patch: Partial<WorkflowStageConfig>) => {
+    setStages((prev) => prev.map((stage) => stage.key === key ? { ...stage, ...patch } : stage));
+  };
+
+  const addStage = () => {
+    const index = stages.length + 1;
+    setStages((prev) => [...prev, {
+      key: `custom_stage_${index}`,
+      label: `Custom Stage ${index}`,
+      description: "",
+      systemStatus: "in_progress",
+      systemCategory: "active",
+      color: "blue",
+      sortOrder: index * 10,
+      isRequired: false,
+      isActive: true,
+    }]);
+  };
+
+  const removeStage = (key: string) => {
+    setStages((prev) => prev.filter((stage) => stage.key !== key || stage.isRequired));
+  };
+
+  const moveStage = (key: string, direction: -1 | 1) => {
+    setStages((prev) => {
+      const index = prev.findIndex((stage) => stage.key === key);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [stage] = next.splice(index, 1);
+      next.splice(nextIndex, 0, stage);
+      return next;
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put("/admin/workflow", { stages: stages.map((stage, index) => ({ ...stage, sortOrder: (index + 1) * 10 })) });
+      toast.success("Workflow stages saved");
+      await load();
+    } catch (err: any) {
+      toast.error(getApiError(err).message || "Failed to save workflow stages");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyTemplate = async (templateKey: string) => {
+    if (!confirm("Apply this template to the workshop workflow? Existing stage names/order will be replaced.")) return;
+    setSaving(true);
+    try {
+      const { data } = await api.post(`/admin/workflow/templates/${templateKey}/apply`);
+      setStages((data.stages || []).sort((a: WorkflowStageConfig, b: WorkflowStageConfig) => a.sortOrder - b.sortOrder));
+      toast.success("Workflow template applied");
+    } catch (err: any) {
+      toast.error(getApiError(err).message || "Failed to apply template");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SectionCard title="Workflow Stages">
+        <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard title="Workflow Stages" description="Customize the main workshop process columns for this workshop. Required system stages stay protected.">
+      {!currentWorkshopId && workshops.length > 1 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-100">
+          Select a workshop from the sidebar first. Workflow stages are saved per workshop.
+        </div>
+      ) : null}
+      <div className="grid gap-3 md:grid-cols-3">
+        {templates.map((template) => (
+          <button key={template.key} type="button" onClick={() => applyTemplate(template.key)} disabled={saving} className="rounded-2xl border border-border bg-muted/40 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/60 dark:hover:bg-blue-950/20">
+            <p className="font-semibold text-foreground">{template.label}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{template.description}</p>
+          </button>
+        ))}
+      </div>
+      <Separator />
+      <div className="space-y-3">
+        {stages.map((stage, index) => (
+          <div key={stage.key} className="grid gap-2 rounded-2xl border border-border bg-muted/40 p-3 lg:grid-cols-[96px_1.2fr_1fr_1fr_90px_90px] lg:items-center">
+            <div className="flex items-center gap-1">
+              <span className="w-6 text-sm font-semibold text-muted-foreground">{index + 1}</span>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={index === 0 || saving} onClick={() => moveStage(stage.key, -1)} aria-label={`Move ${stage.label} up`}>
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={index === stages.length - 1 || saving} onClick={() => moveStage(stage.key, 1)} aria-label={`Move ${stage.label} down`}>
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </div>
+            <Input value={stage.label} onChange={(e) => updateStage(stage.key, { label: e.target.value })} />
+            <select value={stage.systemStatus} onChange={(e) => updateStage(stage.key, { systemStatus: e.target.value as WorkflowStageConfig["systemStatus"] })} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+              {["booked", "checking", "estimate_sent", "approved", "in_progress", "waiting_parts", "quality_check", "ready", "closed", "no_show"].map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+            </select>
+            <select value={stage.systemCategory} onChange={(e) => updateStage(stage.key, { systemCategory: e.target.value as WorkflowStageConfig["systemCategory"] })} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+              {["booked", "active", "ready", "closed", "cancelled"].map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+            <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground">
+              <input type="checkbox" checked={stage.isActive} onChange={(e) => updateStage(stage.key, { isActive: e.target.checked })} disabled={stage.isRequired || saving} />
+              Active
+            </label>
+            <Button variant="ghost" size="sm" className="text-rose-600" disabled={stage.isRequired} onClick={() => removeStage(stage.key)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap justify-between gap-2 pt-2">
+        <Button variant="outline" onClick={addStage} disabled={saving}><Wrench className="mr-2 h-4 w-4" /> Add Stage</Button>
+        <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save Workflow</Button>
+      </div>
+    </SectionCard>
   );
 }

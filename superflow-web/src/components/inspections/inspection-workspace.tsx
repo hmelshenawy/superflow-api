@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,39 +24,32 @@ import {
   Upload,
   X,
   FileText,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-/* ── helpers ── */
-
-function optionsForInputType(inputType?: string) {
-  switch (inputType) {
-    case "pass_fail":
-      return ["pass", "fail"];
-    case "yes_no":
-    case "toggle":
-      return ["yes", "no"];
-    case "fuel_level":
-      return ["E", "1/4", "1/2", "3/4", "F"];
-    case "ok_warn_fail":
-    default:
-      return ["ok", "warn", "fail"];
-  }
-}
-
-function isInformationalInputType(inputType?: string) {
-  return ["number", "text", "photo", "odometer", "fuel_level"].includes(inputType || "");
-}
+import type { Inspection } from "@/types";
 
 type TrafficLight = "green" | "amber" | "red" | "none";
 
-function resultToTrafficLight(value: string, inputType?: string): TrafficLight {
-  if (!value || isInformationalInputType(inputType)) return "none";
-  const v = value.toLowerCase();
-  if (["ok", "pass", "yes", "good"].includes(v)) return "green";
-  if (["warn", "warning", "medium", "maybe"].includes(v)) return "amber";
-  if (["fail", "no", "bad", "critical", "high"].includes(v)) return "red";
+function optimisticInspectionTrafficLight(
+  value: string | null | undefined,
+  urgency: string | null | undefined,
+  item?: { input_type?: string | null; is_informational?: boolean },
+): TrafficLight {
+  const normalizedValue = String(value ?? "").trim().toLowerCase();
+  if (item?.input_type === "odometer" || item?.input_type === "fuel_level") {
+    return normalizedValue ? "green" : "none";
+  }
+  if (item?.is_informational) return "none";
+  if (["ok", "pass", "yes"].includes(normalizedValue)) return "green";
+  if (normalizedValue === "warn") return "amber";
+  if (["fail", "no"].includes(normalizedValue)) return "red";
+
+  const normalizedUrgency = String(urgency ?? "").toLowerCase();
+  if (normalizedUrgency === "low") return "green";
+  if (normalizedUrgency === "medium") return "amber";
+  if (["high", "critical"].includes(normalizedUrgency)) return "red";
   return "none";
 }
 
@@ -110,13 +103,14 @@ export function InspectionWorkspace({
   inspection,
   onChanged,
 }: {
-  inspection: any;
+  inspection: Inspection;
   onChanged: () => void;
 }) {
-  const isLocked = ["submitted", "reviewed", "approved"].includes(inspection?.status);
+  const isLocked = inspection.is_locked;
   const responsesMap = useMemo(() => {
     const map: Record<string, any> = {};
     for (const r of inspection?.inspection_responses ?? inspection?.responses ?? []) {
+      if (!r.item_id) continue;
       map[r.item_id] = {
         value: r.value ?? "",
         urgency: r.urgency ?? "none",
@@ -124,6 +118,7 @@ export function InspectionWorkspace({
         media_count: Number(r.media_count ?? 0),
         media_files: (r.media_files ?? []) as MediaFile[],
         response_id: r.id,
+        traffic_light: r.traffic_light ?? "none",
       };
     }
     return map;
@@ -147,6 +142,7 @@ export function InspectionWorkspace({
         media_count: 0,
         media_files: [],
         response_id: null,
+        traffic_light: "none",
         ...prev[itemId],
         ...patch,
       },
@@ -207,8 +203,8 @@ export function InspectionWorkspace({
       toast.success("Inspection saved");
       onChanged();
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to save inspection");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -238,8 +234,8 @@ export function InspectionWorkspace({
       toast.success("Inspection submitted");
       onChanged();
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(", ") : message || "Failed to submit inspection");
+      const { message } = getApiError(err);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +255,7 @@ export function InspectionWorkspace({
         const file = files[i];
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("job_id", inspection.job_id);
+        formData.append("job_id", inspection.job_id ?? "");
         formData.append("inspection_id", inspection.id);
         formData.append("item_id", itemId);
         formData.append("file_type", file.type.startsWith("video") ? "video" : "photo");
@@ -285,8 +281,8 @@ export function InspectionWorkspace({
 
       toast.success(`${files.length} file${files.length > 1 ? "s" : ""} uploaded`);
     } catch (err: any) {
-      console.error('Upload error:', err?.response?.data || err?.message || err);
-      toast.error(`Upload failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+      console.error('Upload error:', getApiError(err));
+      toast.error(`Upload failed: ${getApiError(err).message}`);
     } finally {
       setUploadingFor(null);
       const inputEl = fileInputRefs.current[itemId];
@@ -311,31 +307,26 @@ export function InspectionWorkspace({
       });
       toast.success("Media removed");
     } catch (err: any) {
-      console.error('Remove media error:', err?.response?.data || err?.message || err);
-      toast.error(`Failed to remove: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+      console.error('Remove media error:', getApiError(err));
+      toast.error(`Failed to remove: ${getApiError(err).message}`);
+    }
+  };
+
+  const viewMedia = async (mediaId: string) => {
+    try {
+      const res = await api.get(`/media/${mediaId}/download`, { responseType: "blob" });
+      const blobUrl = URL.createObjectURL(res.data);
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err: any) {
+      toast.error(`Failed to open: ${getApiError(err).message}`);
     }
   };
 
   const sections =
     inspection?.inspection_templates?.inspection_sections ?? [];
 
-  /* ── summary counts ── */
-  const summary = useMemo(() => {
-    let green = 0, amber = 0, red = 0, unset = 0;
-    for (const section of sections) {
-      for (const item of section.inspection_items ?? []) {
-        const v = responses[item.id]?.value;
-        if (isInformationalInputType(item.input_type)) continue;
-        const light = resultToTrafficLight(v || "", item.input_type);
-        if (!v) unset++;
-        else if (light === "green") green++;
-        else if (light === "amber") amber++;
-        else if (light === "red") red++;
-        else unset++;
-      }
-    }
-    return { green, amber, red, unset };
-  }, [responses, sections]);
+  const summary = inspection.summary;
 
   return (
     <div className="space-y-4">
@@ -389,7 +380,7 @@ export function InspectionWorkspace({
                   media_files: [],
                   response_id: null,
                 };
-                const light = resultToTrafficLight(value.value, item.input_type);
+                const light = (value.traffic_light ?? "none") as TrafficLight;
                 const style = LIGHT_STYLES[light];
                 const LightIcon = style.icon;
                 const mediaFiles: MediaFile[] = value.media_files ?? [];
@@ -453,7 +444,10 @@ export function InspectionWorkspace({
                               placeholder={item.input_type === "odometer" ? "Mileage" : undefined}
                               value={value.value}
                               onChange={(e) =>
-                                setItem(item.id, { value: e.target.value })
+                                setItem(item.id, {
+                                  value: e.target.value,
+                                  traffic_light: optimisticInspectionTrafficLight(e.target.value, value.urgency, item),
+                                })
                               }
                             />
                             {(item.unit || item.input_type === "odometer") && (
@@ -467,38 +461,28 @@ export function InspectionWorkspace({
                             className="h-8 w-40 rounded-lg border-border text-[13px]"
                             value={value.value}
                             onChange={(e) =>
-                              setItem(item.id, { value: e.target.value })
+                              setItem(item.id, { value: e.target.value, traffic_light: "none" })
                             }
                           />
                         ) : (
                           <Select
                             value={value.value || undefined}
                             onValueChange={(v) =>
-                              setItem(item.id, { value: v ?? "" })
+                              setItem(item.id, {
+                                value: v ?? "",
+                                traffic_light: optimisticInspectionTrafficLight(v, value.urgency, item),
+                              })
                             }
                           >
                             <SelectTrigger className="h-8 w-28 rounded-lg border-border text-[13px]" aria-label="Result">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {optionsForInputType(item.input_type).map(
-                                (opt) => (
+                              {(item.available_options ?? []).map(
+                                (opt: string) => (
                                   <SelectItem key={opt} value={opt}>
                                     <span className="flex items-center gap-1.5">
-                                      <span
-                                        className={cn(
-                                          "h-2 w-2 rounded-full",
-                                          resultToTrafficLight(opt, item.input_type) === "green"
-                                            ? "bg-emerald-500"
-                                            : resultToTrafficLight(opt, item.input_type) ===
-                                              "amber"
-                                            ? "bg-amber-500"
-                                            : resultToTrafficLight(opt, item.input_type) ===
-                                              "red"
-                                            ? "bg-rose-500"
-                                            : "bg-muted-foreground"
-                                        )}
-                                      />
+                                      <span className="h-2 w-2 rounded-full bg-muted-foreground" />
                                       {opt.charAt(0).toUpperCase() +
                                         opt.slice(1)}
                                     </span>
@@ -518,7 +502,10 @@ export function InspectionWorkspace({
                         <Select
                           value={value.urgency || "none"}
                           onValueChange={(v) =>
-                            setItem(item.id, { urgency: v ?? "none" })
+                            setItem(item.id, {
+                              urgency: v ?? "none",
+                              traffic_light: optimisticInspectionTrafficLight(value.value, v, item),
+                            })
                           }
                         >
                           <SelectTrigger className="h-8 w-24 rounded-lg border-border text-[13px]" aria-label="Urgency">
@@ -600,7 +587,8 @@ export function InspectionWorkspace({
                         {mediaFiles.map((mf: MediaFile) => (
                           <div
                             key={mf.id}
-                            className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted"
+                            className="group relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-muted cursor-pointer"
+                            onClick={() => viewMedia(mf.id)}
                           >
                             {mf.file_type === "video" ? (
                               <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -617,14 +605,26 @@ export function InspectionWorkspace({
                                 <Camera className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => removeMedia(mf.id, item.id)}
-                              aria-label="Remove media"
-                              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white opacity-0 group-hover:opacity-100 transition"
-                            >
-                              <X className="h-2.5 w-2.5" />
-                            </button>
+                            {/* Hover overlay with view + delete */}
+                            <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); viewMedia(mf.id); }}
+                                className="rounded-full bg-card p-1 text-foreground shadow hover:bg-muted"
+                                aria-label="Open file"
+                                title="Open file"
+                              >
+                                <Eye className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removeMedia(mf.id, item.id); }}
+                                aria-label="Remove media"
+                                className="rounded-full bg-card p-1 text-red-600 shadow hover:bg-red-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

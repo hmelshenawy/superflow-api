@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { User, Role, PaginatedResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { AlertTriangle, Plus, RefreshCw, Pencil, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 export default function UsersRolesPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -60,7 +61,7 @@ export default function UsersRolesPage() {
       setUsers(u.data.data ?? u.data.items ?? (u.data as unknown as User[]));
       setRoles(r.data);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to load users";
+      const msg = getApiError(err).message;
       setLoadError(Array.isArray(msg) ? msg.join(", ") : msg);
       toast.error(msg);
     } finally {
@@ -119,7 +120,7 @@ export default function UsersRolesPage() {
       setDialogOpen(false);
       fetchUsers();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.response?.data?.error || "Failed to save user";
+      const msg = getApiError(err).message;
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -135,7 +136,7 @@ export default function UsersRolesPage() {
       toast.success(user.is_active ? "User deactivated" : "User activated");
       fetchUsers();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to toggle user status";
+      const msg = getApiError(err).message;
       toast.error(msg);
     } finally {
       setTogglingId(null);
@@ -143,6 +144,7 @@ export default function UsersRolesPage() {
   };
 
   return (
+    <RequirePermission permissions={["admin:users"]}>
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Users & Roles</h1>
@@ -269,5 +271,6 @@ export default function UsersRolesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </RequirePermission>
   );
 }

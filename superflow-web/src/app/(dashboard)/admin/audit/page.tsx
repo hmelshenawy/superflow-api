@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import type { PaginatedResponse } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { AlertTriangle, ChevronLeft, ChevronRight, Eye, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 interface AuditUser {
   id: string;
@@ -129,7 +130,7 @@ export default function AuditPage() {
       setItems(data.items ?? data.data ?? []);
       setTotal(data.total ?? 0);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load audit logs";
+      const message = getApiError(err).message;
       setLoadError(Array.isArray(message) ? message.join(", ") : message);
       toast.error(message);
     } finally {
@@ -170,6 +171,7 @@ export default function AuditPage() {
   }
 
   return (
+    <RequirePermission permissions={["admin:audit"]}>
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -312,5 +314,6 @@ export default function AuditPage() {
         </div>
       </div>
     </div>
+    </RequirePermission>
   );
 }

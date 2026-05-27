@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import type { Job } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +81,7 @@ export default function NewJobPage() {
       toast.success("Job created");
       router.push(`/jobs/${data.id}`);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to create job";
+      const msg = getApiError(err).message;
       toast.error(typeof msg === "string" ? msg : "Failed to create job");
     } finally {
       setSaving(false);

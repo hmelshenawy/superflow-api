@@ -6,10 +6,12 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { UseGuards } from '@nestjs/common';
 import { RequirePermission, INSIGHTS_DASHBOARD } from '../common/permissions';
 import { RequirePlanFeature } from '../common/plan-features';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Insights')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.OPERATIONAL_ANALYTICS)
 @Controller('insights')
 export class InsightsController {
   constructor(private service: InsightsService) {}

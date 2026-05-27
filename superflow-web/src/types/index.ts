@@ -49,8 +49,20 @@ export interface Workshop {
   timezone?: string | null;
   region?: string | null;
   plan_id?: string | null;
+  product_mode?: ProductMode | null;
+  productMode?: ProductMode | null;
+  dms_integration_enabled?: boolean | null;
+  dmsIntegrationEnabled?: boolean | null;
+  enabled_modules?: string[] | string | null;
+  enabledModules?: string[] | null;
+  package_name?: string | null;
+  packageName?: string | null;
+  display_name?: string | null;
+  displayName?: string | null;
   trial_ends_at?: string | null;
 }
+
+export type ProductMode = "WORKSHOP" | "CONNECT";
 
 // ─── Billing ───────────────────────────────────────────────
 
@@ -181,6 +193,27 @@ export type WorkshopStage =
   | "quality_check"
   | "ready_handover";
 
+export type WorkflowSystemCategory = "booked" | "active" | "ready" | "closed" | "cancelled";
+
+export interface WorkflowStageConfig {
+  key: string;
+  label: string;
+  description?: string;
+  systemStatus: JobStatus;
+  systemCategory: WorkflowSystemCategory;
+  color: string;
+  sortOrder: number;
+  isRequired: boolean;
+  isActive: boolean;
+}
+
+export interface WorkflowTemplate {
+  key: string;
+  label: string;
+  description: string;
+  stages: WorkflowStageConfig[];
+}
+
 export type JobStatus =
   | "booked"
   | "checking"
@@ -193,6 +226,31 @@ export type JobStatus =
   | "closed"
   | "no_show";
 
+export interface JobMeta {
+  phaseIndex: number;
+  phaseLabel: string;
+  phaseTotal?: number;
+  isOverdue: boolean;
+  hoursToPromise?: number | null;
+  idleHours: number;
+  idleTier?: "none" | "6h" | "12h" | "24h";
+  priorityScore: number;
+  priorityLevel: string;
+  priorityFactors?: Array<{ key: string; weight: number; description: string; category: string }>;
+  nextAction: { title: string; reason?: string; urgency: string; owner: string; actionType: string; signals?: string[] } | null;
+  isWorkshopPhase: boolean;
+  resolvedWorkshopStage: WorkshopStage | null;
+  resolvedWorkflowStageKey: string | null;
+  validTransitions: JobStatus[];
+  nextFlowStatus: JobStatus | null;
+  availableActions?: string[];
+  editableFields: string[];
+  blockedReason?: string | null;
+  estimateTotal: number;
+  concernsSummary?: { total: number; inspected: number; pending: number };
+  partsSummary?: { requested: number; arrived: number; pending: number };
+}
+
 export interface Job {
   id: string;
   job_number: string | null;
@@ -203,6 +261,7 @@ export interface Job {
   technician_id: string | null;
   status: JobStatus;
   workshop_stage: WorkshopStage | null;
+  workflow_stage_key: string | null;
   parts_status: PartsStatus | null;
   customer_informed: boolean | null;
   is_customer_waiting: boolean | null;
@@ -225,8 +284,44 @@ export interface Job {
   technician?: User;
   estimate_lines?: EstimateLine[];
   inspection?: Inspection;
+  qc_checklists?: { id: string; status: string | null } | null;
   media_files?: MediaFile[];
   job_status_history?: JobStatusHistory[];
+  job_concerns?: JobConcern[];
+  job_parts?: JobPart[];
+  latest_portal_snapshot?: CustomerPortalSnapshot | null;
+  meta?: JobMeta;
+}
+
+
+export interface JobConcern {
+  id: string;
+  job_id: string;
+  code: string | null;
+  title: string;
+  description: string | null;
+  status: string | null;
+  technician_finding: string | null;
+  work_note: string | null;
+  qc_note: string | null;
+  customer_decision: string | null;
+  advisor_decision: string | null;
+  advisor_decision_note: string | null;
+  sort_order: number | null;
+  inspection_response_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  media_files?: MediaFile[];
+  photos?: MediaFile[];
+}
+
+export interface CustomerPortalSnapshot {
+  id: string;
+  job_id: string;
+  version: number;
+  stage: string | null;
+  release_note: string | null;
+  released_at: string | null;
 }
 
 export interface JobStatusHistory {
@@ -304,7 +399,9 @@ export interface EstimateLine {
   job_id: string | null;
   inspection_response_id: string | null;
   quote_group_id: string | null;
+  concern_id?: string | null;
   quote_group?: QuoteGroup | null;
+  concern?: JobConcern | null;
   type: EstimateLineType;
   description: string | null;
   part_number: string | null;
@@ -315,6 +412,8 @@ export interface EstimateLine {
   line_total: number | null;
   tax_amount: number | null;
   is_recommended: boolean | null;
+  is_actionable: boolean;
+  group_decision_summary: "pending" | "approved" | "declined" | "deferred" | "mixed";
   sort_order: number | null;
   added_by: string | null;
   created_at: string;
@@ -341,6 +440,7 @@ export interface JobAuthorisationStatus {
     pending: number;
   };
   hasActiveToken: boolean;
+  latestSnapshot?: CustomerPortalSnapshot | null;
   latestToken: {
     id: string;
     issued_at: string | null;
@@ -351,7 +451,24 @@ export interface JobAuthorisationStatus {
   } | null;
   decisions: JobAuthorisationDecision[];
   decisionByLine: Record<string, JobAuthorisationDecision>;
+  concernApprovals: ConcernApprovalStatus[];
 }
+
+export interface ConcernApprovalStatus {
+  concernId: string;
+  advisorDecision: string | null;
+  advisorDecisionNote: string | null;
+  customerDecision: "approved" | "declined" | "deferred" | "mixed" | null;
+  isLocked: boolean;
+}
+
+export const WORKFLOW_STATUS_LABELS: Record<string, string> = {
+  reviewing: "Under inspection",
+  finding_ready: "Diagnosis ready",
+  priced: "Pending approval",
+  in_progress: "In progress",
+  qc_complete: "Completed",
+};
 
 // ─── Inspections ────────────────────────────────────────
 export type InspectionStatus =
@@ -367,10 +484,14 @@ export interface Inspection {
   template_id: string | null;
   technician_id: string | null;
   status: InspectionStatus | null;
+  is_locked: boolean;
+  summary: { green: number; amber: number; red: number; unset: number };
   started_at: string | null;
   submitted_at: string | null;
   created_at: string;
+  inspection_responses?: InspectionResponse[];
   responses?: InspectionResponse[];
+  inspection_templates?: InspectionTemplate;
 }
 
 export interface InspectionResponse {
@@ -381,6 +502,8 @@ export interface InspectionResponse {
   urgency: string | null;
   tech_notes: string | null;
   media_count: number | null;
+  traffic_light: "green" | "amber" | "red" | "none" | null;
+  media_files?: MediaFile[];
   recorded_at: string | null;
 }
 
@@ -402,6 +525,7 @@ export interface DeferredWork {
   last_reminded_at: string | null;
   booked_job_id: string | null;
   closed_reason: string | null;
+  available_actions: string[];
   created_at: string;
   customer?: Customer;
   vehicle?: Vehicle;
@@ -447,6 +571,8 @@ export interface InspectionItem {
   help_text: string | null;
   sort_order: number;
   is_active: boolean;
+  is_informational: boolean;
+  available_options: string[];
 }
 
 export interface InspectionSection {
@@ -472,6 +598,77 @@ export interface InspectionTemplate {
   created_by?: string;
 }
 
+// ─── QC Checklists ────────────────────────────────────────
+export type QcChecklistStatus = "draft" | "in_progress" | "submitted" | "approved";
+export type QcChecklistResult = "pass" | "fail" | "na";
+export type QcChecklistItemInputType = "pass_fail" | "yes_no" | "ok_fail" | "photo" | "text";
+
+export interface QcChecklistTemplate {
+  id: string;
+  name: string | null;
+  description: string | null;
+  is_default: boolean | null;
+  is_active: boolean | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  qc_checklist_sections?: QcChecklistSection[];
+}
+
+export interface QcChecklistSection {
+  id: string;
+  template_id: string;
+  name: string | null;
+  icon: string | null;
+  sort_order: number | null;
+  is_active: boolean | null;
+  qc_checklist_items: QcChecklistItem[];
+}
+
+export interface QcChecklistItem {
+  id: string;
+  section_id: string;
+  label: string | null;
+  input_type: QcChecklistItemInputType | null;
+  requires_photo: boolean | null;
+  requires_note_on_fail: boolean | null;
+  help_text: string | null;
+  sort_order: number | null;
+  is_active: boolean | null;
+  is_informational: boolean;
+  available_options: string[];
+}
+
+export interface QcChecklist {
+  id: string;
+  job_id: string | null;
+  template_id: string | null;
+  checker_id: string | null;
+  status: QcChecklistStatus | null;
+  overall_result: QcChecklistResult | null;
+  is_locked: boolean;
+  started_at: string | null;
+  submitted_at: string | null;
+  created_at: string;
+  qc_checklist_responses?: QcChecklistResponse[];
+  qc_checklist_templates?: QcChecklistTemplate;
+  jobs?: any;
+  users?: any;
+}
+
+export interface QcChecklistResponse {
+  id: string;
+  checklist_id: string | null;
+  item_id: string | null;
+  value: string | null;
+  notes: string | null;
+  media_count: number | null;
+  traffic_light: "green" | "red" | "none" | null;
+  recorded_at: string | null;
+  qc_checklist_items?: QcChecklistItem;
+  media_files?: any[];
+}
+
 // ─── API Envelope ───────────────────────────────────────
 export interface PaginatedResponse<T> {
   data?: T[];
@@ -479,4 +676,197 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   limit: number;
+}
+
+// ─── API Errors ─────────────────────────────────────────
+export type ErrorCode =
+  | 'AUTH_INVALID_CREDENTIALS'
+  | 'AUTH_TOKEN_EXPIRED'
+  | 'AUTH_TOKEN_INVALID'
+  | 'AUTH_FORBIDDEN'
+  | 'AUTH_PERMISSION_DENIED'
+  | 'AUTH_TRIAL_EXPIRED'
+  | 'AUTH_WORKSHOP_REQUIRED'
+  | 'PLAN_FEATURE_REQUIRED'
+  | 'PLAN_LIMIT_REACHED'
+  | 'NOT_FOUND'
+  | 'VALIDATION_ERROR'
+  | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'BAD_REQUEST'
+  | 'MEDIA_FILE_BLOCKED'
+  | 'MEDIA_FILE_PENDING'
+  | 'MEDIA_FILE_TYPE_NOT_ALLOWED'
+  | 'MEDIA_FILE_TOO_LARGE'
+  | 'INTERNAL_ERROR';
+
+export interface ApiErrorResponse {
+  statusCode: number;
+  code: ErrorCode;
+  message: string;
+  details?: Record<string, unknown>;
+  method: string;
+  path: string;
+  timestamp: string;
+}
+
+// ─── Parts & Stock ───────────────────────────────────────
+export interface PartFitment {
+  id: string;
+  part_id: string;
+  make: string;
+  model: string | null;
+  variant: string | null;
+  engine: string | null;
+  year_from: number | null;
+  year_to: number | null;
+  notes: string | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Part {
+  id: string;
+  part_number: string | null;
+  name: string;
+  brand: string | null;
+  category: string | null;
+  unit: string | null;
+  cost_price: number | null;
+  selling_price: number | null;
+  barcode: string | null;
+  supplier_id: string | null;
+  min_stock: number | null;
+  is_low_stock: boolean;
+  is_active: boolean | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  suppliers?: Supplier;
+  inventory?: Inventory[];
+  part_fitments?: PartFitment[];
+  _count?: { inventory: number };
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  payment_terms: string | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Warehouse {
+  id: string;
+  name: string;
+  location: string | null;
+  is_default: boolean | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Inventory {
+  id: string;
+  part_id: string;
+  warehouse_id: string;
+  quantity_on_hand: number;
+  reserved_quantity: number;
+  available_quantity: number;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  parts?: Part;
+  warehouses?: Warehouse;
+}
+
+export type StockMovementType =
+  | 'purchase_in'
+  | 'job_reserve'
+  | 'job_consume'
+  | 'job_return'
+  | 'adjustment_in'
+  | 'adjustment_out'
+  | 'transfer_in'
+  | 'transfer_out';
+
+export interface StockMovement {
+  id: string;
+  part_id: string;
+  warehouse_id: string;
+  type: StockMovementType;
+  quantity: number;
+  unit_cost: number | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  workshop_id: string | null;
+  created_at: string;
+  parts?: Part;
+  warehouses?: Warehouse;
+  users?: User;
+}
+
+export type JobPartStatus = 'memo' | 'reserved' | 'used' | 'returned' | 'cancelled';
+
+export interface JobPart {
+  id: string;
+  job_id: string;
+  part_id: string | null;
+  partId?: string | null;
+  part_name?: string | null;
+  partName?: string | null;
+  part_number?: string | null;
+  partNumber?: string | null;
+  source?: 'catalog' | 'adhoc';
+  estimate_line_id?: string | null;
+  estimateLineId?: string | null;
+  concern_id?: string | null;
+  concernId?: string | null;
+  warehouse_id: string | null;
+  quantity: number;
+  unit_cost: number | null;
+  unit_price: number | null;
+  status: JobPartStatus;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  parts?: Part;
+  warehouses?: Warehouse;
+  estimateLine?: EstimateLine | null;
+  concern?: JobConcern | null;
+}
+
+export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
+
+export interface PurchaseOrder {
+  id: string;
+  supplier_id: string | null;
+  status: PurchaseOrderStatus;
+  total_cost: number | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  suppliers?: Supplier;
+  purchase_order_items?: PurchaseOrderItem[];
+  _count?: { purchase_order_items: number };
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  part_id: string;
+  ordered_qty: number;
+  received_qty: number;
+  unit_cost: number | null;
+  workshop_id: string | null;
+  created_at: string;
+  updated_at: string;
+  parts?: Part;
 }

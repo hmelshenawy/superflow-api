@@ -5,10 +5,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { SubmitInspectionDto } from './dto/submit-inspection.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { inspectionTrafficLight, isInformationalInputType, inspectionAvailableOptions } from '../common/utils/traffic-light';
+import { WorkflowService } from '../admin/workflow.service';
 
 @Injectable()
 export class InspectionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private workflowService: WorkflowService,
+  ) {}
 
   async create(jobId: string, templateId: string, technicianId: string) {
     const existing = await this.prisma.tenant.inspections.findUnique({ where: { job_id: jobId } });
@@ -19,10 +24,24 @@ export class InspectionsService {
     // Move job from booked → checking when inspection is created.
     const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'booked') {
-      await this.prisma.tenant.jobs.update({
-        where: { id: jobId },
-        data: { status: 'checking' },
-      });
+      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('checking');
+      // Bug fix: keep inspection-created check-in aligned with the job state machine side effects.
+      await this.prisma.$transaction([
+        this.prisma.tenant.jobs.update({
+          where: { id: jobId },
+          data: { status: 'checking', workflow_stage_key: workflowStageKey, workshop_stage: null, arrived_at: job.arrived_at || new Date() },
+        }),
+        this.prisma.tenant.job_status_history.create({
+          data: {
+            id: uuid(),
+            job_id: jobId,
+            from_status: 'booked',
+            to_status: 'checking',
+            changed_by: technicianId,
+            reason: 'Inspection started',
+          },
+        }),
+      ]);
     }
 
     return this.prisma.tenant.inspections.create({
@@ -48,7 +67,11 @@ export class InspectionsService {
       }),
       this.prisma.tenant.inspections.count(),
     ]);
-    return { items, total, page: pagination.page, limit: pagination.limit };
+    const itemsWithMeta = items.map((item: any) => ({
+      ...item,
+      is_locked: ['submitted', 'reviewed', 'approved'].includes(item.status ?? ''),
+    }));
+    return { items: itemsWithMeta, total, page: pagination.page, limit: pagination.limit };
   }
 
   async findOne(id: string) {
@@ -74,6 +97,36 @@ export class InspectionsService {
       },
     });
     if (!inspection) throw new NotFoundException('Inspection not found');
+
+    // Add is_locked computed field
+    (inspection as any).is_locked = ['submitted', 'reviewed', 'approved'].includes(inspection.status ?? '');
+
+    // Add computed fields to each inspection item and response
+    for (const section of inspection.inspection_templates?.inspection_sections ?? []) {
+      for (const item of section.inspection_items ?? []) {
+        (item as any).is_informational = isInformationalInputType(item.input_type ?? 'pass_fail');
+        (item as any).available_options = inspectionAvailableOptions(item.input_type ?? 'pass_fail', (item as any).options);
+      }
+    }
+    for (const resp of inspection.inspection_responses ?? []) {
+      (resp as any).traffic_light = inspectionTrafficLight(resp.value, (resp as any).urgency, resp.inspection_items?.input_type);
+    }
+    const responseByItem = new Map((inspection.inspection_responses ?? []).map((resp: any) => [resp.item_id, resp]));
+    const summary = { green: 0, amber: 0, red: 0, unset: 0 };
+    for (const section of inspection.inspection_templates?.inspection_sections ?? []) {
+      for (const item of section.inspection_items ?? []) {
+        if ((item as any).is_informational) continue;
+        const resp = responseByItem.get(item.id) as any;
+        if (!resp?.value) {
+          summary.unset++;
+          continue;
+        }
+        const light = (resp.traffic_light ?? 'none') as keyof typeof summary | 'none';
+        if (light === 'green' || light === 'amber' || light === 'red') summary[light]++;
+        else summary.unset++;
+      }
+    }
+    (inspection as any).summary = summary;
 
     // Generate API proxy URLs for media_files on each response
     // (browser can't reach minio:9000 directly, so we serve through /media/:id/download)
@@ -246,6 +299,8 @@ export class InspectionsService {
       },
     }).catch(() => {});
 
+    await this.syncActionableResponsesToConcerns(id, inspection.job_id);
+
     return updated;
   }
 
@@ -280,5 +335,70 @@ export class InspectionsService {
     }).catch(() => {});
 
     return updated;
+  }
+
+  private async defaultWorkflowStageKeyForStatus(status: string) {
+    const stages = await this.workflowService.getStages();
+    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
+    if (exact) return exact.key;
+    return stages.find((stage) => stage.isActive && stage.systemCategory === 'active')?.key ?? null;
+  }
+
+  private async syncActionableResponsesToConcerns(inspectionId: string, jobId: string) {
+    const responses = await this.prisma.tenant.inspection_responses.findMany({
+      where: { inspection_id: inspectionId },
+      include: { inspection_items: true },
+      orderBy: { recorded_at: 'asc' },
+    });
+    const actionable = responses.filter((response: any) => {
+      const traffic = inspectionTrafficLight(response.value, response.urgency, response.inspection_items?.input_type);
+      return traffic === 'amber' || traffic === 'red';
+    });
+    if (!actionable.length) return;
+
+    let nextSortOrder = await this.prisma.tenant.job_concerns.count({ where: { job_id: jobId } });
+    for (const response of actionable as any[]) {
+      const title = response.inspection_items?.label || 'Inspection finding';
+      const description = [
+        response.value ? `Result: ${response.value}` : null,
+        response.urgency && response.urgency !== 'none' ? `Urgency: ${response.urgency}` : null,
+      ].filter(Boolean).join(' • ') || null;
+      const technicianFinding = response.tech_notes || description || null;
+
+      const existing = await this.prisma.tenant.job_concerns.findFirst({
+        where: { job_id: jobId, inspection_response_id: response.id },
+      });
+
+      const concern = existing
+        ? await this.prisma.tenant.job_concerns.update({
+            where: { id: existing.id },
+            data: {
+              title,
+              description,
+              technician_finding: technicianFinding,
+              status: 'finding_ready',
+            },
+          })
+        : await this.prisma.tenant.job_concerns.create({
+            data: {
+              id: uuid(),
+              job_id: jobId,
+              code: `C${nextSortOrder + 1}`,
+              title,
+              description,
+              status: 'finding_ready',
+              technician_finding: technicianFinding,
+              sort_order: nextSortOrder++,
+              inspection_response_id: response.id,
+            },
+          });
+
+      // Bug fix: make media uploaded against the inspection finding visible on
+      // the structured customer concern used by estimates and the portal.
+      await this.prisma.tenant.media_files.updateMany({
+        where: { inspection_response_id: response.id, is_deleted: false },
+        data: { concern_id: concern.id },
+      }).catch(() => {});
+    }
   }
 }

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import api from "@/lib/api";
+import api, { getApiError } from "@/lib/api";
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import type { Job, JobStatus, PaginatedResponse, WorkshopStage } from "@/types";
+import type { Job, JobStatus, PaginatedResponse, WorkflowStageConfig, WorkshopStage } from "@/types";
+import { getJobWorkflowStage } from "@/lib/workflow";
 
 // ─── Priority API result shape (mirrors backend) ──────────
 interface PriorityFactor { key: string; weight: number; description: string; category: string; }
@@ -36,6 +37,7 @@ import {
   getPromisedLabel,
   getPriorityTone,
   getActionUrgencyClass,
+  getValidTransitions,
 } from "@/lib/jobs-data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -94,12 +96,15 @@ export default function JobsPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
   const [dropWorkshopStage, setDropWorkshopStage] = useState<WorkshopStage | null>(null);
+  const [dropWorkflowStage, setDropWorkflowStage] = useState<string | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const [priorityMap, setPriorityMap] = useState<Map<string, PriorityResult>>(new Map());
   const [blockerCounts, setBlockerCounts] = useState<Map<string, number>>(new Map());
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
   const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopStage>>(new Set());
+  const [collapsedWorkflowStages, setCollapsedWorkflowStages] = useState<Set<string>>(new Set());
+  const [workflowStages, setWorkflowStages] = useState<WorkflowStageConfig[]>([]);
   const [showArchived, setShowArchived] = useState(false);
 
   const switchDashboardView = useCallback((view: "overall" | "advisor" | "workshop") => {
@@ -120,6 +125,19 @@ export default function JobsPage() {
     setCollapsedWorkshopStages((prev) => { const next = new Set(prev); if (next.has(stage)) next.delete(stage); else next.add(stage); localStorage.setItem("superflow-collapsed-workshop-stages", JSON.stringify([...next])); return next; });
   }, []);
 
+  const toggleWorkflowStage = useCallback((stageKey: string) => {
+    setCollapsedWorkflowStages((prev) => { const next = new Set(prev); if (next.has(stageKey)) next.delete(stageKey); else next.add(stageKey); localStorage.setItem("superflow-collapsed-workflow-stages", JSON.stringify([...next])); return next; });
+  }, []);
+
+  const fetchWorkflow = useCallback(async () => {
+    try {
+      const { data } = await api.get<{ stages: WorkflowStageConfig[] }>("/admin/workflow");
+      setWorkflowStages((data.stages || []).filter((stage) => stage.isActive).sort((a, b) => a.sortOrder - b.sortOrder));
+    } catch {
+      setWorkflowStages([]);
+    }
+  }, []);
+
   const fetchPriority = useCallback(async () => {
     try {
       const { data } = await api.get<{ results: PriorityResult[]; computedAt: string }>("/priority");
@@ -138,7 +156,7 @@ export default function JobsPage() {
       setBlockerCounts(counts);
     } catch { /* non-critical: just don't show badges */ }
   }, []);
-useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fetchPriority, fetchBlockers, mounted]);
+useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchWorkflow(); }, [fetchPriority, fetchBlockers, fetchWorkflow, mounted]);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -152,8 +170,8 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
       setJobs(data.data ?? data.items ?? []);
       setTotal(data.total);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load jobs";
-      setLoadError(Array.isArray(message) ? message.join(", ") : message);
+      const { message } = getApiError(err);
+      setLoadError(message);
       toast.error(message);
     } finally { setLoading(false); fetchPriority(); fetchBlockers(); }
   }, [page, limit, status, search, showArchived, fetchPriority]);
@@ -172,11 +190,27 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
     return () => clearInterval(interval);
   }, [jobs.length, mounted, fetchJobs, jobs.some((j) => j.status === "estimate_sent")]);
 
+  // Refresh on window focus so status changes from portal/other tabs appear quickly
+  useEffect(() => {
+    if (!mounted) return;
+    const onFocus = () => fetchJobs();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [mounted, fetchJobs]);
+
+  // Poll every 30s for active jobs (catches portal approvals, etc.)
+  useEffect(() => {
+    if (!mounted) return;
+    const interval = setInterval(() => fetchJobs(), 30000);
+    return () => clearInterval(interval);
+  }, [mounted, fetchJobs]);
+
   useEffect(() => { setNowTs(Date.now()); }, []);
 
   useEffect(() => {
     try { const saved = localStorage.getItem("superflow-collapsed-columns"); setCollapsedColumns(saved ? new Set(JSON.parse(saved) as JobStatus[]) : new Set()); } catch { setCollapsedColumns(new Set()); }
     try { const saved = localStorage.getItem("superflow-collapsed-workshop-stages"); setCollapsedWorkshopStages(saved ? new Set(JSON.parse(saved) as WorkshopStage[]) : new Set()); } catch { setCollapsedWorkshopStages(new Set()); }
+    try { const saved = localStorage.getItem("superflow-collapsed-workflow-stages"); setCollapsedWorkflowStages(saved ? new Set(JSON.parse(saved) as string[]) : new Set()); } catch { setCollapsedWorkflowStages(new Set()); }
   }, []);
 
   const boardJobs = useMemo(() => {
@@ -198,7 +232,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
       const reasons = pr?.factors?.map((f) => f.description) ?? [];
       const idleHours = pr?.idleHours ?? 0;
       const hoursToPromise = pr?.hoursToPromise ?? null;
-      const estimateTotal = (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0);
+      const estimateTotal = job.meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0);
       const nextAction: any = pr?.nextAction ?? { title: "Review job", reason: "", urgency: "low", owner: "advisor", actionType: "general_review", score: 0, signals: [] };
       return { job, priorityScore, priorityLevel, reasons, idleHours, hoursToPromise, estimateTotal, nextAction, isOverdue: pr?.isOverdue ?? false };
     }).sort((a, b) => b.priorityScore - a.priorityScore);
@@ -207,6 +241,15 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
   const advisorActions = useMemo(() => [...enrichedJobs].sort((a, b) => b.priorityScore !== a.priorityScore ? b.priorityScore - a.priorityScore : b.nextAction.score - a.nextAction.score).slice(0, 8), [enrichedJobs]);
   const priorityByJobId = useMemo(() => new Map(enrichedJobs.map((item) => [item.job.id, item])), [enrichedJobs]);
   const workshopEnrichedJobs = useMemo(() => enrichedJobs.filter((item) => isWorkshopPhaseJob(item.job)), [enrichedJobs]);
+  const workflowJobs = useMemo(() => {
+    const grouped = new Map<string, Job[]>();
+    for (const stage of workflowStages) grouped.set(stage.key, []);
+    for (const job of jobs) {
+      const stage = getJobWorkflowStage(job, workflowStages);
+      if (stage) grouped.set(stage.key, [...(grouped.get(stage.key) || []), job]);
+    }
+    return grouped;
+  }, [jobs, workflowStages]);
 
   const stats = useMemo(() => ({
     awaitingApproval: jobs.filter((job) => job.status === "estimate_sent").length,
@@ -223,11 +266,16 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
   const moveJobToStatus = async (jobId: string, nextStatus: JobStatus) => {
     const currentJob = jobs.find((job) => job.id === jobId);
     if (!currentJob || currentJob.status === nextStatus) return;
+    if (!getValidTransitions(currentJob).includes(nextStatus)) {
+      toast.error(`Cannot move from ${STATUS_META[currentJob.status].label} to ${STATUS_META[nextStatus].label}`);
+      setDraggedJobId(null); setDropColumn(null);
+      return;
+    }
     const previousJobs = jobs;
     setJobs(jobs.map((job) => job.id === jobId ? { ...job, status: nextStatus } : job));
     setUpdatingJobId(jobId); setDraggedJobId(null); setDropColumn(null);
     try { await api.patch(`/jobs/${jobId}/status`, { to_status: nextStatus }); toast.success(`${currentJob.job_number || "Job"} moved to ${STATUS_META[nextStatus].label}`); await fetchJobs(); }
-    catch { setJobs(previousJobs); toast.error("Failed to update job status"); }
+    catch (err: any) { setJobs(previousJobs); toast.error(getApiError(err).message || "Failed to update job status"); }
     finally { setUpdatingJobId(null); }
   };
 
@@ -241,6 +289,17 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
     setUpdatingJobId(jobId); setDraggedJobId(null); setDropWorkshopStage(null);
     try { await api.patch(`/jobs/${jobId}`, { workshop_stage: nextStage }); toast.success(`${currentJob.job_number || "Job"} moved to ${WORKSHOP_STAGE_META[nextStage].label}`); await fetchJobs(); }
     catch { setJobs(previousJobs); toast.error("Failed to update workshop stage"); }
+    finally { setUpdatingJobId(null); }
+  };
+
+  const moveJobToWorkflowStage = async (jobId: string, nextStage: WorkflowStageConfig) => {
+    const currentJob = jobs.find((job) => job.id === jobId);
+    if (!currentJob || currentJob.workflow_stage_key === nextStage.key) return;
+    const previousJobs = jobs;
+    setJobs(jobs.map((job) => job.id === jobId ? { ...job, status: nextStage.systemStatus, workflow_stage_key: nextStage.key } : job));
+    setUpdatingJobId(jobId); setDraggedJobId(null);
+    try { await api.patch(`/jobs/${jobId}`, { workflow_stage_key: nextStage.key }); toast.success(`${currentJob.job_number || "Job"} moved to ${nextStage.label}`); await fetchJobs(); }
+    catch (err: any) { setJobs(previousJobs); toast.error(getApiError(err).message || "Failed to update workflow stage"); }
     finally { setUpdatingJobId(null); }
   };
 
@@ -353,7 +412,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
                 <div className="rounded-2xl border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/15 p-3">
                   <h3 className="flex items-center gap-2 text-sm font-semibold text-rose-950 dark:text-rose-200"><PhoneCall className="h-4 w-4" /> Pending approvals</h3>
                   <div className="mt-3 space-y-2">
-                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.customer?.name || "Walk-in"}</span><span className="text-xs font-semibold text-rose-700 dark:text-rose-300">{((job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0)).toFixed(0)} AED</span></Link>))}
+                    {jobs.filter((job) => job.status === "estimate_sent").slice(0, 5).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="min-w-0 truncate font-medium text-foreground">{job.customer?.name || "Walk-in"}</span><span className="text-xs font-semibold text-rose-700 dark:text-rose-300">{(job.meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0)).toFixed(0)} AED</span></Link>))}
                     {jobs.filter((job) => job.status === "estimate_sent").length === 0 && <p className="text-xs text-rose-700 dark:text-rose-300">No approvals pending.</p>}
                   </div>
                 </div>
@@ -396,18 +455,19 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
               ))}
             </div>
             <div className="rounded-2xl border border-border bg-muted p-3">
-              <div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Live flow</p><h2 className="text-lg font-semibold text-foreground">Waiting to Start → Diagnosis → Estimate → Advisor / Approval → Parts → WIP → Final Test → QC → Ready</h2></div><Wrench className="h-5 w-5 text-muted-foreground" /></div>
+              <div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Live flow</p><h2 className="text-lg font-semibold text-foreground">Waiting to Start -&gt; Diagnosis -&gt; Estimate -&gt; Advisor / Approval -&gt; Parts -&gt; WIP -&gt; Final Test -&gt; QC -&gt; Ready</h2></div><Wrench className="h-5 w-5 text-muted-foreground" /></div>
               <div className="overflow-x-auto pb-2">
                 <div className="flex min-w-max gap-3">
-                  {WORKSHOP_STAGES.map((stageKey) => ({ key: stageKey, ...WORKSHOP_STAGE_META[stageKey], jobs: workshopJobs.filter((job) => getWorkshopStage(job) === stageKey) })).map((stage) => {
+                  {WORKSHOP_STAGES.map((stageKey) => {
+                    const stage = { key: stageKey, ...WORKSHOP_STAGE_META[stageKey], jobs: workshopJobs.filter((job) => getWorkshopStage(job) === stageKey) };
                     const isCollapsed = collapsedWorkshopStages.has(stage.key);
                     return (
-                      <div key={stage.key} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropWorkshopStage(stage.key); }} onDragLeave={() => setDropWorkshopStage(null)} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; if (!jobId) return; await moveJobToWorkshopStage(jobId, stage.key); }}
+                      <div key={stage.key} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropWorkshopStage(stage.key); }} onDragLeave={() => setDropWorkshopStage(null)} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; setDropWorkshopStage(null); if (!jobId) return; await moveJobToWorkshopStage(jobId, stage.key); }}
                         className={cn("flex h-[520px] shrink-0 flex-col rounded-[16px] border shadow-sm ring-1 ring-border/70 transition-all", stage.tone, isCollapsed ? "w-[46px]" : "w-[230px]", dropWorkshopStage === stage.key && "border-blue-400 bg-blue-50/50 ring-2 ring-blue-200")}>
                         <div className={cn("cursor-pointer select-none border-b border-border/70 px-3 py-2.5", WORKSHOP_STAGE_HEADER_TONE[stage.key])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleWorkshopStage(stage.key); } }} onClick={() => toggleWorkshopStage(stage.key)}>
                           <div className={cn("flex items-start justify-between gap-2", isCollapsed && "flex-col items-center")}>
                             {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                            <span className={cn("h-2 w-2 rounded-full shrink-0", WORKSHOP_STAGE_ACCENT[stage.key].replace("border-l-", "bg-"))} />
+                            <span className="h-2 w-2 rounded-full shrink-0 bg-foreground/50" />
                             {!isCollapsed && (<div className="min-w-0 flex-1"><h3 className="truncate text-sm font-bold text-foreground">{stage.label}</h3><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{stage.sub}</p></div>)}
                             <span className="rounded-full bg-card px-2 py-1 text-[11px] font-bold text-foreground/80 shadow-sm">{stage.jobs.length}</span>
                           </div>
@@ -450,39 +510,40 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
           <div className="mt-4 overflow-x-auto pb-2">
             <div className="mb-3 flex min-w-max gap-3">
               {OVERALL_PHASES.map((phase) => {
-                const width = phase.columns.reduce((sum, column) => sum + (collapsedColumns.has(column) ? BOARD_COLUMN_COLLAPSED_WIDTH : BOARD_COLUMN_WIDTH), 0) + Math.max(0, phase.columns.length - 1) * BOARD_COLUMN_GAP;
-                const count = phase.columns.reduce((sum, column) => sum + boardJobs[column].length, 0);
+                const phaseStages = workflowStages.filter((stage) => phase.columns.includes(stage.systemStatus));
+                const width = phaseStages.reduce((sum, stage) => sum + (collapsedWorkflowStages.has(stage.key) ? BOARD_COLUMN_COLLAPSED_WIDTH : BOARD_COLUMN_WIDTH), 0) + Math.max(0, phaseStages.length - 1) * BOARD_COLUMN_GAP;
+                const count = phaseStages.reduce((sum, stage) => sum + (workflowJobs.get(stage.key)?.length || 0), 0);
                 return (<div key={phase.label} style={{ width }} className={cn("rounded-2xl border px-3.5 py-2.5 shadow-sm ring-1 ring-border/60", phase.className)}><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-[11px] font-bold uppercase tracking-[0.18em]">{phase.label}</p><p className="truncate text-[11px] opacity-75">{phase.hint}</p></div><span className="shrink-0 rounded-full bg-card/80 px-2 py-0.5 text-[11px] font-bold shadow-sm">{count}</span></div></div>);
               })}
             </div>
             <div className="flex min-w-max gap-3">
-              {BOARD_COLUMNS.map((column) => {
-                const columnJobs = boardJobs[column];
-                const isCollapsed = collapsedColumns.has(column);
+              {workflowStages.map((stage) => {
+                const stageJobs = workflowJobs.get(stage.key) || [];
+                const isCollapsed = collapsedWorkflowStages.has(stage.key);
                 return (
-                  <div key={column} id={`column-${column}`} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropColumn(column); }} onDragLeave={() => { if (dropColumn === column) setDropColumn(null); }} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; setDropColumn(null); if (!jobId) return; await moveJobToStatus(jobId, column); }}
-                    className={cn("flex shrink-0 flex-col rounded-[18px] border shadow-sm transition-all duration-200", OVERALL_COLUMN_TONE[column], isCollapsed ? "w-[46px]" : "w-[248px] min-w-[240px]", dropColumn === column && "border-slate-400 dark:border-slate-600 bg-muted")}>
-                    <div className={cn("cursor-pointer select-none border-b px-3 py-2.5", OVERALL_COLUMN_HEADER_TONE[column])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleColumn(column); } }} onClick={() => toggleColumn(column)}>
+                  <div key={stage.key} id={`workflow-${stage.key}`} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropWorkflowStage(stage.key); }} onDragLeave={() => { if (dropWorkflowStage === stage.key) setDropWorkflowStage(null); }} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; setDropWorkflowStage(null); if (!jobId) return; await moveJobToWorkflowStage(jobId, stage); }}
+                    className={cn("flex shrink-0 flex-col rounded-[18px] border shadow-sm transition-all duration-200", OVERALL_COLUMN_TONE[stage.systemStatus], isCollapsed ? "w-[46px]" : "w-[248px] min-w-[240px]", dropWorkflowStage === stage.key && "border-slate-400 dark:border-slate-600 bg-muted")}>
+                    <div className={cn("cursor-pointer select-none border-b px-3 py-2.5", OVERALL_COLUMN_HEADER_TONE[stage.systemStatus])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleWorkflowStage(stage.key); } }} onClick={() => toggleWorkflowStage(stage.key)}>
                       <div className={cn("flex items-center gap-2", isCollapsed && "flex-col")}>
                         {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_META[column].dot)} />
-                        {!isCollapsed && <h2 className="text-[12px] font-semibold text-foreground truncate">{STATUS_META[column].label}</h2>}
-                        <span className="rounded-full bg-card px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{columnJobs.length}</span>
+                        <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_META[stage.systemStatus].dot)} />
+                        {!isCollapsed && <h2 className="truncate text-[12px] font-semibold text-foreground">{stage.label}</h2>}
+                        <span className="rounded-full bg-card px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{stageJobs.length}</span>
                       </div>
                     </div>
                     {!isCollapsed && (
                       <div className="flex flex-1 flex-col gap-2 p-2.5 overflow-y-auto">
                         {loading ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">Loading jobs...</div>)
-                        : columnJobs.length === 0 ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">No jobs in this stage</div>)
-                        : columnJobs.map((job) => {
-                          const estimateTotal = (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0);
+                        : stageJobs.length === 0 ? (<div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">No jobs in this stage</div>)
+                        : stageJobs.map((job) => {
+                          const estimateTotal = job.meta?.estimateTotal ?? (job.estimate_lines ?? []).reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0);
                           const overdue = !!priorityMap.get(job.id)?.isOverdue;
                           const priority = priorityByJobId.get(job.id);
                           const partsStatus = job.parts_status ?? "no_parts";
                           const hasPartsSignal = partsStatus !== "no_parts" || job.status === "waiting_parts";
                           const promiseLabel = job.promised_at ? new Intl.DateTimeFormat("en-GB", { month: "short", day: "2-digit", timeZone: "UTC" }).format(new Date(job.promised_at)) : "No promise";
                           return (
-                            <Link key={job.id} href={`/jobs/${job.id}`} draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", job.id); event.dataTransfer.effectAllowed = "move"; setDraggedJobId(job.id); }} onDragEnd={() => { setDraggedJobId(null); setDropColumn(null); }}
+                            <Link key={job.id} href={`/jobs/${job.id}`} draggable onDragStart={(event) => { event.dataTransfer.setData("text/plain", job.id); event.dataTransfer.effectAllowed = "move"; setDraggedJobId(job.id); }} onDragEnd={() => { setDraggedJobId(null); setDropWorkflowStage(null); }}
                               className={cn("group flex min-h-[172px] flex-col rounded-2xl border border-l-4 border-border bg-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-lg", BOARD_CARD_ACCENT[job.status], overdue && "border-l-red-500 dark:border-l-red-500 bg-red-50/40 dark:bg-red-950/15", job.is_customer_waiting && !overdue && "border-l-red-400", draggedJobId === job.id && "opacity-60", updatingJobId === job.id && "ring-2 ring-border")}>
                               <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-center gap-1.5"><span className="shrink-0 rounded-md border border-border bg-muted p-1 text-muted-foreground cursor-grab" title="Drag to move" onClick={(event) => event.preventDefault()}><GripVertical className="h-3 w-3" /></span><div className="min-w-0"><p className="inline-flex max-w-full rounded-md border border-blue-200 dark:border-blue-800/40 bg-blue-50/80 dark:bg-blue-950/40 px-2 py-0.5 text-[13px] font-black leading-none tracking-[0.08em] text-blue-950 dark:text-blue-200 shadow-sm"><span className="truncate tabular-nums">#{job.job_number || "Draft"}</span></p>{overdue ? <span className="mt-0.5 inline-flex rounded-full bg-red-100 dark:bg-red-900/50 px-1.5 py-0.5 text-[11px] font-bold text-red-700 dark:text-red-300">Overdue</span> : null}</div></div><span className={cn("shrink-0 rounded-full px-2 py-1 text-[11px] font-black tabular-nums ring-1", getPriorityTone(priority?.priorityScore))}>{priority?.priorityScore ?? "—"}</span></div>
                               <div className="mt-2 min-w-0"><h3 className="truncate text-[14px] font-bold leading-tight text-foreground">{job.customer?.name || "Walk-in"}</h3><div className="mt-1 rounded-xl bg-muted px-2.5 py-1.5 ring-1 ring-border"><p className="truncate text-[11px] font-medium text-muted-foreground">{getVehicleLabel(job)}</p><p className="mt-0.5 truncate text-[12px] font-black tracking-[0.12em] text-foreground tabular-nums">{getPlate(job)}</p></div></div>
@@ -491,7 +552,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); }, [fe
                                 {job.customer_sensitivity && job.customer_sensitivity !== "normal" ? <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.tone)}>{CUSTOMER_SENSITIVITY_META[job.customer_sensitivity]?.label}</span> : null}
                                 {hasPartsSignal ? <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", PARTS_STATUS_META[partsStatus]?.tone ?? "bg-purple-100 text-purple-800")}>{PARTS_STATUS_META[partsStatus]?.label ?? "Parts"}</span> : null}
                                 {job.status === "ready" && (job.customer_informed ? <span className="rounded-full border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-200">✓ Informed</span> : <button type="button" onClick={async (e) => { e.preventDefault(); e.stopPropagation(); try { await api.patch(`/jobs/${job.id}`, { customer_informed: true }); fetchJobs(); } catch {} }} className="rounded-full border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-200 hover:bg-amber-100">🔔 Inform</button>)}
-                                {job.status === "booked" && <div className="mt-2 grid grid-cols-2 gap-1.5"><button type="button" onClick={async (e) => { e.preventDefault(); e.stopPropagation(); try { await api.patch(`/jobs/${job.id}/status`, { to_status: 'checking' }); fetchJobs(); toast.success('Customer arrived — moved to Checking'); } catch (err: any) { toast.error(err?.response?.data?.message || 'Failed to move to Checking'); } }} className="rounded-lg border border-emerald-300 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-center">✓ Arrived</button><button type="button" onClick={async (e) => { e.preventDefault(); e.stopPropagation(); if (!confirm('Mark this booking as No Show?')) return; try { await api.patch(`/jobs/${job.id}/status`, { to_status: 'no_show' }); fetchJobs(); toast.success('Marked as No Show'); } catch (err: any) { toast.error(err?.response?.data?.message || 'Failed to mark as No Show'); } }} className="rounded-lg border border-slate-300 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/40 px-2 py-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-center">✗ No Show</button></div>}
+                                {job.status === "booked" && <div className="mt-2 grid grid-cols-2 gap-1.5"><button type="button" onClick={async (e) => { e.preventDefault(); e.stopPropagation(); try { await api.patch(`/jobs/${job.id}/status`, { to_status: 'checking' }); fetchJobs(); toast.success('Customer arrived — moved to Checking'); } catch (err: any) { toast.error(getApiError(err).message); } }} className="rounded-lg border border-emerald-300 dark:border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-center">✓ Arrived</button><button type="button" onClick={async (e) => { e.preventDefault(); e.stopPropagation(); if (!confirm('Mark this booking as No Show?')) return; try { await api.patch(`/jobs/${job.id}/status`, { to_status: 'no_show' }); fetchJobs(); toast.success('Marked as No Show'); } catch (err: any) { toast.error(getApiError(err).message); } }} className="rounded-lg border border-slate-300 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-900/40 px-2 py-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-center">✗ No Show</button></div>}
                               </div>
                               {priority?.nextAction?.title ? (<div className={cn("mt-2 rounded-xl border px-2 py-1.5 text-[11px] font-semibold leading-snug", getActionUrgencyClass(priority.nextAction.urgency))}><span className="opacity-70">Next:</span> {priority.nextAction.title}</div>) : job.customer_concern ? <p className="mt-2 line-clamp-2 text-[11px] leading-tight text-muted-foreground">{job.customer_concern}</p> : null}
                               <div className="mt-auto grid grid-cols-[1fr_auto] items-end gap-2 pt-2 text-[11px]"><div className="min-w-0 rounded-xl bg-muted px-2 py-1.5 ring-1 ring-border"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Advisor</p><p className="truncate font-semibold text-foreground">{job.advisor?.name || job.owner_code || "—"}</p></div><div className="text-right"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Est.</p><p className="font-bold text-foreground">{estimateTotal > 0 ? `${estimateTotal.toFixed(0)}` : "—"}</p></div></div>

@@ -10,13 +10,61 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class EstimatesService {
   constructor(private prisma: PrismaService) {}
 
+  private parseSettingNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private async getDefaultTaxRate(): Promise<number> {
+    const settings = await this.prisma.tenant.settings.findMany({
+      where: { key: { in: ['default_tax_rate', 'tax_rate'] } },
+    });
+    const byKey = new Map(settings.map((row: (typeof settings)[number]) => [row.key, row.value]));
+    return this.parseSettingNumber(byKey.get('default_tax_rate'))
+      ?? this.parseSettingNumber(byKey.get('tax_rate'))
+      ?? 5;
+  }
+
+  private decorateLines(lines: any[]) {
+    const groupKeyFor = (line: any) => line.concern_id
+      ? `concern:${line.concern_id}`
+      : line.inspection_response_id
+        ? `response:${line.inspection_response_id}`
+        : line.quote_group_id
+          ? `quote:${line.quote_group_id}`
+          : 'general';
+    const decisionsByGroup = new Map<string, string[]>();
+    for (const line of lines) {
+      const decisions = (line.authorisation_decisions ?? []).map((decision: any) => decision.decision).filter(Boolean);
+      if (!decisionsByGroup.has(groupKeyFor(line))) decisionsByGroup.set(groupKeyFor(line), []);
+      decisionsByGroup.get(groupKeyFor(line))!.push(...decisions);
+    }
+    const summaryFor = (line: any) => {
+      const decisions = decisionsByGroup.get(groupKeyFor(line)) ?? [];
+      const unique = [...new Set(decisions)];
+      if (!unique.length) return 'pending';
+      if (unique.length > 1) return 'mixed';
+      return unique[0];
+    };
+    return lines.map((line: any) => ({
+      ...line,
+      quote_group: line.quote_groups,
+      concern: line.job_concerns,
+      is_recommended: Boolean(line.inspection_response_id) || Boolean(line.is_recommended),
+      is_actionable: !line.authorisation_decisions?.length,
+      group_decision_summary: summaryFor(line),
+    }));
+  }
+
   async create(dto: CreateLineDto, userId: string) {
     // The backend always recomputes money fields so the client cannot drift from
     // server-side totals just by sending pre-calculated values.
+    const defaultTaxRate = await this.getDefaultTaxRate();
     const qty = dto.quantity ?? 1;
     const unitPrice = dto.unit_price ?? 0;
     const discount = dto.discount_pct ?? 0;
-    const taxRate = dto.tax_rate_pct ?? 0;
+    const taxRate = dto.tax_rate_pct ?? defaultTaxRate;
     const lineTotal = qty * unitPrice * (1 - discount / 100);
     const taxAmount = lineTotal * (taxRate / 100);
 
@@ -31,9 +79,10 @@ export class EstimatesService {
         id: uuid(), job_id: dto.job_id, type: dto.type as any, description: dto.description,
         part_number: dto.part_number, quantity: qty, unit_price: unitPrice,
         discount_pct: discount, tax_rate_pct: taxRate, line_total: lineTotal,
-        tax_amount: taxAmount, is_recommended: dto.is_recommended ?? false,
+        tax_amount: taxAmount, is_recommended: dto.is_recommended ?? Boolean(dto.inspection_response_id),
         inspection_response_id: dto.inspection_response_id,
         quote_group_id: dto.quote_group_id,
+        concern_id: dto.concern_id,
         added_by: userId,
       },
     });
@@ -42,10 +91,10 @@ export class EstimatesService {
   async findByJob(jobId: string) {
     const lines = await this.prisma.tenant.estimate_lines.findMany({
       where: { job_id: jobId },
-      include: { quote_groups: true },
+      include: { quote_groups: true, job_concerns: true, authorisation_decisions: true },
       orderBy: { sort_order: 'asc' },
     });
-    return lines.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
+    return this.decorateLines(lines);
   }
 
   async getDefaults() {
@@ -62,13 +111,16 @@ export class EstimatesService {
     ]);
 
     const byKey = new Map(settings.map((row: (typeof settings)[number]) => [row.key, row.value]));
+    const defaultTaxRate = this.parseSettingNumber(byKey.get('default_tax_rate'))
+      ?? this.parseSettingNumber(byKey.get('tax_rate'))
+      ?? 5;
     const standardRate =
       labourRates.find((rate: (typeof labourRates)[number]) => (rate.name || '').toLowerCase() === 'standard') ||
       labourRates[0] ||
       null;
 
     return {
-      default_tax_rate: Number(byKey.get('default_tax_rate') ?? byKey.get('tax_rate') ?? 0),
+      default_tax_rate: defaultTaxRate,
       currency: byKey.get('currency') ?? standardRate?.currency ?? 'AED',
       standard_labour_rate: Number(standardRate?.rate_per_hour ?? 0),
       standard_labour_rate_name: standardRate?.name ?? 'Standard',
@@ -133,9 +185,11 @@ export class EstimatesService {
     // auto-injected on create/update. The raw prisma.$transaction passes a
     // plain tx client that bypasses the tenant extension, causing null
     // constraint violations on workshop_id.
+    const defaultTaxRate = await this.getDefaultTaxRate();
     return this.prisma.tenant.$transaction(async (tx: Prisma.TransactionClient) => {
       const existing = await tx.estimate_lines.findMany({ where: { job_id: jobId } });
       const existingIds = new Set(existing.map((line: (typeof existing)[number]) => line.id));
+      const existingById = new Map<string, (typeof existing)[number]>(existing.map((line: (typeof existing)[number]) => [line.id, line]));
       const incomingIds = new Set(
         lines
           .map((line) => line.id)
@@ -158,7 +212,13 @@ export class EstimatesService {
         const qty = Number(l.quantity ?? 1);
         const unitPrice = Number(l.unit_price ?? 0);
         const discount = Number(l.discount_pct ?? 0);
-        const taxRate = Number(l.tax_rate_pct ?? 5);
+        const existingLine = l.id ? existingById.get(l.id) : null;
+        const incomingTaxRate = this.parseSettingNumber(l.tax_rate_pct);
+        // Bug fix: new quote lines should inherit workshop VAT even if the UI
+        // accidentally sends 0 while defaults are loading.
+        const taxRate = existingLine
+          ? (incomingTaxRate ?? Number(existingLine.tax_rate_pct ?? defaultTaxRate))
+          : (incomingTaxRate && incomingTaxRate > 0 ? incomingTaxRate : defaultTaxRate);
         const lineTotal = qty * unitPrice * (1 - discount / 100);
         const taxAmount = lineTotal * (taxRate / 100);
 
@@ -173,11 +233,12 @@ export class EstimatesService {
           tax_rate_pct: taxRate,
           line_total: lineTotal,
           tax_amount: taxAmount,
-          is_recommended: l.is_recommended ?? false,
+          is_recommended: Boolean(l.inspection_response_id) || Boolean(l.is_recommended),
           sort_order: i,
           added_by: userId,
           inspection_response_id: l.inspection_response_id || null,
           quote_group_id: l.quote_group_id || null,
+          concern_id: l.concern_id || null,
         };
 
         if (l.id && existingIds.has(l.id)) {
@@ -218,6 +279,7 @@ export class EstimatesService {
               job_id: null,
               inspection_response_id: null,
               quote_group_id: null,
+              concern_id: null,
               sort_order: preservedSortOrder++,
             },
           });
@@ -230,10 +292,10 @@ export class EstimatesService {
 
       const saved = await tx.estimate_lines.findMany({
         where: { job_id: jobId },
-        include: { quote_groups: true },
+        include: { quote_groups: true, job_concerns: true, authorisation_decisions: true },
         orderBy: { sort_order: 'asc' },
       });
-      return saved.map((l: any) => ({ ...l, quote_group: l.quote_groups }));
+      return this.decorateLines(saved);
     });
   }
 
