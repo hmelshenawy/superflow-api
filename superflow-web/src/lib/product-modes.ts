@@ -18,7 +18,6 @@ import {
   UserCheck,
   Users,
   Wrench,
-  Zap,
 } from "lucide-react";
 
 export const MODULES = {
@@ -108,7 +107,6 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
   ],
   CONNECT: [
     { href: "/dashboard", label: "Command Center", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
-    { href: "/admin/booking-import", label: "Import Booking", icon: FileUp, module: MODULES.BOOKING_IMPORT, requirePermission: "import:parse", roles: ["service_advisor", "manager", "workshop_manager", "admin", "workshop_admin"] },
     { href: "/jobs", label: "WIP Board", icon: LayoutGrid, module: MODULES.WIP },
     { href: "/jobs", label: "Workshop Loading", icon: Boxes, module: MODULES.WORKSHOP_LOADING },
     { href: "/insights", label: "Capacity", icon: SlidersHorizontal, module: MODULES.CAPACITY_MANAGEMENT, requirePermission: "insights:dashboard" },
@@ -117,7 +115,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/advisor", label: "Advisors", icon: UserCheck, module: MODULES.ADVISOR_PERFORMANCE, requirePermission: "priority:read", roles: ["service_advisor", "manager", "workshop_manager", "general_manager", "admin", "workshop_admin"] },
     { href: "/jobs", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_PERFORMANCE },
     { href: "/insights", label: "Branch Analytics", icon: BarChart3, module: MODULES.BRANCH_PERFORMANCE, requirePermission: "insights:dashboard" },
-    { href: "/settings", label: "DMS Integration", icon: Zap, module: MODULES.DMS_INTEGRATION, requirePermission: "admin:integrations" },
+    { href: "/admin/booking-import", label: "Import Booking", icon: FileUp, module: MODULES.BOOKING_IMPORT },
     { href: "/insights", label: "Reports", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
     { href: "/settings", label: "Settings", icon: Settings },
   ],
