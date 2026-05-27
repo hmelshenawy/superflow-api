@@ -132,11 +132,11 @@ function formatPrice(cents: number, currency: string): string {
 }
 
 function productPrice(plan: PlanPricing, product: ProductKey) {
-  return Math.round(plan.price * PRODUCT_MULTIPLIER[product]);
+  return Math.round((Number(plan.price) || 0) * PRODUCT_MULTIPLIER[product]);
 }
 
 function tierName(plan: PlanPricing) {
-  const id = plan.id.toLowerCase();
+  const id = String(plan.id || "").toLowerCase();
   if (id.includes("starter")) return "Starter";
   if (id.includes("professional") || id.includes("pro")) return "Professional";
   if (id.includes("enterprise")) return "Enterprise";
@@ -144,10 +144,35 @@ function tierName(plan: PlanPricing) {
 }
 
 function normalizedTierId(plan: PlanPricing) {
-  const id = plan.id.toLowerCase();
+  const id = String(plan.id || "").toLowerCase();
   if (id.includes("professional") || id.includes("pro")) return "professional";
   if (id.includes("enterprise")) return "enterprise";
   return "starter";
+}
+
+function normalizePlansResponse(data: unknown): PlanPricing[] {
+  const source: unknown[] = Array.isArray(data)
+    ? data
+    : Array.isArray((data as any)?.plans)
+      ? (data as any).plans
+      : Array.isArray((data as any)?.data)
+        ? (data as any).data
+        : [];
+
+  const normalized = source
+    .filter((item) => item && typeof item === "object")
+    .map((item: any): PlanPricing => ({
+      id: String(item.id || item.planId || item.key || ""),
+      name: String(item.name || item.displayName || item.id || "Plan"),
+      description: String(item.description || ""),
+      price: Number(item.price ?? item.price_monthly_cents ?? 0),
+      currency: String(item.currency || "AED"),
+      displayName: String(item.displayName || item.display_name || item.name || item.id || "Plan"),
+      features: Array.isArray(item.features) ? item.features : [],
+    }))
+    .filter((item) => item.id && item.price >= 0);
+
+  return normalized.length ? normalized : FALLBACK_PLANS;
 }
 
 function PackageCard({ product, plan, recommended }: { product: ProductKey; plan: PlanPricing; recommended?: boolean }) {
@@ -210,13 +235,14 @@ export default function PricingPage() {
     setLoading(true);
     fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/billing/pricing?region=${region}`)
       .then((r) => r.json())
-      .then((data) => { setPlans(Array.isArray(data) && data.length ? data : FALLBACK_PLANS); setLoading(false); })
+      .then((data) => { setPlans(normalizePlansResponse(data)); setLoading(false); })
       .catch(() => { setPlans(FALLBACK_PLANS); setLoading(false); });
   }, [region]);
 
   const visiblePlans = useMemo(() => {
-    return [...(plans.length ? plans : FALLBACK_PLANS)]
-      .filter((plan) => !plan.id.toLowerCase().includes("trial"))
+    const source = Array.isArray(plans) && plans.length ? plans : FALLBACK_PLANS;
+    return source.slice()
+      .filter((plan) => !String(plan.id || "").toLowerCase().includes("trial"))
       .sort((a, b) => a.price - b.price);
   }, [plans]);
 
