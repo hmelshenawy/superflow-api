@@ -465,12 +465,12 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         const showReset = concernApproval?.isLocked && (concernApproval.customerDecision === "declined" || concernApproval.customerDecision === "deferred");
 
         return (
-          <div key={group.key} className={`border-b border-border ${borderClass} ${dimmedClass}`}>
+          <div key={group.key} className={`mb-2 border-b border-border ${borderClass} ${dimmedClass} `}>
             {/* Concern header row */}
             <div
               role="button" tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); } }}
-              className="flex cursor-pointer select-none items-center gap-2 px-5 py-3 hover:bg-muted/50"
+              className="flex cursor-pointer select-none items-center gap-3 rounded-2xl border-2 border-border px-6 py-4 hover:bg-muted/50"
               onClick={() => { if (!isCustom || editingGroupTitle !== group.quoteGroupId) toggleGroup(group.key); }}
             >
               {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
@@ -486,7 +486,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                     <span className="cursor-pointer rounded px-0.5 text-[13px] font-medium text-foreground hover:bg-muted" onClick={(e) => { e.stopPropagation(); setDraftGroupTitle(group.title); setEditingGroupTitle(group.quoteGroupId); }}>{group.title}</span>
                   )
                 ) : (
-                  <span className="text-[13px] font-medium text-foreground">{group.title}</span>
+                  <span className="text-[16px] font-medium text-foreground">{group.title}</span>
                 )}
                 {group.detail && !isCustom && <p className="mt-0.5 text-[11px] text-muted-foreground">{group.detail}</p>}
               </div>
@@ -508,8 +508,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
 
             {/* Expanded panel */}
             {!isCollapsed && (
-            <div className="border-t border-border bg-muted/30 p-5">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="rounded-t-xl border-t border-border/40 bg-muted/20 px-5 py-5">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 p-3">
                 {/* Left column — diagnostics & notes */}
                 {group.concern ? (
                   <div>

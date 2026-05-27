@@ -813,7 +813,7 @@ export default function JobDetailPage() {
 
   const currentStep = ALL_STATUSES.indexOf(job.status);
   const total = estimateTotal(job);
-  const formatMoney = (value: number | string | null | undefined) => `${estimateDefaults.currency || "AED"} ${Number(value ?? 0).toFixed(2)}`;
+  const formatMoney = (value: number | string | null | undefined) => `${estimateDefaults.currency || "$"} ${Number(value ?? 0).toFixed(2)}`;
   const vehicle = vehicleLabel(job);
   const plate = job.vehicle?.plate || "No plate";
   const mediaCount = job.media_files?.length ?? 0;
