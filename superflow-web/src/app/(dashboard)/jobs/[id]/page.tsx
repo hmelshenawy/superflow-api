@@ -1820,8 +1820,8 @@ export default function JobDetailPage() {
             <div className="border-2 border-border rounded-2xl px-7 py-6 border-x-[3px] border-x-border bg-background dark:bg-zinc-900">
               <div className="grid grid-cols-2 gap-x-12">
                 <div>
-                  <p className="border-b border-border pb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
-                  <div className="mt-2 flex justify-between text-[16px] font-medium text-foreground">
+                  <p className="border-b border-border pb-2 text-[14px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
+                  <div className="mt-2 flex justify-between text-[18px] font-medium text-foreground">
                     <span>Grand total</span>
                     <span>{formatMoney(total)}</span>
                   </div>
