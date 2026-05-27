@@ -57,7 +57,7 @@ export default function PortalPage() {
 
   const portalCanSubmit = data?.can_submit ?? false;
   const allActionableGroupsDecided = Boolean(data?.grouped_estimate?.length) && data!.grouped_estimate.every((group) => {
-    const actionable = getActionableLines(group);
+    const actionable = getUnlockedActionableLines(group, existingDecisionByLine);
     if (actionable.length === 0) return true;
     return Boolean(decisions[group.key]?.decision);
   });
@@ -66,11 +66,12 @@ export default function PortalPage() {
     if (!data) return 0;
     return data.approved_total + data.grouped_estimate.reduce((sum, group) => {
       if (decisions[group.key]?.decision !== "approved") return sum;
-      return sum + getActionableLines(group).reduce((lineSum, line) => lineSum + Number(line.line_total || 0), 0);
+      return sum + getUnlockedActionableLines(group, existingDecisionByLine).reduce((lineSum, line) => lineSum + Number(line.line_total || 0), 0);
     }, 0);
-  }, [data, decisions]);
+  }, [data, decisions, existingDecisionByLine]);
 
   const recommendationGroups = data?.grouped_estimate ?? [];
+  const hasUnlockedActionableLines = recommendationGroups.some((group) => getUnlockedActionableLines(group, existingDecisionByLine).length > 0);
   const attachedFindingIds = new Set(recommendationGroups.map((group) => group.finding?.id).filter(Boolean));
   const standaloneFindings = (data?.findings ?? []).filter((finding) => !attachedFindingIds.has(finding.id));
   const stage = data?.released_snapshot?.stage || data?.stage || "initial_findings";
@@ -99,7 +100,7 @@ export default function PortalPage() {
         decisions: data.grouped_estimate.flatMap((group) => {
           const groupDecision = decisions[group.key];
           if (!groupDecision) return [];
-          return getActionableLines(group).map((line) => ({
+          return getUnlockedActionableLines(group, existingDecisionByLine).map((line) => ({
             estimate_line_id: line.id,
             decision: groupDecision.decision,
             customer_comment: groupDecision.comment || null,
@@ -155,9 +156,9 @@ export default function PortalPage() {
           currency={data.currency}
           grandTotal={data.grand_total}
           approvedTotal={approvedTotal}
-          canSubmit={portalCanSubmit}
+          canSubmit={portalCanSubmit && hasUnlockedActionableLines}
           complete={allActionableGroupsDecided}
-          hasActionableLines={data.has_actionable_lines}
+          hasActionableLines={hasUnlockedActionableLines}
           hasEstimate={data.grouped_estimate.length > 0}
           submitting={submitting}
           usedAt={data.token.used_at}
@@ -180,10 +181,11 @@ export default function PortalPage() {
         {recommendationGroups.length ? (
           recommendationGroups.map((group) => {
             const lockedDecision = group.lines.map((line) => existingDecisionByLine.get(line.id)).find(Boolean);
+            const effectiveGroup = getEffectiveGroup(group, existingDecisionByLine);
             return (
               <RepairRecommendationCard
                 key={group.key}
-                group={group}
+                group={effectiveGroup}
                 token={token}
                 currency={data.currency}
                 expanded={expandedGroups[group.key] ?? false}
@@ -302,5 +304,22 @@ function toGroupDecision(decision: ExistingDecision): GroupDecisionState {
   return {
     decision: decision.decision,
     comment: decision.customer_comment || "",
+  };
+}
+
+function getUnlockedActionableLines(group: QuoteGroup, existingDecisionByLine: Map<string, GroupDecisionState>) {
+  return getActionableLines(group).filter((line) => !existingDecisionByLine.has(line.id));
+}
+
+function getEffectiveGroup(group: QuoteGroup, existingDecisionByLine: Map<string, GroupDecisionState>): QuoteGroup {
+  const lines = group.lines.map((line) => ({
+    ...line,
+    is_actionable: line.is_actionable && !existingDecisionByLine.has(line.id),
+  }));
+
+  return {
+    ...group,
+    lines,
+    is_locked: lines.length > 0 && lines.every((line) => existingDecisionByLine.has(line.id)),
   };
 }

@@ -552,6 +552,13 @@ export class AuthorisationService {
           const payload = JSON.parse(snapshot.payload_json);
           this.rewriteSnapshotMediaUrls(payload, rawToken);
           const existingDecisions = await this.getImmutableLineDecisions(token.job_id);
+          this.applyImmutableDecisionsToPortalPayload(payload, existingDecisions);
+          const isExpired = token.expires_at ? new Date(token.expires_at) < new Date() : false;
+          payload.token = {
+            ...(payload.token ?? {}),
+            is_expired: isExpired,
+          };
+          payload.can_submit = !isExpired && !token.is_revoked && Boolean(payload.has_actionable_lines);
           return {
             ...payload,
             token: {
@@ -559,6 +566,7 @@ export class AuthorisationService {
               first_opened_at: token.first_opened_at,
               used_at: token.used_at,
               is_revoked: token.is_revoked,
+              is_expired: isExpired,
             },
             existing_decisions: existingDecisions,
             released_snapshot: {
@@ -787,6 +795,47 @@ export class AuthorisationService {
       currency: currencyRow?.value || 'AED',
     };
     });
+  }
+
+  private applyImmutableDecisionsToPortalPayload(payload: any, existingDecisions: any[]) {
+    const decisionByLine = new Map<string, any>();
+    for (const decision of existingDecisions ?? []) {
+      if (decision.estimate_line_id && !decisionByLine.has(decision.estimate_line_id)) {
+        decisionByLine.set(decision.estimate_line_id, decision);
+      }
+    }
+
+    const groups = Array.isArray(payload?.grouped_estimate) ? payload.grouped_estimate : [];
+    const allLines = groups.flatMap((group: any) => Array.isArray(group.lines) ? group.lines : []);
+
+    for (const group of groups) {
+      const groupDecisions: string[] = [];
+      const lines = Array.isArray(group.lines) ? group.lines : [];
+      for (const line of lines) {
+        const decision = decisionByLine.get(line.id);
+        line.is_actionable = !decision;
+        if (decision) groupDecisions.push(decision.decision);
+      }
+
+      const approved = groupDecisions.filter((decision) => decision === 'approved').length;
+      const declined = groupDecisions.filter((decision) => decision === 'declined').length;
+      const deferred = groupDecisions.filter((decision) => decision === 'deferred').length;
+      group.group_decision_summary =
+        approved > 0 && declined > 0 ? 'mixed'
+        : approved > 0 ? 'approved'
+        : declined > 0 ? 'declined'
+        : deferred > 0 ? 'deferred'
+        : 'pending';
+      group.is_locked = lines.length > 0 && lines.every((line: any) => decisionByLine.has(line.id));
+    }
+
+    payload.approved_total = existingDecisions
+      .filter((decision: any) => decision.decision === 'approved')
+      .reduce((sum: number, decision: any) => {
+        const line = allLines.find((item: any) => item.id === decision.estimate_line_id);
+        return sum + Number(line?.line_total ?? 0);
+      }, 0);
+    payload.has_actionable_lines = allLines.some((line: any) => !decisionByLine.has(line.id));
   }
 
   async decideFromPortal(rawToken: string, dto: DecideDto, ip: string, userAgent?: string) {
