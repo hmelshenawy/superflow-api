@@ -22,7 +22,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email, password);
-      router.push("/jobs");
+      router.push("/dashboard");
     } catch (err: any) {
       const { code } = getApiError(err);
       if (code === "AUTH_TRIAL_EXPIRED") {

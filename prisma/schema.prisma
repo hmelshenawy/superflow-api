@@ -19,6 +19,11 @@ model workshops {
   region        String?   @default("gcc") @db.VarChar(10)
   is_active     Boolean?  @default(true)
   plan_id       String?   @default("free_trial") @db.VarChar(60)
+  product_mode  String    @default("WORKSHOP") @db.VarChar(20)
+  dms_integration_enabled Boolean @default(false)
+  enabled_modules String? @db.LongText
+  package_name  String?   @default("PrioraFlow Workshop") @db.VarChar(120)
+  display_name  String?   @db.VarChar(120)
   trial_ends_at DateTime? @db.DateTime(0)
   created_at    DateTime? @default(now()) @db.DateTime(0)
   updated_at    DateTime? @default(now()) @db.DateTime(0)

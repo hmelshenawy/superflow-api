@@ -13,10 +13,12 @@ import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JO
 import { PlanFeatureGuard } from '../common/guards/plan-feature.guard';
 import { RequirePlanFeature } from '../common/plan-features/require-plan-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.WIP)
 @Controller('jobs')
 export class JobsController {
   constructor(private service: JobsService) {}

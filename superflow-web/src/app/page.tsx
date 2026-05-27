@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  Wrench,
+  Zap,
 } from "lucide-react";
 import { PrioraFlowLogo } from "@/components/brand/prioraflow-logo";
 
@@ -62,6 +64,23 @@ const audiences = [
   "Service advisors",
   "Technicians",
   "Parts coordinators",
+];
+
+const products = [
+  {
+    icon: Zap,
+    title: "PrioraFlow Connect",
+    subtitle: "DMS-connected operational intelligence",
+    description: "For dealers and workshops that already have a DMS. Connect adds WIP visibility, loading, capacity, bottlenecks, priority, and management dashboards on top of existing DMS data.",
+    points: ["DMS integration", "Workshop loading", "Priority queue", "Branch analytics"],
+  },
+  {
+    icon: Wrench,
+    title: "PrioraFlow Workshop",
+    subtitle: "Standalone workshop operating system",
+    description: "For workshops with no DMS. Workshop runs the operation natively from appointment booking and job cards through stock, estimates, invoicing, and operational analytics.",
+    points: ["Appointments", "Job cards", "Parts / stock", "Invoicing"],
+  },
 ];
 
 const priorityCategories = [
@@ -123,6 +142,7 @@ export default function HomePage() {
           <PrioraFlowLogo imageClassName="h-20 w-auto" />
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
+          <a href="#products" className="hover:text-slate-950">Products</a>
           <a href="#features" className="hover:text-slate-950">Features</a>
           <a href="#engine" className="hover:text-slate-950">Priority engine</a>
           <a href="#tutorial" className="hover:text-slate-950">How it works</a>
@@ -196,6 +216,34 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section id="products" className="mx-auto w-full max-w-7xl px-5 py-14 sm:px-8">
+        <div className="mb-8 max-w-3xl">
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-blue-600">Two product paths</p>
+          <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Use PrioraFlow with your DMS, or as the full workshop OS.</h2>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          {products.map((product) => (
+            <div key={product.title} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                  <product.icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">{product.subtitle}</p>
+                  <h3 className="mt-1 text-2xl font-black">{product.title}</h3>
+                  <p className="mt-3 leading-7 text-slate-600">{product.description}</p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {product.points.map((point) => (
+                  <span key={point} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">{point}</span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

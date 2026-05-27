@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
-  // Prevent caching of any page — all dashboard data is client-rendered
-  // and must be fresh on every request.
+  // Dashboard data is client-rendered and should stay fresh on navigation.
   response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   response.headers.delete("x-nextjs-cache");
   return response;

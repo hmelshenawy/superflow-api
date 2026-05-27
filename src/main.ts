@@ -108,7 +108,7 @@ async function bootstrap() {
   // Swagger docs only in non-production environments
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('SuperFlow API')
+      .setTitle('PrioraFlow API')
       .setDescription('Workshop Management System')
       .setVersion('0.1.0')
       .addBearerAuth()
@@ -122,6 +122,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 SuperFlow API running on http://localhost:${port}/api`);
+  console.log(`PrioraFlow API running on http://localhost:${port}/api`);
 }
 bootstrap();

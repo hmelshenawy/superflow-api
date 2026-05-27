@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import api, { getApiError } from "@/lib/api";
 import type { Workshop, User } from "@/types";
+import type { ProductMode } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PRODUCT_LABELS, PRODUCT_MODULES, getEnabledModules, getWorkshopProductMode } from "@/lib/product-modes";
 import {
   Table,
   TableBody,
@@ -72,6 +74,8 @@ export default function WorkshopsPage() {
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formTimezone, setFormTimezone] = useState("Asia/Dubai");
+  const [formProductMode, setFormProductMode] = useState<ProductMode>("WORKSHOP");
+  const [formDmsEnabled, setFormDmsEnabled] = useState(false);
 
   const fetchWorkshops = async () => {
     setLoading(true);
@@ -108,6 +112,8 @@ export default function WorkshopsPage() {
     setFormPhone("");
     setFormEmail("");
     setFormTimezone("Asia/Dubai");
+    setFormProductMode("WORKSHOP");
+    setFormDmsEnabled(false);
     setDialogOpen(true);
   };
 
@@ -119,7 +125,15 @@ export default function WorkshopsPage() {
     setFormPhone(w.phone ?? "");
     setFormEmail(w.email ?? "");
     setFormTimezone(w.timezone ?? "Asia/Dubai");
+    const productMode = getWorkshopProductMode(w);
+    setFormProductMode(productMode);
+    setFormDmsEnabled(Boolean(w.dmsIntegrationEnabled ?? w.dms_integration_enabled ?? productMode === "CONNECT"));
     setDialogOpen(true);
+  };
+
+  const changeProductMode = (mode: ProductMode) => {
+    setFormProductMode(mode);
+    setFormDmsEnabled(mode === "CONNECT");
   };
 
   const handleSubmit = async () => {
@@ -132,6 +146,10 @@ export default function WorkshopsPage() {
         phone: formPhone || undefined,
         email: formEmail || undefined,
         timezone: formTimezone || undefined,
+        productMode: formProductMode,
+        dmsIntegrationEnabled: formDmsEnabled,
+        enabledModules: PRODUCT_MODULES[formProductMode],
+        packageName: PRODUCT_LABELS[formProductMode],
       };
       if (editingWorkshop) {
         await api.patch(`/workshops/${editingWorkshop.id}`, payload);
@@ -295,6 +313,7 @@ export default function WorkshopsPage() {
                 <TableHead>Slug</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Timezone</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead>Users</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -307,6 +326,14 @@ export default function WorkshopsPage() {
                   <TableCell className="text-muted-foreground">{w.slug}</TableCell>
                   <TableCell className="text-muted-foreground">{w.address || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{w.timezone || "—"}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Badge variant={getWorkshopProductMode(w) === "CONNECT" ? "default" : "secondary"}>
+                        {w.packageName || w.package_name || PRODUCT_LABELS[getWorkshopProductMode(w)]}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">{getEnabledModules(w).length} modules</p>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm" onClick={() => openUsers(w)}>
                       <Users className="mr-1 h-3.5 w-3.5" />
@@ -393,6 +420,47 @@ export default function WorkshopsPage() {
             <div>
               <label className="text-sm font-medium">Timezone</label>
               <Input value={formTimezone} onChange={(e) => setFormTimezone(e.target.value)} placeholder="Asia/Dubai" />
+            </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <label className="text-sm font-medium">Product account</label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Platform admins can convert this workshop between the standalone product and the DMS-connected product.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {(["WORKSHOP", "CONNECT"] as ProductMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => changeProductMode(mode)}
+                    className={`rounded-lg border px-3 py-3 text-left transition ${
+                      formProductMode === mode
+                        ? "border-blue-500 bg-blue-50 text-blue-950 dark:bg-blue-950/30 dark:text-blue-100"
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">{PRODUCT_LABELS[mode]}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {mode === "CONNECT" ? "DMS-connected intelligence layer" : "Standalone workshop operating system"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              <label className="mt-3 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={formDmsEnabled}
+                  onChange={(e) => setFormDmsEnabled(e.target.checked)}
+                  disabled={formProductMode === "CONNECT"}
+                />
+                DMS integration enabled
+              </label>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {PRODUCT_MODULES[formProductMode].map((moduleKey) => (
+                  <span key={moduleKey} className="rounded-full bg-background px-2 py-1 text-xs text-muted-foreground ring-1 ring-border">
+                    {moduleKey.replace(/([A-Z])/g, " $1")}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
 import { DEFAULT_ROLES, ALL_PERMISSIONS } from '../src/common/permissions';
+import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules } from '../src/common/product-modes';
 
 const prisma = new PrismaClient();
 
@@ -22,18 +23,55 @@ async function main() {
   const advisorRole = await prisma.roles.findFirst({ where: { name: 'service_advisor' } });
   const techRole = await prisma.roles.findFirst({ where: { name: 'technician' } });
   const receptionRole = await prisma.roles.findFirst({ where: { name: 'receptionist' } });
+  const managerRole = await prisma.roles.findFirst({ where: { name: 'workshop_manager' } });
+  const gmRole = await prisma.roles.findFirst({ where: { name: 'general_manager' } });
 
   const advisor = await prisma.users.create({ data: { id: uuid(), name: 'Ahmed Advisor', email: 'ahmed@superflow.app', password_hash: password, role_id: advisorRole!.id, is_active: true } });
   const tech = await prisma.users.create({ data: { id: uuid(), name: 'Omar Tech', email: 'omar@superflow.app', password_hash: password, role_id: techRole!.id, is_active: true } });
   await prisma.users.create({ data: { id: uuid(), name: 'Sara Reception', email: 'sara@superflow.app', password_hash: password, role_id: receptionRole!.id, is_active: true } });
+  const connectAdvisor = await prisma.users.create({ data: { id: uuid(), name: 'Maya Advisor', email: 'maya.connect@superflow.app', password_hash: password, role_id: advisorRole!.id, is_active: true } });
+  const connectManager = await prisma.users.create({ data: { id: uuid(), name: 'Layla Workshop Manager', email: 'manager.connect@superflow.app', password_hash: password, role_id: managerRole!.id, is_active: true } });
+  const connectGm = await prisma.users.create({ data: { id: uuid(), name: 'Hassan General Manager', email: 'gm.connect@superflow.app', password_hash: password, role_id: gmRole!.id, is_active: true } });
 
   // 3. Workshop
   const workshopId = uuid();
-  const slug = 'superflow-workshop';
-  await prisma.workshops.create({ data: { id: workshopId, name: 'SuperFlow Workshop', slug, phone: '+971501234567', email: 'admin@superflow.app', region: 'gcc', is_active: true, plan_id: 'free_trial', trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } });
+  const slug = 'prioraflow-workshop';
+  await prisma.workshops.create({ data: { id: workshopId, name: 'PrioraFlow Workshop Demo', slug, phone: '+971501234567', email: 'admin@superflow.app', region: 'gcc', is_active: true, plan_id: 'free_trial', product_mode: 'WORKSHOP', dms_integration_enabled: false, enabled_modules: JSON.stringify(defaultEnabledModules('WORKSHOP')), package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP, trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } });
   await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: admin.id, workshop_id: workshopId, assigned_at: new Date() } });
   await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: advisor.id, workshop_id: workshopId, assigned_at: new Date() } });
   await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: tech.id, workshop_id: workshopId, assigned_at: new Date() } });
+
+  const connectWorkshopId = uuid();
+  await prisma.workshops.create({
+    data: {
+      id: connectWorkshopId,
+      name: 'PrioraFlow Connect Demo',
+      slug: 'prioraflow-connect',
+      phone: '+971509876543',
+      email: 'connect@superflow.app',
+      region: 'gcc',
+      is_active: true,
+      plan_id: 'free_trial',
+      product_mode: 'CONNECT',
+      dms_integration_enabled: true,
+      enabled_modules: JSON.stringify(defaultEnabledModules('CONNECT')),
+      package_name: PRODUCT_MODE_DISPLAY_NAMES.CONNECT,
+      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    },
+  });
+  for (const user of [connectAdvisor, connectManager, connectGm]) {
+    await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: user.id, workshop_id: connectWorkshopId, assigned_at: new Date() } });
+  }
+  await prisma.integrations.create({
+    data: {
+      id: uuid(),
+      name: 'mock-dms',
+      type: 'dms',
+      is_enabled: true,
+      workshop_id: connectWorkshopId,
+      config: JSON.stringify({ provider: 'mock', sync: 'placeholder' }),
+    },
+  });
 
   // 4. Labour rates
   await prisma.labour_rates.createMany({ data: [
@@ -45,7 +83,7 @@ async function main() {
 
   // 5. Settings
   await prisma.settings.createMany({ data: [
-    { id: uuid(), key: 'workshop_name', value: 'SuperFlow Workshop', value_type: 'string', description: 'Workshop display name' },
+    { id: uuid(), key: 'workshop_name', value: 'PrioraFlow Workshop', value_type: 'string', description: 'Workshop display name' },
     { id: uuid(), key: 'currency', value: 'AED', value_type: 'string', description: 'Default currency' },
     { id: uuid(), key: 'tax_rate', value: '5', value_type: 'number', description: 'Default VAT %' },
     { id: uuid(), key: 'token_expiry_days', value: '7', value_type: 'number', description: 'Approval token expiry in days' },
@@ -120,6 +158,9 @@ async function main() {
   console.log('   ahmed@superflow.app / Admin@123');
   console.log('   omar@superflow.app / Admin@123');
   console.log('   sara@superflow.app / Admin@123');
+  console.log('   maya.connect@superflow.app / Admin@123');
+  console.log('   manager.connect@superflow.app / Admin@123');
+  console.log('   gm.connect@superflow.app / Admin@123');
   console.log('');
   console.log(`📋 Sample job: SF-001 (${job.id})`);
 }

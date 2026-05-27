@@ -8,10 +8,12 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { InventoryService } from './inventory.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { TransferStockDto } from './dto/transfer-stock.dto';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Inventory')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.STOCK)
 @Controller('inventory')
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}

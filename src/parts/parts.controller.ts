@@ -9,10 +9,12 @@ import { CreatePartFitmentDto, UpdatePartFitmentDto } from './dto/part-fitment.d
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, PARTS_READ, PARTS_CREATE, PARTS_UPDATE, PARTS_DELETE, STOCK_ANALYTICS } from '../common/permissions';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Parts')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.STOCK)
 @Controller('parts')
 export class PartsController {
   constructor(

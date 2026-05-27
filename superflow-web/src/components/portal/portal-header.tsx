@@ -14,7 +14,7 @@ export function PortalHeader({ data }: PortalHeaderProps) {
     <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">SuperFlow service update</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">PrioraFlow service update</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Review your vehicle update</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
             Your vehicle has been checked with care. We&apos;ve added photos and clear costs for each item, so you can choose the next step with confidence.

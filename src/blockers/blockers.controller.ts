@@ -6,10 +6,12 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, BLOCKERS_READ, BLOCKERS_MANAGE } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Blockers')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.BOTTLENECK_DETECTION)
 @Controller('blockers')
 export class BlockersController {
   constructor(private service: BlockersService) {}

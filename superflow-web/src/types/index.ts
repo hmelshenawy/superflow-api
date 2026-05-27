@@ -49,8 +49,20 @@ export interface Workshop {
   timezone?: string | null;
   region?: string | null;
   plan_id?: string | null;
+  product_mode?: ProductMode | null;
+  productMode?: ProductMode | null;
+  dms_integration_enabled?: boolean | null;
+  dmsIntegrationEnabled?: boolean | null;
+  enabled_modules?: string[] | string | null;
+  enabledModules?: string[] | null;
+  package_name?: string | null;
+  packageName?: string | null;
+  display_name?: string | null;
+  displayName?: string | null;
   trial_ends_at?: string | null;
 }
+
+export type ProductMode = "WORKSHOP" | "CONNECT";
 
 // ─── Billing ───────────────────────────────────────────────
 

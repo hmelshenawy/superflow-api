@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsEmail, IsArray, IsIn } from 'class-validator';
+import { PRODUCT_MODES, ProductMode, ModuleKey } from '../../common/product-modes';
 
 export class CreateWorkshopDto {
   @IsString()
@@ -24,4 +25,24 @@ export class CreateWorkshopDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @IsOptional()
+  @IsIn([PRODUCT_MODES.WORKSHOP, PRODUCT_MODES.CONNECT])
+  productMode?: ProductMode;
+
+  @IsOptional()
+  @IsBoolean()
+  dmsIntegrationEnabled?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  enabledModules?: ModuleKey[];
+
+  @IsOptional()
+  @IsString()
+  packageName?: string;
+
+  @IsOptional()
+  @IsString()
+  displayName?: string;
 }

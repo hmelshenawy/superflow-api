@@ -1,4 +1,5 @@
 const { withSentryConfig } = require("@sentry/nextjs");
+const path = require("path");
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -75,6 +76,9 @@ const securityHeaders = [
 const nextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   async headers() {
     return [
       {

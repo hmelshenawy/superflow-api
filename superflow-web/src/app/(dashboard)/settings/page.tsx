@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import api, { getApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { hasAnyPermission, SETTINGS_TAB_PERMISSIONS } from "@/lib/permissions";
+import { PRODUCT_LABELS, PRODUCT_MODULES, getEnabledModules, getWorkshopProductMode } from "@/lib/product-modes";
 import type { WorkflowStageConfig, WorkflowTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -500,6 +501,56 @@ function WorkshopSection() {
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Save Settings
         </Button>
+      </div>
+    </SectionCard>
+  );
+}
+
+function ProductConfigurationSection() {
+  const { workshops, currentWorkshopId } = useAuthStore();
+  const workshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
+  const mode = getWorkshopProductMode(workshop);
+  const modules = getEnabledModules(workshop);
+  const dmsEnabled = Boolean(workshop?.dmsIntegrationEnabled ?? workshop?.dms_integration_enabled);
+
+  return (
+    <SectionCard title="Product Configuration" description="Product mode and module availability for this workspace.">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Product</p>
+          <p className="mt-2 text-lg font-bold text-foreground">{workshop?.packageName || workshop?.package_name || PRODUCT_LABELS[mode]}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{mode === "CONNECT" ? "DMS intelligence layer" : "Standalone operating system"}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">DMS integration</p>
+          <p className="mt-2 text-lg font-bold text-foreground">{dmsEnabled ? "Enabled" : "Not enabled"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{mode === "CONNECT" ? "Required for live DMS sync" : "Optional add-on"}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Branches</p>
+          <p className="mt-2 text-lg font-bold text-foreground">Primary branch</p>
+          <p className="mt-1 text-sm text-muted-foreground">Multi-branch analytics unlocks when additional locations are configured.</p>
+        </div>
+      </div>
+      <Separator />
+      <div>
+        <p className="text-sm font-semibold text-foreground">Enabled modules</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PRODUCT_MODULES[mode].map((moduleKey) => (
+            <span key={moduleKey} className={`rounded-full px-3 py-1 text-xs font-semibold ${modules.includes(moduleKey) ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+              {moduleKey.replace(/([A-Z])/g, " $1")}
+            </span>
+          ))}
+        </div>
+      </div>
+      <Separator />
+      <div>
+        <p className="text-sm font-semibold text-foreground">Role views</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
+          {["Service Advisor", "Workshop Manager", "General Manager", "Admin"].map((role) => (
+            <div key={role} className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">{role}</div>
+          ))}
+        </div>
       </div>
     </SectionCard>
   );
@@ -1162,6 +1213,7 @@ export default function SettingsPage() {
 
         {visibleTabs.includes("workshop") && (
           <TabsContent value="workshop" className="mt-6 space-y-6">
+            <ProductConfigurationSection />
             <WorkshopSection />
           </TabsContent>
         )}

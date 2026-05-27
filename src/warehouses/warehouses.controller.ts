@@ -7,10 +7,12 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
 
 @ApiTags('Warehouses')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.STOCK)
 @Controller('warehouses')
 export class WarehousesController {
   constructor(private service: WarehousesService) {}

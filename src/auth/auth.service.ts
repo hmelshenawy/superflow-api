@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules } from '../common/product-modes';
 
 @Injectable()
 export class AuthService {
@@ -83,6 +84,10 @@ export class AuthService {
           region: dto.region || 'gcc',
           is_active: true,
           plan_id: 'free_trial',
+          product_mode: 'WORKSHOP',
+          dms_integration_enabled: false,
+          enabled_modules: JSON.stringify(defaultEnabledModules('WORKSHOP')),
+          package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP,
           trial_ends_at: trialEndsAt,
         },
       }),
@@ -148,7 +153,17 @@ export class AuthService {
       accessToken,
       refreshToken,
       workshopId,
-      workshop: { id: workshopId, name: dto.workshopName.trim(), slug, plan_id: 'free_trial', trial_ends_at: trialEndsAt.toISOString() },
+      workshop: {
+        id: workshopId,
+        name: dto.workshopName.trim(),
+        slug,
+        plan_id: 'free_trial',
+        product_mode: 'WORKSHOP',
+        dms_integration_enabled: false,
+        enabled_modules: defaultEnabledModules('WORKSHOP'),
+        package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP,
+        trial_ends_at: trialEndsAt.toISOString(),
+      },
       subscription: { plan_id: 'free_trial', status: 'trialing', trial_ends_at: trialEndsAt.toISOString() },
       user: { id: userId, name: dto.name.trim(), email, role: role.name || 'workshop_admin' },
     };
@@ -416,11 +431,11 @@ export class AuthService {
     const roleName = user?.roles?.name;
     // platform_admin sees all active workshops regardless of assignment
     if (roleName === 'platform_admin') {
-      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true, subscriptions: { orderBy: { created_at: 'desc' }, take: 1, include: { plans: true } } } });
+      return this.prisma.raw.workshops.findMany({ where: { is_active: true }, select: { id: true, name: true, slug: true, is_active: true, plan_id: true, product_mode: true, dms_integration_enabled: true, enabled_modules: true, package_name: true, display_name: true, trial_ends_at: true, subscriptions: { orderBy: { created_at: 'desc' }, take: 1, include: { plans: true } } } as any });
     }
     const accesses = await this.prisma.raw.user_workshop_access.findMany({
       where: { user_id: userId },
-      include: { workshops: { select: { id: true, name: true, slug: true, is_active: true, plan_id: true, trial_ends_at: true, subscriptions: { orderBy: { created_at: 'desc' }, take: 1, include: { plans: true } } } } },
+      include: { workshops: { select: { id: true, name: true, slug: true, is_active: true, plan_id: true, product_mode: true, dms_integration_enabled: true, enabled_modules: true, package_name: true, display_name: true, trial_ends_at: true, subscriptions: { orderBy: { created_at: 'desc' }, take: 1, include: { plans: true } } } as any } },
     });
     return accesses.map((a: any) => a.workshops).filter((w: any) => w.is_active);
   }
@@ -536,7 +551,18 @@ export class AuthService {
 
     return {
       accessToken,
-      workshop: { id: workshop.id, name: workshop.name, slug: workshop.slug, plan_id: workshop.plan_id, trial_ends_at: workshop.trial_ends_at },
+      workshop: {
+        id: workshop.id,
+        name: workshop.name,
+        slug: workshop.slug,
+        plan_id: workshop.plan_id,
+        product_mode: (workshop as any).product_mode,
+        dms_integration_enabled: (workshop as any).dms_integration_enabled,
+        enabled_modules: (workshop as any).enabled_modules,
+        package_name: (workshop as any).package_name,
+        display_name: (workshop as any).display_name,
+        trial_ends_at: workshop.trial_ends_at,
+      },
     };
   }
 

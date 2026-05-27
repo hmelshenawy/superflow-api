@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
+import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules, normalizeProductMode } from '../common/product-modes';
 
 const DEFAULT_QC_TEMPLATE = [
   { name: 'Work Completion', icon: '✅', items: [
@@ -36,6 +37,38 @@ const DEFAULT_QC_TEMPLATE = [
 export class WorkshopsService {
   constructor(private prisma: PrismaService) {}
 
+  private productConfigData(dto: Partial<CreateWorkshopDto & UpdateWorkshopDto>) {
+    const productMode = normalizeProductMode(dto.productMode);
+    const modules = dto.enabledModules ?? defaultEnabledModules(productMode);
+    return {
+      product_mode: productMode,
+      dms_integration_enabled: dto.dmsIntegrationEnabled ?? productMode === 'CONNECT',
+      enabled_modules: JSON.stringify(modules),
+      package_name: dto.packageName || PRODUCT_MODE_DISPLAY_NAMES[productMode],
+      display_name: dto.displayName,
+    };
+  }
+
+  private updateProductConfigData(dto: UpdateWorkshopDto) {
+    const data: any = {};
+    if (dto.productMode !== undefined) {
+      const productMode = normalizeProductMode(dto.productMode);
+      data.product_mode = productMode;
+      data.package_name = dto.packageName || PRODUCT_MODE_DISPLAY_NAMES[productMode];
+      if (dto.enabledModules === undefined) {
+        data.enabled_modules = JSON.stringify(defaultEnabledModules(productMode));
+      }
+      if (dto.dmsIntegrationEnabled === undefined) {
+        data.dms_integration_enabled = productMode === 'CONNECT';
+      }
+    }
+    if (dto.dmsIntegrationEnabled !== undefined) data.dms_integration_enabled = dto.dmsIntegrationEnabled;
+    if (dto.enabledModules !== undefined) data.enabled_modules = JSON.stringify(dto.enabledModules);
+    if (dto.packageName !== undefined) data.package_name = dto.packageName;
+    if (dto.displayName !== undefined) data.display_name = dto.displayName;
+    return data;
+  }
+
   async create(dto: CreateWorkshopDto) {
     const existing = await this.prisma.raw.workshops.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new BadRequestException('Workshop slug already exists');
@@ -49,6 +82,7 @@ export class WorkshopsService {
         phone: dto.phone,
         email: dto.email,
         timezone: dto.timezone,
+        ...this.productConfigData(dto),
       },
     });
 
@@ -149,9 +183,10 @@ export class WorkshopsService {
 
   async update(id: string, dto: UpdateWorkshopDto) {
     await this.findOne(id);
+    const { productMode, dmsIntegrationEnabled, enabledModules, packageName, displayName, ...workshopDto } = dto;
     const updated = await this.prisma.raw.workshops.update({
       where: { id },
-      data: dto,
+      data: { ...workshopDto, ...this.updateProductConfigData(dto) } as any,
     });
     if (dto.is_active === false) {
       await this.revokeWorkshopSessions(id);

@@ -32,10 +32,12 @@ import { InventoryModule } from './inventory/inventory.module';
 import { JobPartsModule } from './job-parts/job-parts.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { QcChecklistsModule } from './qc-checklists/qc-checklists.module';
+import { DmsModule } from './dms/dms.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
 import { WorkshopGuard } from './common/guards/workshop.guard';
+import { ProductModuleGuard } from './common/product-modes';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -78,6 +80,7 @@ import { validateEnvironment } from './config/env.validation';
     JobPartsModule,
     PurchaseOrdersModule,
     QcChecklistsModule,
+    DmsModule,
   ],
   providers: [
     {
@@ -91,6 +94,10 @@ import { validateEnvironment } from './config/env.validation';
     {
       provide: APP_GUARD,
       useClass: PlanFeatureGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ProductModuleGuard,
     },
     {
       provide: APP_INTERCEPTOR,

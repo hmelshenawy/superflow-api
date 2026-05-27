@@ -1,5 +1,5 @@
 /**
- * SuperFlow Permission Definitions
+ * PrioraFlow Permission Definitions
  *
  * Each permission is a `category:action` string. The @RequirePermission()
  * decorator and PermissionsGuard use these to control endpoint access.
@@ -188,6 +188,29 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
       PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
       JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+    ],
+  },
+  workshop_manager: {
+    name: 'workshop_manager',
+    description: 'Connect workshop manager — controls loading, WIP, bottlenecks, capacity, and team performance',
+    permissions: [
+      JOBS_READ, JOBS_UPDATE, JOBS_ASSIGN, JOBS_TRANSITION,
+      PRIORITY_READ, INSIGHTS_DASHBOARD,
+      BLOCKERS_READ, BLOCKERS_MANAGE,
+      CUSTOMERS_READ, VEHICLES_READ,
+      ADMIN_SETTINGS, ADMIN_INTEGRATIONS,
+      QC_READ,
+    ],
+  },
+  general_manager: {
+    name: 'general_manager',
+    description: 'Connect general manager — executive visibility across branches, advisors, technicians, and DMS financials',
+    permissions: [
+      JOBS_READ,
+      PRIORITY_READ, INSIGHTS_DASHBOARD,
+      BLOCKERS_READ,
+      CUSTOMERS_READ, VEHICLES_READ,
+      ADMIN_SETTINGS, ADMIN_INTEGRATIONS, ADMIN_STATS, ADMIN_BILLING,
     ],
   },
   service_advisor: {
