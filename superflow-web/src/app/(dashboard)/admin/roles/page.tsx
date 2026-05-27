@@ -180,7 +180,7 @@ function isFullAccessRole(role: { name?: string | null; permissions?: string[] |
   return perms.length === 1 && perms[0] === "*";
 }
 
-export default function RolesPermissionsPage() {
+export function RolesPermissionsPanel() {
   const { user } = useAuthStore();
   const isAdmin = user?.role?.name === "admin" || user?.role?.name === "administrator" || user?.role?.name === "platform_admin" || user?.role?.name === "workshop_admin";
 
@@ -689,6 +689,10 @@ export default function RolesPermissionsPage() {
     </div>
     </RequirePermission>
   );
+}
+
+export default function RolesPermissionsPage() {
+  return <RolesPermissionsPanel />;
 }
 
 // Default role templates for the quick-fill dropdown
