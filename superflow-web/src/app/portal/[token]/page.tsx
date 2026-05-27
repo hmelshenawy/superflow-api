@@ -213,12 +213,12 @@ export default function PortalPage() {
 
       {data.job_photos?.length ? <GeneralVehiclePhotos photos={data.job_photos} token={token} /> : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+      {/* <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
         <p>
           Total estimate: <span className="font-bold text-slate-950 dark:text-white">{formatMoney(data.currency, data.grand_total)}</span>
         </p>
         <p className="mt-1">Only the total cost is shown here. Detailed workshop pricing stays with the service team.</p>
-      </section>
+      </section> */}
     </CustomerPortalLayout>
   );
 }

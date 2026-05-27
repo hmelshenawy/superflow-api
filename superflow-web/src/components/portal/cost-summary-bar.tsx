@@ -42,12 +42,12 @@ export function CostSummaryBar({
   return (
     <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
       <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
+        <div className="grid grid-cols-2 gap-12">
+          <div className="flex flex-col gap-2 rounded-2xl border border-green-500 p-4">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total estimate</p>
             <p className="text-lg font-bold text-slate-950 dark:text-white">{formatMoney(currency, grandTotal)}</p>
           </div>
-          <div>
+          <div className="flex flex-col gap-2 rounded-2xl border border-green-500 p-4">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Approved total</p>
             <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{formatMoney(currency, approvedTotal)}</p>
           </div>
