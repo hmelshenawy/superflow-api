@@ -6,7 +6,7 @@ import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules } from '../common/product-modes';
+import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules, normalizeProductMode, type ProductMode } from '../common/product-modes';
 
 @Injectable()
 export class AuthService {
@@ -59,7 +59,7 @@ export class AuthService {
   // durable session secrets. We store only their hash so a DB leak does not
   // expose reusable raw refresh tokens.
 
-  async signup(dto: { workshopName: string; name: string; email: string; password: string; phone?: string; region?: string }) {
+  async signup(dto: { workshopName: string; name: string; email: string; password: string; phone?: string; region?: string; productMode?: ProductMode }) {
     const email = dto.email.trim().toLowerCase();
     const existingUser = await this.prisma.raw.users.findUnique({ where: { email } });
     if (existingUser) throw new ConflictException('Email already exists');
@@ -72,6 +72,9 @@ export class AuthService {
     const slug = await this.uniqueWorkshopSlug(dto.workshopName);
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const productMode = normalizeProductMode(dto.productMode);
+    const enabledModules = defaultEnabledModules(productMode);
+    const packageName = PRODUCT_MODE_DISPLAY_NAMES[productMode];
 
     await this.prisma.raw.$transaction([
       this.prisma.raw.workshops.create({
@@ -84,10 +87,10 @@ export class AuthService {
           region: dto.region || 'gcc',
           is_active: true,
           plan_id: 'free_trial',
-          product_mode: 'WORKSHOP',
-          dms_integration_enabled: false,
-          enabled_modules: JSON.stringify(defaultEnabledModules('WORKSHOP')),
-          package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP,
+          product_mode: productMode,
+          dms_integration_enabled: productMode === 'CONNECT',
+          enabled_modules: JSON.stringify(enabledModules),
+          package_name: packageName,
           trial_ends_at: trialEndsAt,
         },
       }),
@@ -158,10 +161,10 @@ export class AuthService {
         name: dto.workshopName.trim(),
         slug,
         plan_id: 'free_trial',
-        product_mode: 'WORKSHOP',
-        dms_integration_enabled: false,
-        enabled_modules: defaultEnabledModules('WORKSHOP'),
-        package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP,
+        product_mode: productMode,
+        dms_integration_enabled: productMode === 'CONNECT',
+        enabled_modules: enabledModules,
+        package_name: packageName,
         trial_ends_at: trialEndsAt.toISOString(),
       },
       subscription: { plan_id: 'free_trial', status: 'trialing', trial_ends_at: trialEndsAt.toISOString() },

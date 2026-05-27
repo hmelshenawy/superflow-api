@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Cable, Wrench } from "lucide-react";
 import { PrioraFlowLogo } from "@/components/brand/prioraflow-logo";
 import api, { setAccessToken, getApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PRODUCT_LABELS } from "@/lib/product-modes";
 import { useAuthStore } from "@/stores/auth";
-import type { AuthTokens, User, Workshop } from "@/types";
+import type { AuthTokens, ProductMode, User, Workshop } from "@/types";
 
 type SignupResponse = AuthTokens & {
   user: User;
@@ -20,11 +21,14 @@ type SignupResponse = AuthTokens & {
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialProduct = searchParams.get("product")?.toLowerCase() === "connect" ? "CONNECT" : "WORKSHOP";
   const [workshopName, setWorkshopName] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [productMode, setProductMode] = useState<ProductMode>(initialProduct);
   const [loading, setLoading] = useState(false);
   const setAuthState = useAuthStore.setState;
 
@@ -37,6 +41,7 @@ export default function SignupPage() {
         name,
         email,
         password,
+        productMode,
         ...(phone.trim() ? { phone } : {}),
       });
 
@@ -52,7 +57,7 @@ export default function SignupPage() {
         currentWorkshopId: data.workshopId,
       });
 
-      toast.success("Workspace created — welcome to PrioraFlow");
+      toast.success(`${PRODUCT_LABELS[productMode]} workspace created`);
       router.push("/jobs");
     } catch (error: any) {
       const { code, message } = getApiError(error);
@@ -74,10 +79,48 @@ export default function SignupPage() {
         <div className="mb-8 text-center">
           <PrioraFlowLogo className="justify-center" imageClassName="h-24 w-auto" framed />
           <h1 className="mt-3 text-2xl font-bold text-foreground">Start your PrioraFlow trial</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create your workshop workspace in under a minute.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Choose your product and create your workspace.</p>
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-lg border bg-card p-6 shadow-sm">
+          <div className="space-y-2">
+            <Label>Product</Label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {([
+                {
+                  mode: "WORKSHOP" as ProductMode,
+                  icon: Wrench,
+                  title: "Workshop",
+                  description: "Full standalone OS with jobs, stock, estimates, and invoicing.",
+                },
+                {
+                  mode: "CONNECT" as ProductMode,
+                  icon: Cable,
+                  title: "Connect",
+                  description: "DMS-connected WIP visibility, loading, bottlenecks, and dashboards.",
+                },
+              ]).map((option) => {
+                const Icon = option.icon;
+                const active = productMode === option.mode;
+                return (
+                  <button
+                    key={option.mode}
+                    type="button"
+                    onClick={() => setProductMode(option.mode)}
+                    className={`rounded-lg border p-3 text-left transition ${
+                      active ? "border-blue-600 bg-blue-50 text-blue-950 ring-2 ring-blue-100" : "border-border bg-background hover:border-blue-200"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold">
+                      <Icon className="h-4 w-4" />
+                      PrioraFlow {option.title}
+                    </span>
+                    <span className="mt-2 block text-xs leading-5 text-muted-foreground">{option.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="workshopName">Workshop name</Label>
             <Input id="workshopName" value={workshopName} onChange={(e) => setWorkshopName(e.target.value)} placeholder="Premium Auto Workshop" required autoFocus />
