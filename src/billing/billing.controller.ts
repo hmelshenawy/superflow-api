@@ -20,8 +20,6 @@ export class BillingController {
   ) {}
 
   @Get('pricing')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all plans with regional pricing and features' })
   getPricing(@Query('region') region: string = 'gcc') {
     return this.billingService.getPricing(region);
