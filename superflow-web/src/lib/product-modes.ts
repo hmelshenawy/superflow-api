@@ -108,12 +108,10 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
   CONNECT: [
     { href: "/dashboard", label: "Command Center", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
     { href: "/jobs", label: "WIP Board", icon: LayoutGrid, module: MODULES.WIP },
-    { href: "/jobs", label: "Workshop Loading", icon: Boxes, module: MODULES.WORKSHOP_LOADING },
     { href: "/insights", label: "Capacity", icon: SlidersHorizontal, module: MODULES.CAPACITY_MANAGEMENT, requirePermission: "insights:dashboard" },
     { href: "/advisor", label: "Priority Queue", icon: Target, module: MODULES.PRIORITY_ENGINE, requirePermission: "priority:read" },
     { href: "/blockers", label: "Bottlenecks", icon: AlertTriangle, module: MODULES.BOTTLENECK_DETECTION, requirePermission: "blockers:read" },
     { href: "/advisor", label: "Advisors", icon: UserCheck, module: MODULES.ADVISOR_PERFORMANCE, requirePermission: "priority:read", roles: ["service_advisor", "manager", "workshop_manager", "general_manager", "admin", "workshop_admin"] },
-    { href: "/jobs", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_PERFORMANCE },
     { href: "/insights", label: "Branch Analytics", icon: BarChart3, module: MODULES.BRANCH_PERFORMANCE, requirePermission: "insights:dashboard" },
     { href: "/admin/booking-import", label: "DMS Booking Import", icon: FileUp, module: MODULES.BOOKING_IMPORT },
     { href: "/insights", label: "Reports", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
