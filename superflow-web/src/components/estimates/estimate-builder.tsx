@@ -465,7 +465,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
         const showReset = concernApproval?.isLocked && (concernApproval.customerDecision === "declined" || concernApproval.customerDecision === "deferred");
 
         return (
-          <div key={group.key} className={`mb-2 border-b border-border ${borderClass} ${dimmedClass} `}>
+          <div key={group.key} className={`mb-2 rounded-3xl border-b border-border ${borderClass} ${dimmedClass} `}>
             {/* Concern header row */}
             <div
               role="button" tabIndex={0}
