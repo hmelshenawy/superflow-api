@@ -28,7 +28,8 @@ import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download, AlertTriang
 import SubscriptionManagerDialog from "./SubscriptionManagerDialog";
 import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
-import UsersRolesPage from "../users-roles/page";
+import { UsersPanel } from "../users-roles/page";
+import { RolesPermissionsPanel } from "../roles/page";
 
 interface WorkshopUser {
   id: string;
@@ -277,7 +278,8 @@ export default function WorkshopsPage() {
         </div>
         <TabsList>
           <TabsTrigger value="workshops">Workshops</TabsTrigger>
-          <TabsTrigger value="users">Users & Roles</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="roles">Roles</TabsTrigger>
         </TabsList>
       </div>
 
@@ -552,7 +554,11 @@ export default function WorkshopsPage() {
       </TabsContent>
 
       <TabsContent value="users" className="space-y-6">
-        <UsersRolesPage />
+        <UsersPanel showHeader={false} />
+      </TabsContent>
+
+      <TabsContent value="roles" className="space-y-6">
+        <RolesPermissionsPanel showHeader={false} />
       </TabsContent>
     </Tabs>
     </RequirePermission>
