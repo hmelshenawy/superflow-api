@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -42,11 +42,18 @@ const PRODUCT_MULTIPLIER: Record<ProductKey, number> = {
   workshop: 1.5,
 };
 
-const FALLBACK_PLANS: PlanPricing[] = [
-  { id: "starter", name: "Starter", displayName: "Starter", description: "Core operational visibility for a single location.", price: 73000, currency: "AED", features: [] },
-  { id: "professional", name: "Professional", displayName: "Professional", description: "Priority engine, next best actions, and deeper team control.", price: 165000, currency: "AED", features: [] },
-  { id: "enterprise", name: "Enterprise", displayName: "Enterprise", description: "Multi-branch dashboards, management analytics, and expanded limits.", price: 257000, currency: "AED", features: [] },
-];
+const CONNECT_PLANS_BY_REGION: Record<"gcc" | "us", PlanPricing[]> = {
+  gcc: [
+    { id: "starter", name: "Starter", displayName: "Starter", description: "Core operational visibility for a single location.", price: 73000, currency: "AED", features: [] },
+    { id: "professional", name: "Professional", displayName: "Professional", description: "Priority engine, next best actions, and deeper team control.", price: 165000, currency: "AED", features: [] },
+    { id: "enterprise", name: "Enterprise", displayName: "Enterprise", description: "Multi-branch dashboards, management analytics, and expanded limits.", price: 257000, currency: "AED", features: [] },
+  ],
+  us: [
+    { id: "starter", name: "Starter", displayName: "Starter", description: "Core operational visibility for a single location.", price: 19900, currency: "USD", features: [] },
+    { id: "professional", name: "Professional", displayName: "Professional", description: "Priority engine, next best actions, and deeper team control.", price: 34900, currency: "USD", features: [] },
+    { id: "enterprise", name: "Enterprise", displayName: "Enterprise", description: "Multi-branch dashboards, management analytics, and expanded limits.", price: 54900, currency: "USD", features: [] },
+  ],
+};
 
 const TIER_SUMMARY: Record<string, string[]> = {
   starter: ["Single location", "Core WIP visibility", "Standard reports"],
@@ -150,31 +157,6 @@ function normalizedTierId(plan: PlanPricing) {
   return "starter";
 }
 
-function normalizePlansResponse(data: unknown): PlanPricing[] {
-  const source: unknown[] = Array.isArray(data)
-    ? data
-    : Array.isArray((data as any)?.plans)
-      ? (data as any).plans
-      : Array.isArray((data as any)?.data)
-        ? (data as any).data
-        : [];
-
-  const normalized = source
-    .filter((item) => item && typeof item === "object")
-    .map((item: any): PlanPricing => ({
-      id: String(item.id || item.planId || item.key || ""),
-      name: String(item.name || item.displayName || item.id || "Plan"),
-      description: String(item.description || ""),
-      price: Number(item.price ?? item.price_monthly_cents ?? 0),
-      currency: String(item.currency || "AED"),
-      displayName: String(item.displayName || item.display_name || item.name || item.id || "Plan"),
-      features: Array.isArray(item.features) ? item.features : [],
-    }))
-    .filter((item) => item.id && item.price >= 0);
-
-  return normalized.length ? normalized : FALLBACK_PLANS;
-}
-
 function PackageCard({ product, plan, recommended }: { product: ProductKey; plan: PlanPricing; recommended?: boolean }) {
   const tierId = normalizedTierId(plan);
   const price = productPrice(plan, product);
@@ -222,8 +204,6 @@ function PackageCard({ product, plan, recommended }: { product: ProductKey; plan
 }
 
 export default function PricingPage() {
-  const [plans, setPlans] = useState<PlanPricing[]>([]);
-  const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState<"gcc" | "us">("gcc");
 
   useEffect(() => {
@@ -231,20 +211,7 @@ export default function PricingPage() {
     if (saved === "us" || saved === "gcc") setRegion(saved);
   }, []);
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api"}/billing/pricing?region=${region}`)
-      .then((r) => r.json())
-      .then((data) => { setPlans(normalizePlansResponse(data)); setLoading(false); })
-      .catch(() => { setPlans(FALLBACK_PLANS); setLoading(false); });
-  }, [region]);
-
-  const visiblePlans = useMemo(() => {
-    const source = Array.isArray(plans) && plans.length ? plans : FALLBACK_PLANS;
-    return source.slice()
-      .filter((plan) => !String(plan.id || "").toLowerCase().includes("trial"))
-      .sort((a, b) => a.price - b.price);
-  }, [plans]);
+  const visiblePlans = CONNECT_PLANS_BY_REGION[region];
 
   const toggleRegion = (r: "gcc" | "us") => {
     setRegion(r);
@@ -338,35 +305,31 @@ export default function PricingPage() {
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8">
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-slate-500">Loading packages...</div>
-        ) : (
-          <div className="grid gap-8 xl:grid-cols-2">
-            {productOrder.map((product) => (
-              <div key={product}>
-                <div className="mb-4 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-black uppercase tracking-[0.2em] text-blue-600">{PRODUCT_DETAILS[product].eyebrow}</p>
-                    <h2 className="mt-1 text-3xl font-black">{PRODUCT_DETAILS[product].name} tiers</h2>
-                  </div>
-                  {product === "workshop" && (
-                    <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-white">+50%</span>
-                  )}
+        <div className="grid gap-8 xl:grid-cols-2">
+          {productOrder.map((product) => (
+            <div key={product}>
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-blue-600">{PRODUCT_DETAILS[product].eyebrow}</p>
+                  <h2 className="mt-1 text-3xl font-black">{PRODUCT_DETAILS[product].name} tiers</h2>
                 </div>
-                <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-                  {visiblePlans.map((plan) => (
-                    <PackageCard
-                      key={`${product}-${plan.id}`}
-                      product={product}
-                      plan={plan}
-                      recommended={product === "connect" && normalizedTierId(plan) === "professional"}
-                    />
-                  ))}
-                </div>
+                {product === "workshop" && (
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-white">+50%</span>
+                )}
               </div>
-            ))}
-          </div>
-        )}
+              <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                {visiblePlans.map((plan) => (
+                  <PackageCard
+                    key={`${product}-${plan.id}`}
+                    product={product}
+                    plan={plan}
+                    recommended={product === "connect" && normalizedTierId(plan) === "professional"}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mx-auto grid w-full max-w-7xl gap-5 px-5 py-10 sm:px-8 lg:grid-cols-3">
