@@ -1817,7 +1817,7 @@ export default function JobDetailPage() {
             </div>
 
             {/* Zone 3 — Footer with totals */}
-            <div className="border-t border-border border-x-[3px] border-x-border rounded-2xl px-7 py-6 bg-zinc-900">
+            <div className="border-2 border-border rounded-2xl px-7 py-6 border-x-[3px] border-x-border bg-background dark:bg-zinc-900">
               <div className="grid grid-cols-2 gap-x-12">
                 <div>
                   <p className="border-b border-border pb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
