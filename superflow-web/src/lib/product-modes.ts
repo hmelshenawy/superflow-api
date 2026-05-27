@@ -115,7 +115,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/advisor", label: "Advisors", icon: UserCheck, module: MODULES.ADVISOR_PERFORMANCE, requirePermission: "priority:read", roles: ["service_advisor", "manager", "workshop_manager", "general_manager", "admin", "workshop_admin"] },
     { href: "/jobs", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_PERFORMANCE },
     { href: "/insights", label: "Branch Analytics", icon: BarChart3, module: MODULES.BRANCH_PERFORMANCE, requirePermission: "insights:dashboard" },
-    { href: "/admin/booking-import", label: "Import Booking", icon: FileUp, module: MODULES.BOOKING_IMPORT },
+    { href: "/admin/booking-import", label: "DMS Booking Import", icon: FileUp, module: MODULES.BOOKING_IMPORT },
     { href: "/insights", label: "Reports", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
     { href: "/settings", label: "Settings", icon: Settings },
   ],
