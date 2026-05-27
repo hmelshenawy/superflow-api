@@ -211,12 +211,7 @@ export default function PortalPage() {
         </section>
       ) : null}
 
-      {data.job_photos?.length ? (
-        <section className="space-y-3">
-          <h2 className="text-xl font-bold text-slate-950 dark:text-white">Vehicle photos</h2>
-          <FindingPhotoGrid photos={data.job_photos} token={token} label="Vehicle photo" />
-        </section>
-      ) : null}
+      {data.job_photos?.length ? <GeneralVehiclePhotos photos={data.job_photos} token={token} /> : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
         <p>
@@ -233,7 +228,7 @@ function StandaloneFinding({ finding, token }: { finding: Finding; token: string
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <button type="button" onClick={() => setExpanded((current) => !current)} className="flex w-full items-start justify-between gap-3 p-4 text-left">
+      <button type="button" onClick={() => setExpanded((current) => !current)} className="flex w-full items-start justify-between gap-3 p-4 text-left transition duration-150 hover:bg-slate-50 dark:hover:bg-slate-950">
         <div>
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Information only</p>
           <h3 className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{finding.label}</h3>
@@ -250,6 +245,32 @@ function StandaloneFinding({ finding, token }: { finding: Finding; token: string
         </div>
       ) : null}
     </article>
+  );
+}
+
+function GeneralVehiclePhotos({ photos, token }: { photos: PortalData["job_photos"]; token: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!photos?.length) return null;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <button type="button" onClick={() => setExpanded((current) => !current)} className="flex w-full items-start justify-between gap-3 p-4 text-left transition duration-150 hover:bg-slate-50 dark:hover:bg-slate-950 sm:p-5">
+        <div>
+          <h2 className="text-xl font-bold text-slate-950 dark:text-white">General vehicle photos</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {photos.length} {photos.length === 1 ? "photo" : "photos"} from the vehicle check-in and workshop review.
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          {expanded ? "Hide" : "Expand"}
+        </span>
+      </button>
+      {expanded ? (
+        <div className="border-t border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950 sm:p-5">
+          <FindingPhotoGrid photos={photos} token={token} label="General vehicle photo" />
+        </div>
+      ) : null}
+    </section>
   );
 }
 

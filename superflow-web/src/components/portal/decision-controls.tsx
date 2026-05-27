@@ -9,7 +9,7 @@ interface DecisionControlsProps {
   onChange: (decision: PortalDecision) => void;
 }
 
-const baseClass = "inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition sm:flex-none";
+const baseClass = "inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition duration-150 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 sm:flex-none";
 
 export function DecisionControls({ value, disabled, onChange }: DecisionControlsProps) {
   const options: { decision: PortalDecision; icon: ReactNode; activeClass: string; idleClass: string }[] = [

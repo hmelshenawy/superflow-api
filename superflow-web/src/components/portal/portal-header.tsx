@@ -15,9 +15,9 @@ export function PortalHeader({ data }: PortalHeaderProps) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">SuperFlow service update</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Review your vehicle repair</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Review your vehicle update</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Choose what you would like us to do for each recommendation. Your choices are sent directly to the service team.
+            Your vehicle has been checked with care. We&apos;ve added photos and clear costs for each item, so you can choose the next step with confidence.
           </p>
         </div>
         <div className="rounded-full bg-slate-100 p-2 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
