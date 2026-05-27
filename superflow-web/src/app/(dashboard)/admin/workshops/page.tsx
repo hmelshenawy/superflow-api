@@ -7,6 +7,7 @@ import type { ProductMode } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PRODUCT_LABELS, PRODUCT_MODULES, getEnabledModules, getWorkshopProductMode } from "@/lib/product-modes";
 import {
   Table,
@@ -27,6 +28,7 @@ import { Plus, RefreshCw, Pencil, Power, RotateCcw, Users, Download, AlertTriang
 import SubscriptionManagerDialog from "./SubscriptionManagerDialog";
 import { toast } from "sonner";
 import { RequirePermission } from "@/components/auth/require-permission";
+import UsersRolesPage from "../users-roles/page";
 
 interface WorkshopUser {
   id: string;
@@ -267,20 +269,26 @@ export default function WorkshopsPage() {
 
   return (
     <RequirePermission permissions={["workshops:read"]}>
-    <div className="space-y-6">
+    <Tabs defaultValue="workshops" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Workshops</h1>
-          <p className="text-sm text-muted-foreground">Manage workshops, user assignments, and account activation</p>
+          <p className="text-sm text-muted-foreground">Manage workshop accounts, users, roles, and access.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchWorkshops} disabled={loading}>
-            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-          </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" /> Add Workshop
-          </Button>
-        </div>
+        <TabsList>
+          <TabsTrigger value="workshops">Workshops</TabsTrigger>
+          <TabsTrigger value="users">Users & Roles</TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="workshops" className="space-y-6">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={fetchWorkshops} disabled={loading}>
+          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+        </Button>
+        <Button size="sm" onClick={openCreate}>
+          <Plus className="mr-1 h-4 w-4" /> Add Workshop
+        </Button>
       </div>
 
       {loadError ? (
@@ -541,7 +549,12 @@ export default function WorkshopsPage() {
         workshopName={billingWorkshop?.name ?? ""}
         workshopRegion={billingWorkshop?.region ?? null}
       />
-    </div>
+      </TabsContent>
+
+      <TabsContent value="users" className="space-y-6">
+        <UsersRolesPage />
+      </TabsContent>
+    </Tabs>
     </RequirePermission>
   );
 }

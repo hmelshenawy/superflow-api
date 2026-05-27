@@ -18,7 +18,6 @@ import {
   Menu,
   Settings,
   Shield,
-  Users,
   BarChart3,
   X,
   ScrollText,
@@ -27,7 +26,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
 
 const SHARED_ADMIN_NAV: NavItem[] = [
-  { href: "/admin/users-roles", label: "Users & Permissions", icon: Users, requirePermission: "admin:users" },
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
   { href: "/admin/workshops", label: "Workshops", icon: Building2, requirePermission: "workshops:read" },
   { href: "/admin/usage", label: "Usage Overview", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
