@@ -1820,21 +1820,21 @@ export default function JobDetailPage() {
             <div className="border-2 border-border rounded-2xl px-7 py-6 border-x-[3px] border-x-border bg-background dark:bg-zinc-900">
               <div className="grid grid-cols-2 gap-x-12">
                 <div>
-                  <p className="border-b border-border pb-2 text-[14px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
-                  <div className="mt-2 flex justify-between text-[18px] font-medium text-foreground">
+                  <p className="border-b border-border pb-2 text-[16px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
+                  <div className="mt-2 flex justify-between text-[14px] font-medium text-foreground">
                     <span>Grand total</span>
                     <span>{formatMoney(total)}</span>
                   </div>
                 </div>
                 <div className={hasApproved ? "" : "opacity-40"}>
-                  <p className="border-b border-border pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Approved</p>
+                  <p className="border-b border-border pb-2 text-[16px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Approved</p>
                   {hasApproved ? (
                     <div className="mt-2 space-y-0.5">
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Labour</span><span>{formatMoney(approvedLabour)}</span></div>
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Parts</span><span>{formatMoney(approvedParts)}</span></div>
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Sublet</span><span>{formatMoney(approvedSublet)}</span></div>
-                      <div className="flex justify-between text-[13px] text-muted-foreground"><span>Tax ({effectiveTaxRate.toFixed(1)}%)</span><span>{formatMoney(approvedVat)}</span></div>
-                      <div className="mt-1.5 flex justify-between border-t border-border pt-2 text-[14px] font-medium text-foreground"><span>Total approved</span><span>{formatMoney(approvedTotal + approvedVat)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Labour</span><span>{formatMoney(approvedLabour)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Parts</span><span>{formatMoney(approvedParts)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Sublet</span><span>{formatMoney(approvedSublet)}</span></div>
+                      <div className="flex justify-between text-[14px] text-muted-foreground"><span>Tax ({effectiveTaxRate.toFixed(1)}%)</span><span>{formatMoney(approvedVat)}</span></div>
+                      <div className="mt-1.5 flex justify-between border-t border-border pt-2 text-[16px] font-medium text-foreground"><span>Total approved</span><span>{formatMoney(approvedTotal + approvedVat)}</span></div>
                     </div>
                   ) : (
                     <p className="mt-2 text-[13px] text-muted-foreground">No concerns approved yet</p>
