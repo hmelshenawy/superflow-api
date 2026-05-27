@@ -186,7 +186,7 @@ function PackageCard({ product, plan, recommended }: { product: ProductKey; plan
         </p>
       )}
       <Link
-        href="/signup"
+        href={`/signup?product=${product}`}
         className={`mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-black transition ${recommended ? "bg-white text-blue-700 hover:bg-blue-50" : "bg-slate-950 text-white hover:bg-slate-800"}`}
       >
         Start trial <ArrowRight className="h-4 w-4" />
