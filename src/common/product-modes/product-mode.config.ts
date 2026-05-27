@@ -17,6 +17,7 @@ export const MODULE_KEYS = {
   WIP: 'wip',
   OPERATIONAL_ANALYTICS: 'operationalAnalytics',
   DMS_INTEGRATION: 'dmsIntegration',
+  BOOKING_IMPORT: 'bookingImport',
   WORKSHOP_LOADING: 'workshopLoading',
   CAPACITY_MANAGEMENT: 'capacityManagement',
   PRIORITY_ENGINE: 'priorityEngine',
@@ -51,6 +52,7 @@ export const PRODUCT_MODE_MODULES: Record<ProductMode, ModuleKey[]> = {
   ],
   CONNECT: [
     MODULE_KEYS.DMS_INTEGRATION,
+    MODULE_KEYS.BOOKING_IMPORT,
     MODULE_KEYS.WORKSHOP_LOADING,
     MODULE_KEYS.CAPACITY_MANAGEMENT,
     MODULE_KEYS.WIP,

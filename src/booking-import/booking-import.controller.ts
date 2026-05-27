@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { RequirePermission, IMPORT_PARSE, IMPORT_RUN } from '../common/permissions';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MODULE_KEYS, RequireModule } from '../common/product-modes';
 
 const MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMPORT_MIME_TYPES = new Set([
@@ -21,6 +22,7 @@ const ALLOWED_IMPORT_MIME_TYPES = new Set([
 @ApiTags('Booking Import')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequireModule(MODULE_KEYS.BOOKING_IMPORT)
 @Controller('booking-import')
 export class BookingImportController {
   constructor(private service: BookingImportService) {}
