@@ -684,7 +684,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       {/* Add concern row */}
       <div
         role="button" tabIndex={0}
-        className="flex cursor-pointer items-center gap-1.5 px-5 py-2.5 text-[13px] text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+        className="flex cursor-pointer items-center gap-1.5 px-5 py-2.5 text-[13px] text-muted-foreground hover:bg-muted/50 hover:text-foreground small"
         onClick={createCustomGroup}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); createCustomGroup(); } }}
       >
