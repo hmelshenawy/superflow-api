@@ -5,7 +5,15 @@ import { useCrmVehicleDashboard } from "@/hooks/use-crm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Car, User, Wrench, DollarSign, Calendar, Gauge } from "lucide-react";
+import { ArrowLeft, User, Wrench, DollarSign, Calendar, Gauge, ChevronRight } from "lucide-react";
+
+function formatMoney(value: number | null | undefined) {
+  return new Intl.NumberFormat('en-AE', { style: 'currency', currency: 'AED', maximumFractionDigits: 0 }).format(Number(value || 0));
+}
+
+function formatDate(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleDateString() : '—';
+}
 
 export default function VehicleDetailPage() {
   const params = useParams();
@@ -121,7 +129,7 @@ export default function VehicleDetailPage() {
           <CardContent>
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{stats.totalRevenue.toLocaleString()}</span>
+              <span className="text-2xl font-bold">{formatMoney(stats.totalRevenue)}</span>
             </div>
           </CardContent>
         </Card>
@@ -163,21 +171,44 @@ export default function VehicleDetailPage() {
             <p className="text-center text-muted-foreground py-4">No service history found</p>
           ) : (
             <div className="space-y-3">
-              {serviceHistory.map((service: any) => (
-                <div key={service.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <div className="font-medium">{service.summary || "Service"}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {service.odometer_km?.toLocaleString() || "—"} km
+              {serviceHistory.map((service: any) => {
+                const canOpenJob = Boolean(service.job_id);
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => canOpenJob && router.push(`/jobs/${service.job_id}`)}
+                    className={`w-full rounded-lg border p-4 text-left transition ${canOpenJob ? "hover:bg-muted/60 cursor-pointer" : "cursor-default"}`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold">Job #{service.job_number || service.dms_ro_number || "—"}</span>
+                          {service.status && <Badge variant="outline">{String(service.status).replace(/_/g, " ")}</Badge>}
+                        </div>
+                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                          {service.summary || "No repair summary recorded"}
+                        </p>
+                        <div className="grid gap-2 text-sm sm:grid-cols-3">
+                          <div>
+                            <span className="text-muted-foreground">Date: </span>
+                            <span className="font-medium">{formatDate(service.serviced_at)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Mileage: </span>
+                            <span className="font-medium">{service.odometer_km ? `${Number(service.odometer_km).toLocaleString()} km` : "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Cost: </span>
+                            <span className="font-medium">{typeof service.estimate_total === "number" ? formatMoney(service.estimate_total) : "—"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {canOpenJob && <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />}
                     </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {service.serviced_at
-                      ? new Date(service.serviced_at).toLocaleDateString()
-                      : "—"}
-                  </div>
-                </div>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </CardContent>

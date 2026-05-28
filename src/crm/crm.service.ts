@@ -373,7 +373,7 @@ export class CrmService {
           completed_at: true,
           invoiced_at: true,
           created_at: true,
-          estimate_lines: { select: { line_total: true } },
+          estimate_lines: { select: { description: true, line_total: true }, orderBy: { created_at: 'asc' } },
         },
         orderBy: [{ completed_at: 'desc' }, { created_at: 'desc' }],
         take: 20,
@@ -392,7 +392,16 @@ export class CrmService {
         job_id: job.id,
         job_number: job.job_number,
         status: job.status,
-        summary: job.customer_concern || job.dms_ro_number || job.job_number || 'Workshop job',
+        summary:
+          job.customer_concern ||
+          (job.estimate_lines ?? [])
+            .map((line: any) => line.description)
+            .filter(Boolean)
+            .slice(0, 2)
+            .join(' / ') ||
+          job.dms_ro_number ||
+          job.job_number ||
+          'Workshop job',
         odometer_km: job.odometer_in,
         serviced_at: job.completed_at || job.invoiced_at || job.created_at,
         estimate_total: (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0),
