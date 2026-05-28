@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api, { getApiError } from "@/lib/api";
-import type { Job } from "@/types";
+import type { Customer, Job } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ export default function NewJobPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerMatches, setCustomerMatches] = useState<Customer[]>([]);
 
   // Vehicle fields
   const [vehicleMake, setVehicleMake] = useState("Mercedes-Benz");
@@ -34,6 +36,38 @@ export default function NewJobPage() {
   const [promisedAt, setPromisedAt] = useState("");
   const [dmsRoNumber, setDmsRoNumber] = useState("");
 
+  useEffect(() => {
+    const q = [customerName, customerPhone, customerEmail].map((v) => v.trim()).find((v) => v.length >= 3);
+    if (!q || selectedCustomer) {
+      setCustomerMatches([]);
+      return;
+    }
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const { data } = await api.get<Customer[]>("/customers/search", { params: { q } });
+        setCustomerMatches(data.slice(0, 5));
+      } catch {
+        setCustomerMatches([]);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [customerName, customerPhone, customerEmail, selectedCustomer]);
+
+  const clearSelectedCustomer = () => {
+    setSelectedCustomer(null);
+  };
+
+  const chooseCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setCustomerName(customer.name || "");
+    setCustomerPhone(customer.phone || "");
+    setCustomerEmail(customer.email || "");
+    setCustomerMatches([]);
+    toast.success("Existing customer selected");
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim()) {
@@ -47,14 +81,16 @@ export default function NewJobPage() {
 
     setSaving(true);
     try {
-      // 1. Create customer
-      const customerRes = await api.post("/customers", {
-        name: customerName.trim(),
-        phone: customerPhone.trim() || undefined,
-        email: customerEmail.trim() || undefined,
-      });
-
-      const customerId = customerRes.data.id;
+      // 1. Reuse selected customer, otherwise backend will find-or-create safely
+      let customerId = selectedCustomer?.id;
+      if (!customerId) {
+        const customerRes = await api.post("/customers", {
+          name: customerName.trim(),
+          phone: customerPhone.trim() || undefined,
+          email: customerEmail.trim() || undefined,
+        });
+        customerId = customerRes.data.id;
+      }
 
       // 2. Create vehicle
       const vehicleRes = await api.post("/vehicles", {
@@ -115,7 +151,7 @@ export default function NewJobPage() {
                   <Input
                     id="customerName"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    onChange={(e) => { clearSelectedCustomer(); setCustomerName(e.target.value); }}
                     placeholder="Mohammed Al Maktoum"
                   />
                 </div>
@@ -124,7 +160,7 @@ export default function NewJobPage() {
                   <Input
                     id="customerPhone"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => { clearSelectedCustomer(); setCustomerPhone(e.target.value); }}
                     placeholder="+971 50 123 4567"
                   />
                 </div>
@@ -134,11 +170,44 @@ export default function NewJobPage() {
                     id="customerEmail"
                     type="email"
                     value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    onChange={(e) => { clearSelectedCustomer(); setCustomerEmail(e.target.value); }}
                     placeholder="customer@email.com"
                   />
                 </div>
               </div>
+
+              {selectedCustomer && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                  Using existing customer: <strong>{selectedCustomer.name}</strong>
+                  {selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ""}
+                  {selectedCustomer.email ? ` · ${selectedCustomer.email}` : ""}
+                </div>
+              )}
+
+              {!selectedCustomer && customerMatches.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                  <div className="mb-2 font-medium text-foreground">Existing customers found</div>
+                  <div className="space-y-2">
+                    {customerMatches.map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-left hover:bg-muted"
+                        onClick={() => chooseCustomer(customer)}
+                      >
+                        <span>
+                          <span className="font-medium">{customer.name || "Unnamed"}</span>
+                          <span className="text-muted-foreground">
+                            {customer.phone ? ` · ${customer.phone}` : ""}
+                            {customer.email ? ` · ${customer.email}` : ""}
+                          </span>
+                        </span>
+                        <span className="text-xs text-primary">Use</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Vehicle */}

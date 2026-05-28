@@ -10,8 +10,61 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
+  private cleanString(value?: string | null) {
+    const cleaned = value?.trim();
+    return cleaned ? cleaned : null;
+  }
+
   async create(dto: CreateCustomerDto) {
-    return this.prisma.tenant.customers.create({ data: { id: uuid(), name: dto.name, email: dto.email, phone: dto.phone, preferred_contact: dto.preferred_contact || undefined, language: dto.language, dms_customer_id: dto.dms_customer_id, notes: dto.notes } });
+    const name = this.cleanString(dto.name);
+    const email = this.cleanString(dto.email)?.toLowerCase() ?? null;
+    const phone = this.cleanString(dto.phone);
+    const dmsCustomerId = this.cleanString(dto.dms_customer_id);
+
+    // Reuse an existing active customer in the current workshop instead of
+    // creating duplicates each time a job card is opened. Match strongest
+    // identifiers first, then fall back to exact normalized name.
+    const existing = await this.prisma.tenant.customers.findFirst({
+      where: {
+        is_active: true,
+        OR: [
+          ...(phone ? [{ phone }] : []),
+          ...(email ? [{ email }] : []),
+          ...(dmsCustomerId ? [{ dms_customer_id: dmsCustomerId }] : []),
+          ...(name && !phone && !email && !dmsCustomerId ? [{ name: { equals: name } }] : []),
+        ],
+      },
+      orderBy: { created_at: 'asc' },
+    });
+
+    if (existing) {
+      const data: any = {};
+      if (name && !existing.name) data.name = name;
+      if (email && !existing.email) data.email = email;
+      if (phone && !existing.phone) data.phone = phone;
+      if (dmsCustomerId && !existing.dms_customer_id) data.dms_customer_id = dmsCustomerId;
+      if (dto.preferred_contact && !existing.preferred_contact) data.preferred_contact = dto.preferred_contact;
+      if (dto.language && !existing.language) data.language = dto.language;
+      if (dto.notes && !existing.notes) data.notes = dto.notes;
+
+      if (Object.keys(data).length) {
+        return this.prisma.tenant.customers.update({ where: { id: existing.id }, data });
+      }
+      return existing;
+    }
+
+    return this.prisma.tenant.customers.create({
+      data: {
+        id: uuid(),
+        name,
+        email,
+        phone,
+        preferred_contact: dto.preferred_contact || undefined,
+        language: dto.language,
+        dms_customer_id: dmsCustomerId,
+        notes: dto.notes,
+      },
+    });
   }
 
   async findAll(pagination: PaginationDto) {
