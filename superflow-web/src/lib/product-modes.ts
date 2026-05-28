@@ -5,6 +5,7 @@ import {
   Boxes,
   CalendarDays,
   ClipboardList,
+  Contact,
   FileUp,
   Gauge,
   LayoutDashboard,
@@ -25,6 +26,7 @@ export const MODULES = {
   JOB_CARDS: "jobCards",
   CUSTOMERS: "customers",
   VEHICLES: "vehicles",
+  CRM: "crm",
   STOCK: "stock",
   ESTIMATES: "estimates",
   INVOICING: "invoicing",
@@ -57,6 +59,7 @@ export const PRODUCT_MODULES: Record<ProductMode, ModuleKey[]> = {
     MODULES.JOB_CARDS,
     MODULES.CUSTOMERS,
     MODULES.VEHICLES,
+    MODULES.CRM,
     MODULES.STOCK,
     MODULES.ESTIMATES,
     MODULES.INVOICING,
@@ -97,6 +100,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/jobs", label: "Appointments", icon: CalendarDays, module: MODULES.APPOINTMENTS },
     { href: "/jobs", label: "Job Cards", icon: LayoutGrid, module: MODULES.JOB_CARDS },
     { href: "/jobs", label: "Customers", icon: Users, module: MODULES.CUSTOMERS },
+    { href: "/crm", label: "CRM", icon: Contact, module: MODULES.CRM, requirePermission: "crm:read" },
     { href: "/jobs", label: "Vehicles", icon: ClipboardList, module: MODULES.VEHICLES },
     { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
     { href: "/jobs", label: "Estimates", icon: ListChecks, module: MODULES.ESTIMATES, requirePermission: "estimates:read" },
@@ -120,6 +124,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
 };
 
 export const ROUTE_MODULES: Array<{ prefix: string; module: ModuleKey; modes?: ProductMode[] }> = [
+  { prefix: "/crm", module: MODULES.CRM, modes: ["WORKSHOP"] },
   { prefix: "/parts", module: MODULES.STOCK, modes: ["WORKSHOP"] },
   { prefix: "/inventory", module: MODULES.STOCK, modes: ["WORKSHOP"] },
   { prefix: "/purchase-orders", module: MODULES.STOCK, modes: ["WORKSHOP"] },
