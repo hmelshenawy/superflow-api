@@ -53,9 +53,10 @@ export class CrmService {
 
     // Top customers by revenue (sum of closed/invoiced jobs)
     const topCustomers = await this.prisma.$queryRaw<Array<{ id: string; name: string; revenue: bigint }>>`
-      SELECT c.id, c.name, COALESCE(SUM(j.estimate_total), 0) as revenue
+      SELECT c.id, c.name, COALESCE(SUM(el.line_total), 0) as revenue
       FROM customers c
-      LEFT JOIN jobs j ON j.customer_id = c.id AND j.status IN ('closed', 'invoiced')
+      LEFT JOIN jobs j ON j.customer_id = c.id AND j.status = 'closed' AND j.workshop_id = ${workshopId}
+      LEFT JOIN estimate_lines el ON el.job_id = j.id AND el.workshop_id = ${workshopId}
       WHERE c.workshop_id = ${workshopId} AND c.is_active = 1
       GROUP BY c.id
       ORDER BY revenue DESC
@@ -158,8 +159,10 @@ export class CrmService {
     // Get stats
     const [jobStats, recentActivities, recentJobs] = await Promise.all([
       this.prisma.$queryRaw<Array<{ total_jobs: bigint; total_revenue: bigint }>>`
-        SELECT COUNT(*) as total_jobs, COALESCE(SUM(estimate_total), 0) as total_revenue
-        FROM jobs WHERE customer_id = ${customerId}
+        SELECT COUNT(DISTINCT j.id) as total_jobs, COALESCE(SUM(el.line_total), 0) as total_revenue
+        FROM jobs j
+        LEFT JOIN estimate_lines el ON el.job_id = j.id
+        WHERE j.customer_id = ${customerId}
       `,
       this.prisma.tenant.customer_activities.findMany({
         where: { customer_id: customerId },
@@ -351,8 +354,10 @@ export class CrmService {
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
     const jobStats = await this.prisma.$queryRaw<Array<{ total_jobs: bigint; total_revenue: bigint; last_service: Date }>>`
-      SELECT COUNT(*) as total_jobs, COALESCE(SUM(estimate_total), 0) as total_revenue, MAX(created_at) as last_service
-      FROM jobs WHERE vehicle_id = ${vehicleId}
+      SELECT COUNT(DISTINCT j.id) as total_jobs, COALESCE(SUM(el.line_total), 0) as total_revenue, MAX(j.created_at) as last_service
+      FROM jobs j
+      LEFT JOIN estimate_lines el ON el.job_id = j.id
+      WHERE j.vehicle_id = ${vehicleId}
     `;
 
     const serviceHistory = await this.prisma.tenant.vehicle_service_history.findMany({
