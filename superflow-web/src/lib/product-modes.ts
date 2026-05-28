@@ -4,7 +4,6 @@ import {
   BarChart3,
   Boxes,
   CalendarDays,
-  ClipboardList,
   Contact,
   FileUp,
   Gauge,
@@ -17,7 +16,6 @@ import {
   SlidersHorizontal,
   Target,
   UserCheck,
-  Users,
   Wrench,
 } from "lucide-react";
 
@@ -99,9 +97,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: MODULES.OPERATIONAL_ANALYTICS },
     { href: "/jobs", label: "Appointments", icon: CalendarDays, module: MODULES.APPOINTMENTS },
     { href: "/jobs", label: "Job Cards", icon: LayoutGrid, module: MODULES.JOB_CARDS },
-    { href: "/jobs", label: "Customers", icon: Users, module: MODULES.CUSTOMERS },
     { href: "/crm", label: "CRM", icon: Contact, module: MODULES.CRM, requirePermission: "crm:read" },
-    { href: "/jobs", label: "Vehicles", icon: ClipboardList, module: MODULES.VEHICLES },
     { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
     { href: "/jobs", label: "Estimates", icon: ListChecks, module: MODULES.ESTIMATES, requirePermission: "estimates:read" },
     { href: "/settings", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "admin:billing" },
