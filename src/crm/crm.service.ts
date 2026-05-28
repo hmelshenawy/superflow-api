@@ -360,11 +360,51 @@ export class CrmService {
       WHERE j.vehicle_id = ${vehicleId}
     `;
 
-    const serviceHistory = await this.prisma.tenant.vehicle_service_history.findMany({
-      where: { vehicle_id: vehicleId },
-      orderBy: { serviced_at: 'desc' },
-      take: 20,
-    });
+    const [jobHistory, manualHistory] = await Promise.all([
+      this.prisma.tenant.jobs.findMany({
+        where: { vehicle_id: vehicleId, is_deleted: false },
+        select: {
+          id: true,
+          job_number: true,
+          status: true,
+          customer_concern: true,
+          odometer_in: true,
+          dms_ro_number: true,
+          completed_at: true,
+          invoiced_at: true,
+          created_at: true,
+          estimate_lines: { select: { line_total: true } },
+        },
+        orderBy: [{ completed_at: 'desc' }, { created_at: 'desc' }],
+        take: 20,
+      }),
+      this.prisma.tenant.vehicle_service_history.findMany({
+        where: { vehicle_id: vehicleId },
+        orderBy: { serviced_at: 'desc' },
+        take: 20,
+      }),
+    ]);
+
+    const serviceHistory = [
+      ...jobHistory.map((job: any) => ({
+        id: job.id,
+        type: 'job',
+        job_id: job.id,
+        job_number: job.job_number,
+        status: job.status,
+        summary: job.customer_concern || job.dms_ro_number || job.job_number || 'Workshop job',
+        odometer_km: job.odometer_in,
+        serviced_at: job.completed_at || job.invoiced_at || job.created_at,
+        estimate_total: (job.estimate_lines ?? []).reduce((sum: number, line: any) => sum + Number(line.line_total ?? 0), 0),
+      })),
+      ...manualHistory.map((entry: any) => ({ ...entry, type: 'manual' })),
+    ]
+      .sort((a: any, b: any) => {
+        const left = a.serviced_at ? new Date(a.serviced_at).getTime() : 0;
+        const right = b.serviced_at ? new Date(b.serviced_at).getTime() : 0;
+        return right - left;
+      })
+      .slice(0, 20);
 
     return {
       vehicle,
