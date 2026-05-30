@@ -6,12 +6,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { runWithWorkshop } from '../prisma/workshop-context';
 import { DecideDto } from './dto/decide.dto';
 import { WorkflowService } from '../admin/workflow.service';
+import { AuthorisationNotificationService } from './services/authorisation-notification.service';
 
 @Injectable()
 export class AuthorisationService {
   constructor(
     private prisma: PrismaService,
     private workflowService: WorkflowService,
+    private notificationService: AuthorisationNotificationService,
   ) {}
 
   private hashToken(raw: string) {
@@ -142,45 +144,8 @@ export class AuthorisationService {
     // Release a portal snapshot so the customer sees the latest estimate data.
     await this.releasePortalSnapshot(job.id, raw);
 
-    const customerRecipient = sentTo || (channel === 'email' ? job.customers?.email : job.customers?.phone) || job.customers?.email || job.customers?.phone || 'customer';
-    const customerMessage = [
-      `Please review and approve the estimate for job ${job.job_number}.`,
-      `${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''}`.trim(),
-      '',
-      `Approval link: ${portalUrl}`,
-      '',
-      'This link expires in 7 days.',
-    ].filter((line) => line !== undefined).join('\n');
-
-    await this.prisma.tenant.notifications.create({
-      data: {
-        id: uuid(),
-        job_id: job.id,
-        customer_id: job.customer_id,
-        channel: (channel === 'link' ? 'push' : channel) as any,
-        recipient: customerRecipient,
-        subject: `Approval request for ${job.job_number}`,
-        body_rendered: customerMessage,
-        status: 'queued',
-        provider: channel === 'email' ? 'resend' : 'internal',
-      },
-    }).catch(() => {});
-
-    if (job.advisor_id) {
-      await this.prisma.tenant.notifications.create({
-        data: {
-          id: uuid(),
-          job_id: job.id,
-          customer_id: job.customer_id,
-          channel: 'push',
-          recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
-          subject: `Estimate sent for ${job.job_number}`,
-          body_rendered: `Approval link generated for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''}. Job moved to Estimate Sent.`,
-          status: 'queued',
-          provider: 'internal',
-        },
-      }).catch(() => {});
-    }
+    await this.notificationService.sendCustomerApprovalNotification(job, channel, sentTo, portalUrl);
+    await this.notificationService.sendAdvisorEstimateNotification(job);
 
     return {
       tokenId: token.id,
@@ -931,25 +896,7 @@ export class AuthorisationService {
       return rows;
     });
 
-    if (token.jobs?.advisor_id) {
-      const approvedCount = dto.decisions.filter((item) => item.decision === 'approved').length;
-      const declinedCount = dto.decisions.filter((item) => item.decision === 'declined').length;
-      const deferredCount = dto.decisions.filter((item) => item.decision === 'deferred').length;
-
-      await this.prisma.tenant.notifications.create({
-        data: {
-          id: uuid(),
-          job_id: token.job_id,
-          customer_id: token.jobs?.customer_id,
-          channel: 'push',
-          recipient: token.jobs.users_jobs_advisor_idTousers?.email || token.jobs.users_jobs_advisor_idTousers?.name || 'advisor',
-          subject: `Customer replied to estimate for ${token.jobs?.job_number}`,
-          body_rendered: `Customer submitted estimate decisions for ${token.jobs?.customers?.name || 'customer'} / ${token.jobs?.vehicles?.make || ''} ${token.jobs?.vehicles?.vehicle_model || ''}. Approved: ${approvedCount}, Rejected: ${declinedCount}, Deferred: ${deferredCount}. Job moved to Approved.`,
-          status: 'queued',
-          provider: 'internal',
-        },
-      }).catch(() => {});
-    }
+    await this.notificationService.sendAdvisorDecisionNotification(token, dto.decisions);
 
     return {
       saved: created.length,
