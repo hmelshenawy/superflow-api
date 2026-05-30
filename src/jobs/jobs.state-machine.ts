@@ -54,14 +54,3 @@ export function getValidTransitions(current: JobStatus): JobStatus[] {
   return [...(TRANSITIONS[current] ?? [])];
 }
 
-// Returns which stages are "completed" relative to the current status
-// This gives the green checkmark logic: stages before current in the flow
-export function getCompletedStages(current: JobStatus): JobStatus[] {
-  const idx = FLOW_ORDER.indexOf(current);
-  if (idx <= 0) return [];
-  return FLOW_ORDER.slice(0, idx);
-}
-
-export function getFlowOrder(): JobStatus[] {
-  return [...FLOW_ORDER];
-}
