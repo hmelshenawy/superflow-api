@@ -49,6 +49,24 @@ export class WorkflowService {
     return stage;
   }
 
+  /**
+   * Given a job status, resolve the workflow stage key that should be set.
+   * First tries an exact match on systemStatus; falls back to matching by
+   * systemCategory using the same mapping used across the codebase:
+   *   booked → booked, ready → ready, closed → closed, no_show → cancelled, rest → active
+   */
+  async resolveStageKeyForStatus(status: string): Promise<string | null> {
+    const stages = await this.getStages();
+    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
+    if (exact) return exact.key;
+    const category = status === 'booked' ? 'booked'
+      : status === 'ready' ? 'ready'
+      : status === 'closed' ? 'closed'
+      : status === 'no_show' ? 'cancelled'
+      : 'active';
+    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
+  }
+
   private async saveStages(stages: WorkflowStageConfig[], userId: string) {
     const existing = await this.prisma.tenant.settings.findFirst({ where: { key: WORKFLOW_SETTING_KEY } });
     const data = {

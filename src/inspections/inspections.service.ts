@@ -24,7 +24,7 @@ export class InspectionsService {
     // Move job from booked → checking when inspection is created.
     const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'booked') {
-      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('checking');
+      const workflowStageKey = await this.workflowService.resolveStageKeyForStatus('checking');
       // Bug fix: keep inspection-created check-in aligned with the job state machine side effects.
       await this.prisma.$transaction([
         this.prisma.tenant.jobs.update({
@@ -335,13 +335,6 @@ export class InspectionsService {
     }).catch(() => {});
 
     return updated;
-  }
-
-  private async defaultWorkflowStageKeyForStatus(status: string) {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    return stages.find((stage) => stage.isActive && stage.systemCategory === 'active')?.key ?? null;
   }
 
   private async syncActionableResponsesToConcerns(inspectionId: string, jobId: string) {

@@ -81,8 +81,8 @@ export class JobMetaService {
     // Resolved workshop stage — uses the same logic as JobsService.legacyWorkshopStageForStatus
     const resolvedWorkshopStage = legacyWorkshopStageForStatus(status, job.workshop_stage, job.workflow_stage_key);
 
-    // Resolved workflow stage key — maps status to category like JobsService.defaultWorkflowStageKeyForStatus
-    const resolvedWorkflowStageKey = await this.defaultWorkflowStageKeyForStatus(status);
+    // Resolved workflow stage key — maps status to category via WorkflowService
+    const resolvedWorkflowStageKey = await this.workflowService.resolveStageKeyForStatus(status);
 
     // Valid transitions from the state machine
     const validTransitions = getValidTransitions(status);
@@ -162,7 +162,7 @@ export class JobMetaService {
     const phaseLabel = phaseIndex >= 0 ? status.replace(/_/g, ' ') : status;
     const isWorkshopPhase = WORKSHOP_PHASE_STATUSES.includes(status);
     const resolvedWorkshopStage = legacyWorkshopStageForStatus(status, job.workshop_stage, job.workflow_stage_key);
-    const resolvedWorkflowStageKey = await this.defaultWorkflowStageKeyForStatus(status);
+    const resolvedWorkflowStageKey = await this.workflowService.resolveStageKeyForStatus(status);
     const validTransitions = getValidTransitions(status);
     const nextFlowStatus = this.nextForwardStatus(status, validTransitions);
 
@@ -238,18 +238,6 @@ export class JobMetaService {
     }
 
     return actions;
-  }
-
-  private async defaultWorkflowStageKeyForStatus(status: string): Promise<string | null> {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    const category = status === 'booked' ? 'booked'
-      : status === 'ready' ? 'ready'
-      : status === 'closed' ? 'closed'
-      : status === 'no_show' ? 'cancelled'
-      : 'active';
-    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 
   private nextForwardStatus(current: JobStatus, validTransitions: string[]): string | null {

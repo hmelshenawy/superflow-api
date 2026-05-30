@@ -273,7 +273,7 @@ export class AuthorisationDecisionService {
     jobId: string,
     currentStatus: string,
   ) {
-    const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('approved');
+    const workflowStageKey = await this.workflowService.resolveStageKeyForStatus('approved');
     const shouldRecordHistory = currentStatus !== 'approved';
     await tx.jobs.update({
       where: { id: jobId },
@@ -299,7 +299,7 @@ export class AuthorisationDecisionService {
   }
 
   private async moveJobToEstimateSent(jobId: string, currentStatus: string) {
-    const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('estimate_sent');
+    const workflowStageKey = await this.workflowService.resolveStageKeyForStatus('estimate_sent');
     await this.prisma.tenant.jobs.update({
       where: { id: jobId },
       data: { status: 'estimate_sent', workflow_stage_key: workflowStageKey, workshop_stage: null },
@@ -338,15 +338,4 @@ export class AuthorisationDecisionService {
     });
   }
 
-  private async defaultWorkflowStageKeyForStatus(status: string) {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    const category = status === 'booked' ? 'booked'
-      : status === 'ready' ? 'ready'
-      : status === 'closed' ? 'closed'
-      : status === 'no_show' ? 'cancelled'
-      : 'active';
-    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
-  }
 }

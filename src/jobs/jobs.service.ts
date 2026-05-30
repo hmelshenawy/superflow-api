@@ -333,7 +333,7 @@ export class JobsService {
 
     const transitionData: any = {
       status: dto.to_status as any,
-      workflow_stage_key: await this.defaultWorkflowStageKeyForStatus(dto.to_status),
+      workflow_stage_key: await this.workflowService.resolveStageKeyForStatus(dto.to_status),
     };
     // Certain statuses carry timestamp semantics that downstream flows
     // (invoicing, archiving) depend on, so they are set atomically here.
@@ -459,17 +459,4 @@ export class JobsService {
     });
     return result.count;
   }
-
-  private async defaultWorkflowStageKeyForStatus(status: string) {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    const category = status === 'booked' ? 'booked'
-      : status === 'ready' ? 'ready'
-      : status === 'closed' ? 'closed'
-      : status === 'no_show' ? 'cancelled'
-      : 'active';
-    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
-  }
-
 }
