@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './services/token.service';
+import { PasswordService } from './services/password.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -21,7 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, TokenService],
+  providers: [AuthService, JwtStrategy, TokenService, PasswordService],
   exports: [AuthService],
 })
 export class AuthModule {}
