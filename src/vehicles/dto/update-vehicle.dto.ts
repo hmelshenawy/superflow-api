@@ -5,7 +5,7 @@ export class UpdateVehicleDto {
   @ApiPropertyOptional() @IsOptional() @IsString() customer_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MinLength(17) @MaxLength(17) vin?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() make?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() model?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() vehicle_model?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() year?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() plate?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() color?: string;

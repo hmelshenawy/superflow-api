@@ -343,6 +343,7 @@ export interface Customer {
   name: string | null;
   email: string | null;
   phone: string | null;
+  mobile?: string | null;
   preferred_contact: PreferredContact | null;
   language: string | null;
   dms_customer_id: string | null;
@@ -869,4 +870,70 @@ export interface PurchaseOrderItem {
   created_at: string;
   updated_at: string;
   parts?: Part;
+}
+
+
+// ─── CRM ──────────────────────────────────────────────────
+export type LeadSource = "walk-in" | "referral" | "online" | "dms" | "other";
+
+export interface CrmCustomer extends Customer {
+  mobile: string | null;
+  address: string | null;
+  city: string | null;
+  tags: string[] | null;
+  lead_source: LeadSource | null;
+}
+
+export type ActivityType = "call" | "visit" | "note" | "reminder" | "email" | "message";
+
+export interface CustomerActivity {
+  id: string;
+  customer_id: string;
+  type: ActivityType;
+  content: string | null;
+  created_by: string | null;
+  is_done: boolean | null;
+  due_at: string | null;
+  created_at: string;
+  updated_at: string;
+  users?: Pick<User, "id" | "name"> | null;
+}
+
+export interface CrmCustomerDashboard {
+  customer: CrmCustomer;
+  vehicles: Vehicle[];
+  stats: {
+    totalJobs: number;
+    totalRevenue: number;
+    lastVisitDate: string | null;
+    totalVisits: number;
+  };
+  recentActivities: CustomerActivity[];
+  recentJobs: any[];
+}
+
+export interface CrmOverview {
+  totalActiveCustomers: number;
+  newCustomersThisMonth: number;
+  totalVehicles: number;
+  customersWithOverdueReminders: number;
+  topCustomersByRevenue: { id: string; name: string; revenue: number }[];
+}
+
+export interface CrmVehicleListItem extends Vehicle {
+  customer_name: string | null;
+  job_count: number;
+  is_orphan: boolean;
+}
+
+export interface CrmVehicleDashboard {
+  vehicle: Vehicle;
+  customer: CrmCustomer | null;
+  stats: {
+    totalJobs: number;
+    totalRevenue: number;
+    lastServiceDate: string | null;
+    currentOdometer: number | null;
+  };
+  serviceHistory: any[];
 }

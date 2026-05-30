@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PriorityService } from '../priority/priority.service';
 import { getValidTransitions, FLOW_ORDER } from './jobs.state-machine';
 import type { JobStatus } from './jobs.state-machine';
+import { legacyWorkshopStageForStatus } from './jobs-utils';
 import { WorkflowService } from '../admin/workflow.service';
 
 export interface JobMeta {
@@ -78,10 +79,10 @@ export class JobMetaService {
     const isWorkshopPhase = WORKSHOP_PHASE_STATUSES.includes(status);
 
     // Resolved workshop stage — uses the same logic as JobsService.legacyWorkshopStageForStatus
-    const resolvedWorkshopStage = this.legacyWorkshopStageForStatus(status, job.workshop_stage, job.workflow_stage_key);
+    const resolvedWorkshopStage = legacyWorkshopStageForStatus(status, job.workshop_stage, job.workflow_stage_key);
 
-    // Resolved workflow stage key — maps status to category like JobsService.defaultWorkflowStageKeyForStatus
-    const resolvedWorkflowStageKey = await this.defaultWorkflowStageKeyForStatus(status);
+    // Resolved workflow stage key — maps status to category via WorkflowService
+    const resolvedWorkflowStageKey = await this.workflowService.resolveStageKeyForStatus(status);
 
     // Valid transitions from the state machine
     const validTransitions = getValidTransitions(status);
@@ -160,8 +161,8 @@ export class JobMetaService {
     const phaseIndex = FLOW_ORDER.indexOf(status);
     const phaseLabel = phaseIndex >= 0 ? status.replace(/_/g, ' ') : status;
     const isWorkshopPhase = WORKSHOP_PHASE_STATUSES.includes(status);
-    const resolvedWorkshopStage = this.legacyWorkshopStageForStatus(status, job.workshop_stage, job.workflow_stage_key);
-    const resolvedWorkflowStageKey = await this.defaultWorkflowStageKeyForStatus(status);
+    const resolvedWorkshopStage = legacyWorkshopStageForStatus(status, job.workshop_stage, job.workflow_stage_key);
+    const resolvedWorkflowStageKey = await this.workflowService.resolveStageKeyForStatus(status);
     const validTransitions = getValidTransitions(status);
     const nextFlowStatus = this.nextForwardStatus(status, validTransitions);
 
@@ -237,29 +238,6 @@ export class JobMetaService {
     }
 
     return actions;
-  }
-
-  private legacyWorkshopStageForStatus(status: string, workshopStage?: string | null, stageKey?: string | null): string | null {
-    if (status === 'quality_check') return 'quality_check';
-    if (status === 'ready') return 'ready_handover';
-    if (status !== 'in_progress') return null;
-    if (workshopStage) return workshopStage;
-    if (stageKey === 'damage_assessment' || stageKey === 'inspection') return 'diagnosis';
-    if (stageKey === 'estimate_sent' || stageKey === 'waiting_approval' || stageKey === 'insurance_approval') return 'customer_approval';
-    if (stageKey === 'paint' || stageKey === 'final_test') return 'final_test';
-    return 'work_in_progress';
-  }
-
-  private async defaultWorkflowStageKeyForStatus(status: string): Promise<string | null> {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    const category = status === 'booked' ? 'booked'
-      : status === 'ready' ? 'ready'
-      : status === 'closed' ? 'closed'
-      : status === 'no_show' ? 'cancelled'
-      : 'active';
-    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 
   private nextForwardStatus(current: JobStatus, validTransitions: string[]): string | null {

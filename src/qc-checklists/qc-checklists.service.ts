@@ -22,7 +22,7 @@ export class QcChecklistsService {
     // Move job to quality_check if currently in_progress or waiting_parts
     const job = await this.prisma.tenant.jobs.findUnique({ where: { id: jobId } });
     if (job?.status === 'in_progress' || job?.status === 'waiting_parts') {
-      const workflowStageKey = await this.defaultWorkflowStageKeyForStatus('quality_check');
+      const workflowStageKey = await this.workflowService.resolveStageKeyForStatus('quality_check');
       // Bug fix: QC-created transitions must keep workflow lane and history in sync.
       await this.prisma.$transaction([
         this.prisma.tenant.jobs.update({
@@ -214,7 +214,7 @@ export class QcChecklistsService {
       const job = await this.prisma.tenant.jobs.findUnique({ where: { id: checklist.job_id } });
       if (job?.status === 'quality_check') {
         const newStatus = overallResult === 'pass' ? 'ready' : 'in_progress';
-        const workflowStageKey = await this.defaultWorkflowStageKeyForStatus(newStatus);
+        const workflowStageKey = await this.workflowService.resolveStageKeyForStatus(newStatus);
         const transitionData: any = {
           status: newStatus,
           workflow_stage_key: workflowStageKey,
@@ -257,7 +257,7 @@ export class QcChecklistsService {
             channel: 'push',
             recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
             subject: `QC checklist ${overallResult === 'pass' ? 'passed' : 'failed'} for ${job.job_number}`,
-            body_rendered: `Quality check for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.model || ''} has been completed. Result: ${overallResult.toUpperCase()}.${dto.notes ? ` Notes: ${dto.notes}` : ''}`,
+            body_rendered: `Quality check for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''} has been completed. Result: ${overallResult.toUpperCase()}.${dto.notes ? ` Notes: ${dto.notes}` : ''}`,
             status: 'queued',
             provider: 'internal',
           },
@@ -309,13 +309,5 @@ export class QcChecklistsService {
     }).catch(() => {});
 
     return updated;
-  }
-
-  private async defaultWorkflowStageKeyForStatus(status: string) {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    const category = status === 'ready' ? 'ready' : status === 'closed' ? 'closed' : 'active';
-    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 }

@@ -118,7 +118,7 @@ export class BlockersService {
             status: true,
             customer_concern: true,
             advisor_id: true,
-            vehicles: { select: { id: true, make: true, model: true, plate: true } },
+            vehicles: { select: { id: true, make: true, vehicle_model: true, plate: true } },
             customers: { select: { id: true, name: true, phone: true } },
           },
         },

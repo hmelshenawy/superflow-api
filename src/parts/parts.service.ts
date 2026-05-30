@@ -98,7 +98,7 @@ export class PartsService {
       include: {
         suppliers: true,
         inventory: { include: { warehouses: true } },
-        part_fitments: { orderBy: [{ make: 'asc' }, { model: 'asc' }, { year_from: 'asc' }] },
+        part_fitments: { orderBy: [{ make: 'asc' }, { vehicle_model: 'asc' }, { year_from: 'asc' }] },
       },
     });
     if (!part) throw new NotFoundException('Part not found');
@@ -117,7 +117,7 @@ export class PartsService {
     await this.findOne(partId);
     return this.prisma.tenant.part_fitments.findMany({
       where: { part_id: partId },
-      orderBy: [{ make: 'asc' }, { model: 'asc' }, { year_from: 'asc' }],
+      orderBy: [{ make: 'asc' }, { vehicle_model: 'asc' }, { year_from: 'asc' }],
     });
   }
 
@@ -128,7 +128,7 @@ export class PartsService {
         id: uuid(),
         part_id: partId,
         make: dto.make.trim(),
-        model: dto.model?.trim() || null,
+        vehicle_model: dto.vehicle_model?.trim() || null,
         variant: dto.variant?.trim() || null,
         engine: dto.engine?.trim() || null,
         year_from: dto.year_from ?? null,
@@ -144,7 +144,7 @@ export class PartsService {
       where: { id: fitmentId },
       data: {
         make: dto.make?.trim(),
-        model: dto.model?.trim() || null,
+        vehicle_model: dto.vehicle_model?.trim() || null,
         variant: dto.variant?.trim() || null,
         engine: dto.engine?.trim() || null,
         year_from: dto.year_from ?? null,

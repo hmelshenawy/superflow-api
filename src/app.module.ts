@@ -33,6 +33,11 @@ import { JobPartsModule } from './job-parts/job-parts.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { QcChecklistsModule } from './qc-checklists/qc-checklists.module';
 import { DmsModule } from './dms/dms.module';
+import { CrmModule } from './crm/crm.module';
+import { JobTypesModule } from './job-types/job-types.module';
+import { WorkshopScheduleModule } from './schedule/schedule.module';
+import { StaffModule } from './staff/staff.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
@@ -81,6 +86,11 @@ import { validateEnvironment } from './config/env.validation';
     PurchaseOrdersModule,
     QcChecklistsModule,
     DmsModule,
+    CrmModule,
+    JobTypesModule,
+    WorkshopScheduleModule,
+    StaffModule,
+    AppointmentsModule,
   ],
   providers: [
     {

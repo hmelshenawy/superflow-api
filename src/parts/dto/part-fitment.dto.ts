@@ -10,7 +10,7 @@ export class CreatePartFitmentDto {
   @ApiPropertyOptional({ description: 'Vehicle model, e.g. C-Class' })
   @IsOptional()
   @IsString()
-  model?: string;
+  vehicle_model?: string;
 
   @ApiPropertyOptional({ description: 'Variant / chassis / trim, e.g. W205 C200' })
   @IsOptional()

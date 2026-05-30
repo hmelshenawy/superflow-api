@@ -39,6 +39,12 @@ export const VEHICLES_READ = 'vehicles:read';
 export const VEHICLES_CREATE = 'vehicles:create';
 export const VEHICLES_UPDATE = 'vehicles:update';
 
+// ─── CRM ──────────────────────────────────────────────────
+export const CRM_READ = 'crm:read';
+export const CRM_CREATE = 'crm:create';
+export const CRM_UPDATE = 'crm:update';
+export const CRM_DELETE = 'crm:delete';
+
 // ─── Media ──────────────────────────────────────────────
 export const MEDIA_UPLOAD = 'media:upload';
 export const MEDIA_DELETE = 'media:delete';
@@ -122,6 +128,7 @@ export const ALL_PERMISSIONS: string[] = [
   INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT, INSPECTIONS_REOPEN,
   CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE, CUSTOMERS_DELETE,
   VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE,
+  CRM_READ, CRM_CREATE, CRM_UPDATE, CRM_DELETE,
   MEDIA_UPLOAD, MEDIA_DELETE,
   AUTH_REQUEST, AUTH_STATUS,
   DEFERRED_READ, DEFERRED_MANAGE, DEFERRED_BOOK,
@@ -173,6 +180,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN,
       CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE,
       VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE,
+      CRM_READ, CRM_CREATE, CRM_UPDATE,
       MEDIA_UPLOAD, MEDIA_DELETE,
       AUTH_REQUEST, AUTH_STATUS,
       DEFERRED_READ, DEFERRED_MANAGE, DEFERRED_BOOK,
@@ -199,6 +207,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
       CUSTOMERS_READ, VEHICLES_READ,
+      CRM_READ,
       ADMIN_SETTINGS, ADMIN_INTEGRATIONS,
       QC_READ,
     ],
@@ -211,6 +220,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ,
       CUSTOMERS_READ, VEHICLES_READ,
+      CRM_READ,
       ADMIN_SETTINGS, ADMIN_INTEGRATIONS, ADMIN_STATS, ADMIN_BILLING,
     ],
   },
@@ -247,6 +257,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT, INSPECTIONS_REOPEN,
       QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN,
       CUSTOMERS_READ, VEHICLES_READ,
+      CRM_READ,
       MEDIA_UPLOAD,
       AUTH_STATUS,
       DEFERRED_READ,
@@ -283,6 +294,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       QC_READ,
       CUSTOMERS_READ, CUSTOMERS_CREATE, CUSTOMERS_UPDATE,
       VEHICLES_READ, VEHICLES_CREATE,
+      CRM_READ, CRM_CREATE, CRM_UPDATE,
       IMPORT_PARSE, IMPORT_RUN,
     ],
   },

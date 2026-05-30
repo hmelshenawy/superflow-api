@@ -48,23 +48,23 @@ export interface ParseResult {
   totalRows: number;
 }
 
-function resolveImportedVehicleFields(row: BookingRow): { make: string | null; model: string } {
+function resolveImportedVehicleFields(row: BookingRow): { make: string | null; vehicle_model: string } {
   const rawMake = row.vehicle_make?.trim() || '';
   const rawModel = row.vehicle_model?.trim() || '';
 
   // PrioraFlow booking imports are Mercedes-only for now.
   // If the sheet provides one combined vehicle description column,
-  // keep make blank and store the value as model to avoid duplication.
+  // keep make blank and store the value as vehicle_model to avoid duplication.
   if (!rawModel) {
     return {
       make: null,
-      model: rawMake,
+      vehicle_model: rawMake,
     };
   }
 
   return {
     make: rawMake || null,
-    model: rawModel,
+    vehicle_model: rawModel,
   };
 }
 
@@ -302,24 +302,24 @@ export class BookingImportService {
               customer_id: customer.id,
               vin: normalizeVin(row.vehicle_vin),
               make: vehicleFields.make,
-              model: vehicleFields.model,
+              vehicle_model: vehicleFields.vehicle_model,
               plate: row.vehicle_plate?.trim() || null,
             },
           });
         } else {
           const updateData: any = { customer_id: customer.id };
           const existingMake = vehicle.make?.trim() || '';
-          const existingModel = vehicle.model?.trim() || '';
+          const existingModel = vehicle.vehicle_model?.trim() || '';
           const isLegacyDuplicatedVehicle = !!existingMake && existingMake === existingModel;
 
           if (vehicleFields.make && !vehicle.make) updateData.make = vehicleFields.make;
-          if (vehicleFields.model && !vehicle.model) updateData.model = vehicleFields.model;
+          if (vehicleFields.vehicle_model && !vehicle.vehicle_model) updateData.vehicle_model = vehicleFields.vehicle_model;
 
           // Self-heal old Mercedes booking imports where one description value
           // was saved into both make and model.
-          if (!vehicleFields.make && vehicleFields.model && isLegacyDuplicatedVehicle) {
+          if (!vehicleFields.make && vehicleFields.vehicle_model && isLegacyDuplicatedVehicle) {
             updateData.make = null;
-            updateData.model = vehicleFields.model;
+            updateData.vehicle_model = vehicleFields.vehicle_model;
           }
 
           if (row.vehicle_plate?.trim() && !vehicle.plate) updateData.plate = row.vehicle_plate.trim();

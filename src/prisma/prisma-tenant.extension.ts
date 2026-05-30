@@ -44,6 +44,13 @@ const TENANT_SCOPED_MODELS = new Set([
   'qc_checklist_items',
   'qc_checklist_templates',
   'qc_checklist_responses',
+  'appointments',
+  'staff_leaves',
+  'staff_members',
+  'holidays',
+  'schedule_breaks',
+  'schedule_config',
+  'job_types',
 ]);
 
 const READ_OPS = new Set(['findMany', 'findFirst', 'count', 'aggregate', 'groupBy']);

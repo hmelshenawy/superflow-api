@@ -5,6 +5,9 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { TokenService } from './services/token.service';
+import { PasswordService } from './services/password.service';
+import { AuthEmailService } from './services/auth-email.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -20,7 +23,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, TokenService, PasswordService, AuthEmailService],
   exports: [AuthService],
 })
 export class AuthModule {}

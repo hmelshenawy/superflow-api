@@ -68,20 +68,9 @@ export class PlanLimitReachedError extends AppException {
   }
 }
 
-export class ConflictError extends AppException {
-  constructor(message = 'Resource already exists', details?: Record<string, unknown>) {
-    super('CONFLICT', message, HttpStatus.CONFLICT, details);
-  }
-}
-
 export class BadRequestError extends AppException {
   constructor(message: string, details?: Record<string, unknown>) {
     super('BAD_REQUEST', message, HttpStatus.BAD_REQUEST, details);
   }
 }
 
-export class ValidationError extends AppException {
-  constructor(message: string | string[], details?: Record<string, unknown>) {
-    super('VALIDATION_ERROR', Array.isArray(message) ? message.join('; ') : message, HttpStatus.BAD_REQUEST, details);
-  }
-}

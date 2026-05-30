@@ -4,7 +4,7 @@ import {
   BarChart3,
   Boxes,
   CalendarDays,
-  ClipboardList,
+  Contact,
   FileUp,
   Gauge,
   LayoutDashboard,
@@ -25,6 +25,7 @@ export const MODULES = {
   JOB_CARDS: "jobCards",
   CUSTOMERS: "customers",
   VEHICLES: "vehicles",
+  CRM: "crm",
   STOCK: "stock",
   ESTIMATES: "estimates",
   INVOICING: "invoicing",
@@ -57,6 +58,7 @@ export const PRODUCT_MODULES: Record<ProductMode, ModuleKey[]> = {
     MODULES.JOB_CARDS,
     MODULES.CUSTOMERS,
     MODULES.VEHICLES,
+    MODULES.CRM,
     MODULES.STOCK,
     MODULES.ESTIMATES,
     MODULES.INVOICING,
@@ -94,16 +96,17 @@ export type NavItem = {
 export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
   WORKSHOP: [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: MODULES.OPERATIONAL_ANALYTICS },
-    { href: "/jobs", label: "Appointments", icon: CalendarDays, module: MODULES.APPOINTMENTS },
+    { href: "/appointments", label: "Appointments", icon: CalendarDays, module: MODULES.APPOINTMENTS },
     { href: "/jobs", label: "Job Cards", icon: LayoutGrid, module: MODULES.JOB_CARDS },
-    { href: "/jobs", label: "Customers", icon: Users, module: MODULES.CUSTOMERS },
-    { href: "/jobs", label: "Vehicles", icon: ClipboardList, module: MODULES.VEHICLES },
+    { href: "/crm", label: "CRM", icon: Contact, module: MODULES.CRM, requirePermission: "crm:read" },
     { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
     { href: "/jobs", label: "Estimates", icon: ListChecks, module: MODULES.ESTIMATES, requirePermission: "estimates:read" },
     { href: "/settings", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "admin:billing" },
     { href: "/jobs", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
     { href: "/insights", label: "Reports / Analytics", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
     { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/settings/schedule", label: "Schedule", icon: CalendarDays, module: MODULES.APPOINTMENTS },
+    { href: "/settings/job-types", label: "Job types", icon: Wrench, module: MODULES.APPOINTMENTS },
   ],
   CONNECT: [
     { href: "/dashboard", label: "Command Center", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
@@ -120,6 +123,10 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
 };
 
 export const ROUTE_MODULES: Array<{ prefix: string; module: ModuleKey; modes?: ProductMode[] }> = [
+  { prefix: "/appointments", module: MODULES.APPOINTMENTS, modes: ["WORKSHOP"] },
+  { prefix: "/settings/schedule", module: MODULES.APPOINTMENTS, modes: ["WORKSHOP"] },
+  { prefix: "/settings/job-types", module: MODULES.APPOINTMENTS, modes: ["WORKSHOP"] },
+  { prefix: "/crm", module: MODULES.CRM, modes: ["WORKSHOP"] },
   { prefix: "/parts", module: MODULES.STOCK, modes: ["WORKSHOP"] },
   { prefix: "/inventory", module: MODULES.STOCK, modes: ["WORKSHOP"] },
   { prefix: "/purchase-orders", module: MODULES.STOCK, modes: ["WORKSHOP"] },
