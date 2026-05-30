@@ -7,6 +7,7 @@ import { runWithWorkshop } from '../prisma/workshop-context';
 import { DecideDto } from './dto/decide.dto';
 import { WorkflowService } from '../admin/workflow.service';
 import { AuthorisationNotificationService } from './services/authorisation-notification.service';
+import { hashToken, portalStageForStatus } from './services/authorisation-utils';
 
 @Injectable()
 export class AuthorisationService {
@@ -16,10 +17,6 @@ export class AuthorisationService {
     private notificationService: AuthorisationNotificationService,
   ) {}
 
-  private hashToken(raw: string) {
-    return crypto.createHash('sha256').update(raw).digest('hex');
-  }
-
   // Portal tokens are stored hashed for the same reason as refresh tokens:
   // a leaked DB row should not grant direct customer portal access.
   // Portal tokens are accessed by their unique hash, not by workshop, so
@@ -27,7 +24,7 @@ export class AuthorisationService {
   // for subsequent tenant-scoped writes using runWithWorkshop.
   private async getValidTokenByRaw(rawToken: string) {
     const token = await this.prisma.raw.approval_tokens.findUnique({
-      where: { token_hash: this.hashToken(rawToken) },
+      where: { token_hash: hashToken(rawToken) },
       include: {
         jobs: {
           include: {
@@ -90,7 +87,7 @@ export class AuthorisationService {
 
   async validatePortalToken(rawToken: string) {
     const token = await this.prisma.raw.approval_tokens.findUnique({
-      where: { token_hash: this.hashToken(rawToken) },
+      where: { token_hash: hashToken(rawToken) },
       include: { jobs: { select: { id: true, workshop_id: true } } },
     });
     if (!token) throw new NotFoundException('Approval link not found');
@@ -115,7 +112,7 @@ export class AuthorisationService {
     // The raw token is returned only once in the portal URL. After this point
     // the backend works from the hash stored in approval_tokens.
     const raw = crypto.randomBytes(32).toString('hex');
-    const hash = this.hashToken(raw);
+    const hash = hashToken(raw);
 
     const token = await this.prisma.tenant.approval_tokens.create({
       data: {
@@ -169,7 +166,7 @@ export class AuthorisationService {
       data: {
         id: uuid(),
         job_id: jobId,
-        token_hash: this.hashToken(raw),
+        token_hash: hashToken(raw),
         channel: 'link' as any,
         sent_to: job.customers?.email || job.customers?.phone || null,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -183,7 +180,7 @@ export class AuthorisationService {
       select: { version: true },
     }).catch(() => null);
     const version = (latest?.version ?? 0) + 1;
-    const stage = (payload as any).stage || this.portalStageForStatus(job.status as any);
+    const stage = (payload as any).stage || portalStageForStatus(job.status as any);
 
     const snapshot = await this.prisma.tenant.customer_portal_snapshots.create({
       data: {
@@ -347,13 +344,6 @@ export class AuthorisationService {
     visit(payload);
   }
 
-  private portalStageForStatus(status?: string | null) {
-    if (status === 'estimate_sent') return 'approval_needed';
-    if (status === 'approved' || status === 'in_progress' || status === 'waiting_parts') return 'work_in_progress';
-    if (status === 'quality_check' || status === 'ready' || status === 'closed') return 'final_report';
-    return 'initial_findings';
-  }
-
   async resetConcernApproval(jobId: string, concernId: string, userId: string, reason: string) {
     const concern = await this.prisma.tenant.job_concerns.findFirst({
       where: { id: concernId, job_id: jobId },
@@ -449,7 +439,7 @@ export class AuthorisationService {
       select: { version: true },
     }).catch(() => null);
     const version = (latest?.version ?? 0) + 1;
-    const stage = (payload as any).stage || this.portalStageForStatus('estimate_sent');
+    const stage = (payload as any).stage || portalStageForStatus('estimate_sent');
     await this.prisma.tenant.customer_portal_snapshots.create({
       data: {
         id: uuid(),
@@ -736,7 +726,7 @@ export class AuthorisationService {
         customer: token.jobs?.customers,
         vehicle: token.jobs?.vehicles,
       },
-      stage: this.portalStageForStatus(token.jobs?.status),
+      stage: portalStageForStatus(token.jobs?.status),
       concerns: (token.jobs?.job_concerns ?? []).map((c: any) => ({
         id: c.id,
         code: c.code,
