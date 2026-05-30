@@ -7,6 +7,7 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
+import { legacyWorkshopStageForStatus } from './jobs-utils';
 import { UsageService } from '../common/plan-features/usage.service';
 import { WorkflowService } from '../admin/workflow.service';
 import { JobMetaService } from './job-meta.service';
@@ -312,7 +313,7 @@ export class JobsService {
       const stage = await this.workflowService.resolveStage(dto.workflow_stage_key);
       data.workflow_stage_key = stage.key;
       data.status = stage.systemStatus;
-      data.workshop_stage = this.legacyWorkshopStageForStatus(stage.systemStatus, stage.key);
+      data.workshop_stage = legacyWorkshopStageForStatus(stage.systemStatus, null, stage.key);
     }
     // Keep Workshop view stage movement aligned with the Overall board.
     // Active workshop stages should appear as In Progress overall; QC/Ready keep their own overall lanes.
@@ -517,13 +518,4 @@ export class JobsService {
     return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 
-  private legacyWorkshopStageForStatus(status: string, stageKey?: string) {
-    if (status === 'quality_check') return 'quality_check';
-    if (status === 'ready') return 'ready_handover';
-    if (status !== 'in_progress') return null;
-    if (stageKey === 'damage_assessment' || stageKey === 'inspection') return 'diagnosis';
-    if (stageKey === 'estimate_sent' || stageKey === 'waiting_approval' || stageKey === 'insurance_approval') return 'customer_approval';
-    if (stageKey === 'paint' || stageKey === 'final_test') return 'final_test';
-    return 'work_in_progress';
-  }
 }
