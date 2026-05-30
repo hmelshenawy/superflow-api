@@ -1,11 +1,66 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { getWorkshopContext } from '../prisma/workshop-context';
+
+// Dashboard response shape is a large object — use `any` for the cache
+// entry to avoid circular type references with the class itself.
+interface DashboardCacheEntry {
+  data: any;
+  expiry: number;
+}
+
+const DASHBOARD_CACHE_TTL_MS = 30_000; // 30 seconds
 
 @Injectable()
 export class InsightsService {
   constructor(private prisma: PrismaService) {}
 
+  /** Per-workshop TTL cache for dashboard responses. */
+  private dashboardCache = new Map<string, DashboardCacheEntry>();
+
+  /** Build a cache key from the workshop context. */
+  private dashboardCacheKey(workshopId: string): string {
+    return `dashboard:${workshopId}`;
+  }
+
+  /**
+   * Invalidate cached dashboard data for a specific workshop, or all workshops.
+   * Call after mutations that affect dashboard metrics.
+   */
+  invalidateDashboardCache(workshopId?: string) {
+    if (workshopId) {
+      this.dashboardCache.delete(this.dashboardCacheKey(workshopId));
+    } else {
+      this.dashboardCache.clear();
+    }
+  }
+
   async getDashboard() {
+    // Serve from per-workshop cache if available and fresh.
+    const { workshopId } = getWorkshopContext();
+    if (workshopId) {
+      const key = this.dashboardCacheKey(workshopId);
+      const cached = this.dashboardCache.get(key);
+      if (cached && Date.now() < cached.expiry) {
+        return cached.data;
+      }
+    }
+
+    // Cold path — compute the full dashboard.
+    const result = await this.computeDashboard();
+
+    // Store in per-workshop cache.
+    if (workshopId) {
+      this.dashboardCache.set(this.dashboardCacheKey(workshopId), {
+        data: result,
+        expiry: Date.now() + DASHBOARD_CACHE_TTL_MS,
+      });
+    }
+
+    return result;
+  }
+
+  private async computeDashboard() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

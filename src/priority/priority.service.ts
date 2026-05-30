@@ -64,12 +64,19 @@ export class PriorityService {
   async computeOne(jobId: string): Promise<PriorityResultDto> {
     const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
-      include: {
-        estimate_lines: true,
-        customers: true,
-        vehicles: true,
-        users_jobs_advisor_idTousers: true,
-        users_jobs_technician_idTousers: true,
+      select: {
+        id: true,
+        job_number: true,
+        status: true,
+        parts_status: true,
+        customer_sensitivity: true,
+        customer_informed: true,
+        is_customer_waiting: true,
+        promised_at: true,
+        updated_at: true,
+        workshop_stage: true,
+        technician_id: true,
+        estimate_lines: { select: { line_total: true } },
       },
     });
     if (!job) throw new Error('Job not found');
@@ -89,12 +96,19 @@ export class PriorityService {
 
     const jobs = await this.prisma.tenant.jobs.findMany({
       where,
-      include: {
-        estimate_lines: true,
-        customers: true,
-        vehicles: true,
-        users_jobs_advisor_idTousers: true,
-        users_jobs_technician_idTousers: true,
+      select: {
+        id: true,
+        job_number: true,
+        status: true,
+        parts_status: true,
+        customer_sensitivity: true,
+        customer_informed: true,
+        is_customer_waiting: true,
+        promised_at: true,
+        updated_at: true,
+        workshop_stage: true,
+        technician_id: true,
+        estimate_lines: { select: { line_total: true } },
       },
       orderBy: { updated_at: 'desc' },
       take: opts?.limit ?? 200,

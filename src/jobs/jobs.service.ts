@@ -7,9 +7,11 @@ import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
+import { legacyWorkshopStageForStatus } from './jobs-utils';
 import { UsageService } from '../common/plan-features/usage.service';
 import { WorkflowService } from '../admin/workflow.service';
 import { JobMetaService } from './job-meta.service';
+import { JobConcernService } from './services/job-concern.service';
 
 @Injectable()
 export class JobsService {
@@ -18,6 +20,7 @@ export class JobsService {
     private usageService: UsageService,
     private workflowService: WorkflowService,
     private metaService: JobMetaService,
+    private concernService: JobConcernService,
   ) {}
 
   private async assertTenantCustomer(customerId: string) {
@@ -229,67 +232,19 @@ export class JobsService {
   }
 
   concernStatusOptions() {
-    return [
-      { value: 'reviewing', label: 'Under inspection' },
-      { value: 'finding_ready', label: 'Diagnosis ready' },
-      { value: 'priced', label: 'Pending approval' },
-      { value: 'in_progress', label: 'In progress' },
-      { value: 'qc_complete', label: 'Completed' },
-    ];
+    return this.concernService.concernStatusOptions();
   }
 
-
   async createConcern(jobId: string, dto: any) {
-    await this.findOne(jobId);
-    const count = await this.prisma.tenant.job_concerns.count({ where: { job_id: jobId } }).catch(() => 0);
-    return this.prisma.tenant.job_concerns.create({
-      data: {
-        id: uuid(),
-        job_id: jobId,
-        code: dto.code || `C${count + 1}`,
-        title: dto.title || 'Customer concern',
-        description: dto.description || null,
-        status: dto.status || 'reviewing',
-        technician_finding: dto.technician_finding || null,
-        work_note: dto.work_note || null,
-        qc_note: dto.qc_note || null,
-        sort_order: dto.sort_order ?? count,
-        inspection_response_id: dto.inspection_response_id || null,
-      },
-    });
+    return this.concernService.createConcern(jobId, dto);
   }
 
   async updateConcern(jobId: string, concernId: string, dto: any) {
-    await this.findOne(jobId);
-    const existing = await this.prisma.tenant.job_concerns.findFirst({ where: { id: concernId, job_id: jobId } });
-    if (!existing) throw new NotFoundException('Concern not found');
-    const data: any = { ...dto };
-    if (data.description === '') data.description = null;
-    if (data.technician_finding === '') data.technician_finding = null;
-    if (data.work_note === '') data.work_note = null;
-    if (data.qc_note === '') data.qc_note = null;
-    if (data.inspection_response_id === '') data.inspection_response_id = null;
-    // Validate advisor decision: note is mandatory when a non-null decision is set
-    if (data.advisor_decision && !data.advisor_decision_note) {
-      throw new BadRequestException('Advisor decision note is required when setting an advisor decision');
-    }
-    if (data.advisor_decision === null || data.advisor_decision === '') {
-      data.advisor_decision = null;
-      data.advisor_decision_note = null;
-    }
-    const validDecisions = ['approved', 'declined', 'deferred'];
-    if (data.advisor_decision && !validDecisions.includes(data.advisor_decision)) {
-      throw new BadRequestException(`Invalid advisor decision. Must be one of: ${validDecisions.join(', ')}`);
-    }
-    return this.prisma.tenant.job_concerns.update({ where: { id: concernId }, data });
+    return this.concernService.updateConcern(jobId, concernId, dto);
   }
 
   async removeConcern(jobId: string, concernId: string) {
-    await this.findOne(jobId);
-    const existing = await this.prisma.tenant.job_concerns.findFirst({ where: { id: concernId, job_id: jobId } });
-    if (!existing) throw new NotFoundException('Concern not found');
-    await this.prisma.tenant.estimate_lines.updateMany({ where: { concern_id: concernId }, data: { concern_id: null } });
-    return this.prisma.tenant.job_concerns.delete({ where: { id: concernId } });
+    return this.concernService.removeConcern(jobId, concernId);
   }
 
   async update(id: string, dto: UpdateJobDto, userId?: string) {
@@ -312,7 +267,7 @@ export class JobsService {
       const stage = await this.workflowService.resolveStage(dto.workflow_stage_key);
       data.workflow_stage_key = stage.key;
       data.status = stage.systemStatus;
-      data.workshop_stage = this.legacyWorkshopStageForStatus(stage.systemStatus, stage.key);
+      data.workshop_stage = legacyWorkshopStageForStatus(stage.systemStatus, null, stage.key);
     }
     // Keep Workshop view stage movement aligned with the Overall board.
     // Active workshop stages should appear as In Progress overall; QC/Ready keep their own overall lanes.
@@ -378,7 +333,7 @@ export class JobsService {
 
     const transitionData: any = {
       status: dto.to_status as any,
-      workflow_stage_key: await this.defaultWorkflowStageKeyForStatus(dto.to_status),
+      workflow_stage_key: await this.workflowService.resolveStageKeyForStatus(dto.to_status),
     };
     // Certain statuses carry timestamp semantics that downstream flows
     // (invoicing, archiving) depend on, so they are set atomically here.
@@ -503,27 +458,5 @@ export class JobsService {
       data: { archived_at: new Date() },
     });
     return result.count;
-  }
-
-  private async defaultWorkflowStageKeyForStatus(status: string) {
-    const stages = await this.workflowService.getStages();
-    const exact = stages.find((stage) => stage.isActive && stage.systemStatus === status);
-    if (exact) return exact.key;
-    const category = status === 'booked' ? 'booked'
-      : status === 'ready' ? 'ready'
-      : status === 'closed' ? 'closed'
-      : status === 'no_show' ? 'cancelled'
-      : 'active';
-    return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
-  }
-
-  private legacyWorkshopStageForStatus(status: string, stageKey?: string) {
-    if (status === 'quality_check') return 'quality_check';
-    if (status === 'ready') return 'ready_handover';
-    if (status !== 'in_progress') return null;
-    if (stageKey === 'damage_assessment' || stageKey === 'inspection') return 'diagnosis';
-    if (stageKey === 'estimate_sent' || stageKey === 'waiting_approval' || stageKey === 'insurance_approval') return 'customer_approval';
-    if (stageKey === 'paint' || stageKey === 'final_test') return 'final_test';
-    return 'work_in_progress';
   }
 }
