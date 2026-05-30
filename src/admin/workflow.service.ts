@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { getWorkshopContext } from '../prisma/workshop-context';
 import { v4 as uuid } from 'uuid';
 import {
   DEFAULT_WORKFLOW_STAGES,
@@ -9,9 +10,20 @@ import {
   WorkflowStageConfig,
 } from './workflow-templates';
 
+/** Cache entry for a workshop's workflow stages. */
+interface StagesCacheEntry {
+  stages: WorkflowStageConfig[];
+  expiry: number;
+}
+
+const STAGES_CACHE_TTL_MS = 30_000; // 30 seconds
+
 @Injectable()
 export class WorkflowService {
   constructor(private prisma: PrismaService) {}
+
+  /** Per-workshop TTL cache for resolved stages. Keyed by workshopId. */
+  private stagesCacheByWorkshop = new Map<string, StagesCacheEntry>();
 
   async getWorkflow() {
     const stages = await this.getStages();
@@ -19,12 +31,38 @@ export class WorkflowService {
   }
 
   async getStages(): Promise<WorkflowStageConfig[]> {
-    const row = await this.prisma.tenant.settings.findFirst({ where: { key: WORKFLOW_SETTING_KEY } });
-    if (!row?.value) return DEFAULT_WORKFLOW_STAGES;
-    try {
-      return this.normalizeStages(JSON.parse(row.value));
-    } catch {
-      return DEFAULT_WORKFLOW_STAGES;
+    const { workshopId } = getWorkshopContext();
+
+    // Per-workshop cache lookup
+    if (workshopId) {
+      const cached = this.stagesCacheByWorkshop.get(workshopId);
+      if (cached && Date.now() < cached.expiry) {
+        return cached.stages;
+      }
+    }
+
+    const stages = await this.loadStagesFromDb();
+
+    // Store in per-workshop cache
+    if (workshopId) {
+      this.stagesCacheByWorkshop.set(workshopId, {
+        stages,
+        expiry: Date.now() + STAGES_CACHE_TTL_MS,
+      });
+    }
+
+    return stages;
+  }
+
+  /**
+   * Invalidate cached stages for a specific workshop, or all workshops.
+   * Called automatically after workflow stage updates.
+   */
+  invalidateStagesCache(workshopId?: string) {
+    if (workshopId) {
+      this.stagesCacheByWorkshop.delete(workshopId);
+    } else {
+      this.stagesCacheByWorkshop.clear();
     }
   }
 
@@ -67,6 +105,16 @@ export class WorkflowService {
     return stages.find((stage) => stage.isActive && stage.systemCategory === category)?.key ?? null;
   }
 
+  private async loadStagesFromDb(): Promise<WorkflowStageConfig[]> {
+    const row = await this.prisma.tenant.settings.findFirst({ where: { key: WORKFLOW_SETTING_KEY } });
+    if (!row?.value) return DEFAULT_WORKFLOW_STAGES;
+    try {
+      return this.normalizeStages(JSON.parse(row.value));
+    } catch {
+      return DEFAULT_WORKFLOW_STAGES;
+    }
+  }
+
   private async saveStages(stages: WorkflowStageConfig[], userId: string) {
     const existing = await this.prisma.tenant.settings.findFirst({ where: { key: WORKFLOW_SETTING_KEY } });
     const data = {
@@ -76,11 +124,15 @@ export class WorkflowService {
       updated_by: userId,
     };
     if (existing) {
-      return this.prisma.tenant.settings.update({ where: { id: existing.id }, data });
+      await this.prisma.tenant.settings.update({ where: { id: existing.id }, data });
+    } else {
+      await this.prisma.tenant.settings.create({
+        data: { id: uuid(), key: WORKFLOW_SETTING_KEY, ...data },
+      });
     }
-    return this.prisma.tenant.settings.create({
-      data: { id: uuid(), key: WORKFLOW_SETTING_KEY, ...data },
-    });
+    // Invalidate cache for the current workshop so updates are visible immediately.
+    const { workshopId } = getWorkshopContext();
+    this.invalidateStagesCache(workshopId ?? undefined);
   }
 
   private normalizeStages(input: unknown): WorkflowStageConfig[] {
