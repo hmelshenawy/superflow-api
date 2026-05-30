@@ -45,6 +45,17 @@ import {
 import { toast } from "sonner";
 
 
+
+const WORKSHOP_TIMEZONES = [
+  { value: "Asia/Dubai", label: "UAE / Dubai (Asia/Dubai)" },
+  { value: "Africa/Cairo", label: "Egypt / Cairo (Africa/Cairo)" },
+  { value: "Asia/Riyadh", label: "Saudi Arabia / Riyadh (Asia/Riyadh)" },
+  { value: "Asia/Qatar", label: "Qatar / Doha (Asia/Qatar)" },
+  { value: "Asia/Kuwait", label: "Kuwait (Asia/Kuwait)" },
+  { value: "Asia/Bahrain", label: "Bahrain (Asia/Bahrain)" },
+  { value: "Asia/Muscat", label: "Oman / Muscat (Asia/Muscat)" },
+];
+
 const DEFAULT_PRIORITY_WEIGHTS = {
   promiseOverdue: 30,
   promiseDue2h: 20,
@@ -384,7 +395,10 @@ function SessionsSection() {
 
 // ─── Workshop Settings Section ─────────────────────────
 function WorkshopSection() {
+  const { workshops, currentWorkshopId } = useAuthStore();
+  const currentWorkshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
   const [settings, setSettings] = useState<Setting[]>([]);
+  const [timezone, setTimezone] = useState(currentWorkshop?.timezone || "Asia/Dubai");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -396,6 +410,10 @@ function WorkshopSection() {
     "auto_archive_after_hours",
     "job_number_prefix",
   ];
+
+  useEffect(() => {
+    setTimezone(currentWorkshop?.timezone || "Asia/Dubai");
+  }, [currentWorkshop?.timezone]);
 
   useEffect(() => {
     api
@@ -444,7 +462,15 @@ function WorkshopSection() {
             ? "number"
             : "string",
         }));
-      await api.put("/admin/settings", { settings: updates });
+      const [, updatedWorkshop] = await Promise.all([
+        api.put("/admin/settings", { settings: updates }),
+        currentWorkshop ? api.patch(`/workshops/${currentWorkshop.id}`, { timezone }) : Promise.resolve(null),
+      ]);
+      if (updatedWorkshop?.data) {
+        useAuthStore.setState((state) => ({
+          workshops: state.workshops.map((item) => item.id === updatedWorkshop.data.id ? { ...item, ...updatedWorkshop.data } : item),
+        }));
+      }
       toast.success("Workshop settings saved");
     } catch {
       toast.error("Failed to save settings");
@@ -465,6 +491,16 @@ function WorkshopSection() {
 
   return (
     <SectionCard title="Workshop Settings" description="General workshop configuration.">
+      <FieldRow label="Workshop timezone" sublabel="Used for appointment booking, opening hours, reports, and customer timestamps">
+        <select
+          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          disabled={!currentWorkshop}
+        >
+          {WORKSHOP_TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+        </select>
+      </FieldRow>
       <FieldRow label="Currency" sublabel="Default currency for estimates (e.g. AED, SAR)">
         <Input value={getValue("currency")} onChange={(e) => setValue("currency", e.target.value)} placeholder="AED" />
       </FieldRow>

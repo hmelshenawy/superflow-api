@@ -33,7 +33,7 @@ export class DeferredService {
         where,
         include: {
           customers: { select: { id: true, name: true, phone: true, email: true } },
-          vehicles: { select: { id: true, make: true, model: true, plate: true, year: true } },
+          vehicles: { select: { id: true, make: true, vehicle_model: true, plate: true, year: true } },
           estimate_lines: true,
         },
         orderBy: { created_at: 'desc' },

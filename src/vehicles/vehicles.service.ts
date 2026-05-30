@@ -28,7 +28,7 @@ export class VehiclesService {
     const vin = this.normalizeVin(dto.vin);
     const plate = this.cleanString(dto.plate);
     const make = this.cleanString(dto.make);
-    const model = this.cleanString(dto.model);
+    const vehicle_model = this.cleanString(dto.vehicle_model);
     const color = this.cleanString(dto.color);
     const engine = this.cleanString(dto.engine);
 
@@ -42,7 +42,7 @@ export class VehiclesService {
           data: {
             customer_id: dto.customer_id || existing.customer_id,
             make: make ?? existing.make,
-            model: model ?? existing.model,
+            vehicle_model: vehicle_model ?? existing.vehicle_model,
             year: dto.year ?? existing.year,
             plate: plate ?? existing.plate,
             color: color ?? existing.color,
@@ -60,7 +60,7 @@ export class VehiclesService {
         customer_id: dto.customer_id,
         vin,
         make: make ?? dto.make,
-        model: model ?? dto.model,
+        vehicle_model: vehicle_model ?? dto.vehicle_model,
         year: dto.year,
         plate,
         color,
@@ -254,7 +254,7 @@ export class VehiclesService {
         color: this.cleanString(dto.color),
         engine: this.cleanString(dto.engine),
         make: this.cleanString(dto.make) ?? undefined,
-        model: this.cleanString(dto.model) ?? undefined,
+        vehicle_model: this.cleanString(dto.vehicle_model) ?? undefined,
         vehicle_type: dto.vehicle_type || undefined,
       },
     });

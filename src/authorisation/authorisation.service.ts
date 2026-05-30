@@ -145,7 +145,7 @@ export class AuthorisationService {
     const customerRecipient = sentTo || (channel === 'email' ? job.customers?.email : job.customers?.phone) || job.customers?.email || job.customers?.phone || 'customer';
     const customerMessage = [
       `Please review and approve the estimate for job ${job.job_number}.`,
-      `${job.vehicles?.make || ''} ${job.vehicles?.model || ''}`.trim(),
+      `${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''}`.trim(),
       '',
       `Approval link: ${portalUrl}`,
       '',
@@ -175,7 +175,7 @@ export class AuthorisationService {
           channel: 'push',
           recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
           subject: `Estimate sent for ${job.job_number}`,
-          body_rendered: `Approval link generated for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.model || ''}. Job moved to Estimate Sent.`,
+          body_rendered: `Approval link generated for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''}. Job moved to Estimate Sent.`,
           status: 'queued',
           provider: 'internal',
         },
@@ -944,7 +944,7 @@ export class AuthorisationService {
           channel: 'push',
           recipient: token.jobs.users_jobs_advisor_idTousers?.email || token.jobs.users_jobs_advisor_idTousers?.name || 'advisor',
           subject: `Customer replied to estimate for ${token.jobs?.job_number}`,
-          body_rendered: `Customer submitted estimate decisions for ${token.jobs?.customers?.name || 'customer'} / ${token.jobs?.vehicles?.make || ''} ${token.jobs?.vehicles?.model || ''}. Approved: ${approvedCount}, Rejected: ${declinedCount}, Deferred: ${deferredCount}. Job moved to Approved.`,
+          body_rendered: `Customer submitted estimate decisions for ${token.jobs?.customers?.name || 'customer'} / ${token.jobs?.vehicles?.make || ''} ${token.jobs?.vehicles?.vehicle_model || ''}. Approved: ${approvedCount}, Rejected: ${declinedCount}, Deferred: ${deferredCount}. Job moved to Approved.`,
           status: 'queued',
           provider: 'internal',
         },

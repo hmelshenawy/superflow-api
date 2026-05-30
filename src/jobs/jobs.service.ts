@@ -159,7 +159,7 @@ export class JobsService {
         where,
         include: {
           customers: { select: { id: true, name: true, phone: true, email: true } },
-          vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true } },
+          vehicles: { select: { id: true, make: true, vehicle_model: true, plate: true, vin: true, year: true } },
           users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
           users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
           estimate_lines: { select: { line_total: true } },
@@ -186,7 +186,7 @@ export class JobsService {
       where: { id, is_deleted: false },
       include: {
         customers: { select: { id: true, name: true, phone: true, email: true } },
-        vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true, color: true } },
+        vehicles: { select: { id: true, make: true, vehicle_model: true, plate: true, vin: true, year: true, color: true } },
         users_jobs_advisor_idTousers: { select: { id: true, name: true, email: true } },
         users_jobs_technician_idTousers: { select: { id: true, name: true, email: true } },
         estimate_lines: { include: { quote_groups: true, job_concerns: true } },

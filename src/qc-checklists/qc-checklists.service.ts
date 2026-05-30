@@ -257,7 +257,7 @@ export class QcChecklistsService {
             channel: 'push',
             recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
             subject: `QC checklist ${overallResult === 'pass' ? 'passed' : 'failed'} for ${job.job_number}`,
-            body_rendered: `Quality check for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.model || ''} has been completed. Result: ${overallResult.toUpperCase()}.${dto.notes ? ` Notes: ${dto.notes}` : ''}`,
+            body_rendered: `Quality check for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''} has been completed. Result: ${overallResult.toUpperCase()}.${dto.notes ? ` Notes: ${dto.notes}` : ''}`,
             status: 'queued',
             provider: 'internal',
           },

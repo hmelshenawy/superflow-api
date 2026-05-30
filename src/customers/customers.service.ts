@@ -26,7 +26,7 @@ export class CustomersService {
   async findOne(id: string) {
     const customer = await this.prisma.tenant.customers.findUnique({
       where: { id },
-      include: { vehicles: { select: { id: true, make: true, model: true, plate: true, vin: true, year: true } } },
+      include: { vehicles: { select: { id: true, make: true, vehicle_model: true, plate: true, vin: true, year: true } } },
     });
     if (!customer) throw new NotFoundException('Customer not found');
     return customer;
@@ -51,7 +51,7 @@ export class CustomersService {
     const [items, total] = await Promise.all([
       this.prisma.tenant.jobs.findMany({
         skip, take: pagination.limit, where: { customer_id: customerId },
-        include: { vehicles: { select: { make: true, model: true, plate: true } } },
+        include: { vehicles: { select: { make: true, vehicle_model: true, plate: true } } },
         orderBy: { created_at: 'desc' },
       }),
       this.prisma.tenant.jobs.count({ where: { customer_id: customerId } }),
@@ -65,7 +65,7 @@ export class CustomersService {
     const [items, total] = await Promise.all([
       this.prisma.tenant.deferred_work.findMany({
         skip, take: pagination.limit, where: { customer_id: customerId },
-        include: { vehicles: { select: { make: true, model: true, plate: true } }, estimate_lines: true },
+        include: { vehicles: { select: { make: true, vehicle_model: true, plate: true } }, estimate_lines: true },
         orderBy: { created_at: 'desc' },
       }),
       this.prisma.tenant.deferred_work.count({ where: { customer_id: customerId } }),

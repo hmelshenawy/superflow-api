@@ -280,7 +280,7 @@ export class InspectionsService {
           channel: 'push',
           recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
           subject: `Inspection submitted for ${job.job_number}`,
-          body_rendered: `Inspection for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.model || ''} has been submitted by technician.${dto.advisor_note ? ` Note: ${dto.advisor_note}` : ''}`,
+          body_rendered: `Inspection for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''} has been submitted by technician.${dto.advisor_note ? ` Note: ${dto.advisor_note}` : ''}`,
           status: 'queued',
           provider: 'internal',
         },
