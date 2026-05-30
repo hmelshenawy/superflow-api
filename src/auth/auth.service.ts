@@ -4,10 +4,10 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
 import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules, normalizeProductMode, type ProductMode } from '../common/product-modes';
 import { TokenService } from './services/token.service';
 import { PasswordService } from './services/password.service';
+import { AuthEmailService } from './services/auth-email.service';
 import { hashRefreshToken, hashPasswordResetToken, slugify, parsePermissions } from './services/auth-utils';
 
 @Injectable()
@@ -18,9 +18,9 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
-    private notifications: NotificationsService,
     private tokenService: TokenService,
     private passwordService: PasswordService,
+    private emailService: AuthEmailService,
   ) {}
 
   private async uniqueWorkshopSlug(name: string) {
@@ -97,22 +97,13 @@ export class AuthService {
       }),
     ]);
 
-    await this.notifications.enqueue({
-      channel: 'email',
-      recipient: email,
-      subject: 'Welcome to PrioraFlow',
+    await this.emailService.sendSignupWelcomeEmail({
+      email,
+      name: dto.name.trim(),
+      workshopName: dto.workshopName.trim(),
       workshopId,
-      body: [
-        `Hi ${dto.name.trim()},`,
-        '',
-        `Your PrioraFlow workspace "${dto.workshopName.trim()}" is ready.`,
-        '',
-        'You can now log in and start setting up your workshop team, jobs, customers, and approvals.',
-        '',
-        `Your 14-day free trial ends on ${trialEndsAt.toISOString().slice(0, 10)}.`,
-      ].join('\n'),
-      provider: 'resend',
-    }).catch(() => {});
+      trialEndsAt,
+    });
 
     const rolePermissions = parsePermissions(role.permissions);
     const accessToken = this.tokenService.signAccessToken({ sub: userId, role: role.name || 'workshop_admin', permissions: rolePermissions, workshopId });
@@ -249,29 +240,11 @@ export class AuthService {
     const appUrl = (this.config.get<string>('APP_URL') || this.config.get<string>('FRONTEND_URL') || `https://${this.config.get<string>('APP_DOMAIN', 'prioraflow.com')}`).replace(/\/$/, '');
     const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
-    const userWorkshop = await this.prisma.raw.user_workshop_access.findFirst({
-      where: { user_id: user.id },
-      select: { workshop_id: true },
-    });
-    const fallbackWorkshop = userWorkshop?.workshop_id
-      ? null
-      : await this.prisma.raw.workshops.findFirst({ where: { is_active: true }, select: { id: true } });
-
-    await this.notifications.enqueue({
-      channel: 'email',
-      recipient: user.email || normalizedEmail,
-      subject: 'Reset your PrioraFlow password',
-      workshopId: userWorkshop?.workshop_id || fallbackWorkshop?.id || null,
-      body: [
-        `Hi ${user.name || 'there'},`,
-        '',
-        'We received a request to reset your PrioraFlow password.',
-        '',
-        `Reset link: ${resetUrl}`,
-        '',
-        'This link expires in 1 hour. If you did not request this, you can ignore this email.',
-      ].join('\n'),
-      provider: 'resend',
+    await this.emailService.sendPasswordResetEmail({
+      userId: user.id,
+      email: user.email || normalizedEmail,
+      name: user.name,
+      resetUrl,
     });
 
     return { success: true };
