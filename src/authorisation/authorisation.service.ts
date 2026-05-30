@@ -1,17 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { DecideDto } from './dto/decide.dto';
-import { AuthorisationNotificationService } from './services/authorisation-notification.service';
 import { AuthorisationQueryService } from './services/authorisation-query.service';
 import { AuthorisationDecisionService } from './services/authorisation-decision.service';
+import { DecideDto } from './dto/decide.dto';
 
 @Injectable()
 export class AuthorisationService {
   constructor(
-    private prisma: PrismaService,
     private queryService: AuthorisationQueryService,
     private decisionService: AuthorisationDecisionService,
-    private notificationService: AuthorisationNotificationService,
   ) {}
 
   // ── Query delegations ──
