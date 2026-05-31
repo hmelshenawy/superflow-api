@@ -11,6 +11,11 @@ prisma/generated/
 # Build output
 dist/
 
+# Root-level stray files — one-off scripts and SQL dumps belong in scripts/
+/*.sql
+/*.js
+!jest.config.js
+
 # Logs
 logs/
 *.log

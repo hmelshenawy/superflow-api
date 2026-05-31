@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
 export class AuthorisationNotificationService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(AuthorisationNotificationService.name);
+
+  constructor(private notificationsService: NotificationsService) {}
 
   /**
    * Send notification to the customer that their estimate approval is requested.
@@ -22,6 +23,7 @@ export class AuthorisationNotificationService {
     sentTo: string | undefined,
     portalUrl: string,
   ) {
+    const effectiveChannel = channel === 'link' ? 'push' : channel;
     const customerRecipient =
       sentTo || (channel === 'email' ? job.customers?.email : job.customers?.phone) || job.customers?.email || job.customers?.phone || 'customer';
     const customerMessage = [
@@ -33,19 +35,19 @@ export class AuthorisationNotificationService {
       'This link expires in 7 days.',
     ].filter((line) => line !== undefined).join('\n');
 
-    await this.prisma.tenant.notifications.create({
-      data: {
-        id: uuid(),
-        job_id: job.id,
-        customer_id: job.customer_id,
-        channel: (channel === 'link' ? 'push' : channel) as any,
+    try {
+      await this.notificationsService.enqueue({
+        channel: effectiveChannel as 'email' | 'sms' | 'whatsapp' | 'push',
         recipient: customerRecipient,
         subject: `Approval request for ${job.job_number}`,
-        body_rendered: customerMessage,
-        status: 'queued',
+        body: customerMessage,
         provider: channel === 'email' ? 'resend' : 'internal',
-      },
-    }).catch(() => {});
+        jobId: job.id,
+        ...(job.customer_id ? { customerId: job.customer_id } : {}),
+      });
+    } catch (error) {
+      this.logger.error(`Failed to enqueue customer approval notification for job ${job.job_number}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -65,19 +67,19 @@ export class AuthorisationNotificationService {
   ) {
     if (!job.advisor_id) return;
 
-    await this.prisma.tenant.notifications.create({
-      data: {
-        id: uuid(),
-        job_id: job.id,
-        customer_id: job.customer_id,
+    try {
+      await this.notificationsService.enqueue({
         channel: 'push',
         recipient: job.users_jobs_advisor_idTousers?.email || job.users_jobs_advisor_idTousers?.name || 'advisor',
         subject: `Estimate sent for ${job.job_number}`,
-        body_rendered: `Approval link generated for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''}. Job moved to Estimate Sent.`,
-        status: 'queued',
+        body: `Approval link generated for ${job.customers?.name || 'customer'} / ${job.vehicles?.make || ''} ${job.vehicles?.vehicle_model || ''}. Job moved to Estimate Sent.`,
         provider: 'internal',
-      },
-    }).catch(() => {});
+        jobId: job.id,
+        ...(job.customer_id ? { customerId: job.customer_id } : {}),
+      });
+    } catch (error) {
+      this.logger.error(`Failed to enqueue advisor estimate notification for job ${job.job_number}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -94,18 +96,18 @@ export class AuthorisationNotificationService {
     const declinedCount = decisions.filter((item) => item.decision === 'declined').length;
     const deferredCount = decisions.filter((item) => item.decision === 'deferred').length;
 
-    await this.prisma.tenant.notifications.create({
-      data: {
-        id: uuid(),
-        job_id: token.job_id,
-        customer_id: token.jobs?.customer_id,
+    try {
+      await this.notificationsService.enqueue({
         channel: 'push',
         recipient: token.jobs.users_jobs_advisor_idTousers?.email || token.jobs.users_jobs_advisor_idTousers?.name || 'advisor',
         subject: `Customer replied to estimate for ${token.jobs?.job_number}`,
-        body_rendered: `Customer submitted estimate decisions for ${token.jobs?.customers?.name || 'customer'} / ${token.jobs?.vehicles?.make || ''} ${token.jobs?.vehicles?.vehicle_model || ''}. Approved: ${approvedCount}, Rejected: ${declinedCount}, Deferred: ${deferredCount}. Job moved to Approved.`,
-        status: 'queued',
+        body: `Customer submitted estimate decisions for ${token.jobs?.customers?.name || 'customer'} / ${token.jobs?.vehicles?.make || ''} ${token.jobs?.vehicles?.vehicle_model || ''}. Approved: ${approvedCount}, Rejected: ${declinedCount}, Deferred: ${deferredCount}. Job moved to Approved.`,
         provider: 'internal',
-      },
-    }).catch(() => {});
+        jobId: token.job_id,
+        ...(token.jobs?.customer_id ? { customerId: token.jobs.customer_id } : {}),
+      });
+    } catch (error) {
+      this.logger.error(`Failed to enqueue advisor decision notification for job ${token.jobs?.job_number}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
