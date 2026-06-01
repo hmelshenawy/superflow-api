@@ -102,11 +102,9 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
     { href: "/jobs", label: "Estimates", icon: ListChecks, module: MODULES.ESTIMATES, requirePermission: "estimates:read" },
     { href: "/settings", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "admin:billing" },
-    { href: "/jobs", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
+    { href: "/technicians", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
     { href: "/insights", label: "Reports / Analytics", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
     { href: "/settings", label: "Settings", icon: Settings },
-    { href: "/settings/schedule", label: "Schedule", icon: CalendarDays, module: MODULES.APPOINTMENTS },
-    { href: "/settings/job-types", label: "Job types", icon: Wrench, module: MODULES.APPOINTMENTS },
   ],
   CONNECT: [
     { href: "/dashboard", label: "Command Center", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
@@ -134,6 +132,7 @@ export const ROUTE_MODULES: Array<{ prefix: string; module: ModuleKey; modes?: P
   { prefix: "/advisor", module: MODULES.PRIORITY_ENGINE, modes: ["CONNECT"] },
   { prefix: "/blockers", module: MODULES.BOTTLENECK_DETECTION, modes: ["CONNECT"] },
   { prefix: "/admin/booking-import", module: MODULES.BOOKING_IMPORT, modes: ["CONNECT"] },
+  { prefix: "/technicians", module: MODULES.TECHNICIAN_LOADING, modes: ["WORKSHOP"] },
   { prefix: "/insights", module: MODULES.OPERATIONAL_ANALYTICS },
   { prefix: "/jobs", module: MODULES.WIP },
 ];

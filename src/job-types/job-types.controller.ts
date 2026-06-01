@@ -21,6 +21,9 @@ export class JobTypesController {
   @Post('import')
   importTemplates(@Body() dto: ImportJobTypesDto) { return this.service.importTemplates(dto); }
 
+  @Get('categories')
+  categories() { return this.service.categories(); }
+
   @Get()
   findAll() { return this.service.findAll(); }
 

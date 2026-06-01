@@ -38,6 +38,7 @@ import { JobTypesModule } from './job-types/job-types.module';
 import { WorkshopScheduleModule } from './schedule/schedule.module';
 import { StaffModule } from './staff/staff.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { TechniciansModule } from './technicians/technicians.module';
 import { WorkshopContextInterceptor } from './common/interceptors/workshop-context.interceptor';
 import { TenantThrottlerGuard } from './common/rate-limit/tenant-throttler.guard';
 import { PlanFeatureGuard } from './common/guards/plan-feature.guard';
@@ -91,6 +92,7 @@ import { validateEnvironment } from './config/env.validation';
     WorkshopScheduleModule,
     StaffModule,
     AppointmentsModule,
+    TechniciansModule,
   ],
   providers: [
     {

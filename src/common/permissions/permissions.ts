@@ -97,6 +97,11 @@ export const QC_REOPEN = 'qc:reopen';
 export const BLOCKERS_READ = 'blockers:read';
 export const BLOCKERS_MANAGE = 'blockers:manage';
 
+// ─── Technicians ───────────────────────────────────────
+export const TECHNICIAN_BOARD = 'technician:board';
+export const TECHNICIAN_CLOCK = 'technician:clock';
+export const TECHNICIAN_PRODUCTIVITY = 'technician:productivity';
+
 // ─── Parts & Stock ──────────────────────────────────────
 export const PARTS_READ = 'parts:read';
 export const PARTS_CREATE = 'parts:create';
@@ -147,6 +152,7 @@ export const ALL_PERMISSIONS: string[] = [
   STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
   PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
   JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+  TECHNICIAN_BOARD, TECHNICIAN_CLOCK, TECHNICIAN_PRODUCTIVITY,
 ];
 
 /**
@@ -190,12 +196,14 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       ADMIN_INTEGRATIONS, ADMIN_TEMPLATES, ADMIN_LABOUR_RATES, ADMIN_STATS,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
+      TECHNICIAN_BOARD, TECHNICIAN_CLOCK, TECHNICIAN_PRODUCTIVITY,
       PARTS_READ, PARTS_CREATE, PARTS_UPDATE,
       SUPPLIERS_READ, SUPPLIERS_CREATE, SUPPLIERS_UPDATE,
       WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE,
       STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
       PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
       JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+      TECHNICIAN_BOARD, TECHNICIAN_CLOCK, TECHNICIAN_PRODUCTIVITY,
     ],
   },
   workshop_manager: {
@@ -266,6 +274,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       PARTS_READ,
       WAREHOUSES_READ,
       JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+      TECHNICIAN_BOARD, TECHNICIAN_CLOCK,
     ],
   },
   technician: {
@@ -284,6 +293,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       PARTS_READ,
       WAREHOUSES_READ,
       JOB_PARTS_READ,
+      TECHNICIAN_BOARD,
     ],
   },
   receptionist: {

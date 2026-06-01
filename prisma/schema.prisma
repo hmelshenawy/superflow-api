@@ -83,6 +83,7 @@ model workshops {
   staff_members             staff_members[]
   staff_leaves              staff_leaves[]
   appointments              appointments[]
+  technician_clock_events   technician_clock_events[]
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
@@ -1076,6 +1077,8 @@ model users {
   approval_reset_audit           approval_reset_audit[]
   appointments_created_byTousers appointments[]             @relation("appointments_created_byTousers")
   staff_members                  staff_members[]
+  technician_clock_events       technician_clock_events[]        @relation("fk_tce_technician")
+  technician_clock_events_changed technician_clock_events[]      @relation("fk_tce_changed_by")
 
   @@index([email], map: "idx_users_email")
   @@index([role_id], map: "idx_users_role_id")
@@ -1641,6 +1644,31 @@ enum purchase_orders_status {
   partially_received
   received
   cancelled
+}
+
+enum technician_clock_event_type {
+  clock_in
+  clock_out
+  break_start
+  break_end
+}
+
+model technician_clock_events {
+  id             String                          @id @default(uuid()) @db.Char(36)
+  technician_id  String                           @db.Char(36)
+  workshop_id    String                           @db.Char(36)
+  event_type     technician_clock_event_type
+  timestamp      DateTime                         @default(now()) @db.DateTime(0)
+  note           String?                          @db.Text
+  changed_by     String?                          @db.Char(36)
+
+  users          users?                           @relation("fk_tce_technician", fields: [technician_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_tce_technician")
+  workshops     workshops?                       @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_tce_workshop")
+  changed_by_user users?                         @relation("fk_tce_changed_by", fields: [changed_by], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_tce_changed_by")
+
+  @@index([technician_id], map: "idx_tce_technician")
+  @@index([workshop_id], map: "idx_tce_workshop")
+  @@index([timestamp], map: "idx_tce_timestamp")
 }
 
 model blockers {

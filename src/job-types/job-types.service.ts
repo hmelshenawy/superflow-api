@@ -46,6 +46,29 @@ export class JobTypesService {
     return created;
   }
 
+  async categories() {
+    // Get all unique categories from both templates and this workshop's custom types
+    const [templateCategories, customCategories] = await Promise.all([
+      (this.prisma.raw as any).job_type_templates.findMany({
+        where: { is_active: true },
+        select: { category: true },
+        distinct: ['category'],
+        orderBy: { category: 'asc' },
+      }),
+      (this.prisma.tenant as any).job_types.findMany({
+        where: { is_active: true },
+        select: { category: true },
+        distinct: ['category'],
+        orderBy: { category: 'asc' },
+      }),
+    ]);
+    const all = new Set([
+      ...templateCategories.map((t: any) => t.category),
+      ...customCategories.map((t: any) => t.category),
+    ]);
+    return [...all].sort();
+  }
+
   findAll() {
     return (this.prisma.tenant as any).job_types.findMany({
       where: { is_active: true },
@@ -54,9 +77,10 @@ export class JobTypesService {
     });
   }
 
-  create(dto: CreateJobTypeDto) {
+  async create(dto: CreateJobTypeDto) {
+    const { workshopId } = getWorkshopContext();
     return (this.prisma.tenant as any).job_types.create({
-      data: { id: uuid(), template_id: null, category: dto.category || 'Custom', ...dto },
+      data: { id: uuid(), workshop_id: workshopId, template_id: null, category: dto.category || 'Custom', ...dto },
     });
   }
 
