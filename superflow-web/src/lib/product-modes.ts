@@ -101,6 +101,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/crm", label: "CRM", icon: Contact, module: MODULES.CRM, requirePermission: "crm:read" },
     { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
     { href: "/jobs", label: "Estimates", icon: ListChecks, module: MODULES.ESTIMATES, requirePermission: "estimates:read" },
+    { href: "/invoices", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "invoices:read" },
     { href: "/settings", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "admin:billing" },
     { href: "/jobs", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
     { href: "/insights", label: "Reports / Analytics", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },

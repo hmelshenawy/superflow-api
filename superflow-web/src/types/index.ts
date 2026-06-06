@@ -275,6 +275,7 @@ export interface Job {
   dms_synced_at: string | null;
   completed_at: string | null;
   invoiced_at: string | null;
+  invoice_id?: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;

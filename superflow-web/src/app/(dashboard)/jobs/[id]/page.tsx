@@ -72,6 +72,7 @@ import {
   Image as ImageIcon,
   Pencil,
   RotateCcw,
+  Receipt,
   Save,
   Send,
   User,
@@ -79,6 +80,8 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/auth";
+import { hasAnyPermission } from "@/lib/permissions";
 import { toast } from "sonner";
 
 const STATUS_META: Record<
@@ -237,6 +240,10 @@ export default function JobDetailPage() {
   const [qcRev, setQcRev] = useState(0);
   const [startingQc, setStartingQc] = useState(false);
   const [reopeningQc, setReopeningQc] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+
+  const user = useAuthStore((state) => state.user);
+  const canCreateInvoice = hasAnyPermission(user, ["invoices:create"]);
 
   /** Most logical next status in the forward flow */
   const nextFlowStatus = useMemo(() => {
@@ -426,6 +433,24 @@ export default function JobDetailPage() {
       toast.error(getApiError(error).message || "Failed to release portal update");
     } finally {
       setReleasingPortal(false);
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!job) return;
+    if (job.invoice_id) {
+      router.push(`/invoices/${job.invoice_id}`);
+      return;
+    }
+    setGeneratingInvoice(true);
+    try {
+      const { data } = await api.post(`/jobs/${job.id}/invoice`);
+      toast.success(`Invoice ${data.invoice_number} generated`);
+      router.push(`/invoices/${data.id}`);
+    } catch (error) {
+      toast.error(getApiError(error).message || "Failed to generate invoice");
+    } finally {
+      setGeneratingInvoice(false);
     }
   };
 
@@ -1045,11 +1070,22 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button variant="outline" className="h-12 rounded-2xl border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100" onClick={releasePortalUpdate} disabled={releasingPortal}>
                 <Send className="mr-2 h-4 w-4" /> {releasingPortal ? "Releasing..." : "Release portal"}
               </Button>
               {estimateCount > 0 ? <SendApprovalButton jobId={job.id} onSent={refreshJob} /> : <Button disabled className="h-12 rounded-2xl">Approval link</Button>}
+              {canCreateInvoice && (
+                <Button
+                  variant="outline"
+                  className="h-12 rounded-2xl border-blue-200 bg-blue-50 text-blue-800 shadow-sm hover:bg-blue-100"
+                  onClick={handleGenerateInvoice}
+                  disabled={generatingInvoice}
+                >
+                  <Receipt className="mr-2 h-4 w-4" />
+                  {generatingInvoice ? "Generating..." : job.invoice_id ? "View invoice" : "Generate invoice"}
+                </Button>
+              )}
             </div>
           </div>
 
