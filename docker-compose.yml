@@ -1,11 +1,10 @@
 services:
   api:
+    image: superflow-api:latest
     build:
       context: .
       dockerfile: Dockerfile
-    image: superflow-api:latest
     container_name: superflow-api
-    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -16,14 +15,14 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
-      PORT: "3000"
+      PORT: 3000
       NODE_ENV: production
       APP_DOMAIN: ${APP_DOMAIN}
       APP_VERSION: ${APP_VERSION:-0.1.0}
       GIT_BRANCH: ${GIT_BRANCH:-unknown}
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
       REDIS_HOST: redis
-      REDIS_PORT: "6379"
+      REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://${APP_DOMAIN},http://localhost:3000}
       S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
@@ -46,103 +45,117 @@ services:
       CUSTOMER_PORTAL_URL: ${CUSTOMER_PORTAL_URL:-https://${APP_DOMAIN}}
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_RELEASE: ${SENTRY_RELEASE:-superflow-api@0.1.0}
-    ports:
-      - "127.0.0.1:${API_BIND_PORT:-3000}:3000"
     extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      redis:
-        condition: service_healthy
+      - host.docker.internal:host-gateway
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null 2>&1 || exit 1"]
+      test:
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1:3000/health >/dev/null 2>&1 || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 20s
     labels:
-      traefik.enable: "true"
-      traefik.docker.network: "n8n_default"
-      traefik.http.routers.superflow-api.entrypoints: "${TRAEFIK_ENTRYPOINTS:-websecure}"
-      traefik.http.routers.superflow-api.rule: "(Host(`${APP_DOMAIN}`) || Host(`${APP_DOMAIN_ALT}`)) && (PathPrefix(`/api`) || Path(`/health`))"
-      traefik.http.routers.superflow-api.priority: "100"
-      traefik.http.routers.superflow-api.tls: "true"
-      traefik.http.routers.superflow-api.tls.certresolver: "${TRAEFIK_CERTRESOLVER:-mytlschallenge}"
-      traefik.http.services.superflow-api.loadbalancer.server.port: "3000"
+      traefik.enable: true
+      traefik.docker.network: n8n_default
+      traefik.http.routers.superflow-api.entrypoints: ${TRAEFIK_ENTRYPOINTS:-websecure}
+      traefik.http.routers.superflow-api.rule: (Host(`${APP_DOMAIN}`) || Host(`${APP_DOMAIN_ALT}`)) && (PathPrefix(`/api`) || Path(`/health`))
+      traefik.http.routers.superflow-api.priority: 100
+      traefik.http.routers.superflow-api.tls: true
+      traefik.http.routers.superflow-api.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-mytlschallenge}
+      traefik.http.services.superflow-api.loadbalancer.server.port: 3000
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:${API_BIND_PORT:-3000}:3000
+    depends_on:
+      - redis
     networks:
-      - mariadb-bzki_default
       - superflow_internal
-      - traefik_public
-
+      - mariadb-bzki_default
+      - n8n_default
   web:
+    image: superflow-web:latest
     build:
       context: ./superflow-web
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://${APP_DOMAIN}/api}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-    image: superflow-web:latest
     container_name: superflow-web
-    restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 512M
     environment:
       NODE_ENV: production
-      PORT: "3000"
+      PORT: 3000
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-    ports:
-      - "127.0.0.1:${WEB_BIND_PORT:-3001}:3000"
-    depends_on:
-      api:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
+      test:
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 20s
     labels:
-      traefik.enable: "true"
-      traefik.docker.network: "n8n_default"
-      traefik.http.routers.superflow-web.entrypoints: "${TRAEFIK_ENTRYPOINTS:-websecure}"
-      traefik.http.routers.superflow-web.rule: "Host(`${APP_DOMAIN}`) || Host(`${APP_DOMAIN_ALT}`)"
-      traefik.http.routers.superflow-web.priority: "10"
-      traefik.http.routers.superflow-web.tls: "true"
-      traefik.http.routers.superflow-web.tls.certresolver: "${TRAEFIK_CERTRESOLVER:-mytlschallenge}"
-      traefik.http.services.superflow-web.loadbalancer.server.port: "3000"
+      traefik.enable: true
+      traefik.docker.network: n8n_default
+      traefik.http.routers.superflow-web.entrypoints: ${TRAEFIK_ENTRYPOINTS:-websecure}
+      traefik.http.routers.superflow-web.rule: Host(`${APP_DOMAIN}`) || Host(`${APP_DOMAIN_ALT}`)
+      traefik.http.routers.superflow-web.priority: 10
+      traefik.http.routers.superflow-web.tls: true
+      traefik.http.routers.superflow-web.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-mytlschallenge}
+      traefik.http.services.superflow-web.loadbalancer.server.port: 3000
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:${WEB_BIND_PORT:-3001}:3000
+    depends_on:
+      - api
     networks:
       - superflow_internal
-      - traefik_public
-
+      - n8n_default
   redis:
     image: redis:7-alpine
     container_name: superflow-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-superflow_redis_local}", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    command:
+      - redis-server
+      - --appendonly
+      - yes
+      - --requirepass
+      - ${REDIS_PASSWORD:-superflow_redis_local}
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
     deploy:
       resources:
         limits:
           memory: 256M
-    volumes:
-      - superflow_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-superflow_redis_local}", "ping"]
+      test:
+        - CMD
+        - redis-cli
+        - -a
+        - ${REDIS_PASSWORD:-superflow_redis_local}
+        - ping
       interval: 15s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
+    ports:
+    - "127.0.0.1:6379:6379"
+    volumes:
+      - superflow_redis_data:/data
     networks:
       - superflow_internal
-
-volumes:
-  superflow_redis_data:
-
+      - n8n_default
 networks:
+  superflow_internal:
   mariadb-bzki_default:
     external: true
-  superflow_internal:
-    driver: bridge
-  traefik_public:
+  n8n_default:
     external: true
-    name: n8n_default
+volumes:
+  superflow_redis_data:
