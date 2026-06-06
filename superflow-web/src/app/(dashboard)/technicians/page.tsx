@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 import api, { getApiError } from "@/lib/api";
 import { usePlanStore, FEATURES } from "@/hooks/use-plan-features";
@@ -178,14 +179,14 @@ function SummaryStrip({ summary }: { summary: BoardData["summary"] }) {
   );
 }
 
-function JobCard({ job, onClick }: { job: TechnicianJob; onClick?: () => void }) {
+function JobCard({ job }: { job: TechnicianJob }) {
   const stageLabel = STAGE_LABELS[job.workshop_stage || ""] || job.workshop_stage || "—";
   const stageColor = STAGE_COLORS[job.workshop_stage || ""] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
 
   return (
-    <div
-      className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
-      onClick={onClick}
+    <Link
+      href={`/jobs/${job.id}`}
+      className="block bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
     >
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">{job.job_number}</span>
@@ -225,13 +226,13 @@ function JobCard({ job, onClick }: { job: TechnicianJob; onClick?: () => void })
           <Package className="w-3 h-3" /> {job.parts_status.replace(/_/g, " ")}
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 
 function UnassignedJobCard({ job }: { job: UnassignedJob }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+    <Link href={`/jobs/${job.id}`} className="block bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">{job.job_number}</span>
         <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
@@ -255,7 +256,7 @@ function UnassignedJobCard({ job }: { job: UnassignedJob }) {
       {job.is_customer_waiting && (
         <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 font-medium">Customer Waiting</span>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -330,7 +331,7 @@ function TechnicianCard({ tech, expanded, onToggle }: { tech: TechnicianData; ex
               </div>
               <div className="space-y-2">
                 {inProgressJobs.map(job => (
-                  <JobCard key={job.id} job={job} onClick={() => { /* navigate to job detail */ }} />
+                  <JobCard key={job.id} job={job} />
                 ))}
               </div>
             </div>
@@ -342,7 +343,7 @@ function TechnicianCard({ tech, expanded, onToggle }: { tech: TechnicianData; ex
               </div>
               <div className="space-y-2">
                 {waitingJobs.map(job => (
-                  <JobCard key={job.id} job={job} onClick={() => { /* navigate to job detail */ }} />
+                  <JobCard key={job.id} job={job} />
                 ))}
               </div>
             </div>
@@ -354,7 +355,7 @@ function TechnicianCard({ tech, expanded, onToggle }: { tech: TechnicianData; ex
               </div>
               <div className="space-y-2">
                 {partsBlockedJobs.map(job => (
-                  <JobCard key={job.id} job={job} onClick={() => { /* navigate to job detail */ }} />
+                  <JobCard key={job.id} job={job} />
                 ))}
               </div>
             </div>
@@ -369,14 +370,14 @@ function TechnicianCard({ tech, expanded, onToggle }: { tech: TechnicianData; ex
       {!expanded && tech.jobs.length > 0 && (
         <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2 flex gap-2 overflow-x-auto">
           {inProgressJobs.slice(0, 3).map(job => (
-            <div key={job.id} className="shrink-0 px-2 py-1 rounded bg-green-50 dark:bg-green-900/30 text-xs text-green-700 dark:text-green-300 font-mono">
+            <Link key={job.id} href={`/jobs/${job.id}`} className="shrink-0 px-2 py-1 rounded bg-green-50 dark:bg-green-900/30 text-xs text-green-700 dark:text-green-300 font-mono hover:underline">
               {job.job_number}
-            </div>
+            </Link>
           ))}
           {waitingJobs.slice(0, 2).map(job => (
-            <div key={job.id} className="shrink-0 px-2 py-1 rounded bg-yellow-50 dark:bg-yellow-900/30 text-xs text-yellow-700 dark:text-yellow-300 font-mono">
+            <Link key={job.id} href={`/jobs/${job.id}`} className="shrink-0 px-2 py-1 rounded bg-yellow-50 dark:bg-yellow-900/30 text-xs text-yellow-700 dark:text-yellow-300 font-mono hover:underline">
               {job.job_number}
-            </div>
+            </Link>
           ))}
           {tech.jobs.length > 5 && (
             <div className="shrink-0 px-2 py-1 rounded bg-gray-50 dark:bg-gray-800 text-xs text-gray-500">
