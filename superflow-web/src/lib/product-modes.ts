@@ -106,9 +106,9 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/settings", label: "Settings", icon: Settings },
   ],
   CONNECT: [
-    { href: "/dashboard", label: "Command Center", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
-    { href: "/jobs", label: "WIP Board", icon: LayoutGrid, module: MODULES.WIP },
-    { href: "/insights", label: "Capacity", icon: SlidersHorizontal, module: MODULES.CAPACITY_MANAGEMENT, requirePermission: "insights:dashboard" },
+    { href: "/dashboard", label: "Dashboard", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
+    { href: "/jobs", label: "Workboard", icon: LayoutGrid, module: MODULES.WIP },
+    { href: "/insights", label: "Insights", icon: SlidersHorizontal, module: MODULES.CAPACITY_MANAGEMENT, requirePermission: "insights:dashboard" },
     { href: "/advisor", label: "Priority Queue", icon: Target, module: MODULES.PRIORITY_ENGINE, requirePermission: "priority:read" },
     { href: "/blockers", label: "Bottlenecks", icon: AlertTriangle, module: MODULES.BOTTLENECK_DETECTION, requirePermission: "blockers:read" },
     { href: "/admin/booking-import", label: "DMS Booking Import", icon: FileUp, module: MODULES.BOOKING_IMPORT },

@@ -213,9 +213,7 @@ export default function BlockersPage() {
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger>
-              <Button size="sm">Add Blocker</Button>
-            </DialogTrigger>
+            <DialogTrigger render={<Button size="sm">Add Blocker</Button>} />
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Blocker</DialogTitle>
