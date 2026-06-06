@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsBoolean, IsArray, ValidateNested, Min, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsEnum, IsBoolean, IsArray, ValidateNested, Min, IsNotEmpty, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { InvoiceItemType } from './create-invoice.dto';
@@ -27,7 +27,7 @@ export class UpdateLineItemDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   quantity?: number;
 
@@ -45,7 +45,7 @@ export class UpdateLineItemDto {
 
   @ApiPropertyOptional({ description: 'VAT rate as decimal, e.g. 0.05 for 5%' })
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   vat_rate?: number;
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsBoolean, IsArray, ValidateNested, Min, ArrayMinSize, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsEnum, IsBoolean, IsArray, ValidateNested, Min, ArrayMinSize, IsNotEmpty, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -24,7 +24,7 @@ export class CreateLineItemDto {
   sku?: string;
 
   @ApiProperty()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   quantity: number;
 
@@ -41,7 +41,7 @@ export class CreateLineItemDto {
 
   @ApiPropertyOptional({ description: 'VAT rate as decimal, e.g. 0.05 for 5%' })
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   vat_rate?: number;
 

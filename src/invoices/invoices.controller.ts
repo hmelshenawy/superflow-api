@@ -59,8 +59,8 @@ export class InvoicesController {
   @RequirePermission(INVOICES_READ)
   @ApiOperation({ summary: 'Get invoice by ID' })
   @ApiParam({ name: 'id', description: 'Invoice ID' })
-  findOne(@Param('id') id: string) {
-    return this.invoicesService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser('workshopId') workshopId: string) {
+    return this.invoicesService.findOne(id, workshopId);
   }
 
   @Patch(':id')

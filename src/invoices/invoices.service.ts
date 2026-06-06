@@ -17,10 +17,10 @@ export class InvoicesService {
 
   private mapLineItemDtoToCalc(item: CreateLineItemDto | UpdateLineItemDto) {
     return {
-      quantity: item.quantity ?? 1,
-      unit_price_cents: item.unit_price_cents ?? 0,
-      discount_cents: item.discount_cents ?? 0,
-      vat_rate: item.vat_rate ?? 0,
+      quantity: Number(item.quantity ?? 1),
+      unit_price_cents: Number(item.unit_price_cents ?? 0),
+      discount_cents: Number(item.discount_cents ?? 0),
+      vat_rate: Number(item.vat_rate ?? 0),
       vat_applicable: item.vat_applicable ?? true,
     };
   }
@@ -31,7 +31,7 @@ export class InvoicesService {
       type: item.type,
       description: item.description,
       sku: item.sku,
-      quantity: item.quantity,
+      quantity: Number(item.quantity),
       unit_price_cents: item.unit_price_cents,
       discount_cents: item.discount_cents ?? 0,
       line_total_cents: calc.line_total_cents,
@@ -46,9 +46,28 @@ export class InvoicesService {
     if (!dto.branch_id) {
       throw new BadRequestException('Branch is required to generate an invoice number.');
     }
+    if (!dto.customer_id) {
+      throw new BadRequestException('Customer is required to generate an invoice.');
+    }
+    if (!dto.vehicle_id) {
+      throw new BadRequestException('Vehicle is required to generate an invoice.');
+    }
 
     const { invoice_number, invoice_year, invoice_serial_number, workshop_code_snapshot, branch_code_snapshot } =
       await this.numberService.generateNextInvoiceNumber(workshopId, dto.branch_id);
+
+    const [customer, vehicle, advisor] = await Promise.all([
+      this.prisma.tenant.customers.findUnique({ where: { id: dto.customer_id } }),
+      this.prisma.tenant.vehicles.findUnique({ where: { id: dto.vehicle_id } }),
+      this.prisma.raw.users.findUnique({ where: { id: userId }, select: { name: true } }),
+    ]);
+
+    if (!customer) {
+      throw new BadRequestException('Customer not found.');
+    }
+    if (!vehicle) {
+      throw new BadRequestException('Vehicle not found.');
+    }
 
     const lines = dto.items.map((item, i) => this.mapLineItemToPrisma(item, i + 1));
     const globalDiscount = dto.discount_total_cents ?? 0;
@@ -64,6 +83,7 @@ export class InvoicesService {
         invoice_serial_number,
         workshop_code_snapshot,
         branch_code_snapshot,
+        invoice_date: new Date(),
         branch_id: dto.branch_id,
         job_id: dto.job_id,
         customer_id: dto.customer_id,
@@ -76,6 +96,17 @@ export class InvoicesService {
         discount_total_cents: totals.discount_total_cents,
         tax_total_cents: totals.tax_total_cents,
         grand_total_cents: totals.grand_total_cents,
+        total_cents: totals.total_cents,
+        snapshot_customer_name: customer.name ?? 'Customer',
+        snapshot_customer_email: customer.email,
+        snapshot_customer_phone: customer.phone,
+        snapshot_vehicle_vin: (vehicle as any).vin,
+        snapshot_vehicle_plate: (vehicle as any).plate,
+        snapshot_vehicle_make: (vehicle as any).make,
+        snapshot_vehicle_model: (vehicle as any).vehicle_model,
+        snapshot_vehicle_year: (vehicle as any).year,
+        snapshot_vehicle_color: (vehicle as any).color,
+        snapshot_advisor_name: advisor?.name,
         items: {
           create: lines,
         },
@@ -86,11 +117,16 @@ export class InvoicesService {
     return invoice;
   }
 
-  async findOne(id: string) {
-    const invoice = await this.prisma.tenant.workshop_invoices.findUnique({
-      where: { id },
-      include: { items: { orderBy: { sort_order: 'asc' } } },
-    });
+  async findOne(id: string, workshopId?: string | null) {
+    const invoice = workshopId
+      ? await this.prisma.raw.workshop_invoices.findFirst({
+          where: { id, workshop_id: workshopId },
+          include: { items: { orderBy: { sort_order: 'asc' } } },
+        })
+      : await this.prisma.tenant.workshop_invoices.findUnique({
+          where: { id },
+          include: { items: { orderBy: { sort_order: 'asc' } } },
+        });
     if (!invoice) throw new NotFoundException('Invoice not found');
     return invoice;
   }
@@ -172,10 +208,10 @@ export class InvoicesService {
         where: { invoice_id: id },
       });
       const calcItems = currentItems.map((item: any) => ({
-        quantity: item.quantity,
-        unit_price_cents: item.unit_price_cents,
-        discount_cents: item.discount_cents,
-        vat_rate: item.vat_rate,
+        quantity: Number(item.quantity),
+        unit_price_cents: Number(item.unit_price_cents),
+        discount_cents: Number(item.discount_cents),
+        vat_rate: Number(item.vat_rate),
         vat_applicable: item.vat_applicable,
       }));
       const { totals } = this.calc.recalculate(calcItems, dto.discount_total_cents);
@@ -263,7 +299,11 @@ export class InvoicesService {
         customers: true,
         vehicles: true,
         estimate_lines: {
-          where: { approved: true },
+          where: {
+            authorisation_decisions: {
+              some: { decision: 'approved' },
+            },
+          },
           orderBy: { sort_order: 'asc' },
         },
       },
@@ -271,31 +311,43 @@ export class InvoicesService {
 
     if (!job) throw new NotFoundException('Job not found');
 
-    if (!job.branch_id) {
-      throw new BadRequestException('Job must have a branch assigned to generate an invoice.');
+    let branchId = job.branch_id;
+    if (!branchId) {
+      const branches = await this.prisma.tenant.branches.findMany({
+        where: { workshop_id: workshopId },
+        select: { id: true },
+        take: 2,
+      });
+      if (branches.length !== 1) {
+        throw new BadRequestException('Job must have a branch assigned to generate an invoice.');
+      }
+      branchId = branches[0].id;
     }
 
     const items = job.estimate_lines.map((line: any, i: number) => {
       const lineType = line.type === 'labour' ? 'labour' : line.type === 'part' ? 'part' : 'other';
-      const unitPriceCents = line.selling_price
-        ? Math.round(parseFloat(String(line.selling_price)) * 100)
+      const unitPriceCents = line.unit_price
+        ? Math.round(parseFloat(String(line.unit_price)) * 100)
         : 0;
-      const qty = line.quantity ?? 1;
+      const qty = Math.max(0, parseFloat(String(line.quantity ?? 1)));
+      const discountPct = Math.max(0, parseFloat(String(line.discount_pct ?? 0)));
+      const discountCents = Math.round(qty * unitPriceCents * (discountPct / 100));
+      const vatRate = Math.max(0, parseFloat(String(line.tax_rate_pct ?? 0))) / 100;
       return {
         type: lineType as any,
         description: line.description || 'Work item',
         sku: line.part_number || undefined,
         quantity: qty,
         unit_price_cents: unitPriceCents,
-        discount_cents: 0,
-        vat_rate: 0,
+        discount_cents: discountCents,
+        vat_rate: vatRate,
         vat_applicable: true,
         sort_order: i + 1,
       } as CreateLineItemDto;
     });
 
     const createDto: CreateInvoiceDto = {
-      branch_id: job.branch_id,
+      branch_id: branchId,
       job_id: jobId,
       customer_id: job.customer_id ?? undefined,
       vehicle_id: job.vehicle_id ?? undefined,

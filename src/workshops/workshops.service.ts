@@ -165,6 +165,17 @@ export class WorkshopsService {
     });
   }
 
+  async findBranches() {
+    return this.prisma.tenant.branches.findMany({
+      select: {
+        id: true,
+        name: true,
+        code: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async verifyUserAccess(workshopId: string, userId: string) {
     const access = await this.prisma.raw.user_workshop_access.findUnique({
       where: { user_id_workshop_id: { user_id: userId, workshop_id: workshopId } },
