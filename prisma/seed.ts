@@ -36,7 +36,7 @@ async function main() {
   // 3. Workshop
   const workshopId = uuid();
   const slug = 'prioraflow-workshop';
-  await prisma.workshops.create({ data: { id: workshopId, name: 'PrioraFlow Workshop Demo', slug, phone: '+971501234567', email: 'admin@superflow.app', region: 'gcc', is_active: true, plan_id: 'free_trial', product_mode: 'WORKSHOP', dms_integration_enabled: false, enabled_modules: JSON.stringify(defaultEnabledModules('WORKSHOP')), package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP, trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } });
+  await prisma.workshops.create({ data: { id: workshopId, name: 'PrioraFlow Workshop Demo', slug, code: 'PRIORAFLOW', phone: '+971501234567', email: 'admin@superflow.app', region: 'gcc', is_active: true, plan_id: 'free_trial', product_mode: 'WORKSHOP', dms_integration_enabled: false, enabled_modules: JSON.stringify(defaultEnabledModules('WORKSHOP')), package_name: PRODUCT_MODE_DISPLAY_NAMES.WORKSHOP, trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) } });
   await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: admin.id, workshop_id: workshopId, assigned_at: new Date() } });
   await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: advisor.id, workshop_id: workshopId, assigned_at: new Date() } });
   await prisma.user_workshop_access.create({ data: { id: uuid(), user_id: tech.id, workshop_id: workshopId, assigned_at: new Date() } });
@@ -47,6 +47,7 @@ async function main() {
       id: connectWorkshopId,
       name: 'PrioraFlow Connect Demo',
       slug: 'prioraflow-connect',
+      code: 'PRIORACONNECT',
       phone: '+971509876543',
       email: 'connect@superflow.app',
       region: 'gcc',

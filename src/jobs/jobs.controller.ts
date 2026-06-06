@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JobsService } from './jobs.service';
+import { InvoicesService } from '../invoices/invoices.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
@@ -9,7 +10,7 @@ import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { BulkDeleteJobsDto } from './dto/bulk-delete.dto';
 import { JwtAuthGuard } from '../common/guards/jwt.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION } from '../common/permissions';
+import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION, INVOICES_CREATE } from '../common/permissions';
 import { PlanFeatureGuard } from '../common/guards/plan-feature.guard';
 import { RequirePlanFeature } from '../common/plan-features/require-plan-feature.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -21,7 +22,10 @@ import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/produc
 @RequireModule(MODULE_KEYS.WIP)
 @Controller('jobs')
 export class JobsController {
-  constructor(private service: JobsService) {}
+  constructor(
+    private service: JobsService,
+    private invoicesService: InvoicesService,
+  ) {}
 
   @Get()
   @RequirePermission(JOBS_READ)
@@ -112,5 +116,12 @@ export class JobsController {
       throw new Error('Bulk delete requires confirm: true');
     }
     return this.service.removeAll();
+  }
+
+  @Post(':id/invoice')
+  @RequirePermission(INVOICES_CREATE)
+  @ApiOperation({ summary: 'Generate an invoice from a job' })
+  generateInvoice(@Param('id') id: string, @CurrentUser('workshopId') workshopId: string) {
+    return this.invoicesService.generateFromJob(id, workshopId);
   }
 }

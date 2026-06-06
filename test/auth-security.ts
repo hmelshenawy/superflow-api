@@ -85,8 +85,8 @@ async function setup() {
 
   await raw.workshops.createMany({
     data: [
-      { id: workshopA, name: 'Auth Test Workshop A', slug: 'auth-test-a', is_active: true },
-      { id: workshopB, name: 'Auth Test Workshop B', slug: 'auth-test-b', is_active: true },
+      { id: workshopA, name: 'Auth Test Workshop A', slug: 'auth-test-a', code: 'AUTHA', is_active: true },
+      { id: workshopB, name: 'Auth Test Workshop B', slug: 'auth-test-b', code: 'AUTHB', is_active: true },
     ],
   });
 

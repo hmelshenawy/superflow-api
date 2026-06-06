@@ -25,6 +25,7 @@ async function seedWorkshop() {
           id: defaultWorkshopId,
           name: 'Mercedes-Benz Test',
           slug: 'mercedes-benz-test',
+          code: 'MERCEDESBENZ',
           is_active: true,
         },
       });

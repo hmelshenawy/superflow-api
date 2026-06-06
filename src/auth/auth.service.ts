@@ -57,6 +57,7 @@ export class AuthService {
           id: workshopId,
           name: dto.workshopName.trim(),
           slug,
+          code: dto.workshopName.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) || 'WS' + Math.floor(Math.random() * 10000),
           phone: dto.phone || null,
           email,
           region: dto.region || 'gcc',

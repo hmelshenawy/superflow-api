@@ -76,7 +76,7 @@ const products = [
   },
   {
     icon: Wrench,
-    title: "PrioraFlow Workshop",
+    title: "PrioraFlow standalone",
     subtitle: "Standalone workshop operating system",
     description: "For workshops with no DMS. Workshop runs the operation natively from appointment booking and job cards through stock, estimates, invoicing, and operational analytics.",
     points: ["Appointments", "Job cards", "Parts / stock", "Invoicing"],

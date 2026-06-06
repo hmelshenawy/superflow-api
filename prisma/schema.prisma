@@ -12,6 +12,7 @@ model workshops {
   id                      String    @id @default(uuid()) @db.Char(36)
   name                    String    @db.VarChar(120)
   slug                    String    @unique(map: "workshop_slug") @db.VarChar(60)
+  code                    String    @unique @db.VarChar(20)
   address                 String?   @db.Text
   phone                   String?   @db.VarChar(30)
   email                   String?   @db.VarChar(255)
@@ -24,65 +25,73 @@ model workshops {
   enabled_modules         String?   @db.LongText
   package_name            String?   @default("PrioraFlow Workshop") @db.VarChar(120)
   display_name            String?   @db.VarChar(120)
+  logo_url                String?   @db.VarChar(255)
+  vat_trn                 String?   @db.VarChar(40)
+  footer_notes            String?   @db.Text
+  terms_conditions        String?   @db.Text
   trial_ends_at           DateTime? @db.DateTime(0)
   created_at              DateTime  @default(now()) @db.DateTime(0)
   updated_at              DateTime  @default(now()) @updatedAt @db.DateTime(0)
 
-  user_workshop_access      user_workshop_access[]
-  subscriptions             subscriptions[]
-  invoices                  invoices[]
-  payments                  payments[]
-  usage_records             usage_records[]
-  approval_tokens           approval_tokens[]
-  audit_logs                audit_logs[]
-  authorisation_decisions   authorisation_decisions[]
-  booking_import_templates  booking_import_templates[]
-  customers                 customers[]
-  job_concerns              job_concerns[]
-  customer_portal_snapshots customer_portal_snapshots[]
-  deferred_work             deferred_work[]
-  deferred_work_reminders   deferred_work_reminders[]
-  estimate_line_history     estimate_line_history[]
-  estimate_lines            estimate_lines[]
-  inspection_items          inspection_items[]
-  inspection_responses      inspection_responses[]
-  inspection_sections       inspection_sections[]
-  inspection_templates      inspection_templates[]
-  inspections               inspections[]
-  integrations              integrations[]
-  qc_checklist_templates    qc_checklist_templates[]
-  qc_checklist_sections     qc_checklist_sections[]
-  qc_checklist_items        qc_checklist_items[]
-  qc_checklists             qc_checklists[]
-  qc_checklist_responses    qc_checklist_responses[]
-  integration_events        integration_events[]
-  job_status_history        job_status_history[]
-  jobs                      jobs[]
-  labour_rates              labour_rates[]
-  media_files               media_files[]
-  notification_templates    notification_templates[]
-  notifications             notifications[]
-  quote_groups              quote_groups[]
-  settings                  settings[]
-  vehicle_service_history   vehicle_service_history[]
-  vehicles                  vehicles[]
-  blockers                  blockers[]
-  suppliers                 suppliers[]
-  warehouses                warehouses[]
-  parts                     parts[]
-  part_fitments             part_fitments[]
-  inventory                 inventory[]
-  stock_movements           stock_movements[]
-  job_parts                 job_parts[]
-  purchase_orders           purchase_orders[]
-  purchase_order_items      purchase_order_items[]
-  job_types                 job_types[]
-  schedule_config           schedule_config[]
-  schedule_breaks           schedule_breaks[]
-  holidays                  holidays[]
-  staff_members             staff_members[]
-  staff_leaves              staff_leaves[]
-  appointments              appointments[]
+  user_workshop_access       user_workshop_access[]
+  subscriptions              subscriptions[]
+  invoices                   invoices[]
+  payments                   payments[]
+  usage_records              usage_records[]
+  approval_tokens            approval_tokens[]
+  audit_logs                 audit_logs[]
+  authorisation_decisions    authorisation_decisions[]
+  booking_import_templates   booking_import_templates[]
+  customers                  customers[]
+  job_concerns               job_concerns[]
+  customer_portal_snapshots  customer_portal_snapshots[]
+  deferred_work              deferred_work[]
+  deferred_work_reminders    deferred_work_reminders[]
+  estimate_line_history      estimate_line_history[]
+  estimate_lines             estimate_lines[]
+  inspection_items           inspection_items[]
+  inspection_responses       inspection_responses[]
+  inspection_sections        inspection_sections[]
+  inspection_templates       inspection_templates[]
+  inspections                inspections[]
+  integrations               integrations[]
+  qc_checklist_templates     qc_checklist_templates[]
+  qc_checklist_sections      qc_checklist_sections[]
+  qc_checklist_items         qc_checklist_items[]
+  qc_checklists              qc_checklists[]
+  qc_checklist_responses     qc_checklist_responses[]
+  integration_events         integration_events[]
+  job_status_history         job_status_history[]
+  jobs                       jobs[]
+  labour_rates               labour_rates[]
+  media_files                media_files[]
+  notification_templates     notification_templates[]
+  notifications              notifications[]
+  quote_groups               quote_groups[]
+  settings                   settings[]
+  vehicle_service_history    vehicle_service_history[]
+  vehicles                   vehicles[]
+  blockers                   blockers[]
+  suppliers                  suppliers[]
+  warehouses                 warehouses[]
+  parts                      parts[]
+  part_fitments              part_fitments[]
+  inventory                  inventory[]
+  stock_movements            stock_movements[]
+  job_parts                  job_parts[]
+  purchase_orders            purchase_orders[]
+  purchase_order_items       purchase_order_items[]
+  job_types                  job_types[]
+  schedule_config            schedule_config[]
+  schedule_breaks            schedule_breaks[]
+  holidays                   holidays[]
+  staff_members              staff_members[]
+  staff_leaves               staff_leaves[]
+  appointments               appointments[]
+  branches                   branches[]
+  workshop_invoices          workshop_invoices[]
+  workshop_invoice_items     workshop_invoice_items[]
+  workshop_invoice_sequences workshop_invoice_sequences[]
 
   @@index([slug], map: "idx_workshops_slug")
   @@index([is_active], map: "idx_workshops_active")
@@ -355,6 +364,7 @@ model customers {
   notifications     notifications[]
   vehicles          vehicles[]
   appointments      appointments[]
+  workshop_invoices workshop_invoices[]
   workshops         workshops?                   @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_customers_workshop")
 
   @@index([dms_customer_id], map: "idx_customers_dms")
@@ -823,6 +833,7 @@ model jobs {
   advisor_id                                        String?                     @db.Char(36)
   owner_code                                        String?                     @db.VarChar(20)
   technician_id                                     String?                     @db.Char(36)
+  branch_id                                         String?                     @db.Char(36)
   status                                            jobs_status                 @default(booked)
   workshop_stage                                    jobs_workshop_stage?        @default(waiting_technician)
   workflow_stage_key                                String?                     @db.VarChar(80)
@@ -854,6 +865,7 @@ model jobs {
   inspections                                       inspections?
   qc_checklists                                     qc_checklists?
   job_status_history                                job_status_history[]
+  branches                                          branches?                   @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_jobs_branch")
   users_jobs_advisor_idTousers                      users?                      @relation("jobs_advisor_idTousers", fields: [advisor_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_advisor")
   customers                                         customers?                  @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_customer")
   users_jobs_technician_idTousers                   users?                      @relation("jobs_technician_idTousers", fields: [technician_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_jobs_technician")
@@ -865,6 +877,7 @@ model jobs {
   job_parts                                         job_parts[]
   blockers                                          blockers[]
   approval_reset_audit                              approval_reset_audit[]
+  workshop_invoices                                 workshop_invoices[]
 
   @@unique([job_number, workshop_id], map: "idx_jobs_number_workshop")
   @@index([advisor_id], map: "idx_jobs_advisor")
@@ -1076,6 +1089,7 @@ model users {
   approval_reset_audit           approval_reset_audit[]
   appointments_created_byTousers appointments[]             @relation("appointments_created_byTousers")
   staff_members                  staff_members[]
+  workshop_invoices              workshop_invoices[]
 
   @@index([email], map: "idx_users_email")
   @@index([role_id], map: "idx_users_role_id")
@@ -1119,6 +1133,7 @@ model vehicles {
   deferred_work           deferred_work[]
   jobs                    jobs[]
   vehicle_service_history vehicle_service_history[]
+  workshop_invoices       workshop_invoices[]
   customers               customers?                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vehicles_customer")
   workshops               workshops?                @relation(fields: [workshop_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_vehicles_workshop")
 
@@ -1566,6 +1581,117 @@ enum media_files_scan_status {
   clean
   infected
   failed
+}
+
+model branches {
+  id          String   @id @default(uuid()) @db.Char(36)
+  workshop_id String   @db.Char(36)
+  code        String   @db.VarChar(20)
+  name        String   @db.VarChar(120)
+  created_at  DateTime @default(now()) @db.DateTime(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  workshops                  workshops                    @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_branches_workshop")
+  jobs                       jobs[]
+  workshop_invoices          workshop_invoices[]
+  workshop_invoice_sequences workshop_invoice_sequences[]
+
+  @@unique([workshop_id, code], map: "idx_branches_workshop_code_unique")
+  @@index([workshop_id], map: "idx_branches_workshop")
+}
+
+model workshop_invoices {
+  id                      String    @id @default(uuid()) @db.Char(36)
+  workshop_id             String    @db.Char(36)
+  branch_id               String?   @db.Char(36)
+  customer_id             String    @db.Char(36)
+  vehicle_id              String    @db.Char(36)
+  job_id                  String?   @db.Char(36)
+  created_by_user_id      String    @db.Char(36)
+  invoice_number          String    @db.VarChar(50)
+  invoice_year            Int
+  invoice_serial_number   Int
+  status                  String    @default("draft") @db.VarChar(20)
+  invoice_date            DateTime  @db.DateTime(0)
+  issued_at               DateTime? @db.DateTime(0)
+  cancelled_at            DateTime? @db.DateTime(0)
+  currency                String    @default("AED") @db.VarChar(3)
+  vat_rate                Decimal   @default(0.0500) @db.Decimal(5, 4)
+  subtotal_cents          Int       @default(0)
+  discount_cents          Int       @default(0)
+  tax_cents               Int       @default(0)
+  total_cents             Int       @default(0)
+  notes                   String?   @db.Text
+  snapshot_customer_name  String    @db.VarChar(120)
+  snapshot_customer_phone String?   @db.VarChar(40)
+  snapshot_customer_email String?   @db.VarChar(120)
+  snapshot_vehicle_plate  String?   @db.VarChar(20)
+  snapshot_vehicle_vin    String?   @db.VarChar(40)
+  snapshot_vehicle_model  String?   @db.VarChar(80)
+  snapshot_vehicle_year   Int?
+  workshop_code_snapshot  String    @db.VarChar(20)
+  branch_code_snapshot    String    @db.VarChar(20)
+  created_at              DateTime  @default(now()) @db.DateTime(0)
+  updated_at              DateTime  @default(now()) @updatedAt @db.DateTime(0)
+
+  workshops              workshops                @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_workshop_invoices_workshop")
+  branches               branches?                @relation(fields: [branch_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_workshop_invoices_branch")
+  customers              customers                @relation(fields: [customer_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_workshop_invoices_customer")
+  vehicles               vehicles                 @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_workshop_invoices_vehicle")
+  jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_workshop_invoices_job")
+  users                  users                    @relation(fields: [created_by_user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_workshop_invoices_user")
+  workshop_invoice_items workshop_invoice_items[]
+
+  @@unique([workshop_id, invoice_number], map: "idx_workshop_invoices_number_unique")
+  @@index([workshop_id])
+  @@index([branch_id])
+  @@index([customer_id])
+  @@index([vehicle_id])
+  @@index([job_id])
+  @@index([status])
+  @@index([invoice_date])
+  @@index([invoice_year])
+}
+
+model workshop_invoice_items {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  workshop_invoice_id String   @db.Char(36)
+  description         String   @db.VarChar(255)
+  type                String   @db.VarChar(20)
+  quantity            Int      @default(1)
+  unit_price_cents    Int      @default(0)
+  discount_cents      Int      @default(0)
+  vat_applicable      Boolean  @default(true)
+  vat_rate            Decimal  @default(0.0500) @db.Decimal(5, 4)
+  line_total_cents    Int      @default(0)
+  line_vat_cents      Int      @default(0)
+  sort_order          Int      @default(0)
+  created_at          DateTime @default(now()) @db.DateTime(0)
+  updated_at          DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  workshop_invoices workshop_invoices @relation(fields: [workshop_invoice_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_workshop_invoice_items_invoice")
+  workshops         workshops?        @relation(fields: [workshopsId], references: [id])
+  workshopsId       String?           @db.Char(36)
+
+  @@index([workshop_invoice_id])
+}
+
+model workshop_invoice_sequences {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  workshop_id        String   @db.Char(36)
+  branch_id          String?  @db.Char(36)
+  year               Int
+  last_serial_number Int      @default(0)
+  created_at         DateTime @default(now()) @db.DateTime(0)
+  updated_at         DateTime @default(now()) @updatedAt @db.DateTime(0)
+
+  workshops workshops? @relation(fields: [workshop_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_workshop_invoice_sequences_workshop")
+  branches  branches?  @relation(fields: [branch_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_workshop_invoice_sequences_branch")
+
+  @@unique([workshop_id, branch_id, year], map: "idx_workshop_invoice_sequences_unique")
+  @@index([workshop_id])
+  @@index([branch_id])
+  @@index([year])
 }
 
 enum qc_checklists_status {

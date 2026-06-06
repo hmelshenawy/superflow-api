@@ -69,12 +69,12 @@ async function setup() {
 
   if (!wA) {
     wA = await raw.workshops.create({
-      data: { id: 'test-ws-a-00000001', name: 'Isolation Test A', slug: 'test-isolation-a' },
+      data: { id: 'test-ws-a-00000001', name: 'Isolation Test A', slug: 'test-isolation-a', code: 'TESTA' },
     });
   }
   if (!wB) {
     wB = await raw.workshops.create({
-      data: { id: 'test-ws-b-00000001', name: 'Isolation Test B', slug: 'test-isolation-b' },
+      data: { id: 'test-ws-b-00000001', name: 'Isolation Test B', slug: 'test-isolation-b', code: 'TESTB' },
     });
   }
 

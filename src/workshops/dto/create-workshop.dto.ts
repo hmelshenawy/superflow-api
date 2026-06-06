@@ -12,6 +12,11 @@ export class CreateWorkshopDto {
 
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @IsOptional()

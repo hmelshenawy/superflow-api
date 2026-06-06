@@ -12,6 +12,10 @@ export class UpdateWorkshopDto {
 
   @IsOptional()
   @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @IsOptional()

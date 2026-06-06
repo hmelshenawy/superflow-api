@@ -137,3 +137,12 @@ Extended backend docs in `docs/`:
 ## Frontend note
 
 The frontend in `superflow-web/` uses Next.js 16 which has breaking changes from earlier versions. See `superflow-web/AGENTS.md` before writing frontend code.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan:
+
+**Active Plan**: `specs/001-invoice-generator/plan.md`
+**Active Spec**: `specs/001-invoice-generator/spec.md`
+**Feature**: Invoice Generator
+<!-- SPECKIT END -->

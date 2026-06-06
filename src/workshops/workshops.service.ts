@@ -37,6 +37,14 @@ const DEFAULT_QC_TEMPLATE = [
 export class WorkshopsService {
   constructor(private prisma: PrismaService) {}
 
+  private generateWorkshopCode(slug: string): string {
+    const code = slug
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 20);
+    return code || 'WS' + Math.floor(Math.random() * 10000);
+  }
+
   private productConfigData(dto: Partial<CreateWorkshopDto & UpdateWorkshopDto>) {
     const productMode = normalizeProductMode(dto.productMode);
     const modules = dto.enabledModules ?? defaultEnabledModules(productMode);
@@ -78,6 +86,7 @@ export class WorkshopsService {
         id: uuid(),
         name: dto.name,
         slug: dto.slug,
+        code: dto.code || this.generateWorkshopCode(dto.slug),
         address: dto.address,
         phone: dto.phone,
         email: dto.email,
@@ -183,10 +192,12 @@ export class WorkshopsService {
 
   async update(id: string, dto: UpdateWorkshopDto) {
     await this.findOne(id);
-    const { productMode, dmsIntegrationEnabled, enabledModules, packageName, displayName, ...workshopDto } = dto;
+    const { productMode, dmsIntegrationEnabled, enabledModules, packageName, displayName, code, ...workshopDto } = dto;
+    const data: any = { ...workshopDto, ...this.updateProductConfigData(dto) };
+    if (code !== undefined) data.code = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
     const updated = await this.prisma.raw.workshops.update({
       where: { id },
-      data: { ...workshopDto, ...this.updateProductConfigData(dto) } as any,
+      data,
     });
     if (dto.is_active === false) {
       await this.revokeWorkshopSessions(id);

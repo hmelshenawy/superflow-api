@@ -97,8 +97,8 @@ async function setup() {
 
   await raw.workshops.createMany({
     data: [
-      { id: workshopA, name: 'File Test Workshop A', slug: 'file-test-a', is_active: true },
-      { id: workshopB, name: 'File Test Workshop B', slug: 'file-test-b', is_active: true },
+      { id: workshopA, name: 'File Test Workshop A', slug: 'file-test-a', code: 'FILEA', is_active: true },
+      { id: workshopB, name: 'File Test Workshop B', slug: 'file-test-b', code: 'FILEB', is_active: true },
     ],
   });
   await raw.roles.create({

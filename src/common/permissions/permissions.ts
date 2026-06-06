@@ -97,6 +97,13 @@ export const QC_REOPEN = 'qc:reopen';
 export const BLOCKERS_READ = 'blockers:read';
 export const BLOCKERS_MANAGE = 'blockers:manage';
 
+// ─── Invoices ───────────────────────────────────────────
+export const INVOICES_READ = 'invoices:read';
+export const INVOICES_CREATE = 'invoices:create';
+export const INVOICES_UPDATE = 'invoices:update';
+export const INVOICES_CANCEL = 'invoices:cancel';
+export const INVOICES_EXPORT = 'invoices:export';
+
 // ─── Parts & Stock ──────────────────────────────────────
 export const PARTS_READ = 'parts:read';
 export const PARTS_CREATE = 'parts:create';
@@ -147,6 +154,7 @@ export const ALL_PERMISSIONS: string[] = [
   STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
   PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
   JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+  INVOICES_READ, INVOICES_CREATE, INVOICES_UPDATE, INVOICES_CANCEL, INVOICES_EXPORT,
 ];
 
 /**
@@ -196,6 +204,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       STOCK_ADJUST, STOCK_TRANSFER, STOCK_ANALYTICS,
       PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE,
       JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+      INVOICES_READ, INVOICES_CREATE, INVOICES_UPDATE, INVOICES_CANCEL, INVOICES_EXPORT,
     ],
   },
   workshop_manager: {
@@ -210,6 +219,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       CRM_READ,
       ADMIN_SETTINGS, ADMIN_INTEGRATIONS,
       QC_READ,
+      INVOICES_READ,
     ],
   },
   general_manager: {
@@ -222,6 +232,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       CUSTOMERS_READ, VEHICLES_READ,
       CRM_READ,
       ADMIN_SETTINGS, ADMIN_INTEGRATIONS, ADMIN_STATS, ADMIN_BILLING,
+      INVOICES_READ,
     ],
   },
   service_advisor: {
@@ -246,6 +257,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       WAREHOUSES_READ,
       JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
       PURCHASE_ORDERS_READ,
+      INVOICES_READ, INVOICES_CREATE, INVOICES_UPDATE, INVOICES_EXPORT,
     ],
   },
   workshop_teamleader: {
@@ -266,6 +278,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       PARTS_READ,
       WAREHOUSES_READ,
       JOB_PARTS_READ, JOB_PARTS_RESERVE, JOB_PARTS_CONSUME, JOB_PARTS_RETURN,
+      INVOICES_READ, INVOICES_UPDATE,
     ],
   },
   technician: {
@@ -284,6 +297,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       PARTS_READ,
       WAREHOUSES_READ,
       JOB_PARTS_READ,
+      INVOICES_READ,
     ],
   },
   receptionist: {
@@ -296,6 +310,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
       VEHICLES_READ, VEHICLES_CREATE,
       CRM_READ, CRM_CREATE, CRM_UPDATE,
       IMPORT_PARSE, IMPORT_RUN,
+      INVOICES_READ,
     ],
   },
 };

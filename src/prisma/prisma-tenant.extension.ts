@@ -51,6 +51,10 @@ const TENANT_SCOPED_MODELS = new Set([
   'schedule_breaks',
   'schedule_config',
   'job_types',
+  'workshop_invoices',
+  'workshop_invoice_items',
+  'workshop_invoice_sequences',
+  'branches',
 ]);
 
 const READ_OPS = new Set(['findMany', 'findFirst', 'count', 'aggregate', 'groupBy']);
