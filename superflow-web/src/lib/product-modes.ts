@@ -97,12 +97,12 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
   WORKSHOP: [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: MODULES.OPERATIONAL_ANALYTICS },
     { href: "/appointments", label: "Appointments", icon: CalendarDays, module: MODULES.APPOINTMENTS },
-    { href: "/jobs", label: "Job Cards", icon: LayoutGrid, module: MODULES.JOB_CARDS },
-    { href: "/crm", label: "CRM", icon: Contact, module: MODULES.CRM, requirePermission: "crm:read" },
-    { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
-    { href: "/invoices", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "invoices:read" },
-    { href: "/technicians", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
-    { href: "/insights", label: "Reports & Analytics", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
+    { href: "/jobs", label: "Workboard", icon: LayoutGrid, module: MODULES.JOB_CARDS },
+    { href: "/crm", label: "Portfolio", icon: Contact, module: MODULES.CRM, requirePermission: "crm:read" },
+    { href: "/parts", label: "Inventory", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
+    { href: "/invoices", label: "Billing", icon: Receipt, module: MODULES.INVOICING, requirePermission: "invoices:read" },
+    { href: "/technicians", label: "Teams", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
+    { href: "/insights", label: "Insights", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
     { href: "/settings", label: "Settings", icon: Settings },
   ],
   CONNECT: [

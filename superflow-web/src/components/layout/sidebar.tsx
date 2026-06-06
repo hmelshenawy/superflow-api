@@ -38,8 +38,8 @@ import {
 
 const SHARED_ADMIN_NAV: NavItem[] = [
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
-  { href: "/admin/workshops", label: "Workshops", icon: Building2, requirePermission: "workshops:read" },
-  { href: "/admin/usage", label: "Usage Overview", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
+  { href: "/admin/workshops", label: "Locations", icon: Building2, requirePermission: "workshops:read" },
+  { href: "/admin/usage", label: "Usage", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
 ];
 
 function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
