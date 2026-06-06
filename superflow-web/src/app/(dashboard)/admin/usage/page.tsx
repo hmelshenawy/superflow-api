@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import api, { getApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -187,9 +187,8 @@ export default function UsageOverviewPage() {
               const isExpanded = expanded.has(w.workshopId);
 
               return (
-                <>
+                <Fragment key={w.workshopId}>
                   <TableRow
-                    key={w.workshopId}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => toggleExpand(w.workshopId)}
                   >
@@ -214,7 +213,7 @@ export default function UsageOverviewPage() {
                   </TableRow>
                   {isExpanded && (
                     <TableRow key={`${w.workshopId}-detail`} className="bg-muted/30">
-                      <TableCell colSpan={7} className="p-4">
+                      <TableCell colSpan={8} className="p-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           {w.usage.map(u => (
                             <div key={u.featureKey} className="flex flex-col gap-1 p-3 rounded-lg border bg-background">
@@ -232,7 +231,7 @@ export default function UsageOverviewPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>
