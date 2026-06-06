@@ -37,9 +37,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const SHARED_ADMIN_NAV: NavItem[] = [
-  { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
   { href: "/admin/workshops", label: "Locations", icon: Building2, requirePermission: "workshops:read" },
   { href: "/admin/usage", label: "Usage", icon: BarChart3, requirePermission: "admin:billing", platformOnly: true },
+  { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
 ];
 
 function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; permissions?: string[] | string | null } | null; role_id?: string | null } | null): boolean {
@@ -64,9 +64,9 @@ const NAV_SECTIONS: Record<ProductMode, SectionDef[]> = {
   ],
   CONNECT: [
     { type: "primary", hrefs: ["/dashboard", "/jobs"] },
-    { label: "Operations", hrefs: ["/advisor", "/blockers", "/admin/booking-import"] },
+    { label: "Operations", hrefs: ["/blockers"] },
     { label: "Insights", hrefs: ["/insights"] },
-    { label: "Administration", hrefs: ["/admin/workshops", "/admin/usage", "/admin/audit", "/settings"] },
+    { label: "Administration", hrefs: ["/admin/booking-import", "/admin/workshops", "/admin/usage", "/admin/audit", "/settings"] },
   ],
 };
 

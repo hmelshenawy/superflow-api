@@ -2,21 +2,16 @@ import type { ProductMode, Workshop } from "@/types";
 import {
   AlertTriangle,
   BarChart3,
-  Boxes,
   CalendarDays,
   Contact,
   FileUp,
   Gauge,
   LayoutDashboard,
   LayoutGrid,
-  ListChecks,
   Package,
   Receipt,
   Settings,
   SlidersHorizontal,
-  Target,
-  UserCheck,
-  Users,
   Wrench,
 } from "lucide-react";
 
@@ -108,10 +103,9 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
   CONNECT: [
     { href: "/dashboard", label: "Dashboard", icon: Gauge, module: MODULES.OPERATIONAL_ANALYTICS },
     { href: "/jobs", label: "Workboard", icon: LayoutGrid, module: MODULES.WIP },
-    { href: "/insights", label: "Insights", icon: SlidersHorizontal, module: MODULES.CAPACITY_MANAGEMENT, requirePermission: "insights:dashboard" },
-    { href: "/advisor", label: "Priority Queue", icon: Target, module: MODULES.PRIORITY_ENGINE, requirePermission: "priority:read" },
     { href: "/blockers", label: "Bottlenecks", icon: AlertTriangle, module: MODULES.BOTTLENECK_DETECTION, requirePermission: "blockers:read" },
-    { href: "/admin/booking-import", label: "DMS Booking Import", icon: FileUp, module: MODULES.BOOKING_IMPORT },
+    { href: "/insights", label: "Insights", icon: SlidersHorizontal, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
+    { href: "/admin/booking-import", label: "DMS Imports", icon: FileUp, module: MODULES.BOOKING_IMPORT },
     { href: "/settings", label: "Settings", icon: Settings },
   ],
 };
