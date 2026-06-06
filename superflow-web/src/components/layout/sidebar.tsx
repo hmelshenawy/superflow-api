@@ -105,7 +105,7 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const currentWorkshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
   const productMode = getWorkshopProductMode(currentWorkshop);
-  const productLabel = currentWorkshop?.packageName || currentWorkshop?.package_name || PRODUCT_LABELS[productMode];
+  const productLabel = PRODUCT_LABELS[productMode];
 
   // Initialize from localStorage after hydration
   useEffect(() => {

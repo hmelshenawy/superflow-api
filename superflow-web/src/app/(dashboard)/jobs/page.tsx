@@ -41,6 +41,10 @@ import {
 } from "@/lib/jobs-data";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { WorkshopToolbar } from "@/components/workshop/WorkshopToolbar";
+import { WorkshopView } from "@/components/workshop/WorkshopView";
+import type { WorkshopJobInsight } from "@/lib/workshop-mappers";
+import type { WorkshopBoardStage } from "@/lib/workshop-stage-groups";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -95,14 +99,14 @@ export default function JobsPage() {
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
-  const [dropWorkshopStage, setDropWorkshopStage] = useState<WorkshopStage | null>(null);
+  const [dropWorkshopStage, setDropWorkshopStage] = useState<WorkshopBoardStage | null>(null);
   const [dropWorkflowStage, setDropWorkflowStage] = useState<string | null>(null);
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number | null>(null);
   const [priorityMap, setPriorityMap] = useState<Map<string, PriorityResult>>(new Map());
   const [blockerCounts, setBlockerCounts] = useState<Map<string, number>>(new Map());
   const [collapsedColumns, setCollapsedColumns] = useState<Set<JobStatus>>(new Set());
-  const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopStage>>(new Set());
+  const [collapsedWorkshopStages, setCollapsedWorkshopStages] = useState<Set<WorkshopBoardStage>>(new Set());
   const [collapsedWorkflowStages, setCollapsedWorkflowStages] = useState<Set<string>>(new Set());
   const [workflowStages, setWorkflowStages] = useState<WorkflowStageConfig[]>([]);
   const [showArchived, setShowArchived] = useState(false);
@@ -121,7 +125,7 @@ export default function JobsPage() {
     setCollapsedColumns((prev) => { const next = new Set(prev); if (next.has(column)) next.delete(column); else next.add(column); localStorage.setItem("superflow-collapsed-columns", JSON.stringify([...next])); return next; });
   }, []);
 
-  const toggleWorkshopStage = useCallback((stage: WorkshopStage) => {
+  const toggleWorkshopStage = useCallback((stage: WorkshopBoardStage) => {
     setCollapsedWorkshopStages((prev) => { const next = new Set(prev); if (next.has(stage)) next.delete(stage); else next.add(stage); localStorage.setItem("superflow-collapsed-workshop-stages", JSON.stringify([...next])); return next; });
   }, []);
 
@@ -209,7 +213,7 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
 
   useEffect(() => {
     try { const saved = localStorage.getItem("superflow-collapsed-columns"); setCollapsedColumns(saved ? new Set(JSON.parse(saved) as JobStatus[]) : new Set()); } catch { setCollapsedColumns(new Set()); }
-    try { const saved = localStorage.getItem("superflow-collapsed-workshop-stages"); setCollapsedWorkshopStages(saved ? new Set(JSON.parse(saved) as WorkshopStage[]) : new Set()); } catch { setCollapsedWorkshopStages(new Set()); }
+    try { const saved = localStorage.getItem("superflow-collapsed-workshop-stages"); setCollapsedWorkshopStages(saved ? new Set(JSON.parse(saved) as WorkshopBoardStage[]) : new Set()); } catch { setCollapsedWorkshopStages(new Set()); }
     try { const saved = localStorage.getItem("superflow-collapsed-workflow-stages"); setCollapsedWorkflowStages(saved ? new Set(JSON.parse(saved) as string[]) : new Set()); } catch { setCollapsedWorkflowStages(new Set()); }
   }, []);
 
@@ -260,6 +264,16 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
   }), [jobs, enrichedJobs]);
 
   const totalPages = Math.ceil(total / limit);
+
+  const workshopInsights = useMemo<WorkshopJobInsight[]>(() => {
+    return workshopEnrichedJobs.map((item) => ({
+      job: item.job,
+      idleHours: item.idleHours,
+      priorityScore: item.priorityScore,
+      isOverdue: item.isOverdue,
+      nextAction: item.nextAction,
+    }));
+  }, [workshopEnrichedJobs]);
 
   if (!mounted) return <div className="py-20 text-center text-muted-foreground">Loading...</div>;
 
@@ -320,79 +334,47 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
     }
   };
 
+  const markCustomerInformed = async (jobId: string) => {
+    try {
+      await api.patch(`/jobs/${jobId}`, { customer_informed: true });
+      fetchJobs();
+    } catch {}
+  };
+
   return (
     <div className="space-y-4">
-      {/* ── Header + Stats ── */}
-      <div className="rounded-[24px] border border-border bg-card p-3 shadow-sm lg:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Service operations</p>
-            <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-foreground">PrioraFlow</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">
-              {[["overall", "Overall"], ["advisor", "Advisor"], ["workshop", "Workshop"]].map(([value, label]) => (
-                <button key={value} type="button" onClick={() => switchDashboardView(value as "overall" | "advisor" | "workshop")}
-                  className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium transition", dashboardView === value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            {dashboardView === "overall" && (
-              <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">
-                <button type="button" onClick={() => switchOverallView("board")} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition", overallView === "board" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><LayoutGrid className="h-3.5 w-3.5" /> Board</button>
-                <button type="button" onClick={() => switchOverallView("list")} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition", overallView === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><List className="h-3.5 w-3.5" /> List</button>
+      <WorkshopToolbar
+        dashboardView={dashboardView}
+        overallView={overallView}
+        search={search}
+        status={status}
+        totalEstimate={stats.totalEstimate}
+        loading={loading}
+        showArchived={showArchived}
+        onDashboardViewChange={switchDashboardView}
+        onOverallViewChange={switchOverallView}
+        onSearchChange={(value) => { setSearch(value); setPage(1); }}
+        onStatusChange={(value) => { setStatus(value); setPage(1); }}
+        onRefresh={fetchJobs}
+        onToggleArchived={() => setShowArchived(!showArchived)}
+      />
+
+      {loadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">Could not load jobs</p>
+                <p className="mt-1">{loadError}</p>
               </div>
-            )}
-            <Link href="/jobs/new"><Button className="h-9 rounded-lg bg-slate-950 px-3 text-[13px] text-white hover:bg-slate-800"><Plus className="mr-1.5 h-3.5 w-3.5" /> New job</Button></Link>
-          </div>
-        </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-lg border border-border bg-muted p-2.5"><p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Total</p><p className="mt-0.5 text-xl font-semibold text-foreground">{total}</p></div>
-          <div className="rounded-lg border border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/15 p-2.5"><p className="text-[11px] font-medium uppercase tracking-wide text-rose-700 dark:text-rose-300">Awaiting</p><p className="mt-0.5 text-xl font-semibold text-rose-950 dark:text-rose-200">{stats.awaitingApproval}</p></div>
-          <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/15 p-2.5"><p className="text-[11px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">In workshop</p><p className="mt-0.5 text-xl font-semibold text-amber-950 dark:text-amber-200">{stats.inWorkshop}</p></div>
-          <div className="rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/15 p-2.5"><p className="text-[11px] font-medium uppercase tracking-wide text-red-700 dark:text-red-300">Overdue</p><p className="mt-0.5 text-xl font-semibold text-red-950 dark:text-red-200">{workshopEnrichedJobs.filter((item) => item.nextAction?.signals?.some((s: any) => String(s).includes("overdue"))).length}</p></div>
-        </div>
-      </div>
-
-      {/* ── Filters ── */}
-      <div className="rounded-[24px] border border-border bg-card p-3 shadow-sm lg:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search jobs, customers, vehicles..." aria-label="Search jobs" className="h-9 rounded-lg border-border bg-card pl-8 text-[13px]" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </div>
-            <Select value={status} onValueChange={(value) => { setStatus(value ?? "all"); setPage(1); }}>
-              <SelectTrigger className="h-9 w-full rounded-lg border-border text-[13px] md:w-44"><SelectValue placeholder="All statuses" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {BOARD_COLUMNS.map((value) => (<SelectItem key={value} value={value}>{STATUS_META[value].label}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-border bg-muted px-2 py-1.5 text-[13px] text-muted-foreground">Value: <span className="font-semibold text-foreground">{stats.totalEstimate.toFixed(0)}</span></div>
-            <Button variant="outline" className="h-9 rounded-lg text-[13px]" onClick={fetchJobs} disabled={loading}><RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", loading && "animate-spin")} />Refresh</Button>
-            <Button variant={showArchived ? "default" : "outline"} className="h-9 rounded-lg text-[13px]" onClick={() => setShowArchived(!showArchived)} disabled={loading}>{showArchived ? "Showing Archive" : "Archive"}</Button>
+            <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>Retry</Button>
           </div>
         </div>
+      )}
 
-        {loadError && (
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-2">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>
-                  <p className="font-medium">Could not load jobs</p>
-                  <p className="mt-1">{loadError}</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>Retry</Button>
-            </div>
-          </div>
-        )}
-
+      <div>
         {dashboardView === "advisor" ? (
           <div className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
             <div className="space-y-4">
@@ -438,72 +420,29 @@ useEffect(() => { if (!mounted) return; fetchPriority(); fetchBlockers(); fetchW
           </div>
 
         ) : dashboardView === "workshop" ? (
-          <div className="mt-4 space-y-4">
-            <div className="rounded-2xl border border-border bg-slate-950 p-4 text-white shadow-sm">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div><p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Workshop control</p><h2 className="mt-1 text-xl font-semibold tracking-tight">Vehicle flow by workshop state</h2><p className="mt-1 max-w-3xl text-sm text-muted-foreground">Focused on production movement: received cars, technician assignment, diagnosis, approval, parts, work in progress, QC, and ready handover.</p></div>
-                <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[360px]">
-                  <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Blocked</p><p className="text-xl font-semibold">{workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length}</p></div>
-                  <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">Idle +6h</p><p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => !["ready", "closed"].includes(item.job.status) && item.idleHours >= 6).length}</p></div>
-                  <div className="rounded-xl bg-card/10 px-3 py-2"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">At risk</p><p className="text-xl font-semibold">{workshopEnrichedJobs.filter((item) => item.nextAction?.signals?.some((s: any) => String(s).includes("overdue"))).length}</p></div>
-                </div>
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {[{ label: "Waiting technician", value: workshopJobs.filter((job) => getWorkshopStage(job) === "waiting_technician").length, hint: "Assign tech / controller", color: "border-border bg-card" }, { label: "Diagnosis active", value: workshopJobs.filter((job) => getWorkshopStage(job) === "diagnosis").length, hint: "Check diagnosis ageing", color: "border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/15" }, { label: "Approval blocking", value: workshopJobs.filter((job) => getWorkshopStage(job) === "customer_approval").length, hint: "Advisor/customer decision", color: "border-rose-200 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/15" }, { label: "Parts blocking", value: workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length, hint: "Use Overall Waiting Parts", color: "border-purple-200 dark:border-purple-800/40 bg-purple-50 dark:bg-purple-950/15" }].map((item) => (
-                <div key={item.label} className={cn("rounded-2xl border p-3 shadow-sm", item.color)}><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p><div className="mt-1 flex items-end justify-between gap-2"><p className="text-2xl font-semibold text-foreground">{item.value}</p><p className="text-right text-[11px] font-medium text-muted-foreground">{item.hint}</p></div></div>
-              ))}
-            </div>
-            <div className="rounded-2xl border border-border bg-muted p-3">
-              <div className="mb-3 flex items-center justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Live flow</p><h2 className="text-lg font-semibold text-foreground">Waiting to Start -&gt; Diagnosis -&gt; Estimate -&gt; Advisor / Approval -&gt; Parts -&gt; WIP -&gt; Final Test -&gt; QC -&gt; Ready</h2></div><Wrench className="h-5 w-5 text-muted-foreground" /></div>
-              <div className="overflow-x-auto pb-2">
-                <div className="flex min-w-max gap-3">
-                  {WORKSHOP_STAGES.map((stageKey) => {
-                    const stage = { key: stageKey, ...WORKSHOP_STAGE_META[stageKey], jobs: workshopJobs.filter((job) => getWorkshopStage(job) === stageKey) };
-                    const isCollapsed = collapsedWorkshopStages.has(stage.key);
-                    return (
-                      <div key={stage.key} onDragOver={(event) => { event.preventDefault(); if (draggedJobId) setDropWorkshopStage(stage.key); }} onDragLeave={() => setDropWorkshopStage(null)} onDrop={async (event) => { event.preventDefault(); const jobId = event.dataTransfer.getData("text/plain") || draggedJobId; setDropWorkshopStage(null); if (!jobId) return; await moveJobToWorkshopStage(jobId, stage.key); }}
-                        className={cn("flex h-[520px] shrink-0 flex-col rounded-[16px] border shadow-sm ring-1 ring-border/70 transition-all", stage.tone, isCollapsed ? "w-[46px]" : "w-[230px]", dropWorkshopStage === stage.key && "border-blue-400 bg-blue-50/50 ring-2 ring-blue-200")}>
-                        <div className={cn("cursor-pointer select-none border-b border-border/70 px-3 py-2.5", WORKSHOP_STAGE_HEADER_TONE[stage.key])} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleWorkshopStage(stage.key); } }} onClick={() => toggleWorkshopStage(stage.key)}>
-                          <div className={cn("flex items-start justify-between gap-2", isCollapsed && "flex-col items-center")}>
-                            {isCollapsed ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                            <span className="h-2 w-2 rounded-full shrink-0 bg-foreground/50" />
-                            {!isCollapsed && (<div className="min-w-0 flex-1"><h3 className="truncate text-sm font-bold text-foreground">{stage.label}</h3><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{stage.sub}</p></div>)}
-                            <span className="rounded-full bg-card px-2 py-1 text-[11px] font-bold text-foreground/80 shadow-sm">{stage.jobs.length}</span>
-                          </div>
-                        </div>
-                        {!isCollapsed && (
-                          <div className="flex-1 space-y-2 overflow-y-auto p-2.5">
-                            {stage.jobs.length === 0 ? (<div className="rounded-xl border border-dashed border-border bg-card/70 p-4 text-center text-xs text-muted-foreground">No vehicles</div>) : (
-                              stage.jobs.map((job) => {
-                                const item = enrichedJobs.find((entry) => entry.job.id === job.id);
-                                const overdue = !!priorityMap.get(job.id)?.isOverdue;
-                                return (
-                                  <Link key={`${stage.key}-${job.id}`} href={`/jobs/${job.id}`} draggable onDragStart={(event) => { setDraggedJobId(job.id); event.dataTransfer.setData("text/plain", job.id); event.dataTransfer.effectAllowed = "move"; }} onDragEnd={() => { setDraggedJobId(null); setDropWorkshopStage(null); }}
-                                    className={cn("block rounded-xl border border-l-4 border-border bg-card p-2.5 text-xs shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md", WORKSHOP_STAGE_ACCENT[stage.key], overdue && "border-l-red-500 dark:border-l-red-500 bg-red-50/40 dark:bg-red-950/15", draggedJobId === job.id && "opacity-60", updatingJobId === job.id && "ring-2 ring-border")}>
-                                    <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-start gap-1.5"><span className="mt-0.5 shrink-0 rounded-md border border-border bg-muted p-1 text-muted-foreground cursor-grab" title="Drag to move" onClick={(event) => event.preventDefault()}><GripVertical className="h-3 w-3" /></span><div className="min-w-0"><p className="inline-flex max-w-full rounded-md border border-blue-200 dark:border-blue-800/40 bg-blue-50/80 dark:bg-blue-950/40 px-2 py-0.5 text-[13px] font-black leading-none tracking-[0.08em] text-blue-950 dark:text-blue-200 shadow-sm"><span className="truncate tabular-nums">#{job.job_number || "Draft"}</span></p><p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{getVehicleLabel(job)}</p><p className="mt-0.5 truncate text-[12px] font-black tracking-[0.12em] text-foreground tabular-nums">{getPlate(job)}</p></div></div><span className={cn("rounded-full px-1.5 py-0.5 text-[11px] font-bold", overdue ? "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300" : (item?.priorityScore ?? 0) >= 40 ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground")}>{item?.priorityScore ?? 0}</span></div>
-                                    {job.parts_status && job.parts_status !== "no_parts" ? (<div className={cn("mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold", PARTS_STATUS_META[job.parts_status]?.tone)}>{PARTS_STATUS_META[job.parts_status]?.label}</div>) : null}
-                                    {blockerCounts.get(job.id) ? (<div className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/50 px-2 py-0.5 text-[11px] font-bold text-red-700 dark:text-red-300"><AlertTriangle className="h-3 w-3" />{blockerCounts.get(job.id)} blocker{blockerCounts.get(job.id)! > 1 ? "s" : ""}</div>) : null}
-                                    <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-muted-foreground"><span className="truncate">Advisor: {job.advisor?.name || "—"}</span><span className="truncate">Tech: {job.technician?.name || "—"}</span><span className="truncate">Idle: {Math.round(item?.idleHours ?? 0)}h</span><span className={cn("truncate font-semibold", overdue ? "text-red-700 dark:text-red-300" : "text-muted-foreground")}>{overdue ? "Overdue" : job.promised_at ? getPromisedLabel(job.promised_at) : "No promise"}</span></div>
-                                    <div className={cn("mt-2 rounded-lg border px-2 py-1 text-[11px] font-semibold", getActionUrgencyClass(item?.nextAction.urgency ?? "low"))}>{stage.key === "waiting_technician" ? "Assign technician" : stage.key === "customer_approval" ? "Advisor / customer approval" : item?.nextAction.title ?? "Review job"}</div>
-                                  </Link>
-                                );
-                              })
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <div className="grid gap-4 xl:grid-cols-3">
-              <div className="rounded-2xl border border-orange-200 dark:border-orange-800/40 bg-orange-50 dark:bg-orange-950/40 p-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-orange-950 dark:text-orange-200"><TriangleAlert className="h-4 w-4" /> Stuck / idle vehicles</h3><div className="mt-3 space-y-2">{workshopEnrichedJobs.filter((item) => !["ready", "closed"].includes(item.job.status) && item.idleHours >= 6).slice(0, 6).map(({ job, idleHours }) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="truncate font-medium text-foreground">{job.job_number || "Draft"}</span><span className="text-xs font-semibold text-orange-700 dark:text-orange-300">{Math.round(idleHours)}h idle</span></Link>))}{workshopEnrichedJobs.filter((item) => !["ready", "closed"].includes(item.job.status) && item.idleHours >= 6).length === 0 && <p className="text-xs text-orange-700 dark:text-orange-300">No stuck vehicles detected.</p>}</div></div>
-              <div className="rounded-2xl border border-purple-200 dark:border-purple-800/40 bg-purple-50 dark:bg-purple-950/40 p-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-purple-950 dark:text-purple-200"><Package className="h-4 w-4" /> Parts blockers</h3><div className="mt-3 space-y-2">{workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).slice(0, 6).map((job) => (<Link key={job.id} href={`/jobs/${job.id}`} className="flex items-center justify-between gap-2 rounded-xl bg-card dark:bg-card px-3 py-2 text-sm shadow-sm"><span className="truncate font-medium text-foreground">{job.job_number || "Draft"}</span><span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold", PARTS_STATUS_META[job.parts_status ?? "order_parts"]?.tone)}>{PARTS_STATUS_META[job.parts_status ?? "order_parts"]?.label}</span></Link>))}{workshopJobs.filter((job) => job.status === "waiting_parts" || ["order_parts", "waiting_warehouse", "backorder"].includes(job.parts_status ?? "")).length === 0 && <p className="text-xs text-purple-700 dark:text-purple-300">No parts blockers.</p>}</div></div>
-              <div className="rounded-2xl border border-cyan-200 dark:border-cyan-800/40 bg-cyan-50 dark:bg-cyan-950/40 p-3"><h3 className="flex items-center gap-2 text-sm font-semibold text-cyan-950 dark:text-cyan-200"><CheckCircle2 className="h-4 w-4" /> QC & delivery handover</h3><div className="mt-3 grid grid-cols-2 gap-2"><div className="rounded-xl bg-card p-3 text-center shadow-sm"><p className="text-2xl font-semibold text-cyan-950 dark:text-cyan-200">{boardJobs.quality_check.length}</p><p className="text-[11px] font-medium text-cyan-700 dark:text-cyan-300">in QC</p></div><div className="rounded-xl bg-card p-3 text-center shadow-sm"><p className="text-2xl font-semibold text-cyan-950">{boardJobs.ready.length}</p><p className="text-[11px] font-medium text-cyan-700">ready</p></div></div></div>
-            </div>
-          </div>
+          <WorkshopView
+            jobs={workshopJobs}
+            insights={workshopInsights}
+            blockerCounts={blockerCounts}
+            collapsedStages={collapsedWorkshopStages}
+            dropStage={dropWorkshopStage}
+            draggedJobId={draggedJobId}
+            updatingJobId={updatingJobId}
+            onToggleStage={toggleWorkshopStage}
+            onDropJob={async (jobId, stage) => {
+              setDropWorkshopStage(null);
+              if (stage === "waiting_parts") {
+                await moveJobToStatus(jobId, "waiting_parts");
+              } else {
+                await moveJobToWorkshopStage(jobId, stage);
+              }
+            }}
+            onDragStart={setDraggedJobId}
+            onDragEnd={() => { setDraggedJobId(null); setDropWorkshopStage(null); }}
+            onDragOverStage={setDropWorkshopStage}
+            onDragLeaveStage={() => setDropWorkshopStage(null)}
+            onCustomerInformed={markCustomerInformed}
+          />
 
         ) : overallView === "board" ? (
           <DndContext sensors={dndSensors} collisionDetection={closestCorners} onDragStart={handleDndStart} onDragEnd={handleDndEnd}>

@@ -48,7 +48,7 @@ export const MODULES = {
 export type ModuleKey = typeof MODULES[keyof typeof MODULES];
 
 export const PRODUCT_LABELS: Record<ProductMode, string> = {
-  WORKSHOP: "PrioraFlow Workshop",
+  WORKSHOP: "PrioraFlow Standalone",
   CONNECT: "PrioraFlow Connect",
 };
 
