@@ -14,6 +14,7 @@ function getOrigin(url) {
 const apiOrigin = getOrigin(process.env.NEXT_PUBLIC_API_URL);
 const connectSrc = [
   "'self'",
+  "http://localhost:3002",
   apiOrigin && apiOrigin !== "'self'" ? apiOrigin : null,
   "https://*.ingest.sentry.io",
   "https://*.ingest.us.sentry.io",

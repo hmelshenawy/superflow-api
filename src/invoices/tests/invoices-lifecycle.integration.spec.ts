@@ -47,6 +47,7 @@ describe('InvoicesService Lifecycle', () => {
         ],
       },
       workshop.id,
+      'test-user-id',
     );
 
     expect(invoice.status).toBe(InvoiceStatus.DRAFT);
@@ -75,6 +76,7 @@ describe('InvoicesService Lifecycle', () => {
     const invoice = await service.create(
       { branch_id: branch.id, items: [{ type: 'labour' as any, description: 'Test', quantity: 1, unit_price_cents: 1000 }] },
       workshop.id,
+      'test-user-id',
     );
     await service.issue(invoice.id);
 
@@ -94,6 +96,7 @@ describe('InvoicesService Lifecycle', () => {
     const invoice = await service.create(
       { branch_id: branch.id, items: [{ type: 'labour' as any, description: 'Test', quantity: 1, unit_price_cents: 1000 }] },
       workshop.id,
+      'test-user-id',
     );
     const originalNumber = invoice.invoice_number;
 

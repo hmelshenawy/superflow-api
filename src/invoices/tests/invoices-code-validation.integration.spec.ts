@@ -38,6 +38,7 @@ describe('Invoices Code Validation', () => {
       service.create(
         { branch_id: branch.id, items: [{ type: 'labour' as any, description: 'Test', quantity: 1, unit_price_cents: 1000 }] },
         ws.id,
+        'test-user-id',
       ),
     ).rejects.toThrow(BadRequestException);
   });
@@ -55,6 +56,7 @@ describe('Invoices Code Validation', () => {
       service.create(
         { branch_id: branch.id, items: [{ type: 'labour' as any, description: 'Test', quantity: 1, unit_price_cents: 1000 }] },
         ws.id,
+        'test-user-id',
       ),
     ).rejects.toThrow(BadRequestException);
   });

@@ -147,7 +147,7 @@ export function Sidebar() {
           const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
           return (
             <Link
-              key={item.href}
+              key={`${item.href}--${item.label}`}
               href={item.href}
               title={isCollapsed ? (locked ? `${item.label} (Locked)` : item.label) : undefined}
               className={cn(
@@ -281,7 +281,7 @@ export function Sidebar() {
                 const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
                 return (
                   <Link
-                    key={item.href}
+                    key={`${item.href}--${item.label}`}
                     href={item.href}
                     className={cn(
                       "flex items-center gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium transition",

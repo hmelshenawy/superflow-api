@@ -44,8 +44,8 @@ export class InvoicesController {
   @Post()
   @RequirePermission(INVOICES_CREATE)
   @ApiOperation({ summary: 'Create a new invoice' })
-  create(@Body() dto: CreateInvoiceDto, @CurrentUser('workshopId') workshopId: string) {
-    return this.invoicesService.create(dto, workshopId);
+  create(@Body() dto: CreateInvoiceDto, @CurrentUser('workshopId') workshopId: string, @CurrentUser('sub') userId: string) {
+    return this.invoicesService.create(dto, workshopId, userId);
   }
 
   @Get()

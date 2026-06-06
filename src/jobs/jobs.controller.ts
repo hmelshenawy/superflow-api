@@ -121,7 +121,7 @@ export class JobsController {
   @Post(':id/invoice')
   @RequirePermission(INVOICES_CREATE)
   @ApiOperation({ summary: 'Generate an invoice from a job' })
-  generateInvoice(@Param('id') id: string, @CurrentUser('workshopId') workshopId: string) {
-    return this.invoicesService.generateFromJob(id, workshopId);
+  generateInvoice(@Param('id') id: string, @CurrentUser('workshopId') workshopId: string, @CurrentUser('sub') userId: string) {
+    return this.invoicesService.generateFromJob(id, workshopId, userId);
   }
 }

@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum InvoiceStatusFilter {
@@ -36,12 +37,14 @@ export class ListInvoicesDto {
 
   @ApiPropertyOptional({ description: 'Page number (1-based)' })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
   @ApiPropertyOptional({ description: 'Items per page' })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   limit?: number = 20;

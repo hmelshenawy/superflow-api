@@ -42,7 +42,7 @@ export class InvoicesService {
     };
   }
 
-  async create(dto: CreateInvoiceDto, workshopId: string) {
+  async create(dto: CreateInvoiceDto, workshopId: string, userId: string) {
     if (!dto.branch_id) {
       throw new BadRequestException('Branch is required to generate an invoice number.');
     }
@@ -68,6 +68,7 @@ export class InvoicesService {
         job_id: dto.job_id,
         customer_id: dto.customer_id,
         vehicle_id: dto.vehicle_id,
+        created_by_user_id: userId,
         notes: dto.notes,
         internal_notes: dto.internal_notes,
         status: InvoiceStatus.DRAFT,
@@ -75,7 +76,6 @@ export class InvoicesService {
         discount_total_cents: totals.discount_total_cents,
         tax_total_cents: totals.tax_total_cents,
         grand_total_cents: totals.grand_total_cents,
-        total_cents: totals.total_cents,
         items: {
           create: lines,
         },
@@ -256,7 +256,7 @@ export class InvoicesService {
     return updated;
   }
 
-  async generateFromJob(jobId: string, workshopId: string) {
+  async generateFromJob(jobId: string, workshopId: string, userId: string) {
     const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
       include: {
@@ -302,6 +302,6 @@ export class InvoicesService {
       items,
     };
 
-    return this.create(createDto, workshopId);
+    return this.create(createDto, workshopId, userId);
   }
 }

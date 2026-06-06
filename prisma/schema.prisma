@@ -90,7 +90,6 @@ model workshops {
   appointments               appointments[]
   branches                   branches[]
   workshop_invoices          workshop_invoices[]
-  workshop_invoice_items   workshop_invoice_items[]
   workshop_invoice_sequences workshop_invoice_sequences[]
   technician_clock_events    technician_clock_events[]
 
@@ -1621,8 +1620,9 @@ model workshop_invoices {
   currency                String    @default("AED") @db.VarChar(3)
   vat_rate                Decimal   @default(0.0500) @db.Decimal(5, 4)
   subtotal_cents          Int       @default(0)
-  discount_cents          Int       @default(0)
-  tax_cents               Int       @default(0)
+  discount_total_cents    Int       @default(0) @map("discount_cents")
+  tax_total_cents         Int       @default(0) @map("tax_cents")
+  grand_total_cents       Int       @default(0)
   total_cents             Int       @default(0)
   notes                   String?   @db.Text
   snapshot_customer_name  String    @db.VarChar(120)
@@ -1630,8 +1630,11 @@ model workshop_invoices {
   snapshot_customer_email String?   @db.VarChar(120)
   snapshot_vehicle_plate  String?   @db.VarChar(20)
   snapshot_vehicle_vin    String?   @db.VarChar(40)
+  snapshot_vehicle_make   String?   @db.VarChar(80)
   snapshot_vehicle_model  String?   @db.VarChar(80)
   snapshot_vehicle_year   Int?
+  snapshot_vehicle_color  String?   @db.VarChar(40)
+  snapshot_advisor_name   String?   @db.VarChar(120)
   workshop_code_snapshot  String    @db.VarChar(20)
   branch_code_snapshot    String    @db.VarChar(20)
   created_at              DateTime  @default(now()) @db.DateTime(0)
@@ -1643,7 +1646,7 @@ model workshop_invoices {
   vehicles               vehicles                 @relation(fields: [vehicle_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_workshop_invoices_vehicle")
   jobs                   jobs?                    @relation(fields: [job_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "fk_workshop_invoices_job")
   users                  users                    @relation(fields: [created_by_user_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_workshop_invoices_user")
-  workshop_invoice_items workshop_invoice_items[]
+  items workshop_invoice_items[]
 
   @@unique([workshop_id, invoice_number], map: "idx_workshop_invoices_number_unique")
   @@index([workshop_id])
@@ -1658,7 +1661,7 @@ model workshop_invoices {
 
 model workshop_invoice_items {
   id                  String   @id @default(uuid()) @db.Char(36)
-  workshop_invoice_id String   @db.Char(36)
+  invoice_id          String   @map("workshop_invoice_id") @db.Char(36)
   description         String   @db.VarChar(255)
   type                String   @db.VarChar(20)
   quantity            Int      @default(1)
@@ -1672,11 +1675,9 @@ model workshop_invoice_items {
   created_at          DateTime @default(now()) @db.DateTime(0)
   updated_at          DateTime @default(now()) @updatedAt @db.DateTime(0)
 
-  workshop_invoices workshop_invoices @relation(fields: [workshop_invoice_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_workshop_invoice_items_invoice")
-  workshops         workshops?        @relation(fields: [workshopsId], references: [id])
-  workshopsId       String?           @db.Char(36)
+  invoice workshop_invoices @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_workshop_invoice_items_invoice")
 
-  @@index([workshop_invoice_id])
+  @@index([invoice_id])
 }
 
 model workshop_invoice_sequences {
