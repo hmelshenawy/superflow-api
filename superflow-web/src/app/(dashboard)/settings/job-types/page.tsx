@@ -4,87 +4,48 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { getApiError } from "@/lib/api";
 import type { JobType, JobTypeTemplate } from "@/types/appointments";
 import { formatDuration } from "@/utils/appointments";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, ChevronDown, ChevronRight, Clock3, Layers3, LibraryBig, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CheckCircle2, ChevronDown, ChevronRight, Plus, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
 type TemplateGroups = Record<string, JobTypeTemplate[]>;
-type JobTypeDraft = { name: string; category: string; duration_min: number; color_hex: string; description: string };
-
-const emptyDraft: JobTypeDraft = { name: "", category: "Custom", duration_min: 60, color_hex: "#888780", description: "" };
-
-function categoryFor(jobType: JobType) {
-  return jobType.category || jobType.job_type_templates?.category || "Custom";
-}
-
-function completionText(imported: number, total: number) {
-  if (!total) return "No templates yet";
-  if (!imported) return `${total} ready to add`;
-  if (imported === total) return "All templates added";
-  return `${imported} added, ${total - imported} left`;
-}
-
-function durationBadge(minutes: number) {
-  return (
-    <span className="inline-flex min-w-[4.5rem] items-center justify-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground">
-      <Clock3 className="h-3 w-3" />
-      {formatDuration(minutes)}
-    </span>
-  );
-}
 
 export default function JobTypesSettingsPage() {
   const [templates, setTemplates] = useState<TemplateGroups>({});
   const [jobTypes, setJobTypes] = useState<JobType[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edit, setEdit] = useState<Partial<JobType>>({});
-  const [customOpen, setCustomOpen] = useState(false);
-  const [custom, setCustom] = useState<JobTypeDraft>(emptyDraft);
-  const [activeTab, setActiveTab] = useState("library");
+  // Inline add per category — category name means "show add form for this category"
+  const [addingToCategory, setAddingToCategory] = useState<string | null>(null);
+  const [custom, setCustom] = useState({ name: "", category: "", duration_min: 60, color_hex: "#888780", description: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [templateRes, jobTypeRes] = await Promise.all([api.get<TemplateGroups>("/job-types/templates"), api.get<JobType[]>("/job-types")]);
+      const [templateRes, jobTypeRes, catRes] = await Promise.all([
+        api.get<TemplateGroups>("/job-types/templates"),
+        api.get<JobType[]>("/job-types"),
+        api.get<string[]>("/job-types/categories"),
+      ]);
       setTemplates(templateRes.data || {});
       setJobTypes(jobTypeRes.data || []);
+      setCategories(catRes.data || []);
     } catch (err) {
       toast.error(getApiError(err).message);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const importedTemplateIds = useMemo(() => new Set(jobTypes.map((item) => item.template_id).filter(Boolean)), [jobTypes]);
-  const categories = useMemo(
-    () => Array.from(new Set([...Object.keys(templates), ...jobTypes.map(categoryFor)])).sort(),
-    [jobTypes, templates],
-  );
-  const totalTemplates = useMemo(() => Object.values(templates).reduce((sum, items) => sum + items.length, 0), [templates]);
-  const importedTemplateCount = useMemo(
-    () => Object.values(templates).flat().filter((item) => importedTemplateIds.has(item.id)).length,
-    [importedTemplateIds, templates],
-  );
-  const remainingTemplateCount = Math.max(0, totalTemplates - importedTemplateCount);
-  const activeJobTypeCount = jobTypes.filter((item) => item.is_active !== false).length;
-  const jobTypesByCategory = useMemo(() => {
-    return jobTypes.reduce<Record<string, JobType[]>>((groups, item) => {
-      const category = categoryFor(item);
-      groups[category] = [...(groups[category] || []), item];
-      return groups;
-    }, {});
-  }, [jobTypes]);
 
   const importTemplates = async (ids: string[]) => {
     if (!ids.length) return;
@@ -92,325 +53,255 @@ export default function JobTypesSettingsPage() {
     try {
       const { data } = await api.post<JobType[]>("/job-types/import", { template_ids: ids });
       setJobTypes((prev) => [...prev, ...(data || [])]);
-      toast.success(ids.length === 1 ? "Job type imported" : `${ids.length} job types imported`);
+      toast.success("Job types imported");
     } catch (err) {
       toast.error(getApiError(err).message);
       await load();
     } finally {
-      setSavingIds((prev) => {
-        const next = new Set(prev);
-        ids.forEach((id) => next.delete(id));
-        return next;
-      });
+      setSavingIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
     }
   };
 
   const patchJobType = async (id: string, patch: Partial<JobType>) => {
     const previous = jobTypes;
     setJobTypes((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
-    try {
-      const { data } = await api.patch<JobType>(`/job-types/${id}`, patch);
-      setJobTypes((items) => items.map((item) => item.id === id ? data : item));
-    } catch (err) {
-      setJobTypes(previous);
-      toast.error(getApiError(err).message);
-    }
+    try { const { data } = await api.patch<JobType>(`/job-types/${id}`, patch); setJobTypes((items) => items.map((item) => item.id === id ? data : item)); }
+    catch (err) { setJobTypes(previous); toast.error(getApiError(err).message); }
   };
 
   const deleteJobType = async (id: string) => {
-    try {
-      await api.delete(`/job-types/${id}`);
-      setJobTypes((items) => items.filter((item) => item.id !== id));
-      setConfirmDeleteId(null);
-    } catch (err) {
-      toast.error(getApiError(err).message);
-    }
+    try { await api.delete(`/job-types/${id}`); setJobTypes((items) => items.filter((item) => item.id !== id)); setConfirmDeleteId(null); }
+    catch (err) { toast.error(getApiError(err).message); }
   };
 
-  const addCustom = async () => {
-    if (!custom.name.trim()) {
-      toast.error("Name is required");
-      return;
-    }
+  const addCustom = async (categoryOverride?: string) => {
+    const payload = { ...custom, category: categoryOverride || custom.category || "Custom" };
+    if (!payload.name.trim()) { toast.error("Name is required"); return; }
     try {
-      const { data } = await api.post<JobType>("/job-types", custom);
+      const { data } = await api.post<JobType>("/job-types", payload);
       setJobTypes((prev) => [...prev, data]);
-      setCustom(emptyDraft);
-      setCustomOpen(false);
-      setActiveTab("mine");
-      toast.success("Custom job type added");
-    } catch (err) {
-      toast.error(getApiError(err).message);
-    }
+      setCustom({ name: "", category: "", duration_min: 60, color_hex: "#888780", description: "" });
+      setAddingToCategory(null);
+      const catRes = await api.get<string[]>("/job-types/categories");
+      setCategories(catRes.data || []);
+    } catch (err) { toast.error(getApiError(err).message); }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6 p-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-28 w-full" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    );
-  }
+  const openAddForCategory = (cat: string) => {
+    setAddingToCategory(cat);
+    setCustom({ name: "", category: cat, duration_min: 60, color_hex: "#888780", description: "" });
+  };
+
+  // Group job types by category — must be before any early returns (hooks rule)
+  const grouped = useMemo(() => jobTypes.reduce((acc, jt) => {
+    const cat = jt.category || jt.job_type_templates?.category || "Custom";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(jt);
+    return acc;
+  }, {} as Record<string, JobType[]>), [jobTypes]);
+
+  // All categories: from templates + custom types
+  const allCategories = useMemo(() => {
+    const catSet = new Set([...Object.keys(templates), ...Object.keys(grouped)]);
+    return [...catSet].sort();
+  }, [templates, grouped]);
+
+  if (loading) return <div className="space-y-4"><Skeleton className="h-6 w-48" /><Skeleton className="h-40 w-full" /></div>;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Job types</h1>
-          <p className="text-sm text-muted-foreground">Build the appointment menu your advisors pick from when booking work.</p>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[34rem]">
-          <div className="rounded-lg border border-border bg-card p-3">
-            <p className="text-xs text-muted-foreground">Template library</p>
-            <p className="mt-1 text-lg font-semibold">{completionText(importedTemplateCount, totalTemplates)}</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-3">
-            <p className="text-xs text-muted-foreground">Your schedule menu</p>
-            <p className="mt-1 text-lg font-semibold">{activeJobTypeCount} active</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-3">
-            <p className="text-xs text-muted-foreground">Groups available</p>
-            <p className="mt-1 text-lg font-semibold">{categories.length} categories</p>
-          </div>
+    <div className="space-y-6">
+      {/* Template Library */}
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Template Library</h3>
+        <div className="space-y-1">
+          {Object.entries(templates).map(([category, items]) => {
+            const open = !collapsed.has(category);
+            const unimported = items.filter((item) => !importedTemplateIds.has(item.id));
+            const importedCount = items.length - unimported.length;
+            return (
+              <div key={category} className="rounded-lg border border-border overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors"
+                  onClick={() => setCollapsed((prev) => { const next = new Set(prev); next.has(category) ? next.delete(category) : next.add(category); return next; })}
+                >
+                  <span className="flex items-center gap-2">
+                    {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                    {category}
+                    <span className="text-xs text-muted-foreground">{importedCount}/{items.length} imported</span>
+                  </span>
+                  {unimported.length > 0 && (
+                    <span
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      onClick={(e) => { e.stopPropagation(); importTemplates(unimported.map((item) => item.id)); }}
+                    >
+                      Import all
+                    </span>
+                  )}
+                </button>
+                {open && (
+                  <div className="border-t border-border px-3 py-2 bg-muted/20">
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((template) => {
+                        const imported = importedTemplateIds.has(template.id);
+                        return (
+                          <div
+                            key={template.id}
+                            className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs border transition-colors ${
+                              imported ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950" : "border-border bg-card hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer"
+                            }`}
+                            onClick={imported ? undefined : () => importTemplates([template.id])}
+                          >
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: template.color_hex }} />
+                            <span className="font-medium">{template.name}</span>
+                            <span className="text-muted-foreground">{formatDuration(template.default_duration_min)}</span>
+                            {imported ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : savingIds.has(template.id) ? <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList className="h-auto w-full flex-wrap justify-start sm:w-fit">
-            <TabsTrigger value="library" className="min-h-7 flex-1 sm:flex-none">
-              <LibraryBig className="h-4 w-4" />
-              Library
-              <Badge variant="secondary">{remainingTemplateCount ? `${remainingTemplateCount} to add` : "Ready"}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="mine" className="min-h-7 flex-1 sm:flex-none">
-              <Layers3 className="h-4 w-4" />
-              Your types
-              <Badge variant="secondary">{jobTypes.length}</Badge>
-            </TabsTrigger>
-          </TabsList>
-          <Button type="button" onClick={() => { setCustomOpen(true); setActiveTab("mine"); }}>
-            <Plus className="h-4 w-4" />
-            Add custom type
+      {/* Your Job Types — grouped by category, each with its own + button */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Your Job Types ({jobTypes.length})</h3>
+          <Button size="sm" variant="outline" onClick={() => openAddForCategory("")}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add
           </Button>
         </div>
 
-        <TabsContent value="library" className="space-y-4">
-          <section className="rounded-lg border border-border bg-card p-4 md:p-5">
-            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Template library</h2>
-                <p className="text-sm text-muted-foreground">Import complete category sets or pick the job types you actually book.</p>
-              </div>
-              <Button
-                type="button"
-                disabled={!remainingTemplateCount}
-                onClick={() => importTemplates(Object.values(templates).flat().filter((item) => !importedTemplateIds.has(item.id)).map((item) => item.id))}
+        {jobTypes.length === 0 && !addingToCategory && allCategories.length === 0 && (
+          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-lg">
+            No job types yet. Import from templates above or add a custom type.
+          </div>
+        )}
+
+        {allCategories.map((cat) => (
+          <div key={cat} className="mb-4">
+            {/* Category header with + button */}
+            <div className="flex items-center gap-2 mb-1.5 px-1">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{cat}</h4>
+              <button
+                className="inline-flex items-center justify-center h-5 w-5 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                onClick={() => openAddForCategory(cat)}
+                title={`Add to ${cat}`}
               >
-                <Sparkles className="h-4 w-4" />
-                Import all remaining
-              </Button>
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
 
-            <div className="space-y-4">
-              {Object.entries(templates).map(([category, items]) => {
-                const open = !collapsed.has(category);
-                const unimported = items.filter((item) => !importedTemplateIds.has(item.id));
-                const importedCount = items.length - unimported.length;
-                const percent = items.length ? Math.round((importedCount / items.length) * 100) : 0;
+            {/* Inline add form for this category */}
+            {addingToCategory === cat && (
+              <div className="mb-2 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-2">
+                <div className="grid grid-cols-[1fr_80px_48px] gap-2 items-center">
+                  <Input placeholder="Name" className="h-8 text-sm" value={custom.name} onChange={(e) => setCustom((p) => ({ ...p, name: e.target.value }))} autoFocus />
+                  <Input type="number" min={1} className="h-8 text-sm" placeholder="Min" value={custom.duration_min} onChange={(e) => setCustom((p) => ({ ...p, duration_min: Number(e.target.value) }))} />
+                  <input type="color" className="h-8 w-10 rounded cursor-pointer" value={custom.color_hex} onChange={(e) => setCustom((p) => ({ ...p, color_hex: e.target.value }))} />
+                </div>
+                <Textarea placeholder="Description (optional)" className="text-sm min-h-[36px]" value={custom.description} onChange={(e) => setCustom((p) => ({ ...p, description: e.target.value }))} />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => addCustom(cat)}>Save</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setAddingToCategory(null)}>Cancel</Button>
+                </div>
+              </div>
+            )}
 
-                return (
-                  <div key={category} className="overflow-hidden rounded-lg border border-border">
-                    <div className="border-b border-border bg-muted/30 p-3">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-2 text-left font-semibold"
-                          onClick={() => setCollapsed((prev) => {
-                            const next = new Set(prev);
-                            next.has(category) ? next.delete(category) : next.add(category);
-                            return next;
-                          })}
+            {/* Job type rows */}
+            <div className="space-y-0.5">
+              {(grouped[cat] || []).map((jt) => {
+                const editing = editingId === jt.id;
+                const isDeleting = confirmDeleteId === jt.id;
+
+                if (editing) {
+                  return (
+                    <div key={jt.id} className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20 p-3 space-y-2">
+                      <div className="grid grid-cols-[1fr_140px_80px_48px] gap-2 items-center">
+                        <Input className="h-8 text-sm" value={edit.name || ""} onChange={(e) => setEdit((p) => ({ ...p, name: e.target.value }))} placeholder="Name" />
+                        <select
+                          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                          value={edit.category || cat}
+                          onChange={(e) => setEdit((p) => ({ ...p, category: e.target.value }))}
                         >
-                          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          {category}
-                        </button>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <span className="text-xs font-medium text-muted-foreground">{completionText(importedCount, items.length)}</span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={!unimported.length}
-                            onClick={() => importTemplates(unimported.map((item) => item.id))}
-                          >
-                            Import {unimported.length ? `${unimported.length} remaining` : "complete"}
-                          </Button>
-                        </div>
+                          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <Input type="number" min={1} className="h-8 text-sm" value={edit.duration_min || jt.duration_min} onChange={(e) => setEdit((p) => ({ ...p, duration_min: Number(e.target.value) }))} />
+                        <input type="color" className="h-8 w-10 rounded cursor-pointer" value={edit.color_hex || jt.color_hex} onChange={(e) => setEdit((p) => ({ ...p, color_hex: e.target.value }))} />
                       </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-background">
-                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => { patchJobType(jt.id, edit); setEditingId(null); }}>Save</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
                       </div>
                     </div>
+                  );
+                }
 
-                    {open && (
-                      <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {items.map((template) => {
-                          const imported = importedTemplateIds.has(template.id);
-                          return (
-                            <div key={template.id} className="flex min-h-24 flex-col justify-between gap-3 rounded-lg border border-border bg-background p-3">
-                              <div className="flex items-start gap-3">
-                                <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: template.color_hex }} />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="font-medium">{template.name}</p>
-                                    {durationBadge(template.default_duration_min)}
-                                  </div>
-                                  {template.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{template.description}</p>}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                {imported ? (
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    Added to your menu
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Adds to {category}</span>
-                                )}
-                                <Button type="button" size="sm" variant={imported ? "outline" : "default"} disabled={imported || savingIds.has(template.id)} onClick={() => importTemplates([template.id])}>
-                                  {imported ? "Imported" : "Import"}
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                return (
+                  <div
+                    key={jt.id}
+                    className={`group flex items-center gap-3 rounded-lg px-3 py-2 border transition-colors ${
+                      isDeleting ? "border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20" : "border-transparent hover:border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: jt.color_hex }} />
+                    <span className="font-medium text-sm flex-1 min-w-0 truncate">{jt.name}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(jt.duration_min)}</span>
+                    <button
+                      className={`h-5 w-8 rounded flex items-center justify-center text-[10px] font-semibold ${
+                        jt.is_active !== false ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                      }`}
+                      onClick={() => patchJobType(jt.id, { is_active: jt.is_active === false })}
+                    >
+                      {jt.is_active !== false ? "On" : "Off"}
+                    </button>
+
+                    {isDeleting ? (
+                      <div className="flex gap-1">
+                        <button className="text-xs text-red-600 dark:text-red-400 font-medium hover:underline" onClick={() => deleteJobType(jt.id)}>Delete</button>
+                        <button className="text-xs text-muted-foreground hover:underline" onClick={() => setConfirmDeleteId(null)}>Keep</button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="p-1 rounded hover:bg-muted" onClick={() => { setEditingId(jt.id); setEdit(jt); }} title="Edit"><Pencil className="h-3.5 w-3.5 text-muted-foreground" /></button>
+                        <button className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-950" onClick={() => setConfirmDeleteId(jt.id)} title="Delete"><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-          </section>
-        </TabsContent>
+          </div>
+        ))}
 
-        <TabsContent value="mine" className="space-y-4">
-          <section className="rounded-lg border border-border bg-card p-4 md:p-5">
-            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Your job types</h2>
-                <p className="text-sm text-muted-foreground">Edit duration, color, status, and the group each type belongs to.</p>
-              </div>
-              <Button type="button" onClick={() => setCustomOpen((value) => !value)} variant={customOpen ? "outline" : "default"}>
-                <Plus className="h-4 w-4" />
-                {customOpen ? "Close form" : "Add custom type"}
-              </Button>
+        {/* Ungrouped "Add new" — when clicking the top-level Add button with no category */}
+        {addingToCategory === "" && (
+          <div className="mb-3 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-2">
+            <div className="grid grid-cols-[1fr_160px_80px_48px] gap-2 items-center">
+              <Input placeholder="Name" className="h-8 text-sm" value={custom.name} onChange={(e) => setCustom((p) => ({ ...p, name: e.target.value }))} autoFocus />
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                value={custom.category}
+                onChange={(e) => setCustom((p) => ({ ...p, category: e.target.value }))}
+              >
+                <option value="">Category...</option>
+                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <Input type="number" min={1} className="h-8 text-sm" value={custom.duration_min} onChange={(e) => setCustom((p) => ({ ...p, duration_min: Number(e.target.value) }))} />
+              <input type="color" className="h-8 w-10 rounded cursor-pointer" value={custom.color_hex} onChange={(e) => setCustom((p) => ({ ...p, color_hex: e.target.value }))} />
             </div>
-
-            {customOpen && (
-              <div className="mb-4 grid gap-3 rounded-lg border border-border bg-muted/30 p-4 md:grid-cols-[1fr_180px_130px_88px_auto]">
-                <Input placeholder="Name" value={custom.name} onChange={(e) => setCustom((p) => ({ ...p, name: e.target.value }))} />
-                <Input placeholder="Group" list="job-type-categories" value={custom.category} onChange={(e) => setCustom((p) => ({ ...p, category: e.target.value }))} />
-                <Input type="number" min={1} value={custom.duration_min} onChange={(e) => setCustom((p) => ({ ...p, duration_min: Number(e.target.value) }))} />
-                <Input className="p-1" type="color" value={custom.color_hex} onChange={(e) => setCustom((p) => ({ ...p, color_hex: e.target.value }))} />
-                <Button type="button" onClick={addCustom}>Save type</Button>
-                <Textarea className="md:col-span-5" placeholder="Description" value={custom.description} onChange={(e) => setCustom((p) => ({ ...p, description: e.target.value }))} />
-                <datalist id="job-type-categories">{categories.map((category) => <option key={category} value={category} />)}</datalist>
-              </div>
-            )}
-
-            {!jobTypes.length ? (
-              <div className="grid gap-4 rounded-lg border border-dashed border-border bg-muted/20 p-6 md:grid-cols-[1fr_auto] md:items-center">
-                <div>
-                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <LibraryBig className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-base font-semibold">Start your appointment menu</h3>
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                    Import a category from the library for a quick setup, or add a custom type and attach it to any group.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
-                  <Button type="button" onClick={() => setActiveTab("library")}>Browse templates</Button>
-                  <Button type="button" variant="outline" onClick={() => setCustomOpen(true)}>Create custom type</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {categories.filter((category) => jobTypesByCategory[category]?.length).map((category) => (
-                  <div key={category} className="rounded-lg border border-border">
-                    <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/30 p-3">
-                      <h3 className="font-semibold">{category}</h3>
-                      <Badge variant="outline">{jobTypesByCategory[category].length} types</Badge>
-                    </div>
-                    <div className="grid gap-3 p-3 lg:grid-cols-2">
-                      {jobTypesByCategory[category].map((jobType) => {
-                        const editing = editingId === jobType.id;
-                        return (
-                          <div key={jobType.id} className="rounded-lg border border-border bg-background p-3">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {editing ? (
-                                    <Input value={edit.name || ""} onChange={(e) => setEdit((p) => ({ ...p, name: e.target.value }))} />
-                                  ) : (
-                                    <button type="button" onClick={() => { setEditingId(jobType.id); setEdit(jobType); }} className="text-left font-medium hover:underline">
-                                      {jobType.name}
-                                    </button>
-                                  )}
-                                  {!editing && durationBadge(jobType.duration_min)}
-                                  {!editing && jobType.is_active === false && <Badge variant="outline">Inactive</Badge>}
-                                </div>
-                                {editing ? (
-                                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_110px_70px]">
-                                    <Input list="job-type-categories" value={edit.category || category} onChange={(e) => setEdit((p) => ({ ...p, category: e.target.value }))} />
-                                    <Input type="number" min={1} value={edit.duration_min || jobType.duration_min} onChange={(e) => setEdit((p) => ({ ...p, duration_min: Number(e.target.value) }))} />
-                                    <Input className="p-1" type="color" value={edit.color_hex || jobType.color_hex} onChange={(e) => setEdit((p) => ({ ...p, color_hex: e.target.value }))} />
-                                  </div>
-                                ) : (
-                                  <p className="mt-1 text-xs text-muted-foreground">{jobType.description || "No description added."}</p>
-                                )}
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2">
-                                <span className="h-5 w-5 rounded-md border border-border" style={{ backgroundColor: jobType.color_hex }} />
-                                <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                                  <input type="checkbox" checked={jobType.is_active !== false} onChange={(e) => patchJobType(jobType.id, { is_active: e.target.checked })} />
-                                  Active
-                                </label>
-                              </div>
-                            </div>
-                            <div className="mt-3 flex flex-wrap justify-end gap-2">
-                              {editing ? (
-                                <>
-                                  <Button type="button" size="sm" onClick={() => { patchJobType(jobType.id, edit); setEditingId(null); }}>Save</Button>
-                                  <Button type="button" size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
-                                </>
-                              ) : confirmDeleteId === jobType.id ? (
-                                <>
-                                  <Button type="button" size="sm" variant="destructive" onClick={() => deleteJobType(jobType.id)}>Confirm delete</Button>
-                                  <Button type="button" size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button type="button" size="sm" variant="outline" onClick={() => { setEditingId(jobType.id); setEdit(jobType); }}>Edit</Button>
-                                  <Button type="button" size="icon-sm" variant="ghost" aria-label={`Delete ${jobType.name}`} onClick={() => setConfirmDeleteId(jobType.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </TabsContent>
-      </Tabs>
+            <Textarea placeholder="Description (optional)" className="text-sm min-h-[36px]" value={custom.description} onChange={(e) => setCustom((p) => ({ ...p, description: e.target.value }))} />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => addCustom()}>Save</Button>
+              <Button size="sm" variant="ghost" onClick={() => setAddingToCategory(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

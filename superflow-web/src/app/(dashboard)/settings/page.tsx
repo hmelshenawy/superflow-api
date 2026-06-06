@@ -42,7 +42,11 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
+
+const ScheduleSection = dynamic(() => import("@/app/(dashboard)/settings/schedule/page"), { ssr: false });
+const JobTypesSection = dynamic(() => import("@/app/(dashboard)/settings/job-types/page"), { ssr: false });
 
 
 
@@ -1237,6 +1241,18 @@ export default function SettingsPage() {
               Integrations
             </TabsTrigger>
           )}
+          {visibleTabs.includes("schedule") && (
+            <TabsTrigger value="schedule">
+              <CalendarDays className="mr-1.5 h-4 w-4" />
+              Schedule
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("jobTypes") && (
+            <TabsTrigger value="jobTypes">
+              <FileText className="mr-1.5 h-4 w-4" />
+              Job Types
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {visibleTabs.includes("account") && (
@@ -1281,6 +1297,16 @@ export default function SettingsPage() {
         {visibleTabs.includes("integrations") && (
           <TabsContent value="integrations" className="mt-6 space-y-6">
             <IntegrationsSection />
+          </TabsContent>
+        )}
+        {visibleTabs.includes("schedule") && (
+          <TabsContent value="schedule" className="mt-6 space-y-6">
+            <ScheduleSection />
+          </TabsContent>
+        )}
+        {visibleTabs.includes("jobTypes") && (
+          <TabsContent value="jobTypes" className="mt-6 space-y-6">
+            <JobTypesSection />
           </TabsContent>
         )}
       </Tabs>

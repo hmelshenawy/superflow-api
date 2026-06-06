@@ -46,9 +46,7 @@ export class NotificationsService {
 
     // Track SMS usage for plan billing
     if (params.channel === 'sms' && workshopId) {
-      this.usageService.increment(workshopId, 'customer_approval_sms').catch(error => {
-  this.logger.warn(`Failed to track SMS usage: ${error.message}`);
-});
+      this.usageService.increment(workshopId, 'customer_approval_sms').catch(() => {});
     }
 
     const notification = await this.prisma.raw.notifications.create({

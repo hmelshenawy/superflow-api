@@ -42,6 +42,8 @@ export const SETTINGS_TAB_PERMISSIONS: Record<string, string[]> = {
   workshop: ["admin:settings:edit"],
   workflow: ["admin:settings:edit"],
   priority: ["admin:settings:edit"],
+  schedule: ["admin:settings:edit"],
+  jobTypes: ["admin:settings:edit"],
   billing: ["admin:billing"],
   notifications: ["admin:settings:edit"],
   integrations: ["admin:integrations"],
