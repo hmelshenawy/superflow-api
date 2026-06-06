@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { getWorkshopContext } from '../prisma/workshop-context';
 
@@ -61,9 +62,16 @@ export class InsightsService {
   }
 
   private async computeDashboard() {
+    const { workshopId } = getWorkshopContext();
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const jobsWorkshopFilter = workshopId
+      ? Prisma.sql`AND workshop_id = ${workshopId}`
+      : Prisma.empty;
+    const jobAliasWorkshopFilter = workshopId
+      ? Prisma.sql`AND j.workshop_id = ${workshopId}`
+      : Prisma.empty;
 
     // ── Batch 1: Independent counts + groupBys (parallel) ────
     const [
@@ -122,7 +130,7 @@ export class InsightsService {
                COUNT(*) AS created,
                SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed
         FROM jobs
-        WHERE created_at >= ${thirtyDaysAgo} AND archived_at IS NULL
+        WHERE created_at >= ${thirtyDaysAgo} AND archived_at IS NULL ${jobsWorkshopFilter}
         GROUP BY DATE(created_at)
       `,
 
@@ -133,7 +141,7 @@ export class InsightsService {
                SUM(CASE WHEN arrived_at IS NOT NULL THEN 1 ELSE 0 END) AS arrived,
                SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) AS noShow
         FROM jobs
-        WHERE created_at >= ${new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)}
+        WHERE created_at >= ${new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)} ${jobsWorkshopFilter}
         GROUP BY DATE(created_at)
       `,
 
@@ -141,7 +149,7 @@ export class InsightsService {
       this.prisma.raw.$queryRaw<Array<{ avgHours: number }>>`
         SELECT ROUND(AVG(TIMESTAMPDIFF(SECOND, created_at, completed_at)) / 3600, 1) AS avgHours
         FROM jobs
-        WHERE status = 'closed' AND completed_at IS NOT NULL AND created_at >= ${thirtyDaysAgo}
+        WHERE status = 'closed' AND completed_at IS NOT NULL AND created_at >= ${thirtyDaysAgo} ${jobsWorkshopFilter}
       `,
 
       // Today's attendance counts — single aggregated query
@@ -152,18 +160,19 @@ export class InsightsService {
           SUM(CASE WHEN status = 'no_show' AND updated_at >= ${this.todayStart(now)} AND updated_at < ${this.tomorrowStart(now)} THEN 1 ELSE 0 END) AS todayNoShow,
           SUM(CASE WHEN promised_at >= ${this.todayStart(now)} AND promised_at < ${this.tomorrowStart(now)} AND status NOT IN ('closed', 'no_show') AND archived_at IS NULL THEN 1 ELSE 0 END) AS dueToday
         FROM jobs
+        WHERE 1 = 1 ${jobsWorkshopFilter}
       `,
     ]);
 
     // ── Build time series from aggregated results ────────────
-    const jobsMap = new Map(jobsOverTimeRows.map((r: any) => [String(r.date).slice(0, 10), { created: Number(r.created), closed: Number(r.closed) }]));
+    const jobsMap = new Map(jobsOverTimeRows.map((r: any) => [String(r.date).slice(0, 10), { created: this.toNumber(r.created), closed: this.toNumber(r.closed) }]));
     const jobsOverTime = Array.from({ length: 30 }, (_, i) => {
       const d = new Date(now.getTime() - (29 - i) * 24 * 60 * 60 * 1000);
       const key = d.toISOString().slice(0, 10);
       return { date: key, ...(jobsMap.get(key) || { created: 0, closed: 0 }) };
     });
 
-    const attMap = new Map(attendanceTrendRows.map((r: any) => [String(r.date).slice(0, 10), { booked: Number(r.booked), arrived: Number(r.arrived), noShow: Number(r.noShow) }]));
+    const attMap = new Map(attendanceTrendRows.map((r: any) => [String(r.date).slice(0, 10), { booked: this.toNumber(r.booked), arrived: this.toNumber(r.arrived), noShow: this.toNumber(r.noShow) }]));
     const attendanceTrend = Array.from({ length: 14 }, (_, i) => {
       const d = new Date(now.getTime() - (13 - i) * 24 * 60 * 60 * 1000);
       const key = d.toISOString().slice(0, 10);
@@ -171,17 +180,17 @@ export class InsightsService {
     });
 
     const todayRow = todayAttendance[0] || {};
-    const todayBooked = Number(todayRow.todayBooked || 0);
-    const todayArrived = Number(todayRow.todayArrived || 0);
-    const todayNoShow = Number(todayRow.todayNoShow || 0);
-    const dueToday = Number(todayRow.dueToday || 0);
+    const todayBooked = this.toNumber(todayRow.todayBooked);
+    const todayArrived = this.toNumber(todayRow.todayArrived);
+    const todayNoShow = this.toNumber(todayRow.todayNoShow);
+    const dueToday = this.toNumber(todayRow.dueToday);
 
     // ── Batch 3: Revenue + 30d attendance + advisor (parallel) ──
     const [revenueRows, attendance30d, advisorJobs, todayPendingArrival] = await Promise.all([
       // Revenue by job status — single aggregated query
-      this.prisma.raw.$queryRaw<Array<{ status: string; lines: bigint; total: number; tax: number; approvedPending: number }>>`
+      this.prisma.raw.$queryRaw<Array<{ status: string; lineCount: bigint; total: number; tax: number; approvedPending: number }>>`
         SELECT j.status,
-               COUNT(el.id) AS lines,
+               COUNT(el.id) AS lineCount,
                ROUND(SUM(el.line_total), 2) AS total,
                ROUND(SUM(el.tax_amount), 2) AS tax,
                SUM(CASE WHEN j.status = 'estimate_sent' AND NOT EXISTS (
@@ -189,7 +198,7 @@ export class InsightsService {
                ) THEN el.line_total ELSE 0 END) AS approvedPending
         FROM estimate_lines el
         JOIN jobs j ON el.job_id = j.id
-        WHERE el.job_id IS NOT NULL
+        WHERE el.job_id IS NOT NULL ${jobAliasWorkshopFilter}
         GROUP BY j.status
       `,
 
@@ -200,6 +209,7 @@ export class InsightsService {
           SUM(CASE WHEN arrived_at >= ${thirtyDaysAgo} THEN 1 ELSE 0 END) AS arrived30d,
           SUM(CASE WHEN created_at >= ${thirtyDaysAgo} THEN 1 ELSE 0 END) AS booked30d
         FROM jobs
+        WHERE 1 = 1 ${jobsWorkshopFilter}
       `,
 
       // Advisor performance — single query, process in JS
@@ -222,18 +232,21 @@ export class InsightsService {
     const revenueByStatus: Record<string, { lines: number; total: number; tax: number }> = {};
     for (const row of revenueRows) {
       const status = row.status;
-      const lt = Number(row.total);
-      const tx = Number(row.tax);
-      const lines = Number(row.lines);
+      const lt = this.toNumber(row.total);
+      const tx = this.toNumber(row.tax);
+      const lines = this.toNumber(row.lineCount);
       revenueByStatus[status] = { lines, total: Math.round(lt * 100) / 100, tax: Math.round(tx * 100) / 100 };
       totalRevenue += lt;
       if (status === 'closed' || status === 'ready') approvedRevenue += lt;
     }
-    pendingRevenue = Number(revenueRows.reduce((sum: number, r: typeof revenueRows[number]) => sum + Number(r.approvedPending || 0), 0));
+    pendingRevenue = revenueRows.reduce((sum: number, r: typeof revenueRows[number]) => sum + this.toNumber(r.approvedPending), 0);
 
     // Attendance 30d
     const att30 = attendance30d[0] || {};
-    const showRate30d = Number(att30.booked30d) > 0 ? Math.round((Number(att30.arrived30d) / Number(att30.booked30d)) * 100) : 0;
+    const booked30d = this.toNumber(att30.booked30d);
+    const arrived30d = this.toNumber(att30.arrived30d);
+    const noShow30d = this.toNumber(att30.noShow30d);
+    const showRate30d = booked30d > 0 ? Math.round((arrived30d / booked30d) * 100) : 0;
 
     // Advisor processing
     const advisorMap = new Map<string, { advisor: string; booked: number; arrived: number; noShow: number; closed: number }>();
@@ -252,7 +265,7 @@ export class InsightsService {
     })).sort((a, b) => b.booked - a.booked);
 
     // Average turnaround
-    const avgTurnaroundHours = closedJobsAgg[0]?.avgHours ?? null;
+    const avgTurnaroundHours = closedJobsAgg[0]?.avgHours == null ? null : this.toNumber(closedJobsAgg[0].avgHours);
 
     return {
       counts: {
@@ -276,9 +289,9 @@ export class InsightsService {
         todayNoShow,
         todayPendingArrival,
         showRate30d,
-        noShow30d: Number(att30.noShow30d),
-        arrived30d: Number(att30.arrived30d),
-        booked30d: Number(att30.booked30d),
+        noShow30d,
+        arrived30d,
+        booked30d,
         dueToday,
       },
       attendanceTrend,
@@ -333,5 +346,10 @@ export class InsightsService {
 
   private tomorrowStart(now: Date): Date {
     return new Date(this.todayStart(now).getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  private toNumber(value: unknown): number {
+    if (value == null) return 0;
+    return Number(value);
   }
 }

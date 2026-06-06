@@ -4,12 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
-import { hasAnyPermission, isAdmin as isAdminCheck, isPlatformAdmin } from "@/lib/permissions";
-import { PRODUCT_LABELS, PRODUCT_NAV, getEnabledModules, getWorkshopProductMode, hasProductModule, type NavItem } from "@/lib/product-modes";
+import { hasAnyPermission, isPlatformAdmin } from "@/lib/permissions";
 import {
-  BadgeCheck,
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -17,13 +16,25 @@ import {
   Lock,
   Menu,
   Settings,
-  Shield,
-  BarChart3,
+  Moon,
+  Sun,
   X,
   ScrollText,
+  BarChart3,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePlanStore, NAV_FEATURE_MAP } from "@/hooks/use-plan-features";
+import { PRODUCT_NAV, PRODUCT_LABELS, getEnabledModules, getWorkshopProductMode, hasProductModule, type NavItem } from "@/lib/product-modes";
+import type { ProductMode } from "@/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const SHARED_ADMIN_NAV: NavItem[] = [
   { href: "/admin/audit", label: "Audit Log", icon: ScrollText, requirePermission: "admin:audit", platformOnly: true },
@@ -37,6 +48,54 @@ function canSeeNavItem(item: NavItem, user: { role?: { name?: string | null; per
   return hasAnyPermission(user, [item.requirePermission]);
 }
 
+type SectionDef = {
+  label?: string;
+  type?: "primary";
+  hrefs: string[];
+};
+
+const NAV_SECTIONS: Record<ProductMode, SectionDef[]> = {
+  WORKSHOP: [
+    { type: "primary", hrefs: ["/dashboard", "/jobs"] },
+    { label: "Operations", hrefs: ["/appointments", "/technicians", "/parts"] },
+    { label: "Customers", hrefs: ["/crm", "/invoices"] },
+    { label: "Insights", hrefs: ["/insights"] },
+    { label: "Administration", hrefs: ["/admin/workshops", "/admin/usage", "/admin/audit", "/settings"] },
+  ],
+  CONNECT: [
+    { type: "primary", hrefs: ["/dashboard", "/jobs"] },
+    { label: "Operations", hrefs: ["/advisor", "/blockers", "/admin/booking-import"] },
+    { label: "Insights", hrefs: ["/insights"] },
+    { label: "Administration", hrefs: ["/admin/workshops", "/admin/usage", "/admin/audit", "/settings"] },
+  ],
+};
+
+function buildSections(items: NavItem[], mode: ProductMode) {
+  const sections = NAV_SECTIONS[mode];
+  return sections
+    .map((section) => {
+      const sectionItems = section.hrefs
+        .map((href) => items.find((item) => item.href === href))
+        .filter(Boolean) as NavItem[];
+      return { ...section, items: sectionItems };
+    })
+    .filter((section) => section.items.length > 0);
+}
+
+function ThemeMenuItem() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  const isDark = theme === "dark";
+  return (
+    <DropdownMenuItem onClick={() => setTheme(isDark ? "light" : "dark")}>
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      <span>{isDark ? "Light mode" : "Dark mode"}</span>
+    </DropdownMenuItem>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout, workshops, currentWorkshopId, selectWorkshop } = useAuthStore();
@@ -44,7 +103,6 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const admin = isAdminCheck(user);
   const currentWorkshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
   const productMode = getWorkshopProductMode(currentWorkshop);
   const productLabel = currentWorkshop?.packageName || currentWorkshop?.package_name || PRODUCT_LABELS[productMode];
@@ -89,6 +147,8 @@ export function Sidebar() {
     return canSeeNavItem(item, user) && hasProductModule(currentWorkshop, item.module);
   });
 
+  const navSections = buildSections(filteredItems, productMode);
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -102,18 +162,133 @@ export function Sidebar() {
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
+  const renderNavItem = (item: NavItem, isCollapsed: boolean, isPrimary: boolean = false) => {
+    const Icon = item.icon;
+    const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+    const featureKey = NAV_FEATURE_MAP[item.href];
+    const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
+    return (
+      <Link
+        key={`${item.href}--${item.label}`}
+        href={item.href}
+        title={isCollapsed ? (locked ? `${item.label} (Locked)` : item.label) : undefined}
+        className={cn(
+          "flex items-center gap-2 rounded-xl text-sm font-medium transition",
+          isCollapsed ? "justify-center px-2 py-2.5" : "px-2.5",
+          isPrimary ? "py-3" : "py-2.5",
+          locked
+            ? "text-muted-foreground/50 hover:bg-muted/50 dark:text-slate-600"
+            : active
+              ? "bg-cyan-50 text-cyan-700 border-l-2 border-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-400"
+              : "text-muted-foreground hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        {!isCollapsed && <span>{item.label}</span>}
+        {locked && <Lock className="h-3 w-3 shrink-0 ml-auto text-muted-foreground/50" />}
+      </Link>
+    );
+  };
+
+  const renderNavSections = (isCollapsed: boolean) => (
+    <>
+      {navSections.map((section, sectionIdx) => {
+        const isPrimary = section.type === "primary";
+        return (
+          <div
+            key={section.label || `primary-${sectionIdx}`}
+            className={cn(
+              "space-y-1",
+              !isPrimary && "mt-6"
+            )}
+          >
+            {section.label && !isCollapsed && (
+              <div className="px-2.5 pb-2 pt-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500">
+                  {section.label}
+                </span>
+              </div>
+            )}
+            {section.items.map((item) => renderNavItem(item, isCollapsed, isPrimary))}
+            {isPrimary && (
+              <div className="mx-2 my-4 h-px bg-border dark:bg-slate-800" />
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+
+  const renderUserDropdown = (isCollapsed: boolean) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium text-foreground transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+          isCollapsed && "justify-center px-1 py-2"
+        )}
+      >
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground dark:bg-slate-800 dark:text-white">
+          {user?.name?.charAt(0) || "U"}
+        </div>
+        {!isCollapsed && (
+          <span className="truncate">{user?.name || "User"}</span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" align="start" className="w-52">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-0.5">
+              <span className="text-sm font-medium">{user?.name || "User"}</span>
+              <span className="text-xs text-muted-foreground">{user?.email || "No email"}</span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <ThemeMenuItem />
+          <Link href="/settings" className="outline-none">
+            <DropdownMenuItem>
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+          </Link>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={logout} variant="destructive">
+            <LogOut className="h-4 w-4" />
+            <span>Sign out</span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const navContent = (isCollapsed: boolean) => (
     <>
+      {/* Header with collapse button */}
       <div className={cn("border-b border-border px-3 py-3 dark:border-slate-800", isCollapsed && "px-2")}>
-        <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2.5")}>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-100 dark:ring-white/10">
-            <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={512} height={512} className="h-8 w-8 object-contain" priority />
+        <div className="flex items-center justify-between gap-2">
+          <div className={cn("flex items-center", isCollapsed ? "justify-center w-full" : "gap-2.5")}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-100 dark:ring-white/10">
+              <Image src="/prioraflow-icon.png" alt="PrioraFlow" width={512} height={512} className="h-8 w-8 object-contain" priority />
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 leading-tight">
+                <h2 className="truncate text-[15px] font-bold tracking-tight text-foreground dark:text-white">{productLabel}</h2>
+                <p className="truncate text-[11px] font-medium text-muted-foreground dark:text-slate-400">{getEnabledModules(currentWorkshop).length} modules enabled</p>
+              </div>
+            )}
           </div>
           {!isCollapsed && (
-            <div className="min-w-0 leading-tight">
-              <h2 className="truncate text-[15px] font-bold tracking-tight text-foreground dark:text-white">{productLabel}</h2>
-              <p className="truncate text-[11px] font-medium text-muted-foreground dark:text-slate-400">{getEnabledModules(currentWorkshop).length} modules enabled</p>
-            </div>
+            <button
+              onClick={toggleCollapsed}
+              className="hidden shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white md:block"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
           )}
         </div>
       </div>
@@ -139,91 +314,25 @@ export function Sidebar() {
         </div>
       )}
 
-      <nav className={cn("flex-1 space-y-1 overflow-y-auto px-2 py-3 scrollbar-hide", isCollapsed && "px-1.5")}>
-        {filteredItems.map((item) => {
-          const Icon = item.icon;
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-          const featureKey = NAV_FEATURE_MAP[item.href];
-          const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
-          return (
-            <Link
-              key={`${item.href}--${item.label}`}
-              href={item.href}
-              title={isCollapsed ? (locked ? `${item.label} (Locked)` : item.label) : undefined}
-              className={cn(
-                "flex items-center gap-2 rounded-xl py-2 text-[13px] font-medium transition",
-                isCollapsed ? "justify-center px-2" : "px-2.5",
-                locked
-                  ? "text-muted-foreground/50 hover:bg-muted/50 dark:text-slate-600"
-                  : active
-                    ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span>{item.label}</span>}
-              {locked && <Lock className="h-3 w-3 shrink-0 ml-auto text-muted-foreground/50" />}
-            </Link>
-          );
-        })}
+      {/* Expand button for collapsed sidebar */}
+      {isCollapsed && (
+        <button
+          onClick={toggleCollapsed}
+          className="hidden md:flex items-center justify-center py-2 text-muted-foreground transition hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+
+      <nav className={cn("flex-1 overflow-y-auto px-2 py-3 scrollbar-hide", isCollapsed && "px-1.5")}>
+        {renderNavSections(isCollapsed)}
       </nav>
 
-      <div className={cn("border-t border-border dark:border-slate-800 p-3", isCollapsed && "p-2")}>
-        {isCollapsed ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-foreground dark:bg-slate-800 dark:text-white">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-            <button
-              onClick={logout}
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-              aria-label="Sign out"
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-card p-3 dark:border-slate-800 dark:bg-slate-900/80">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground dark:text-white">
-                  {user?.name || "User"}
-                </p>
-                <p className="truncate text-[11px] text-muted-foreground dark:text-slate-400">{user?.email || "No email"}</p>
-              </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
-                <BadgeCheck className="h-3 w-3" />
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-muted dark:bg-slate-950/80 px-2 py-1.5 text-[11px] text-slate-400">
-              <span className="inline-flex items-center gap-1.5">
-                <Shield className="h-3 w-3" /> {admin ? "Admin" : "Internal"}
-              </span>
-              <button
-                onClick={logout}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-muted-foreground hover:bg-background hover:text-foreground dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <LogOut className="h-3 w-3" /> Sign out
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <button
-        onClick={toggleCollapsed}
-        className="hidden md:flex items-center justify-center border-t border-border py-2.5 text-muted-foreground transition hover:bg-muted hover:text-foreground dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </button>
-
-      <div className="hidden md:flex items-center justify-center border-t border-border py-2.5 dark:border-slate-800">
-        <ThemeToggle />
+      {/* Compact footer with user dropdown */}
+      <div className={cn("border-t border-border dark:border-slate-800 p-2", isCollapsed && "p-1.5")}>
+        {renderUserDropdown(isCollapsed)}
       </div>
     </>
   );
@@ -273,50 +382,11 @@ export function Sidebar() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3 scrollbar-hide">
-              {filteredItems.map((item) => {
-                const Icon = item.icon;
-                const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-                const featureKey = NAV_FEATURE_MAP[item.href];
-                const locked = (featureKey ? !hasFeature(featureKey) : false) || !hasProductModule(currentWorkshop, item.module);
-                return (
-                  <Link
-                    key={`${item.href}--${item.label}`}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium transition",
-                      locked
-                        ? "text-muted-foreground/50 hover:bg-muted/50 dark:text-slate-600"
-                        : active
-                          ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
-                    {locked && <Lock className="h-3 w-3 shrink-0 ml-auto text-muted-foreground/50" />}
-                  </Link>
-                );
-              })}
+            <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-hide">
+              {renderNavSections(false)}
             </nav>
-            <div className="border-t border-border p-3 dark:border-slate-800">
-              <div className="rounded-xl border border-border bg-card p-3 dark:border-slate-800 dark:bg-slate-900/80">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground dark:text-white">{user?.name || "User"}</p>
-                    <p className="truncate text-[11px] text-muted-foreground dark:text-slate-400">{user?.email || "No email"}</p>
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between rounded-lg bg-muted px-2 py-1.5 text-[11px] text-muted-foreground dark:bg-slate-950/80 dark:text-slate-400">
-                  <span className="inline-flex items-center gap-1.5"><Shield className="h-3 w-3" /> {admin ? "Admin" : "Internal"}</span>
-                  <button
-                    onClick={logout}
-                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-muted-foreground hover:bg-background hover:text-foreground dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-                  >
-                    <LogOut className="h-3 w-3" /> Sign out
-                  </button>
-                </div>
-              </div>
+            <div className="border-t border-border p-2 dark:border-slate-800">
+              {renderUserDropdown(false)}
             </div>
           </aside>
         </div>

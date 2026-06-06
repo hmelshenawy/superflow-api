@@ -28,7 +28,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
@@ -187,9 +186,43 @@ function StatCard({
 // ─── Chart Card ────────────────────────────────────────
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-5">
       <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      <div className="mt-4">{children}</div>
+      <div className="mt-4 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function ChartFrame({
+  children,
+  className = "h-64",
+}: {
+  children: (size: { width: number; height: number }) => React.ReactNode;
+  className?: string;
+}) {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!node) return;
+
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect();
+      setSize({
+        width: Math.max(0, Math.floor(rect.width)),
+        height: Math.max(0, Math.floor(rect.height)),
+      });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
+
+  return (
+    <div ref={setNode} className={`${className} min-h-0 min-w-0 w-full overflow-hidden`}>
+      {size.width > 0 && size.height > 0 ? children(size) : null}
     </div>
   );
 }
@@ -349,9 +382,9 @@ export default function InsightsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Jobs by status bar chart */}
         <ChartCard title="Jobs by Status">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.jobsByStatus} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <ChartFrame>
+            {({ width, height }) => (
+              <BarChart width={width} height={height} data={data.jobsByStatus} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
                 <XAxis
                   dataKey="status"
@@ -370,15 +403,15 @@ export default function InsightsPage() {
                   ))}
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </ChartCard>
 
         {/* Jobs over time area chart */}
         <ChartCard title="Jobs Over Time (30 Days)">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.jobsOverTime} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <ChartFrame>
+            {({ width, height }) => (
+              <AreaChart width={width} height={height} data={data.jobsOverTime} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
                 <XAxis
                   dataKey="date"
@@ -391,17 +424,17 @@ export default function InsightsPage() {
                 <Area type="monotone" dataKey="created" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} name="Created" />
                 <Area type="monotone" dataKey="closed" stroke="#10b981" fill="#10b981" fillOpacity={0.15} name="Closed" />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </ChartCard>
       </div>
 
       {/* ── Attendance trend + advisor performance ─────── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Arrival / No-show Trend (14 Days)">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.attendanceTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <ChartFrame>
+            {({ width, height }) => (
+              <LineChart width={width} height={height} data={data.attendanceTrend} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#334155" : "#e2e8f0"} />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: isDark ? "#94a3b8" : "#334155" }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fontSize: 11, fill: isDark ? "#94a3b8" : "#334155" }} allowDecimals={false} />
@@ -411,8 +444,8 @@ export default function InsightsPage() {
                 <Line type="monotone" dataKey="arrived" stroke="#10b981" strokeWidth={2} name="Arrived" />
                 <Line type="monotone" dataKey="noShow" stroke="#f43f5e" strokeWidth={2} name="No Show" />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
+            )}
+          </ChartFrame>
         </ChartCard>
 
         <ChartCard title="Advisor Attendance Performance (30 Days)">
@@ -449,10 +482,10 @@ export default function InsightsPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Approval rate pie */}
         <ChartCard title={`Customer Approval Rate (${data.approvalRate}%)`}>
-          <div className="h-56">
+          <ChartFrame className="h-56">
             {approvalPieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+              ({ width, height }) => (
+                <PieChart width={width} height={height}>
                   <Pie
                     data={approvalPieData}
                     cx="50%"
@@ -470,21 +503,19 @@ export default function InsightsPage() {
                   </Pie>
                   <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
                 </PieChart>
-              </ResponsiveContainer>
+              )
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No approval data yet
-              </div>
+              () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No approval data yet</div>
             )}
-          </div>
+          </ChartFrame>
         </ChartCard>
 
         {/* Inspection completion pie */}
         <ChartCard title={`Inspection Completion (${data.inspectionCompletionRate}%)`}>
-          <div className="h-56">
+          <ChartFrame className="h-56">
             {inspectionPieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+              ({ width, height }) => (
+                <PieChart width={width} height={height}>
                   <Pie
                     data={inspectionPieData}
                     cx="50%"
@@ -501,21 +532,19 @@ export default function InsightsPage() {
                   </Pie>
                   <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
                 </PieChart>
-              </ResponsiveContainer>
+              )
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No inspection data yet
-              </div>
+              () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No inspection data yet</div>
             )}
-          </div>
+          </ChartFrame>
         </ChartCard>
 
         {/* Deferred work pie */}
         <ChartCard title="Deferred Work Breakdown">
-          <div className="h-56">
+          <ChartFrame className="h-56">
             {data.deferredByStatus.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+              ({ width, height }) => (
+                <PieChart width={width} height={height}>
                   <Pie
                     data={data.deferredByStatus.map((d) => ({
                       name: d.status.charAt(0).toUpperCase() + d.status.slice(1),
@@ -536,21 +565,19 @@ export default function InsightsPage() {
                   </Pie>
                   <Tooltip contentStyle={{ backgroundColor: isDark ? "#1e293b" : "#fff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8, color: isDark ? "#e2e8f0" : "#0f172a" }} />
                 </PieChart>
-              </ResponsiveContainer>
+              )
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No deferred work
-              </div>
+              () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No deferred work</div>
             )}
-          </div>
+          </ChartFrame>
         </ChartCard>
       </div>
 
       {/* ── Revenue by job status bar ─────────────────── */}
       <ChartCard title="Revenue by Job Status">
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.revenue.byStatus} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <ChartFrame>
+          {({ width, height }) => (
+            <BarChart width={width} height={height} data={data.revenue.byStatus} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="status"
@@ -562,11 +589,11 @@ export default function InsightsPage() {
               <Bar dataKey="total" name="Line Total" radius={[4, 4, 0, 0]}>
                 {data.revenue.byStatus.map((entry, index) => (
                   <Cell key={index} fill={STATUS_COLORS[entry.status] || "#94a3b8"} />
-                ))}
+              ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ChartFrame>
       </ChartCard>
 
       {/* ── Recent activity row ────────────────────────── */}

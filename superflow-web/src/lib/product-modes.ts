@@ -102,7 +102,7 @@ export const PRODUCT_NAV: Record<ProductMode, NavItem[]> = {
     { href: "/parts", label: "Parts / Stock", icon: Package, module: MODULES.STOCK, requirePermission: "parts:read" },
     { href: "/invoices", label: "Invoices", icon: Receipt, module: MODULES.INVOICING, requirePermission: "invoices:read" },
     { href: "/technicians", label: "Technicians", icon: Wrench, module: MODULES.TECHNICIAN_LOADING },
-    { href: "/insights", label: "Reports / Analytics", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
+    { href: "/insights", label: "Reports & Analytics", icon: BarChart3, module: MODULES.OPERATIONAL_ANALYTICS, requirePermission: "insights:dashboard" },
     { href: "/settings", label: "Settings", icon: Settings },
   ],
   CONNECT: [
