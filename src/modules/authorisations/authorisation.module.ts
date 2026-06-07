@@ -4,8 +4,8 @@ import { AuthorisationController, PortalAuthorisationController } from './author
 import { AuthorisationNotificationService } from './services/authorisation-notification.service';
 import { AuthorisationQueryService } from './services/authorisation-query.service';
 import { AuthorisationDecisionService } from './services/authorisation-decision.service';
-import { MediaModule } from '../media/media.module';
-import { AdminModule } from '../admin/admin.module';
+import { MediaModule } from '../../media/media.module';
+import { AdminModule } from '../../admin/admin.module';
 
 @Module({
   imports: [MediaModule, AdminModule],

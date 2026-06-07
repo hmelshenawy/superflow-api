@@ -3,12 +3,12 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { InspectionsService } from './inspections.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { SubmitInspectionDto } from './dto/submit-inspection.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT, INSPECTIONS_REOPEN } from '../common/permissions';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { RequirePlanFeature } from '../common/plan-features';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission, INSPECTIONS_READ, INSPECTIONS_CREATE, INSPECTIONS_SUBMIT, INSPECTIONS_REOPEN } from '../../common/permissions';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequirePlanFeature } from '../../common/plan-features';
 
 @ApiTags('Inspections')
 @ApiBearerAuth()

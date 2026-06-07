@@ -5,14 +5,14 @@ import { AuthorisationService } from './authorisation.service';
 import { DecideDto } from './dto/decide.dto';
 import { RequestAuthorisationDto } from './dto/request-authorisation.dto';
 import { ResetApprovalDto } from './dto/reset-approval.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, AUTH_REQUEST, AUTH_STATUS } from '../common/permissions';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { RequirePlanFeature } from '../common/plan-features';
-import { MediaService } from '../media/media.service';
+import { JwtAuthGuard } from '../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission, AUTH_REQUEST, AUTH_STATUS } from '../../common/permissions';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequirePlanFeature } from '../../common/plan-features';
+import { MediaService } from '../../media/media.service';
 import { Request, Response } from 'express';
-import { runWithWorkshop } from '../prisma/workshop-context';
+import { runWithWorkshop } from '../../prisma/workshop-context';
 
 @ApiTags('Authorisation')
 @ApiBearerAuth()

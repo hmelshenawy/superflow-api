@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { SubmitInspectionDto } from './dto/submit-inspection.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { inspectionTrafficLight, isInformationalInputType, inspectionAvailableOptions } from '../common/utils/traffic-light';
-import { WorkflowService } from '../admin/workflow.service';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { inspectionTrafficLight, isInformationalInputType, inspectionAvailableOptions } from '../../common/utils/traffic-light';
+import { WorkflowService } from '../../admin/workflow.service';
 
 @Injectable()
 export class InspectionsService {

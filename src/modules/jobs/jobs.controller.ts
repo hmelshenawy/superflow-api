@@ -8,13 +8,13 @@ import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { BulkDeleteJobsDto } from './dto/bulk-delete.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION, INVOICES_CREATE } from '../common/permissions';
-import { PlanFeatureGuard } from '../common/guards/plan-feature.guard';
-import { RequirePlanFeature } from '../common/plan-features/require-plan-feature.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
+import { JwtAuthGuard } from '../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission, JOBS_READ, JOBS_CREATE, JOBS_UPDATE, JOBS_DELETE, JOBS_ASSIGN, JOBS_TRANSITION, INVOICES_CREATE } from '../../common/permissions';
+import { PlanFeatureGuard } from '../../common/guards/plan-feature.guard';
+import { RequirePlanFeature } from '../../common/plan-features/require-plan-feature.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../common/product-modes';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()

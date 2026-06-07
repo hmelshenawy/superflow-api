@@ -4,7 +4,7 @@ import { InvoicesService } from './invoices.service';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicesPdfService } from './invoices-pdf.service';
 import { InvoiceCalcService } from './invoices-calc.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
