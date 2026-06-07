@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateBlockerDto, ResolveBlockerDto } from './dto/create-blocker.dto';
 
 @Injectable()

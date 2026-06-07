@@ -4,12 +4,12 @@ import { QcChecklistsService } from './qc-checklists.service';
 import { CreateChecklistDto } from './dto/create-checklist.dto';
 import { SaveResponseDto } from './dto/save-response.dto';
 import { SubmitChecklistDto } from './dto/submit-checklist.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN } from '../common/permissions';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { RequirePlanFeature } from '../common/plan-features';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../../common/guards/permissions.guard';
+import { RequirePermission, QC_READ, QC_CREATE, QC_SUBMIT, QC_REOPEN } from '../../../common/permissions';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RequirePlanFeature } from '../../../common/plan-features';
 
 @ApiTags('QC Checklists')
 @ApiBearerAuth()

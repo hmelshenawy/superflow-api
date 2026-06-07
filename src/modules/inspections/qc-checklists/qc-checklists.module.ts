@@ -3,7 +3,7 @@ import { QcChecklistsService } from './qc-checklists.service';
 import { QcChecklistsController } from './qc-checklists.controller';
 import { QcChecklistTemplatesService } from './qc-checklist-templates.service';
 import { QcChecklistTemplatesController } from './qc-checklist-templates.controller';
-import { WorkflowService } from '../admin/workflow.service';
+import { WorkflowService } from '../../../admin/workflow.service';
 
 @Module({
   controllers: [QcChecklistsController, QcChecklistTemplatesController],

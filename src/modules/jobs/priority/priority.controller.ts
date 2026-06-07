@@ -1,13 +1,13 @@
 import { ApiProperty, ApiQuery, ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Controller, Get, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, PRIORITY_READ } from '../common/permissions';
-import { RequirePlanFeature } from '../common/plan-features';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../../common/guards/permissions.guard';
+import { RequirePermission, PRIORITY_READ } from '../../../common/permissions';
+import { RequirePlanFeature } from '../../../common/plan-features';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { PriorityService } from './priority.service';
 import { PriorityResultDto, BulkPriorityResultDto } from './dto/priority-result.dto';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../../common/product-modes';
 
 @ApiTags('Priority')
 @ApiBearerAuth()

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../prisma/prisma.service';
-import { getWorkshopContext } from '../prisma/workshop-context';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { getWorkshopContext } from '../../../prisma/workshop-context';
 import { CreateJobTypeDto } from './dto/create-job-type.dto';
 import { ImportJobTypesDto } from './dto/import-job-types.dto';
 import { UpdateJobTypeDto } from './dto/update-job-type.dto';

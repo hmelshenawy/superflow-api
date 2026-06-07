@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { RequireModule, MODULE_KEYS } from '../common/product-modes';
+import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
+import { RequireModule, MODULE_KEYS } from '../../../common/product-modes';
 import { JobTypesService } from './job-types.service';
 import { CreateJobTypeDto } from './dto/create-job-type.dto';
 import { ImportJobTypesDto } from './dto/import-job-types.dto';
