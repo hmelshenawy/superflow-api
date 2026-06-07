@@ -3,10 +3,10 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE } from '../common/permissions';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission, VEHICLES_READ, VEHICLES_CREATE, VEHICLES_UPDATE } from '../../common/permissions';
 
 @ApiTags('Vehicles')
 @ApiBearerAuth()

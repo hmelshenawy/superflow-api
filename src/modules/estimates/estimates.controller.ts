@@ -5,12 +5,12 @@ import { CreateLineDto } from './dto/create-line.dto';
 import { UpdateLineDto } from './dto/update-line.dto';
 import { BulkReplaceLinesDto } from './dto/bulk-replace-lines.dto';
 import { CreateGroupDto, RenameGroupDto } from './dto/group-ops.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE, ESTIMATES_DELETE } from '../common/permissions';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../common/product-modes';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission, ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE, ESTIMATES_DELETE } from '../../common/permissions';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../common/product-modes';
 
 @ApiTags('Estimates')
 @ApiBearerAuth()

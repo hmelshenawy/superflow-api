@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../prisma/prisma.service';
-import { getWorkshopContext } from '../prisma/workshop-context';
+import { PrismaService } from '../../prisma/prisma.service';
+import { getWorkshopContext } from '../../prisma/workshop-context';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { QueryAppointmentsDto } from './dto/query-appointments.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
