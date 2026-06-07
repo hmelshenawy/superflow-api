@@ -9,7 +9,7 @@ import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
 import { legacyWorkshopStageForStatus } from './jobs-utils';
 import { UsageService } from '../../common/plan-features/usage.service';
-import { WorkflowService } from '../../admin/workflow.service';
+import { WorkflowService } from '../admin/settings/workflow.service';
 import { JobMetaService } from './job-meta.service';
 import { JobConcernService } from './services/job-concern.service';
 

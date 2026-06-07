@@ -6,7 +6,7 @@ import { SaveResponseDto } from './dto/save-response.dto';
 import { SubmitChecklistDto } from './dto/submit-checklist.dto';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { qcTrafficLight, isQcInformationalInputType, qcAvailableOptions } from '../../../common/utils/traffic-light';
-import { WorkflowService } from '../../../admin/workflow.service';
+import { WorkflowService } from '../../admin/settings/workflow.service';
 
 @Injectable()
 export class QcChecklistsService {

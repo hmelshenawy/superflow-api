@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { runWithWorkshop } from '../../../prisma/workshop-context';
 import { DecideDto } from '../dto/decide.dto';
-import { WorkflowService } from '../../../admin/workflow.service';
+import { WorkflowService } from '../../admin/settings/workflow.service';
 import { AuthorisationNotificationService } from './authorisation-notification.service';
 import { AuthorisationQueryService } from './authorisation-query.service';
 import { hashToken, portalStageForStatus } from './authorisation-utils';

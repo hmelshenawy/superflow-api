@@ -3,7 +3,7 @@ import { PriorityService } from './priority/priority.service';
 import { getValidTransitions, FLOW_ORDER } from './jobs.state-machine';
 import type { JobStatus } from './jobs.state-machine';
 import { legacyWorkshopStageForStatus } from './jobs-utils';
-import { WorkflowService } from '../../admin/workflow.service';
+import { WorkflowService } from '../admin/settings/workflow.service';
 
 export interface JobMeta {
   phaseIndex: number;

@@ -6,7 +6,7 @@ import { CreateResponseDto } from './dto/create-response.dto';
 import { SubmitInspectionDto } from './dto/submit-inspection.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { inspectionTrafficLight, isInformationalInputType, inspectionAvailableOptions } from '../../common/utils/traffic-light';
-import { WorkflowService } from '../../admin/workflow.service';
+import { WorkflowService } from '../admin/settings/workflow.service';
 
 @Injectable()
 export class InspectionsService {

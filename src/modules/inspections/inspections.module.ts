@@ -3,7 +3,7 @@ import { InspectionsService } from './inspections.service';
 import { InspectionsController } from './inspections.controller';
 import { TemplatesService } from './templates.service';
 import { TemplatesController } from './templates.controller';
-import { WorkflowService } from '../../admin/workflow.service';
+import { WorkflowService } from '../admin/settings/workflow.service';
 
 @Module({
   controllers: [InspectionsController, TemplatesController],

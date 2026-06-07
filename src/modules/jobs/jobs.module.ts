@@ -3,10 +3,10 @@ import { JobsService } from './jobs.service';
 import { JobsController } from './jobs.controller';
 import { JobMetaService } from './job-meta.service';
 import { JobConcernService } from './services/job-concern.service';
-import { BillingModule } from '../../billing/billing.module';
+import { BillingModule } from '../admin/usage/billing.module';
 import { PriorityModule } from './priority/priority.module';
 import { InvoicesModule } from '../invoices/invoices.module';
-import { WorkflowService } from '../../admin/workflow.service';
+import { WorkflowService } from '../admin/settings/workflow.service';
 
 @Module({
   imports: [BillingModule, PriorityModule, InvoicesModule],

@@ -1,6 +1,6 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
-import { AuditService } from '../../audit/audit.service';
+import { AuditService } from '../../modules/admin/audit-log/audit.service';
 
 const SENSITIVE_KEYS = [
   'password',

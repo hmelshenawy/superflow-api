@@ -5,7 +5,7 @@ import { AuthorisationNotificationService } from './services/authorisation-notif
 import { AuthorisationQueryService } from './services/authorisation-query.service';
 import { AuthorisationDecisionService } from './services/authorisation-decision.service';
 import { MediaModule } from '../../media/media.module';
-import { AdminModule } from '../../admin/admin.module';
+import { AdminModule } from '../admin/settings/admin.module';
 
 @Module({
   imports: [MediaModule, AdminModule],
