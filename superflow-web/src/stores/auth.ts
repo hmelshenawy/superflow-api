@@ -15,6 +15,28 @@ interface AuthState {
   selectWorkshop: (workshopId: string) => Promise<void>;
 }
 
+function getTokenWorkshopId(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), "=");
+    const decoded = JSON.parse(atob(padded));
+    return typeof decoded.workshopId === "string" && decoded.workshopId ? decoded.workshopId : null;
+  } catch {
+    return null;
+  }
+}
+
+function syncStoredWorkshopId(workshopId: string | null) {
+  if (workshopId) {
+    localStorage.setItem("currentWorkshopId", workshopId);
+  } else {
+    localStorage.removeItem("currentWorkshopId");
+  }
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -34,11 +56,8 @@ export const useAuthStore = create<AuthState>()(
           setAccessToken(accessToken);
 
           const workshops = data.workshops ?? [];
-          const currentWorkshopId = data.workshopId ?? null;
-
-          if (currentWorkshopId) {
-            localStorage.setItem("currentWorkshopId", currentWorkshopId);
-          }
+          const currentWorkshopId = data.workshopId ?? getTokenWorkshopId(accessToken);
+          syncStoredWorkshopId(currentWorkshopId);
 
           const { data: me } = await api.get<User>("/auth/me");
           set({ user: me, isAuthenticated: true, isLoading: false, workshops, currentWorkshopId });
@@ -63,10 +82,12 @@ export const useAuthStore = create<AuthState>()(
             await refreshAccessToken();
           }
           const { data } = await api.get<User & { workshops?: Workshop[] }>("/auth/me");
-          const savedWorkshopId = localStorage.getItem("currentWorkshopId");
-          set({ user: data, isAuthenticated: true, currentWorkshopId: savedWorkshopId, workshops: data.workshops ?? get().workshops });
+          const currentWorkshopId = getTokenWorkshopId(getAccessToken());
+          syncStoredWorkshopId(currentWorkshopId);
+          set({ user: data, isAuthenticated: true, currentWorkshopId, workshops: data.workshops ?? get().workshops });
         } catch {
           clearAccessToken();
+          localStorage.removeItem("currentWorkshopId");
           set({ user: null, isAuthenticated: false });
         }
       },
@@ -75,8 +96,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data } = await api.post<{ accessToken: string; workshop: Workshop }>("/auth/select-workshop", { workshopId });
           setAccessToken(data.accessToken);
-          localStorage.setItem("currentWorkshopId", workshopId);
-          set({ currentWorkshopId: workshopId });
+          const currentWorkshopId = getTokenWorkshopId(data.accessToken) ?? workshopId;
+          syncStoredWorkshopId(currentWorkshopId);
+          set({ currentWorkshopId });
           window.location.reload();
         } catch (err) {
           console.error("Failed to select workshop", err);
