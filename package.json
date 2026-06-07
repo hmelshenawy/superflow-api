@@ -10,6 +10,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "test": "jest",
     "prisma:pull": "prisma db pull",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import api, { getApiError } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -222,7 +222,7 @@ export default function BlockersPage() {
                 <div>
                   <label className="text-sm font-medium">Job ID or Number</label>
                   <Input
-                    placeholder="Enter job ID"
+                    placeholder="PILOT-C-003 or job UUID"
                     value={newJobId}
                     onChange={(e) => setNewJobId(e.target.value)}
                   />
@@ -343,9 +343,8 @@ export default function BlockersPage() {
               const isExpanded = expandedId === b.id;
               const TypeIcon = TYPE_ICONS[b.type] || HelpCircle;
               return (
-                <>
+                <Fragment key={b.id}>
                   <TableRow
-                    key={b.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => setExpandedId(isExpanded ? null : b.id)}
                   >
@@ -405,7 +404,7 @@ export default function BlockersPage() {
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow key={`${b.id}-detail`} className="bg-muted/30">
+                    <TableRow className="bg-muted/30">
                       <TableCell colSpan={9} className="p-4">
                         <div className="space-y-2">
                           <p className="text-sm">{b.description}</p>
@@ -426,7 +425,7 @@ export default function BlockersPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>

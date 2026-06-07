@@ -60,13 +60,22 @@ export class BlockersService {
   }
 
   async create(dto: CreateBlockerDto, userId: string) {
-    const job = await this.prisma.tenant.jobs.findUnique({ where: { id: dto.job_id } });
+    const jobRef = dto.job_id.trim();
+    const job = await this.prisma.tenant.jobs.findFirst({
+      where: {
+        is_deleted: false,
+        OR: [
+          { id: jobRef },
+          { job_number: jobRef },
+        ],
+      },
+    });
     if (!job) throw new NotFoundException('Job not found');
 
     return this.prisma.tenant.blockers.create({
       data: {
         id: uuid(),
-        job_id: dto.job_id,
+        job_id: job.id,
         type: dto.type as any,
         description: dto.description,
         severity: (dto.severity || 'medium') as any,
