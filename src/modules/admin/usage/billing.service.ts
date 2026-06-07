@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { UsageService } from '../../../common/plan-features/usage.service';
-import { FeatureKey } from '../../../common/plan-features/feature-keys';
+import { PrismaService } from '@prisma/prisma.service';
+import { UsageService } from '@common/plan-features/usage.service';
+import { FeatureKey } from '@common/plan-features/feature-keys';
 
 @Injectable()
 export class BillingService {

@@ -2,11 +2,11 @@ import { Controller, Get, Post, Delete, Param, Body, UseGuards, UseInterceptors,
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { PresignUploadDto } from './dto/presign-upload.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, MEDIA_UPLOAD, MEDIA_DELETE } from '../common/permissions';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, MEDIA_UPLOAD, MEDIA_DELETE } from '@common/permissions';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { ALLOWED_MIME_TYPES } from './dto/presign-upload.dto';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB

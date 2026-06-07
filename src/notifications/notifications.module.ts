@@ -6,7 +6,7 @@ import { NotificationsService } from './notifications.service';
 import { RendererService } from './templates/renderer.service';
 import { NotificationsProcessor } from './notifications.processor';
 import { WhatsAppWebhookController } from './whatsapp-webhook.controller';
-import { UsageService } from '../common/plan-features';
+import { UsageService } from '@common/plan-features';
 
 @Module({
   controllers: [WhatsAppWebhookController],

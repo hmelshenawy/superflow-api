@@ -21,7 +21,12 @@
     "strictPropertyInitialization": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@common/*": ["src/common/*"],
+      "@prisma/*": ["src/prisma/*"],
+      "@modules/*": ["src/modules/*"],
+      "@auth/*": ["src/auth/*"],
+      "@config/*": ["src/config/*"]
     }
   },
   "include": ["src/**/*", "prisma/**/*"],

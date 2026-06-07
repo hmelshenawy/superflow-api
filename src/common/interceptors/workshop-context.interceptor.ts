@@ -1,6 +1,6 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable, Subscriber } from 'rxjs';
-import { workshopContext, WorkshopContext } from '../../prisma/workshop-context';
+import { workshopContext, WorkshopContext } from '@prisma/workshop-context';
 
 @Injectable()
 export class WorkshopContextInterceptor implements NestInterceptor {

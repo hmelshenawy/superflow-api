@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ReceivePoItemDto } from './dto/receive-po-item.dto';
 import { ListPurchaseOrdersDto } from './dto/list-purchase-orders.dto';
-import { getWorkshopContext } from '../../../prisma/workshop-context';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

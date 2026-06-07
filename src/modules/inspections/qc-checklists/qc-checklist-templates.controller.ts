@@ -2,10 +2,10 @@ import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/co
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { QcChecklistTemplatesService } from './qc-checklist-templates.service';
 import { CreateQcTemplateDto } from './dto/create-template.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_TEMPLATES } from '../../../common/permissions';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, ADMIN_TEMPLATES } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 
 @ApiTags('QC Checklist Templates')
 @ApiBearerAuth()

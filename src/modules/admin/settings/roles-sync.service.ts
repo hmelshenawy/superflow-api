@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { DEFAULT_ROLES, ALL_PERMISSIONS } from '../../../common/permissions';
-import { FEATURE_KEYS } from '../../../common/plan-features/feature-keys';
+import { PrismaService } from '@prisma/prisma.service';
+import { DEFAULT_ROLES, ALL_PERMISSIONS } from '@common/permissions';
+import { FEATURE_KEYS } from '@common/plan-features/feature-keys';
 import { v4 as uuid } from 'uuid';
 
 const PLAN_FEATURE_DEFAULTS: Record<string, { feature_key: string; is_included: boolean; ceiling?: number }[]> = {

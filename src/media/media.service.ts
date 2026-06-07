@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { ALLOWED_MIME_TYPES, PresignUploadDto } from './dto/presign-upload.dto';
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3_CLIENT } from './media.constants';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../common/errors/app-errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@common/errors/app-errors';
 
 const MEDIA_SIZE_LIMITS: Record<string, number> = {
   photo: 10 * 1024 * 1024,

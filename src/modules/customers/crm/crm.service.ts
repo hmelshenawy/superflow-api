@@ -1,8 +1,8 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { getWorkshopContext } from '../../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { CrmDashboardQueryDto } from './dto/crm-dashboard-query.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';

@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { SaveResponseDto } from './dto/save-response.dto';
 import { SubmitChecklistDto } from './dto/submit-checklist.dto';
-import { PaginationDto } from '../../../common/dto/pagination.dto';
-import { qcTrafficLight, isQcInformationalInputType, qcAvailableOptions } from '../../../common/utils/traffic-light';
+import { PaginationDto } from '@common/dto/pagination.dto';
+import { qcTrafficLight, isQcInformationalInputType, qcAvailableOptions } from '@common/utils/traffic-light';
 import { WorkflowService } from '../../admin/settings/workflow.service';
 
 @Injectable()

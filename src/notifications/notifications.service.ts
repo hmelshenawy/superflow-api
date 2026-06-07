@@ -2,11 +2,11 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { RendererService } from './templates/renderer.service';
 import { REDIS_CONNECTION } from './redis.constants';
-import { getWorkshopContext } from '../prisma/workshop-context';
-import { UsageService } from '../common/plan-features';
+import { getWorkshopContext } from '@prisma/workshop-context';
+import { UsageService } from '@common/plan-features';
 
 @Injectable()
 export class NotificationsService {

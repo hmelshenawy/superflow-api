@@ -2,11 +2,11 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } f
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { BlockersService } from './blockers.service';
 import { CreateBlockerDto, ResolveBlockerDto } from './dto/create-blocker.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, BLOCKERS_READ, BLOCKERS_MANAGE } from '../../../common/permissions';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, BLOCKERS_READ, BLOCKERS_MANAGE } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Blockers')
 @ApiBearerAuth()

@@ -1,15 +1,15 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission } from '../../../common/permissions/require-permission.decorator';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission } from '@common/permissions/require-permission.decorator';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 import {
   JOB_PARTS_READ,
   JOB_PARTS_RESERVE,
   JOB_PARTS_CONSUME,
   JOB_PARTS_RETURN,
-} from '../../../common/permissions/permissions';
+} from '@common/permissions/permissions';
 import { JobPartsService } from './job-parts.service';
 import { ReservePartDto } from './dto/reserve-part.dto';
 import { ConsumePartDto } from './dto/consume-part.dto';

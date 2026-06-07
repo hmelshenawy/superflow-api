@@ -8,9 +8,9 @@ import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { SignupDto } from './dto/signup.dto';
 import { SelectWorkshopDto } from './dto/select-workshop.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { PrismaService } from '../prisma/prisma.service';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { PrismaService } from '@prisma/prisma.service';
 
 @ApiTags('Auth')
 @Controller('auth')

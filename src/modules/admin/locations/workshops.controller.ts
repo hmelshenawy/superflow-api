@@ -4,11 +4,11 @@ import { WorkshopsService } from './workshops.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
 import { AssignUserDto } from './dto/assign-user.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission } from '../../../common/permissions/require-permission.decorator';
-import { WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS } from '../../../common/permissions/permissions';
-import { RequirePlanFeature } from '../../../common/plan-features/require-plan-feature.decorator';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission } from '@common/permissions/require-permission.decorator';
+import { WORKSHOPS_READ, WORKSHOPS_CREATE, WORKSHOPS_UPDATE, WORKSHOPS_DELETE, WORKSHOPS_ASSIGN_USERS } from '@common/permissions/permissions';
+import { RequirePlanFeature } from '@common/plan-features/require-plan-feature.decorator';
 
 @ApiTags('Workshops')
 @Controller('workshops')

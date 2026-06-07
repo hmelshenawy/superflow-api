@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { ForbiddenError } from '../errors/app-errors';
 import { REQUIRED_MODULE_KEY } from './require-module.decorator';
 import {

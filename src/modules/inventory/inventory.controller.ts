@@ -1,14 +1,14 @@
 import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { RequirePermission } from '../../common/permissions/require-permission.decorator';
-import { PARTS_READ, STOCK_ADJUST, STOCK_TRANSFER } from '../../common/permissions/permissions';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission } from '@common/permissions/require-permission.decorator';
+import { PARTS_READ, STOCK_ADJUST, STOCK_TRANSFER } from '@common/permissions/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { InventoryService } from './inventory.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { TransferStockDto } from './dto/transfer-stock.dto';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../common/product-modes';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Inventory')
 @ApiBearerAuth()

@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PaginationDto } from '../../../../common/dto/pagination.dto';
+import { PaginationDto } from '@common/dto/pagination.dto';
 
 export const MOVEMENT_TYPES = [
   'purchase_in', 'job_reserve', 'job_consume', 'job_return',

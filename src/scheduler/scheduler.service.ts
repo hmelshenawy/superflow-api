@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { PrismaService } from '../prisma/prisma.service';
-import { runWithWorkshop } from '../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { runWithWorkshop } from '@prisma/workshop-context';
 import { MediaService } from '../media/media.service';
 
 @Injectable()

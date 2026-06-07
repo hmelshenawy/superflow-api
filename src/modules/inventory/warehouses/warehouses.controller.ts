@@ -3,11 +3,11 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { WarehousesService } from './warehouses.service';
 import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE } from '../../../common/permissions';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, WAREHOUSES_READ, WAREHOUSES_CREATE, WAREHOUSES_UPDATE } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Warehouses')
 @ApiBearerAuth()

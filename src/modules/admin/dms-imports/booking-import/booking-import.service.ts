@@ -2,9 +2,9 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { v4 as uuid } from 'uuid';
 import * as ExcelJS from 'exceljs';
 import { parse as parseCsv } from 'csv-parse/sync';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { RunImportDto, SaveTemplateDto } from './dto/booking-import.dto';
-import { getWorkshopContext } from '../../../../prisma/workshop-context';
+import { getWorkshopContext } from '@prisma/workshop-context';
 
 /** Header-like customer names that should be skipped during import */
 const HEADER_LIKE_NAMES = new Set([

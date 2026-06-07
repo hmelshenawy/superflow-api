@@ -1,10 +1,10 @@
 import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_INTEGRATIONS } from '../../../../common/permissions';
-import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, ADMIN_INTEGRATIONS } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 import { DmsService } from './dms.service';
 
 @ApiTags('DMS')

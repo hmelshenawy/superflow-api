@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { getWorkshopContext } from '../../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';

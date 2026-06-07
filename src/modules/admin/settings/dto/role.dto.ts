@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsArray, IsIn } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ALL_PERMISSIONS } from '../../../../common/permissions';
+import { ALL_PERMISSIONS } from '@common/permissions';
 
 export class CreateRoleDto {
   @ApiProperty() @IsString() name: string;

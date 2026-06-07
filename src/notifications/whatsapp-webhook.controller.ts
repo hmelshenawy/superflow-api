@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Logger, Post, Query, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 
 type WhatsAppStatus = {
   id?: string;

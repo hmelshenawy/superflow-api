@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { CreateWorkshopDto } from './dto/create-workshop.dto';
 import { UpdateWorkshopDto } from './dto/update-workshop.dto';
-import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules, normalizeProductMode } from '../../../common/product-modes';
+import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules, normalizeProductMode } from '@common/product-modes';
 
 const DEFAULT_QC_TEMPLATE = [
   { name: 'Work Completion', icon: '✅', items: [

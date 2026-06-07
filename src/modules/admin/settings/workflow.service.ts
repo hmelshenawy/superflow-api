@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { getWorkshopContext } from '../../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { v4 as uuid } from 'uuid';
 import {
   DEFAULT_WORKFLOW_STAGES,

@@ -2,11 +2,11 @@ import { Body, Controller, Get, Patch, Post, Param, Query, UseGuards } from '@ne
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DeferredService } from './deferred.service';
 import { UpdateDeferredDto } from './dto/update-deferred.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { PermissionsGuard } from '../common/guards/permissions.guard';
-import { RequirePermission, DEFERRED_READ, DEFERRED_MANAGE, DEFERRED_BOOK } from '../common/permissions';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { PaginationDto } from '@common/dto/pagination.dto';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, DEFERRED_READ, DEFERRED_MANAGE, DEFERRED_BOOK } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 
 @ApiTags('Deferred Work')
 @ApiBearerAuth()

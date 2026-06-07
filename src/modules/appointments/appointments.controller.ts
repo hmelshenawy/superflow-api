@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
-import { RequireModule, MODULE_KEYS } from '../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { RequireModule, MODULE_KEYS } from '@common/product-modes';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { QueryAppointmentsDto } from './dto/query-appointments.dto';

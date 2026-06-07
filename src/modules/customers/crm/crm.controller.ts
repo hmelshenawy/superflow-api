@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, CRM_READ, CRM_CREATE, CRM_UPDATE, CRM_DELETE } from '../../../common/permissions';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, CRM_READ, CRM_CREATE, CRM_UPDATE, CRM_DELETE } from '@common/permissions';
 import { CrmService } from './crm.service';
 import { CrmDashboardQueryDto } from './dto/crm-dashboard-query.dto';
 import { CreateActivityDto } from './dto/create-activity.dto';

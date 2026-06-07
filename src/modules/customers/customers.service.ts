@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../prisma/prisma.service';
-import { getWorkshopContext } from '../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { PaginationDto } from '@common/dto/pagination.dto';
 
 @Injectable()
 export class CustomersService {

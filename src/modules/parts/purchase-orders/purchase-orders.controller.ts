@@ -1,15 +1,15 @@
 import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission } from '../../../common/permissions/require-permission.decorator';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE } from '../../../common/permissions/permissions';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission } from '@common/permissions/require-permission.decorator';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { PURCHASE_ORDERS_READ, PURCHASE_ORDERS_CREATE, PURCHASE_ORDERS_UPDATE } from '@common/permissions/permissions';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ReceivePoItemDto } from './dto/receive-po-item.dto';
 import { ListPurchaseOrdersDto } from './dto/list-purchase-orders.dto';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../../common/product-modes';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Purchase Orders')
 @ApiBearerAuth()

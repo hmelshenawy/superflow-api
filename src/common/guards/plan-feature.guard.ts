@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { PLAN_FEATURE_KEY } from '../plan-features/require-plan-feature.decorator';
 import { FeatureKey } from '../plan-features/feature-keys';
 import { UsageService } from '../plan-features/usage.service';

@@ -4,7 +4,7 @@ import { InvoicesService } from '../invoices.service';
 import { InvoiceCalcService } from '../invoices-calc.service';
 import { InvoiceNumberService } from '../invoice-number.service';
 import { InvoicesPdfService } from '../invoices-pdf.service';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 
 describe('Invoices Code Validation', () => {
   let service: InvoicesService;

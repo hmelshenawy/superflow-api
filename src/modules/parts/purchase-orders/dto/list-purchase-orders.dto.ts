@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsEnum } from 'class-validator';
-import { PaginationDto } from '../../../../common/dto/pagination.dto';
+import { PaginationDto } from '@common/dto/pagination.dto';
 
 export const PO_STATUSES = ['draft', 'ordered', 'partially_received', 'received', 'cancelled'] as const;
 export type PoStatus = (typeof PO_STATUSES)[number];

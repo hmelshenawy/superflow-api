@@ -12,15 +12,15 @@ import { UpdateAdminTemplateDto } from './dto/update-template.dto';
 import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { CreateItemDto, UpdateItemDto } from './dto/item.dto';
 import { CreateLabourRateDto, UpdateLabourRateDto } from './dto/labour-rate.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
 import {
   RequirePermission,
   ALL_PERMISSIONS, DEFAULT_ROLES,
   ADMIN_SETTINGS, ADMIN_SETTINGS_EDIT, ADMIN_ROLES,
   ADMIN_INTEGRATIONS, ADMIN_TEMPLATES, ADMIN_LABOUR_RATES, ADMIN_STATS,
-} from '../../../common/permissions';
+} from '@common/permissions';
 
 @ApiTags('Admin Settings')
 @ApiBearerAuth()

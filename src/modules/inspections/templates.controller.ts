@@ -2,10 +2,10 @@ import { Controller, Get, Post, Patch, Param, Body, UseGuards, Query } from '@ne
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { TemplatesService } from './templates.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_TEMPLATES } from '../../common/permissions';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, ADMIN_TEMPLATES } from '@common/permissions';
 
 @ApiTags('Inspection Templates')
 @ApiBearerAuth()

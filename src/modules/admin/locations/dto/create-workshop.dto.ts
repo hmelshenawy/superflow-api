@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsEmail, IsArray, IsIn } from 'class-validator';
-import { PRODUCT_MODES, ProductMode, ModuleKey } from '../../../../common/product-modes';
+import { PRODUCT_MODES, ProductMode, ModuleKey } from '@common/product-modes';
 
 export class CreateWorkshopDto {
   @IsString()

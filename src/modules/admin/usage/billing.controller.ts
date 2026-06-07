@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Inject, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_USERS, ADMIN_BILLING } from '../../../common/permissions';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, ADMIN_USERS, ADMIN_BILLING } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { BillingService } from './billing.service';
 import { InvoicePdfService } from './invoice-pdf.service';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { ActivateSubscriptionDto, CreateInvoiceDto, MarkPaidDto } from './dto/billing.dto';
 import type { Response } from 'express';
 

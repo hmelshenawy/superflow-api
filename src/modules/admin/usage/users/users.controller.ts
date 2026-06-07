@@ -4,10 +4,10 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { PaginationDto } from '../../../../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE, JOBS_ASSIGN } from '../../../../common/permissions';
+import { PaginationDto } from '@common/dto/pagination.dto';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, ADMIN_USERS, ADMIN_USERS_CREATE, ADMIN_USERS_DELETE, JOBS_ASSIGN } from '@common/permissions';
 
 @ApiTags('Users')
 @ApiBearerAuth()

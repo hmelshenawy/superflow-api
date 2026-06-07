@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { getWorkshopContext } from '../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { ClockEventDto, TechnicianProductivityQueryDto } from './dto/technician.dto';
 import { technician_clock_event_type } from '@prisma/client';
 

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditService } from './audit.service';
 import { AuditController } from './audit.controller';
-import { AuditInterceptor } from '../../../common/interceptors/audit.interceptor';
+import { AuditInterceptor } from '@common/interceptors/audit.interceptor';
 
 @Module({
   controllers: [AuditController],

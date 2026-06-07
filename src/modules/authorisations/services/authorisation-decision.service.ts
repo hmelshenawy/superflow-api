@@ -2,8 +2,8 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import * as crypto from 'crypto';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { runWithWorkshop } from '../../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { runWithWorkshop } from '@prisma/workshop-context';
 import { DecideDto } from '../dto/decide.dto';
 import { WorkflowService } from '../../admin/settings/workflow.service';
 import { AuthorisationNotificationService } from './authorisation-notification.service';

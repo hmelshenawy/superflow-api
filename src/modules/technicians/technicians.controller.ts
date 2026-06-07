@@ -2,9 +2,9 @@ import { Controller, Get, Post, Param, Query, Body, Request, UseGuards, Logger }
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { TechniciansService } from './technicians.service';
 import { ClockEventDto, TechnicianProductivityQueryDto } from './dto/technician.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { RequirePermission, TECHNICIAN_BOARD, TECHNICIAN_CLOCK, TECHNICIAN_PRODUCTIVITY } from '../../common/permissions';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, TECHNICIAN_BOARD, TECHNICIAN_CLOCK, TECHNICIAN_PRODUCTIVITY } from '@common/permissions';
 
 @ApiTags('Technicians')
 @ApiBearerAuth()

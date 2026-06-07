@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { PrismaService } from '@prisma/prisma.service';
+import { PaginationDto } from '@common/dto/pagination.dto';
 import { v4 as uuid } from 'uuid';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { MockDmsAdapter } from './mock-dms.adapter';
 
 @Injectable()

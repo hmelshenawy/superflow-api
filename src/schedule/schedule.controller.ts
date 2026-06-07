@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../common/guards/jwt.guard';
-import { RequireModule, MODULE_KEYS } from '../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { RequireModule, MODULE_KEYS } from '@common/product-modes';
 import { WorkshopScheduleService } from './schedule.service';
 import { CreateBreakDto } from './dto/create-break.dto';
 import { CreateHolidayDto } from './dto/create-holiday.dto';

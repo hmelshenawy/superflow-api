@@ -1,10 +1,10 @@
 import { Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationDto } from '../../../../common/dto/pagination.dto';
+import { PaginationDto } from '@common/dto/pagination.dto';
 
 const PLATFORM_ADMIN_ROLE_ID_CACHE: { id: string | null } = { id: null };
 

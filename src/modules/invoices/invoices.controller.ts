@@ -9,7 +9,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { Response } from 'express';
 import { InvoicesService } from './invoices.service';
@@ -19,17 +19,17 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { IssueInvoiceDto } from './dto/issue-invoice.dto';
 import { CancelInvoiceDto } from './dto/cancel-invoice.dto';
 import { ListInvoicesDto } from './dto/list-invoices.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { WorkshopGuard } from '../../common/guards/workshop.guard';
-import { RequirePermission } from '../../common/permissions/require-permission.decorator';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { WorkshopGuard } from '@common/guards/workshop.guard';
+import { RequirePermission } from '@common/permissions/require-permission.decorator';
 import {
   INVOICES_READ,
   INVOICES_CREATE,
   INVOICES_UPDATE,
   INVOICES_CANCEL,
   INVOICES_EXPORT,
-} from '../../common/permissions/permissions';
+} from '@common/permissions/permissions';
 
 @ApiTags('Invoices')
 @Controller('invoices')

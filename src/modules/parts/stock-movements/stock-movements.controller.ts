@@ -1,9 +1,9 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission } from '../../../common/permissions/require-permission.decorator';
-import { PARTS_READ } from '../../../common/permissions/permissions';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission } from '@common/permissions/require-permission.decorator';
+import { PARTS_READ } from '@common/permissions/permissions';
 import { StockMovementsService } from './stock-movements.service';
 import { ListMovementsDto } from './dto/list-movements.dto';
 

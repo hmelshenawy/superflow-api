@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { runWithWorkshop } from '../../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { runWithWorkshop } from '@prisma/workshop-context';
 import { hashToken, portalStageForStatus } from './authorisation-utils';
 
 @Injectable()

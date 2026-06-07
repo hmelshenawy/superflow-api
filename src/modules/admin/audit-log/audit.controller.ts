@@ -1,11 +1,11 @@
 import { Controller, ForbiddenException, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
-import { PaginationDto } from '../../../common/dto/pagination.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, ADMIN_AUDIT } from '../../../common/permissions';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { PaginationDto } from '@common/dto/pagination.dto';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, ADMIN_AUDIT } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 
 @ApiTags('Audit Logs')
 @ApiBearerAuth()

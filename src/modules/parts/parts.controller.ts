@@ -6,10 +6,10 @@ import { CreatePartDto } from './dto/create-part.dto';
 import { UpdatePartDto } from './dto/update-part.dto';
 import { ListPartsDto } from './dto/list-parts.dto';
 import { CreatePartFitmentDto, UpdatePartFitmentDto } from './dto/part-fitment.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
-import { RequirePermission, PARTS_READ, PARTS_CREATE, PARTS_UPDATE, PARTS_DELETE, STOCK_ANALYTICS } from '../../common/permissions';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, PARTS_READ, PARTS_CREATE, PARTS_UPDATE, PARTS_DELETE, STOCK_ANALYTICS } from '@common/permissions';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Parts')
 @ApiBearerAuth()

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { RequireModule, MODULE_KEYS } from '../../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { RequireModule, MODULE_KEYS } from '@common/product-modes';
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';

@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { PrismaService } from '../../prisma/prisma.service';
-import { getWorkshopContext } from '../../prisma/workshop-context';
+import { PrismaService } from '@prisma/prisma.service';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { TransitionStatusDto } from './dto/transition-status.dto';
 import { ListJobsDto } from './dto/list-jobs.dto';
 import { canTransition } from './jobs.state-machine';
 import { legacyWorkshopStageForStatus } from './jobs-utils';
-import { UsageService } from '../../common/plan-features/usage.service';
+import { UsageService } from '@common/plan-features/usage.service';
 import { WorkflowService } from '../admin/settings/workflow.service';
 import { JobMetaService } from './job-meta.service';
 import { JobConcernService } from './services/job-concern.service';

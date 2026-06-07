@@ -1,6 +1,6 @@
 import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PRODUCT_MODES, type ProductMode } from '../../common/product-modes';
+import { PRODUCT_MODES, type ProductMode } from '@common/product-modes';
 
 export class SignupDto {
   @ApiProperty({ example: 'Premium Auto Workshop' })

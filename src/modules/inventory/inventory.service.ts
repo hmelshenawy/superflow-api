@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '@prisma/prisma.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { TransferStockDto } from './dto/transfer-stock.dto';
-import { getWorkshopContext } from '../../prisma/workshop-context';
+import { getWorkshopContext } from '@prisma/workshop-context';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

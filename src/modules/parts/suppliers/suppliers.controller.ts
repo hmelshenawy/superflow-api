@@ -4,11 +4,11 @@ import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { ListSuppliersDto } from './dto/list-suppliers.dto';
-import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
-import { PermissionsGuard } from '../../../common/guards/permissions.guard';
-import { RequirePermission, SUPPLIERS_READ, SUPPLIERS_CREATE, SUPPLIERS_UPDATE } from '../../../common/permissions';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '../../../common/product-modes';
+import { JwtAuthGuard } from '@common/guards/jwt.guard';
+import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { RequirePermission, SUPPLIERS_READ, SUPPLIERS_CREATE, SUPPLIERS_UPDATE } from '@common/permissions';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Suppliers')
 @ApiBearerAuth()
