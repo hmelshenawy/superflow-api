@@ -7,12 +7,10 @@ import { RequirePlanFeature } from '@common/plan-features';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { PriorityService } from './priority.service';
 import { PriorityResultDto, BulkPriorityResultDto } from './dto/priority-result.dto';
-import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
 
 @ApiTags('Priority')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, ProductModuleGuard, PermissionsGuard)
-@RequireModule(MODULE_KEYS.PRIORITY_ENGINE)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('priority')
 export class PriorityController {
   constructor(private readonly priorityService: PriorityService) {}
