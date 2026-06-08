@@ -49,6 +49,12 @@ export function RepairRecommendationCard({
   const technicianFinding = group.concern?.technician_finding || group.finding?.tech_notes;
   const workNote = group.concern?.work_note;
   const qcNote = group.concern?.qc_note;
+  const subtotal = group.subtotal ?? group.lines.reduce((sum, line) => sum + Number(line.line_total || 0), 0);
+  const vatAmount = group.vat_amount ?? group.lines.reduce((sum, line) => {
+    const storedVat = Number(line.tax_amount ?? 0);
+    return sum + (storedVat > 0 ? storedVat : Number(line.line_total || 0) * (Number(line.tax_rate_pct || 0) / 100));
+  }, 0);
+  const totalIncludingVat = group.total_including_vat ?? group.total ?? subtotal + vatAmount;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -84,8 +90,11 @@ export function RepairRecommendationCard({
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total cost</p>
-            <p className="text-2xl font-bold text-slate-950 dark:text-white">{formatMoney(currency, group.total)}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total cost incl. VAT</p>
+            <p className="text-2xl font-bold text-slate-950 dark:text-white">{formatMoney(currency, totalIncludingVat)}</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Subtotal {formatMoney(currency, subtotal)} · VAT {formatMoney(currency, vatAmount)}
+            </p>
           </div>
           {hasDecisionButtons ? (
             <DecisionControls value={displayDecision?.decision} disabled={!canEdit} onChange={onDecisionChange} />

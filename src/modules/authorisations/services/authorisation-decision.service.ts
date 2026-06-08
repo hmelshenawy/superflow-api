@@ -236,6 +236,8 @@ export class AuthorisationDecisionService {
           });
           if (!existingDeferred) {
             const estimateLine = await tx.estimate_lines.findUnique({ where: { id: item.estimate_line_id } });
+            const lineSubtotal = Number(estimateLine?.line_total ?? 0);
+            const lineVat = Number(estimateLine?.tax_amount ?? 0) || (lineSubtotal * (Number(estimateLine?.tax_rate_pct ?? 0) / 100));
             await tx.deferred_work.create({
               data: {
                 id: uuid(),
@@ -245,7 +247,7 @@ export class AuthorisationDecisionService {
                 estimate_line_id: item.estimate_line_id,
                 status: 'pending',
                 urgency: 'none',
-                estimated_value: estimateLine?.line_total ?? null,
+                estimated_value: estimateLine ? lineSubtotal + lineVat : null,
               },
             });
           }

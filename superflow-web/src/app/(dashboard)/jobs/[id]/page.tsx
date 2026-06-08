@@ -195,6 +195,16 @@ function estimateTotalFromLines(lines: EstimateLineForTotals[]) {
   );
 }
 
+function estimateVatFromLines(lines: EstimateLineForTotals[], fallbackTaxRate = 0) {
+  return lines.reduce((sum, line) => {
+    const storedVat = Number(line.tax_amount);
+    if (Number.isFinite(storedVat) && storedVat > 0) return sum + storedVat;
+    const lineTaxRate = Number(line.tax_rate_pct);
+    const taxRate = Number.isFinite(lineTaxRate) && lineTaxRate > 0 ? lineTaxRate : fallbackTaxRate;
+    return sum + Number(line.line_total ?? 0) * (taxRate / 100);
+  }, 0);
+}
+
 function normalizeDefaultTaxRate(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 5;
@@ -856,7 +866,9 @@ export default function JobDetailPage() {
 
   const currentStep = ALL_STATUSES.indexOf(job.status);
   const displayEstimateLines = visibleEstimateLines ?? job.estimate_lines ?? [];
-  const total = estimateTotalFromLines(displayEstimateLines);
+  const quoteSubtotal = estimateTotalFromLines(displayEstimateLines);
+  const quoteVat = estimateVatFromLines(displayEstimateLines, estimateDefaults.default_tax_rate);
+  const total = quoteSubtotal + quoteVat;
   const formatMoney = (value: number | string | null | undefined) => `${estimateDefaults.currency || "$"} ${Number(value ?? 0).toFixed(2)}`;
   const vehicle = vehicleLabel(job);
   const plate = job.vehicle?.plate || "No plate";
@@ -1892,6 +1904,14 @@ export default function JobDetailPage() {
                 <div>
                   <p className="border-b border-border pb-2 text-[16px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote</p>
                   <div className="mt-2 flex justify-between text-[14px] font-medium text-foreground">
+                    <span>Subtotal</span>
+                    <span>{formatMoney(quoteSubtotal)}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between text-[14px] text-muted-foreground">
+                    <span>VAT</span>
+                    <span>{formatMoney(quoteVat)}</span>
+                  </div>
+                  <div className="mt-2 flex justify-between border-t border-border pt-2 text-[14px] font-medium text-foreground">
                     <span>Grand total</span>
                     <span>{formatMoney(total)}</span>
                   </div>

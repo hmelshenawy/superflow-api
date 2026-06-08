@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { CostSummaryBar } from "@/components/portal/cost-summary-bar";
 import { CustomerPortalLayout } from "@/components/portal/customer-portal-layout";
 import { FindingPhotoGrid } from "@/components/portal/finding-photo-grid";
@@ -20,8 +20,17 @@ const STAGE_LABELS: Record<string, string> = {
   final_report: "Final report ready",
 };
 
+const lineVatAmount = (line: { line_total: number; tax_amount?: number; tax_rate_pct: number }) => {
+  const storedVat = Number(line.tax_amount ?? 0);
+  if (storedVat > 0) return storedVat;
+  return Number(line.line_total || 0) * (Number(line.tax_rate_pct || 0) / 100);
+};
+
 export default function PortalPage() {
-  const { token } = useParams<{ token: string }>();
+  const params = useParams<{ token?: string | string[] }>();
+  const pathname = usePathname();
+  const tokenParam = params?.token;
+  const token = Array.isArray(tokenParam) ? tokenParam[0] : tokenParam || pathname.split("/").filter(Boolean).at(-1) || "";
   const [data, setData] = useState<PortalData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +40,7 @@ export default function PortalPage() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
+    console.log("PORTAL_EFFECT_V1", { token, pathname });
     if (!token) return;
 
     const apiBase = getPortalApiBase();
@@ -56,7 +66,7 @@ export default function PortalPage() {
   );
 
   const portalCanSubmit = data?.can_submit ?? false;
-  const allActionableGroupsDecided = Boolean(data?.grouped_estimate?.length) && data!.grouped_estimate.every((group) => {
+  const allActionableGroupsDecided = Boolean(data?.grouped_estimate?.length) && data.grouped_estimate.every((group) => {
     const actionable = getUnlockedActionableLines(group, existingDecisionByLine);
     if (actionable.length === 0) return true;
     return Boolean(decisions[group.key]?.decision);
@@ -66,7 +76,21 @@ export default function PortalPage() {
     if (!data) return 0;
     return data.approved_total + data.grouped_estimate.reduce((sum, group) => {
       if (decisions[group.key]?.decision !== "approved") return sum;
+      return sum + getUnlockedActionableLines(group, existingDecisionByLine).reduce((lineSum, line) => lineSum + Number(line.line_total || 0) + lineVatAmount(line), 0);
+    }, 0);
+  }, [data, decisions, existingDecisionByLine]);
+  const approvedSubtotal = useMemo(() => {
+    if (!data) return 0;
+    return (data.approved_subtotal ?? 0) + data.grouped_estimate.reduce((sum, group) => {
+      if (decisions[group.key]?.decision !== "approved") return sum;
       return sum + getUnlockedActionableLines(group, existingDecisionByLine).reduce((lineSum, line) => lineSum + Number(line.line_total || 0), 0);
+    }, 0);
+  }, [data, decisions, existingDecisionByLine]);
+  const approvedVatAmount = useMemo(() => {
+    if (!data) return 0;
+    return (data.approved_vat_amount ?? 0) + data.grouped_estimate.reduce((sum, group) => {
+      if (decisions[group.key]?.decision !== "approved") return sum;
+      return sum + getUnlockedActionableLines(group, existingDecisionByLine).reduce((lineSum, line) => lineSum + lineVatAmount(line), 0);
     }, 0);
   }, [data, decisions, existingDecisionByLine]);
 
@@ -154,7 +178,11 @@ export default function PortalPage() {
       footer={
         <CostSummaryBar
           currency={data.currency}
+          subtotal={data.subtotal ?? data.grand_total}
+          vatAmount={data.vat_amount ?? 0}
           grandTotal={data.grand_total}
+          approvedSubtotal={approvedSubtotal}
+          approvedVatAmount={approvedVatAmount}
           approvedTotal={approvedTotal}
           canSubmit={portalCanSubmit && hasUnlockedActionableLines}
           complete={allActionableGroupsDecided}

@@ -7,6 +7,35 @@ import { hashToken, portalStageForStatus } from './authorisation-utils';
 export class AuthorisationQueryService {
   constructor(private prisma: PrismaService) {}
 
+  private money(value: unknown): number {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private lineSubtotal(line: any): number {
+    return this.money(line?.line_total);
+  }
+
+  private lineVat(line: any): number {
+    const storedTax = this.money(line?.tax_amount);
+    if (storedTax > 0) return storedTax;
+    return this.lineSubtotal(line) * (this.money(line?.tax_rate_pct) / 100);
+  }
+
+  private lineTotalIncludingVat(line: any): number {
+    return this.lineSubtotal(line) + this.lineVat(line);
+  }
+
+  private sumLines(lines: any[]) {
+    const subtotal = (lines ?? []).reduce((sum, line) => sum + this.lineSubtotal(line), 0);
+    const vatAmount = (lines ?? []).reduce((sum, line) => sum + this.lineVat(line), 0);
+    return {
+      subtotal,
+      vatAmount,
+      totalIncludingVat: subtotal + vatAmount,
+    };
+  }
+
   // Portal tokens are stored hashed for the same reason as refresh tokens:
   // a leaked DB row should not grant direct customer portal access.
   // Portal tokens are accessed by their unique hash, not by workshop, so
@@ -273,12 +302,27 @@ export class AuthorisationQueryService {
       group.is_locked = lines.length > 0 && lines.every((line: any) => decisionByLine.has(line.id));
     }
 
-    payload.approved_total = existingDecisions
+    const approvedLines = existingDecisions
       .filter((decision: any) => decision.decision === 'approved')
-      .reduce((sum: number, decision: any) => {
-        const line = allLines.find((item: any) => item.id === decision.estimate_line_id);
-        return sum + Number(line?.line_total ?? 0);
-      }, 0);
+      .map((decision: any) => allLines.find((item: any) => item.id === decision.estimate_line_id))
+      .filter(Boolean);
+    const approvedTotals = this.sumLines(approvedLines);
+    const quoteTotals = this.sumLines(allLines);
+    for (const group of groups) {
+      const totals = this.sumLines(Array.isArray(group.lines) ? group.lines : []);
+      group.subtotal = totals.subtotal;
+      group.vat_amount = totals.vatAmount;
+      group.total_including_vat = totals.totalIncludingVat;
+      group.total = totals.totalIncludingVat;
+    }
+    payload.subtotal = quoteTotals.subtotal;
+    payload.vat_amount = quoteTotals.vatAmount;
+    payload.total_including_vat = quoteTotals.totalIncludingVat;
+    payload.grand_total = quoteTotals.totalIncludingVat;
+    payload.approved_subtotal = approvedTotals.subtotal;
+    payload.approved_vat_amount = approvedTotals.vatAmount;
+    payload.approved_total_including_vat = approvedTotals.totalIncludingVat;
+    payload.approved_total = approvedTotals.totalIncludingVat;
     payload.has_actionable_lines = allLines.some((line: any) => !decisionByLine.has(line.id));
   }
 
@@ -422,7 +466,10 @@ export class AuthorisationQueryService {
         } : null,
         isCustom: Boolean(gLines[0]?.quote_group_id || concern),
         lines: gLines,
-        total: gLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
+        subtotal: this.sumLines(gLines).subtotal,
+        vat_amount: this.sumLines(gLines).vatAmount,
+        total_including_vat: this.sumLines(gLines).totalIncludingVat,
+        total: this.sumLines(gLines).totalIncludingVat,
       });
     }
     for (const concern of token.jobs?.job_concerns ?? []) {
@@ -460,7 +507,10 @@ export class AuthorisationQueryService {
         finding: null,
         isCustom: false,
         lines: generalLines,
-        total: generalLines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
+        subtotal: this.sumLines(generalLines).subtotal,
+        vat_amount: this.sumLines(generalLines).vatAmount,
+        total_including_vat: this.sumLines(generalLines).totalIncludingVat,
+        total: this.sumLines(generalLines).totalIncludingVat,
       });
     }
 
@@ -504,12 +554,12 @@ export class AuthorisationQueryService {
     }
 
     const isExpired = token.expires_at ? new Date(token.expires_at) < new Date() : false;
-    const approvedTotal = existingDecisions
+    const approvedLines = existingDecisions
       .filter((d: any) => d.decision === 'approved')
-      .reduce((sum: number, d: any) => {
-        const line = lines.find((l: any) => l.id === d.estimate_line_id);
-        return sum + Number(line?.line_total ?? 0);
-      }, 0);
+      .map((d: any) => lines.find((l: any) => l.id === d.estimate_line_id))
+      .filter(Boolean);
+    const quoteTotals = this.sumLines(lines);
+    const approvedTotals = this.sumLines(approvedLines);
     const hasActionableLines = lines.some((l: any) => !decisionByLine.has(l.id));
     const canSubmit = !isExpired && !token.is_revoked && hasActionableLines;
 
@@ -545,8 +595,14 @@ export class AuthorisationQueryService {
       findings: inspectionFindings.length ? inspectionFindings : undefined,
       job_photos: (token.jobs?.media_files ?? []).map((mf: any) => ({ id: mf.id, url: mf.url, mime_type: mf.mime_type, filename: mf.original_filename || mf.filename })),
       grouped_estimate: grouped,
-      grand_total: lines.reduce((s: number, l: any) => s + Number(l.line_total ?? 0), 0),
-      approved_total: approvedTotal,
+      subtotal: quoteTotals.subtotal,
+      vat_amount: quoteTotals.vatAmount,
+      total_including_vat: quoteTotals.totalIncludingVat,
+      grand_total: quoteTotals.totalIncludingVat,
+      approved_subtotal: approvedTotals.subtotal,
+      approved_vat_amount: approvedTotals.vatAmount,
+      approved_total_including_vat: approvedTotals.totalIncludingVat,
+      approved_total: approvedTotals.totalIncludingVat,
       has_actionable_lines: hasActionableLines,
       can_submit: canSubmit,
       existing_decisions: existingDecisions,

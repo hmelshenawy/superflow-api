@@ -3,7 +3,11 @@ import { formatMoney } from "./utils";
 
 interface CostSummaryBarProps {
   currency: string;
+  subtotal: number;
+  vatAmount: number;
   grandTotal: number;
+  approvedSubtotal: number;
+  approvedVatAmount: number;
   approvedTotal: number;
   canSubmit: boolean;
   complete: boolean;
@@ -16,7 +20,11 @@ interface CostSummaryBarProps {
 
 export function CostSummaryBar({
   currency,
+  subtotal,
+  vatAmount,
   grandTotal,
+  approvedSubtotal,
+  approvedVatAmount,
   approvedTotal,
   canSubmit,
   complete,
@@ -42,13 +50,21 @@ export function CostSummaryBar({
   return (
     <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
       <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid grid-cols-2 gap-12">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6">
           <div className="flex flex-col gap-2 rounded-2xl border border-green-500 p-4">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total estimate</p>
+            <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between gap-4"><span>Subtotal</span><span>{formatMoney(currency, subtotal)}</span></div>
+              <div className="flex justify-between gap-4"><span>VAT</span><span>{formatMoney(currency, vatAmount)}</span></div>
+            </div>
             <p className="text-lg font-bold text-slate-950 dark:text-white">{formatMoney(currency, grandTotal)}</p>
           </div>
           <div className="flex flex-col gap-2 rounded-2xl border border-green-500 p-4">
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Approved total</p>
+            <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between gap-4"><span>Subtotal</span><span>{formatMoney(currency, approvedSubtotal)}</span></div>
+              <div className="flex justify-between gap-4"><span>VAT</span><span>{formatMoney(currency, approvedVatAmount)}</span></div>
+            </div>
             <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{formatMoney(currency, approvedTotal)}</p>
           </div>
         </div>

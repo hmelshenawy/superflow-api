@@ -27,6 +27,7 @@ export interface QuoteLine {
   discount_pct: number;
   tax_rate_pct: number;
   line_total: number;
+  tax_amount?: number;
   is_actionable: boolean;
 }
 
@@ -50,6 +51,9 @@ export interface QuoteGroup {
   finding: Finding | null;
   concern?: PortalConcern | null;
   lines: QuoteLine[];
+  subtotal?: number;
+  vat_amount?: number;
+  total_including_vat?: number;
   total: number;
   group_decision_summary: "pending" | "approved" | "declined" | "deferred" | "mixed";
   is_locked: boolean;
@@ -88,7 +92,13 @@ export interface PortalData {
   findings?: Finding[];
   job_photos?: PortalPhoto[];
   grouped_estimate: QuoteGroup[];
+  subtotal?: number;
+  vat_amount?: number;
+  total_including_vat?: number;
   grand_total: number;
+  approved_subtotal?: number;
+  approved_vat_amount?: number;
+  approved_total_including_vat?: number;
   approved_total: number;
   has_actionable_lines: boolean;
   can_submit: boolean;
