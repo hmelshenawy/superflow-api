@@ -39,6 +39,8 @@ interface EstimateDefaults {
   default_tax_rate: number;
   currency: string;
 }
+
+type EstimateLineForTotals = NonNullable<Job["estimate_lines"]>[number];
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,6 +84,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 import { hasAnyPermission } from "@/lib/permissions";
+import { getWorkshopProductMode } from "@/lib/product-modes";
 import { toast } from "sonner";
 
 const STATUS_META: Record<
@@ -185,11 +188,8 @@ function formatDate(value?: string | null, withTime = false) {
   }).format(date);
 }
 
-function estimateTotal(job: Job | null) {
-  if (!job) return 0;
-  const meta = job.meta;
-  if (meta?.estimateTotal !== undefined) return meta.estimateTotal;
-  return (job.estimate_lines ?? []).reduce(
+function estimateTotalFromLines(lines: EstimateLineForTotals[]) {
+  return lines.reduce(
     (sum, line) => sum + Number(line.line_total ?? 0),
     0,
   );
@@ -225,6 +225,7 @@ export default function JobDetailPage() {
   const router = useRouter();
 
   const [job, setJob] = useState<Job | null>(null);
+  const [visibleEstimateLines, setVisibleEstimateLines] = useState<EstimateLineForTotals[] | null>(null);
   const [priority, setPriority] = useState<PriorityResult | null>(null);
   const [inspectionDetail, setInspectionDetail] = useState<any | null>(null);
   const [authStatus, setAuthStatus] = useState<JobAuthorisationStatus | null>(null);
@@ -243,7 +244,16 @@ export default function JobDetailPage() {
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
 
   const user = useAuthStore((state) => state.user);
+  const workshops = useAuthStore((state) => state.workshops);
+  const currentWorkshopId = useAuthStore((state) => state.currentWorkshopId);
+  const currentWorkshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
+  const productMode = getWorkshopProductMode(currentWorkshop);
   const canCreateInvoice = hasAnyPermission(user, ["invoices:create"]);
+  const canReadWarehouses = !!currentWorkshop && productMode === "WORKSHOP" && hasAnyPermission(user, ["warehouses:read"]);
+
+  useEffect(() => {
+    setVisibleEstimateLines(null);
+  }, [id]);
 
   /** Most logical next status in the forward flow */
   const nextFlowStatus = useMemo(() => {
@@ -526,6 +536,10 @@ export default function JobDetailPage() {
   };
 
   const loadWarehouses = async () => {
+    if (!canReadWarehouses) {
+      setWarehouses([]);
+      return;
+    }
     try {
       const { data } = await api.get<Warehouse[]>("/warehouses");
       setWarehouses(Array.isArray(data) ? data : []);
@@ -698,9 +712,13 @@ export default function JobDetailPage() {
       }
     })();
     loadUsers();
-    loadWarehouses();
+    if (canReadWarehouses) {
+      loadWarehouses();
+    } else {
+      setWarehouses([]);
+    }
     loadEstimateDefaults();
-  }, [id]);
+  }, [id, canReadWarehouses]);
 
   useEffect(() => {
     setDraftCustomerEmail(job?.customer?.email || "");
@@ -837,12 +855,13 @@ export default function JobDetailPage() {
   }
 
   const currentStep = ALL_STATUSES.indexOf(job.status);
-  const total = estimateTotal(job);
+  const displayEstimateLines = visibleEstimateLines ?? job.estimate_lines ?? [];
+  const total = estimateTotalFromLines(displayEstimateLines);
   const formatMoney = (value: number | string | null | undefined) => `${estimateDefaults.currency || "$"} ${Number(value ?? 0).toFixed(2)}`;
   const vehicle = vehicleLabel(job);
   const plate = job.vehicle?.plate || "No plate";
   const mediaCount = job.media_files?.length ?? 0;
-  const estimateCount = job.estimate_lines?.length ?? 0;
+  const estimateCount = displayEstimateLines.length;
   const jobParts = job.job_parts ?? [];
   const jobConcerns = job.job_concerns ?? [];
   const concernById = new Map(jobConcerns.map((concern) => [concern.id, concern]));
@@ -857,12 +876,23 @@ export default function JobDetailPage() {
     if (!warehouseId) return partEntryMode === "catalog" ? "Select warehouse" : "No warehouse hint";
     return warehouseById.get(warehouseId)?.name ?? warehouseId.slice(0, 8);
   };
-  const quotePartLines = (job.estimate_lines ?? []).filter((line) => line.type === "part");
+  const quotePartLines = displayEstimateLines.filter((line) => line.type === "part");
   const linkedEstimateLineIds = new Set(jobParts.map((part) => part.estimateLineId ?? part.estimate_line_id).filter(Boolean));
   const unfulfilledQuotePartLines = quotePartLines.filter((line) => line.id && !linkedEstimateLineIds.has(line.id));
   const inspectionState = inspectionDetail?.status || job.inspection?.status || "not started";
   const inspectionLocked = ["submitted", "reviewed", "approved"].includes(inspectionState);
-  const approvalCounts = authStatus?.counts;
+  const visibleApprovalCounts = displayEstimateLines.reduce(
+    (counts, line) => {
+      const decision = authStatus?.decisionByLine?.[line.id]?.decision;
+      if (decision === "approved") counts.approved += 1;
+      else if (decision === "declined") counts.declined += 1;
+      else if (decision === "deferred") counts.deferred += 1;
+      else counts.pending += 1;
+      return counts;
+    },
+    { approved: 0, declined: 0, deferred: 0, pending: 0 },
+  );
+  const approvalCounts = estimateCount > 0 ? visibleApprovalCounts : authStatus?.counts;
   const latestApprovalToken = authStatus?.latestToken;
   const approvalStatusLabel = latestApprovalToken?.used_at
     ? "Customer replied"
@@ -1211,9 +1241,11 @@ export default function JobDetailPage() {
           <TabsTrigger value="estimate" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <Wrench className="mr-2 h-4 w-4" /> Quote & authorization
           </TabsTrigger>
-          <TabsTrigger value="parts" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
-            <Wrench className="mr-2 h-4 w-4" /> Parts
-          </TabsTrigger>
+          {canReadWarehouses && (
+            <TabsTrigger value="parts" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
+              <Wrench className="mr-2 h-4 w-4" /> Parts
+            </TabsTrigger>
+          )}
           <TabsTrigger value="inspection" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-slate-950 data-[state=active]:text-white">
             <ClipboardList className="mr-2 h-4 w-4" /> Inspection
           </TabsTrigger>
@@ -1596,6 +1628,7 @@ export default function JobDetailPage() {
           </Card>
         </TabsContent>
 
+        {canReadWarehouses && (
         <TabsContent value="parts" className="space-y-4">
           <Card className="rounded-2xl border-border shadow-sm">
             <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -1781,13 +1814,14 @@ export default function JobDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
 
         <TabsContent value="estimate" className="space-y-0">
           {(() => {
             const concerns = job.job_concerns ?? [];
             const ca = authStatus?.concernApprovals ?? [];
-            const allLines = job.estimate_lines ?? [];
+            const allLines = displayEstimateLines;
             const approvedConcerns = concerns.filter((c) => {
               const a = ca.find((x) => x.concernId === c.id);
               return a?.advisorDecision === "approved" || a?.customerDecision === "approved";
@@ -1848,7 +1882,7 @@ export default function JobDetailPage() {
             {/* Zone 2 — Concerns list */}
             <div>
               <ComponentErrorBoundary label="Quote builder">
-                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} decisionByLine={authStatus?.decisionByLine ?? {}} concernApprovals={authStatus?.concernApprovals ?? []} />
+                <EstimateBuilder jobId={job.id} lines={job.estimate_lines ?? []} inspection={inspectionDetail} jobConcerns={job.job_concerns ?? []} onUpdate={refreshJob} onVisibleLinesChange={setVisibleEstimateLines} decisionByLine={authStatus?.decisionByLine ?? {}} concernApprovals={authStatus?.concernApprovals ?? []} />
               </ComponentErrorBoundary>
             </div>
 

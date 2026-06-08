@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Query, Logger } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { EstimatesService } from './estimates.service';
 import { CreateLineDto } from './dto/create-line.dto';
@@ -11,6 +11,15 @@ import { PermissionsGuard } from '@common/guards/permissions.guard';
 import { RequirePermission, ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE, ESTIMATES_DELETE } from '@common/permissions';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-modes';
+import { getWorkshopContext } from '@prisma/workshop-context';
+
+function safeJson(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch (error: any) {
+    return `[unserializable: ${error?.message ?? String(error)}]`;
+  }
+}
 
 @ApiTags('Estimates')
 @ApiBearerAuth()
@@ -18,6 +27,8 @@ import { MODULE_KEYS, ProductModuleGuard, RequireModule } from '@common/product-
 @RequireModule(MODULE_KEYS.ESTIMATES)
 @Controller('estimates')
 export class EstimatesController {
+  private readonly logger = new Logger(EstimatesController.name);
+
   constructor(private service: EstimatesService) {}
 
   @Get('defaults')
@@ -53,12 +64,53 @@ export class EstimatesController {
   @Put('job/:jobId/bulk')
   @RequirePermission(ESTIMATES_UPDATE)
   @ApiOperation({ summary: 'Bulk replace all estimate lines for a job' })
-  bulkReplace(
+  async bulkReplace(
     @Param('jobId') jobId: string,
     @Body() body: BulkReplaceLinesDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.service.bulkReplace(jobId, body.lines, userId);
+    const { workshopId } = getWorkshopContext();
+    const lines = Array.isArray(body?.lines) ? body.lines : [];
+    this.logger.log(`ESTIMATE_BULK_FIX_ACTIVE_V2 controller start ${safeJson({
+      event: 'estimates.bulkReplace.request',
+      jobId,
+      bodyKeys: Object.keys(body ?? {}),
+      body,
+      userId: user?.sub,
+      tenantId: user?.tenantId ?? null,
+      tokenWorkshopId: user?.workshopId,
+      contextWorkshopId: workshopId,
+      lineCount: lines.length,
+      sampleLine: lines[0] ?? null,
+    })}`);
+
+    try {
+      const result = await this.service.bulkReplace(jobId, lines, user?.sub);
+      this.logger.log(`ESTIMATE_BULK_FIX_ACTIVE_V2 controller success ${safeJson({
+        jobId,
+        userId: user?.sub,
+        workshopId,
+        returnedLines: Array.isArray(result) ? result.length : null,
+      })}`);
+      return result;
+    } catch (error: any) {
+      const responseBody = typeof error?.getResponse === 'function' ? error.getResponse() : undefined;
+      this.logger.error(
+        `ESTIMATE_BULK_FIX_ACTIVE_V2 controller error ${safeJson({
+          jobId,
+          userId: user?.sub,
+          tenantId: user?.tenantId ?? null,
+          tokenWorkshopId: user?.workshopId,
+          contextWorkshopId: workshopId,
+          errorName: error?.name,
+          errorMessage: error?.message,
+          errorCode: error?.code,
+          responseBody,
+        })}`,
+        error?.stack ?? String(error),
+      );
+      throw error;
+    }
   }
 
   @Post('groups')

@@ -220,6 +220,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
     description: 'Connect workshop manager — controls loading, WIP, bottlenecks, capacity, and team performance',
     permissions: [
       JOBS_READ, JOBS_UPDATE, JOBS_ASSIGN, JOBS_TRANSITION,
+      ESTIMATES_READ, ESTIMATES_CREATE, ESTIMATES_UPDATE,
       IMPORT_PARSE, IMPORT_RUN,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ, BLOCKERS_MANAGE,
@@ -235,6 +236,7 @@ export const DEFAULT_ROLES: Record<string, { name: string; description: string; 
     description: 'Connect general manager — executive visibility across branches, advisors, technicians, and DMS financials',
     permissions: [
       JOBS_READ,
+      ESTIMATES_READ,
       PRIORITY_READ, INSIGHTS_DASHBOARD,
       BLOCKERS_READ,
       CUSTOMERS_READ, VEHICLES_READ,

@@ -19,6 +19,17 @@ export class AuthorisationDecisionService {
     private queryService: AuthorisationQueryService,
   ) {}
 
+  private getCustomerPortalBaseUrl() {
+    return (
+      process.env.CUSTOMER_PORTAL_URL ||
+      process.env.FRONTEND_URL ||
+      process.env.PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.APP_DOMAIN ? `https://${process.env.APP_DOMAIN}` : '') ||
+      'http://localhost:3000'
+    ).replace(/\/$/, '');
+  }
+
   async requestAuthorisation(jobId: string, channel: string = 'link', sentTo?: string) {
     const job = await this.prisma.tenant.jobs.findUnique({
       where: { id: jobId },
@@ -48,8 +59,7 @@ export class AuthorisationDecisionService {
       },
     });
 
-    const baseUrl = process.env.CUSTOMER_PORTAL_URL || 'http://127.0.0.1:3002';
-    const portalUrl = `${baseUrl.replace(/\/$/, '')}/portal/${raw}`;
+    const portalUrl = `${this.getCustomerPortalBaseUrl()}/portal/${raw}`;
 
     // Sending a new approval request always moves the job back to estimate_sent
     // and releases a portal snapshot so the customer sees the latest data.
@@ -116,14 +126,13 @@ export class AuthorisationDecisionService {
       },
     });
 
-    const baseUrl = process.env.CUSTOMER_PORTAL_URL || 'http://127.0.0.1:3002';
     return {
       tokenId: token.id,
       snapshotId: snapshot.id,
       version: snapshot.version,
       stage: snapshot.stage,
       releasedAt: snapshot.released_at,
-      portalUrl: `${baseUrl.replace(/\/$/, '')}/portal/${raw}`,
+      portalUrl: `${this.getCustomerPortalBaseUrl()}/portal/${raw}`,
     };
   }
 

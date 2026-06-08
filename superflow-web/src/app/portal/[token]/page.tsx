@@ -10,7 +10,7 @@ import { PortalProgress } from "@/components/portal/portal-progress";
 import { PortalState } from "@/components/portal/portal-state";
 import { RepairRecommendationCard } from "@/components/portal/repair-recommendation-card";
 import type { ExistingDecision, Finding, GroupDecisionState, PortalData, PortalDecision, QuoteGroup } from "@/components/portal/types";
-import { formatMoney, getActionableLines } from "@/components/portal/utils";
+import { formatMoney, getActionableLines, getPortalApiBase } from "@/components/portal/utils";
 import { VehicleStatusCard } from "@/components/portal/vehicle-status-card";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -33,7 +33,7 @@ export default function PortalPage() {
   useEffect(() => {
     if (!token) return;
 
-    const apiBase = `${window.location.origin}/api`;
+    const apiBase = getPortalApiBase();
     fetch(`${apiBase}/portal/${token}`)
       .then((response) => {
         if (!response.ok) {
@@ -108,7 +108,7 @@ export default function PortalPage() {
         }),
       };
 
-      const response = await fetch(`${window.location.origin}/api/portal/${token}/decide`, {
+      const response = await fetch(`${getPortalApiBase()}/portal/${token}/decide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

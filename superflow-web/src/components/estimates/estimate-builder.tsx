@@ -30,6 +30,7 @@ interface Props {
   jobId: string;
   lines: EstimateLine[];
   onUpdate: () => void;
+  onVisibleLinesChange?: (lines: EstimateLine[]) => void;
   inspection?: any | null;
   jobConcerns?: JobConcern[];
   decisionByLine?: Record<string, JobAuthorisationDecision>;
@@ -84,6 +85,10 @@ function normalizeLines(lines: EstimateLine[]) {
   }));
 }
 
+function isGeneralLine(line: EstimateLine) {
+  return !line.concern_id && !line.inspection_response_id && !line.quote_group_id;
+}
+
 function trafficToSeverity(traffic?: string | null): ConcernSeverity | null {
   if (traffic === "red") return "red";
   if (traffic === "amber") return "amber";
@@ -101,8 +106,16 @@ function normalizeDefaultTaxRate(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 }
 
-export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspection, jobConcerns = [], decisionByLine = {}, concernApprovals = [] }: Props) {
-  const [lines, setLines] = useState<EstimateLine[]>(normalizeLines(initialLines));
+export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, onVisibleLinesChange, inspection, jobConcerns = [], decisionByLine = {}, concernApprovals = [] }: Props) {
+  const [generalGroupCleared, setGeneralGroupCleared] = useState(() => {
+    try {
+      return localStorage.getItem(`estimate-general-cleared-${jobId}`) === "true";
+    } catch { return false; }
+  });
+  const [lines, setLines] = useState<EstimateLine[]>(() => {
+    const normalized = normalizeLines(initialLines);
+    return generalGroupCleared ? normalized.filter((line) => !isGeneralLine(line)) : normalized;
+  });
   const [saving, setSaving] = useState(false);
   const [editingGroupTitle, setEditingGroupTitle] = useState<string | null>(null);
   const [draftGroupTitle, setDraftGroupTitle] = useState("");
@@ -118,6 +131,14 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   });
   const [concernStatusOptions, setConcernStatusOptions] = useState<ConcernStatusOption[]>([]);
   const [labourRateOpen, setLabourRateOpen] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setGeneralGroupCleared(localStorage.getItem(`estimate-general-cleared-${jobId}`) === "true");
+    } catch {
+      setGeneralGroupCleared(false);
+    }
+  }, [jobId]);
 
   // Optimistic only: the backend recalculates and returns authoritative money fields on save.
   const recalc = (line: Partial<EstimateLine>) => {
@@ -135,7 +156,20 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   // We compare a serialised fingerprint so optimistic local edits (e.g. group
   // rename) are not overwritten by the same server data re-rendering.
   const incomingFingerprint = useMemo(() => JSON.stringify(initialLines.map((l: EstimateLine) => `${l.id}:${l.updated_at ?? l.created_at ?? ""}:${l.quote_group?.title ?? ""}:${l.concern_id ?? ""}`)), [initialLines]);
-  useEffect(() => { setLines(normalizeLines(initialLines)); }, [incomingFingerprint]);
+  useEffect(() => {
+    const normalized = normalizeLines(initialLines);
+    setLines(generalGroupCleared ? normalized.filter((line) => !isGeneralLine(line)) : normalized);
+  }, [incomingFingerprint, generalGroupCleared]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`estimate-general-cleared-${jobId}`, String(generalGroupCleared));
+    } catch {}
+  }, [generalGroupCleared, jobId]);
+
+  useEffect(() => {
+    onVisibleLinesChange?.(lines);
+  }, [lines, onVisibleLinesChange]);
 
   useEffect(() => {
     const fetchDefaults = async () => {
@@ -170,6 +204,9 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
   };
 
   const addLine = (type: EstimateLineType = "labour", opts?: { inspectionResponseId?: string | null; quoteGroupId?: string | null; concernId?: string | null }) => {
+    if (!opts?.inspectionResponseId && !opts?.quoteGroupId && !opts?.concernId) {
+      setGeneralGroupCleared(false);
+    }
     const isLabour = type === "labour";
     const newLine: EstimateLine = {
       id: crypto.randomUUID(), job_id: jobId,
@@ -255,6 +292,19 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     } catch {
       // Group already deleted on server or detached; local state is already updated
     }
+  };
+
+  const clearGeneralGroup = (group: ConcernGroup) => {
+    const generalLineIds = new Set(group.lines.filter(isGeneralLine).map((line) => line.id));
+    setGeneralGroupCleared(true);
+    setLines((prev) => {
+      const visibleLines = prev.filter((line) => !generalLineIds.has(line.id));
+      const quoteTotal = visibleLines.reduce((sum, line) => sum + Number(line.line_total ?? 0), 0);
+      console.log("LINES", prev);
+      console.log("VISIBLE_LINES", visibleLines);
+      console.log("QUOTE_TOTAL", quoteTotal);
+      return visibleLines;
+    });
   };
 
   const updateConcernFeedback = async (concernId: string, form: HTMLFormElement) => {
@@ -404,7 +454,8 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
       }));
 
       const { data: savedLines } = await api.put<EstimateLine[]>(`/estimates/job/${jobId}/bulk`, { lines: payloadLines });
-      setLines(normalizeLines(savedLines));
+      const normalizedSavedLines = normalizeLines(savedLines);
+      setLines(generalGroupCleared ? normalizedSavedLines.filter((line) => !isGeneralLine(line)) : normalizedSavedLines);
       toast.success("Estimate saved");
       onUpdate();
     } catch {
@@ -412,8 +463,6 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
     }
     finally { setSaving(false); }
   };
-
-  const total = lines.reduce((s, l) => s + Number(l.line_total ?? 0), 0);
 
   return (
     <div>
@@ -501,7 +550,7 @@ export function EstimateBuilder({ jobId, lines: initialLines, onUpdate, inspecti
                 {isCustom ? (
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600" aria-label="Delete group" onClick={(e) => { e.stopPropagation(); deleteCustomGroup(group.quoteGroupId as string); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                 ) : group.key === "general" ? (
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600" aria-label="Clear group" onClick={(e) => { e.stopPropagation(); setLines((prev) => prev.filter((l) => l.inspection_response_id || l.quote_group_id)); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600" aria-label="Clear group" onClick={(e) => { e.stopPropagation(); clearGeneralGroup(group); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                 ) : null}
               </div>
             </div>

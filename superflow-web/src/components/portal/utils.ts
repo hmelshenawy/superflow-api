@@ -15,8 +15,15 @@ export const DECISION_STATUS_LABEL: Record<PortalDecision, string> = {
 export const formatMoney = (currency: string, value: number) =>
   `${currency} ${Number(value || 0).toFixed(2)}`;
 
+export const getPortalApiBase = () => {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (configured) return configured;
+  if (typeof window !== "undefined" && window.location.port === "3000") return "http://localhost:3002/api";
+  return "/api";
+};
+
 export const mediaUrl = (token: string, photo: PortalPhoto) =>
-  photo.url || `/api/portal/${token}/media/${photo.id}`;
+  photo.url || `${getPortalApiBase()}/portal/${token}/media/${photo.id}`;
 
 export const getActionableLines = (group: QuoteGroup) =>
   group.lines.filter((line) => line.is_actionable);

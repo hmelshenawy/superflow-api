@@ -6,7 +6,7 @@ import {
   isModuleEnabled,
   parseEnabledModules,
 } from '../src/common/product-modes';
-import { MockDmsAdapter } from '../src/dms/mock-dms.adapter';
+import { MockDmsAdapter } from '../src/modules/admin/dms-imports/dms/mock-dms.adapter';
 
 async function main() {
   const workshopModules = defaultEnabledModules('WORKSHOP');
@@ -17,11 +17,13 @@ async function main() {
   const connectModules = defaultEnabledModules('CONNECT');
   assert(connectModules.includes(MODULE_KEYS.DMS_INTEGRATION), 'Connect should include DMS integration');
   assert(connectModules.includes(MODULE_KEYS.BOOKING_IMPORT), 'Connect should include booking import');
+  assert(connectModules.includes(MODULE_KEYS.ESTIMATES), 'Connect should include estimates');
   assert(connectModules.includes(MODULE_KEYS.PRIORITY_ENGINE), 'Connect should include priority engine');
   assert(!connectModules.includes(MODULE_KEYS.STOCK), 'Connect should not include native stock');
   assert(!connectModules.includes(MODULE_KEYS.INVOICING), 'Connect should not include native invoicing');
 
   assert(isModuleEnabled('WORKSHOP', workshopModules, MODULE_KEYS.ESTIMATES), 'Workshop estimates should be enabled');
+  assert(isModuleEnabled('CONNECT', connectModules, MODULE_KEYS.ESTIMATES), 'Connect estimates should be enabled');
   assert(!isModuleEnabled('CONNECT', connectModules, MODULE_KEYS.INVOICING), 'Connect invoicing should be blocked');
   assert.deepStrictEqual(parseEnabledModules(JSON.stringify(PRODUCT_MODE_MODULES.CONNECT), 'CONNECT'), PRODUCT_MODE_MODULES.CONNECT);
 

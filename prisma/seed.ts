@@ -1,42 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
-import {
-  BLOCKERS_MANAGE,
-  BLOCKERS_READ,
-  CRM_CREATE,
-  CRM_READ,
-  CRM_UPDATE,
-  CUSTOMERS_CREATE,
-  CUSTOMERS_READ,
-  CUSTOMERS_UPDATE,
-  DEFERRED_BOOK,
-  DEFERRED_MANAGE,
-  DEFERRED_READ,
-  ESTIMATES_CREATE,
-  ESTIMATES_READ,
-  ESTIMATES_UPDATE,
-  IMPORT_PARSE,
-  IMPORT_RUN,
-  ADMIN_SETTINGS,
-  INSIGHTS_DASHBOARD,
-  INSPECTIONS_CREATE,
-  INSPECTIONS_READ,
-  INSPECTIONS_SUBMIT,
-  JOBS_ASSIGN,
-  JOBS_CREATE,
-  JOBS_READ,
-  JOBS_TRANSITION,
-  JOBS_UPDATE,
-  MEDIA_UPLOAD,
-  PRIORITY_READ,
-  QC_CREATE,
-  QC_READ,
-  QC_SUBMIT,
-  VEHICLES_CREATE,
-  VEHICLES_READ,
-  VEHICLES_UPDATE,
-} from '../src/common/permissions';
+import { ALL_PERMISSIONS } from '../src/common/permissions';
 import { PRODUCT_MODE_DISPLAY_NAMES, defaultEnabledModules } from '../src/common/product-modes';
 
 const prisma = new PrismaClient();
@@ -47,42 +12,7 @@ const PILOT_ROLE_NAME = 'pilot_demo_admin';
 const STANDALONE_SLUG = 'prioraflow-pilot-workshop';
 const CONNECT_SLUG = 'prioraflow-pilot-connect';
 
-const pilotPermissions = [
-  JOBS_READ,
-  JOBS_CREATE,
-  JOBS_UPDATE,
-  JOBS_ASSIGN,
-  JOBS_TRANSITION,
-  CUSTOMERS_READ,
-  CUSTOMERS_CREATE,
-  CUSTOMERS_UPDATE,
-  VEHICLES_READ,
-  VEHICLES_CREATE,
-  VEHICLES_UPDATE,
-  CRM_READ,
-  CRM_CREATE,
-  CRM_UPDATE,
-  ESTIMATES_READ,
-  ESTIMATES_CREATE,
-  ESTIMATES_UPDATE,
-  INSPECTIONS_READ,
-  INSPECTIONS_CREATE,
-  INSPECTIONS_SUBMIT,
-  QC_READ,
-  QC_CREATE,
-  QC_SUBMIT,
-  MEDIA_UPLOAD,
-  DEFERRED_READ,
-  DEFERRED_MANAGE,
-  DEFERRED_BOOK,
-  IMPORT_PARSE,
-  IMPORT_RUN,
-  ADMIN_SETTINGS,
-  PRIORITY_READ,
-  INSIGHTS_DASHBOARD,
-  BLOCKERS_READ,
-  BLOCKERS_MANAGE,
-];
+const pilotPermissions = ALL_PERMISSIONS.filter((permission) => !permission.startsWith('workshops:'));
 
 const customers = [
   { name: 'Aisha Al Mansoori', email: 'aisha.pilot@example.com', phone: '+971501110001', preferred_contact: 'whatsapp', language: 'en' },
@@ -176,7 +106,7 @@ function hoursFromNow(hours: number) {
 }
 
 function withCrmModule(productMode: 'WORKSHOP' | 'CONNECT') {
-  const modules = defaultEnabledModules(productMode) as string[];
+  const modules = [...defaultEnabledModules(productMode)] as string[];
   if (productMode === 'WORKSHOP' && !modules.includes('crm')) modules.push('crm');
   return modules;
 }
