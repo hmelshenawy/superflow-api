@@ -41,12 +41,16 @@ import {
   Wrench,
   ArrowUp,
   ArrowDown,
+  ClipboardList,
+  ShieldCheck,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 
 const ScheduleSection = dynamic(() => import("@/app/(dashboard)/settings/schedule/page"), { ssr: false });
 const JobTypesSection = dynamic(() => import("@/app/(dashboard)/settings/job-types/page"), { ssr: false });
+const InspectionTemplatesSection = dynamic(() => import("@/components/templates/inspection-templates-tab"), { ssr: false });
+const QcTemplatesSection = dynamic(() => import("@/components/templates/qc-templates-tab"), { ssr: false });
 
 
 
@@ -1253,6 +1257,18 @@ export default function SettingsPage() {
               Job Types
             </TabsTrigger>
           )}
+          {visibleTabs.includes("inspection") && (
+            <TabsTrigger value="inspection">
+              <ClipboardList className="mr-1.5 h-4 w-4" />
+              Inspection
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes("qc") && (
+            <TabsTrigger value="qc">
+              <ShieldCheck className="mr-1.5 h-4 w-4" />
+              QC
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {visibleTabs.includes("account") && (
@@ -1307,6 +1323,16 @@ export default function SettingsPage() {
         {visibleTabs.includes("jobTypes") && (
           <TabsContent value="jobTypes" className="mt-6 space-y-6">
             <JobTypesSection />
+          </TabsContent>
+        )}
+        {visibleTabs.includes("inspection") && (
+          <TabsContent value="inspection" className="mt-6 space-y-6">
+            <InspectionTemplatesSection />
+          </TabsContent>
+        )}
+        {visibleTabs.includes("qc") && (
+          <TabsContent value="qc" className="mt-6 space-y-6">
+            <QcTemplatesSection />
           </TabsContent>
         )}
       </Tabs>

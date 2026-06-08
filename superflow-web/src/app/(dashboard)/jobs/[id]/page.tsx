@@ -775,6 +775,31 @@ export default function JobDetailPage() {
     return () => clearInterval(interval);
   }, [authStatus?.hasActiveToken, id]);
 
+  /* ── Auto-poll job status regardless of token state ── */
+  const prevJobStatus = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!job) return;
+    prevJobStatus.current = job.status;
+    const pollStatus = async () => {
+      try {
+        const { data } = await api.get<Job>(`/jobs/${id}`);
+        if (data.status !== prevJobStatus.current) {
+          if (prevJobStatus.current === 'estimate_sent' && data.status === 'approved') {
+            toast.success('Customer approved the estimate!', { duration: 8000 });
+          }
+          prevJobStatus.current = data.status;
+          // Refresh full job data so related entities stay in sync
+          await refreshJob();
+        }
+      } catch {
+        // ignore polling errors
+      }
+    };
+    const interval = setInterval(pollStatus, 30000);
+    return () => clearInterval(interval);
+  }, [id, job?.id]);
+
   const availableStatuses = useMemo(
     () => (job ? getValidTransitions(job) : []),
     [job],
