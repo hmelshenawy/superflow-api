@@ -49,7 +49,11 @@ export interface JobListMeta {
 
 const WORKSHOP_PHASE_STATUSES = ['in_progress', 'waiting_parts', 'quality_check', 'ready'];
 const WORKSHOP_STAGE_DISABLED_STATUSES = ['booked', 'checking', 'estimate_sent', 'approved', 'waiting_parts', 'closed', 'no_show'];
-const PARTS_STATUS_DISABLED_STATUSES = ['booked', 'checking', 'estimate_sent', 'approved', 'waiting_parts', 'closed', 'no_show'];
+const PARTS_STATUS_DISABLED_STATUSES = ['booked', 'checking', 'estimate_sent', 'approved', 'closed', 'no_show'];
+
+export function isPartsStatusEditableForJobStatus(status: string | null | undefined): boolean {
+  return !PARTS_STATUS_DISABLED_STATUSES.includes(status ?? 'booked');
+}
 
 @Injectable()
 export class JobMetaService {
@@ -91,7 +95,7 @@ export class JobMetaService {
     // Editable fields — which fields the current status allows editing
     const editableFields: string[] = [];
     if (!WORKSHOP_STAGE_DISABLED_STATUSES.includes(status)) editableFields.push('workshop_stage');
-    if (!PARTS_STATUS_DISABLED_STATUSES.includes(status)) editableFields.push('parts_status');
+    if (isPartsStatusEditableForJobStatus(status)) editableFields.push('parts_status');
     if (status !== 'closed' && status !== 'no_show') {
       editableFields.push('customer_concern', 'promised_at', 'customer_sensitivity');
     }
@@ -168,7 +172,7 @@ export class JobMetaService {
 
     const editableFields: string[] = [];
     if (!WORKSHOP_STAGE_DISABLED_STATUSES.includes(status)) editableFields.push('workshop_stage');
-    if (!PARTS_STATUS_DISABLED_STATUSES.includes(status)) editableFields.push('parts_status');
+    if (isPartsStatusEditableForJobStatus(status)) editableFields.push('parts_status');
 
     const estimateTotal = (job.estimate_lines ?? []).reduce(
       (sum: number, line: any) => sum + Number(line.line_total ?? 0), 0,

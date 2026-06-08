@@ -10,7 +10,7 @@ import { canTransition } from './jobs.state-machine';
 import { legacyWorkshopStageForStatus } from './jobs-utils';
 import { UsageService } from '@common/plan-features/usage.service';
 import { WorkflowService } from '../admin/settings/workflow.service';
-import { JobMetaService } from './job-meta.service';
+import { isPartsStatusEditableForJobStatus, JobMetaService } from './job-meta.service';
 import { JobConcernService } from './services/job-concern.service';
 
 @Injectable()
@@ -249,6 +249,14 @@ export class JobsService {
 
   async update(id: string, dto: UpdateJobDto, userId?: string) {
     const job = await this.findOne(id);
+
+    if (
+      dto.parts_status !== undefined &&
+      dto.parts_status !== job.parts_status &&
+      !isPartsStatusEditableForJobStatus(job.status)
+    ) {
+      throw new BadRequestException(`Parts status cannot be changed while job status is ${job.status}`);
+    }
 
     // If status is being changed, it must follow the state machine.
     // Direct status mutations via PATCH bypass the /status endpoint at

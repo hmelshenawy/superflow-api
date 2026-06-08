@@ -112,8 +112,8 @@ const STATUS_META: Record<
  *  Waiting Parts: car is out of workshop awaiting parts, not in active workshop flow. */
 const WORKSHOP_STAGE_DISABLED_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved", "waiting_parts"];
 
-/** Statuses where parts status dropdown should be disabled (not in workshop/parts flow yet). */
-const PARTS_STATUS_DISABLED_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved"];
+/** Statuses where parts status dropdown should be disabled (not in parts flow yet or terminal). */
+const PARTS_STATUS_DISABLED_STATUSES: JobStatus[] = ["booked", "checking", "estimate_sent", "approved", "closed", "no_show"];
 
 const ALL_STATUSES: JobStatus[] = [
   "booked",
