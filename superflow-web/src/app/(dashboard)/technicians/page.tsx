@@ -77,6 +77,7 @@ interface UnassignedJob {
   promised_at: string | null;
   is_customer_waiting: boolean | null;
   minutes_waiting: number;
+  priority_score: number | null;
 }
 
 interface BoardData {
@@ -142,6 +143,14 @@ function getClockBadge(status: string) {
   }
 }
 
+function getPriorityBadgeColor(score: number | null): string {
+  if (score === null) return "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400";
+  if (score >= 60) return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300";
+  if (score >= 40) return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
+  if (score >= 22) return "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300";
+  return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+}
+
 // ─── Components ──────────────────────────────────────────
 
 function SummaryStrip({ summary }: { summary: BoardData["summary"] }) {
@@ -190,7 +199,12 @@ function JobCard({ job }: { job: TechnicianJob }) {
     >
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">{job.job_number}</span>
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColor}`}>{stageLabel}</span>
+        <div className="flex items-center gap-1.5">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${getPriorityBadgeColor(job.priority_score)}`}>
+            {job.priority_score ?? "-"}
+          </span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColor}`}>{stageLabel}</span>
+        </div>
       </div>
       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-1">
         <Car className="w-3.5 h-3.5" />
@@ -235,9 +249,14 @@ function UnassignedJobCard({ job }: { job: UnassignedJob }) {
     <Link href={`/jobs/${job.id}`} className="block bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">{job.job_number}</span>
-        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-          Waiting {formatDuration(job.minutes_waiting)}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${getPriorityBadgeColor(job.priority_score)}`}>
+            {job.priority_score ?? "-"}
+          </span>
+          <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+            Waiting {formatDuration(job.minutes_waiting)}
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-1">
         <Car className="w-3.5 h-3.5" />

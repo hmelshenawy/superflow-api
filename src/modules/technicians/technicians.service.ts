@@ -3,10 +3,14 @@ import { PrismaService } from '@prisma/prisma.service';
 import { getWorkshopContext } from '@prisma/workshop-context';
 import { ClockEventDto, TechnicianProductivityQueryDto } from './dto/technician.dto';
 import { technician_clock_event_type } from '@prisma/client';
+import { PriorityService } from '@modules/jobs/priority/priority.service';
 
 @Injectable()
 export class TechniciansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private priorityService: PriorityService,
+  ) {}
 
   // ─── Board View ─────────────────────────────────────────────
 
@@ -60,6 +64,7 @@ export class TechniciansService {
       },
       include: {
         vehicles: { select: { make: true, vehicle_model: true, year: true, plate: true, color: true } },
+        estimate_lines: { select: { line_total: true } },
         job_status_history: {
           where: { changed_at: { gte: startOfDay } },
           orderBy: { changed_at: 'desc' },
@@ -90,6 +95,10 @@ export class TechniciansService {
       }
     }
 
+    const priorityScoreByJobId = new Map(
+      jobs.map((job: any) => [job.id, this.priorityService.computeForJob(job).score]),
+    );
+
     // Build technician data
     const now = new Date();
     const technicianData = technicians.map((tech: { id: string; name: string | null; avatar_url: string | null; employee_code: string | null }) => {
@@ -118,7 +127,7 @@ export class TechniciansService {
           stage_started_at: stageStartedAt,
           minutes_in_stage: minutesInStage,
           is_promised_at_risk: isPromisedAtRisk,
-          priority_score: (job.priority_score as number) ?? null,
+          priority_score: priorityScoreByJobId.get(job.id) ?? null,
         };
       });
 
@@ -189,6 +198,7 @@ export class TechniciansService {
           promised_at: job.promised_at as string | null,
           is_customer_waiting: job.is_customer_waiting as boolean | null,
           minutes_waiting: minutesInStage,
+          priority_score: priorityScoreByJobId.get(job.id as string) ?? null,
         };
       });
 
