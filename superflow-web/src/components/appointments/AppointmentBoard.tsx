@@ -22,6 +22,19 @@ function normalizeAppointment(item: Appointment): Appointment {
   return { ...item, staff: item.staff || item.staff_members, job_type: item.job_type || item.job_types, customer: item.customer || item.customers };
 }
 
+function appointmentDurationMinutes(appointment: Appointment): number {
+  const startMs = new Date(appointment.start_time).getTime();
+  const endMs = new Date(appointment.end_time).getTime();
+  const durationFromRange = Math.round((endMs - startMs) / 60_000);
+  return durationFromRange > 0 ? durationFromRange : appointment.duration_min;
+}
+
+function appointmentSlotSpan(appointment: Appointment, slotDuration: number, remainingSlots: number): number {
+  const duration = appointmentDurationMinutes(appointment);
+  const span = Math.ceil(duration / Math.max(1, slotDuration));
+  return Math.max(1, Math.min(remainingSlots, span));
+}
+
 export function AppointmentBoard() {
   const { workshops, currentWorkshopId } = useAuthStore();
   const currentWorkshop = workshops.find((item) => item.id === currentWorkshopId) ?? (workshops.length === 1 ? workshops[0] : null);
@@ -32,7 +45,7 @@ export function AppointmentBoard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [bookingPrefill, setBookingPrefill] = useState<{ staff_id?: string; date?: string; start_time?: string } | undefined>();
+  const [bookingPrefill, setBookingPrefill] = useState<{ staff_id?: string; date?: string; start_time?: string; duration_min?: number } | undefined>();
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
@@ -91,7 +104,7 @@ export function AppointmentBoard() {
   }, [dateString, slotDuration, slots, timezone, todayString]);
 
   const openBooking = (staffId: string, time: string) => {
-    setBookingPrefill({ staff_id: staffId, date: dateString, start_time: time.slice(0, 5) });
+    setBookingPrefill({ staff_id: staffId, date: dateString, start_time: time.slice(0, 5), duration_min: slotDuration });
     setBookingOpen(true);
   };
 
@@ -144,10 +157,19 @@ function StaffRow({ member, slots, appointments, slotDuration, timezone, onEmpty
     const slot = slots[index];
     const appointment = appointments.find((item) => appointmentLocalTime(item.start_time, timezone) === slot.time.slice(0, 5));
     if (appointment) {
-      const span = Math.max(1, Math.round(appointment.duration_min / slotDuration));
+      const span = appointmentSlotSpan(appointment, slotDuration, slots.length - index);
       const meta = APPOINTMENT_STATUS_META[appointment.status] || APPOINTMENT_STATUS_META.scheduled;
-      const narrow = span === 1 && slotWidth < 80;
-      cells.push(<td key={`${slot.time}-${appointment.id}`} colSpan={span} className="relative h-[52px] border-b border-r border-border p-0"><button title={`${appointment.title} · ${appointment.customer?.name || "No customer"}`} onClick={() => onAppointmentClick(appointment.id)} className={cn("absolute inset-[3px] overflow-hidden rounded-md border px-2 py-1 text-left transition hover:shadow-sm", appointment.status === "cancelled" && "opacity-60")} style={{ backgroundColor: meta.bg, color: meta.text, borderColor: meta.border }}>{narrow ? <span className="block h-full w-1 rounded bg-current" /> : <><span className="block truncate text-xs font-bold">{appointment.job_type?.name || appointment.title}</span><span className="block truncate text-[11px] opacity-75">{appointment.customer?.name || "No customer"}</span></>}</button></td>);
+      const plate = (appointment as any).plate || (appointment as any).vehicle_plate || (appointment as any).vehicle?.plate || (appointment.work_order as any)?.plate || (appointment.work_order as any)?.vehicle_plate || "";
+      const title = appointment.job_type?.name || appointment.title;
+      const subtitle = plate || appointment.customer?.name || "No customer";
+      const tooltip = [
+        title,
+        appointment.customer?.name ? `Customer: ${appointment.customer.name}` : null,
+        plate ? `Plate: ${plate}` : null,
+        `Time: ${displaySlotTime(slot.time)}`,
+        `Advisor: ${member.name}`,
+      ].filter(Boolean).join("\n");
+      cells.push(<td key={`${slot.time}-${appointment.id}`} colSpan={span} className="relative h-[52px] border-b border-r border-border p-0"><button title={tooltip} onClick={() => onAppointmentClick(appointment.id)} className={cn("absolute inset-[3px] flex min-w-0 overflow-hidden rounded-md border text-left transition hover:shadow-sm hover:ring-1 hover:ring-blue-300/60", appointment.status === "cancelled" && "opacity-60")} style={{ backgroundColor: meta.bg, color: meta.text, borderColor: meta.border }}><span className="w-1 shrink-0" style={{ backgroundColor: meta.border }} /><span className="flex min-w-0 flex-1 flex-col justify-center px-1.5 py-0.5"><span className="block truncate text-[11px] font-semibold leading-4">{title}</span><span className="block truncate text-[10px] leading-3 opacity-75">{subtitle}</span></span></button></td>);
       index += span - 1;
     } else {
       cells.push(<td key={slot.time} className={cn("h-[52px] border-b border-r border-border p-1", !slot.is_available && "cursor-not-allowed")} style={!slot.is_available ? { background: "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.04) 4px, rgba(0,0,0,0.04) 8px)" } : undefined}>{slot.is_available ? <button className="h-full w-full rounded-md border border-dashed border-transparent hover:border-blue-300 hover:bg-blue-50/60" onClick={() => onEmptyClick(member.id, slot.time)} aria-label={`Book ${member.name} at ${slot.time}`} /> : <span title={slot.blocked_reason} className="block h-full w-full" />}</td>);

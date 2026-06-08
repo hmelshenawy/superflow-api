@@ -7,6 +7,8 @@ import { QueryAppointmentsDto } from './dto/query-appointments.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 
+const DEFAULT_APPOINTMENT_DURATION_MIN = 30;
+
 @Injectable()
 export class AppointmentsService {
   constructor(private prisma: PrismaService) {}
@@ -130,6 +132,12 @@ export class AppointmentsService {
     if (overlapsBreak) throw new BadRequestException('Appointment overlaps a schedule break');
   }
 
+  private async getDefaultDurationForStart(start: Date, timezone: string) {
+    const day = this.localDay(start, timezone);
+    const config = await (this.prisma.tenant as any).schedule_config.findFirst({ where: { day_of_week: day } });
+    return config?.slot_duration_min || DEFAULT_APPOINTMENT_DURATION_MIN;
+  }
+
   private async checkConflict(staff: any, start: Date, end: Date, excludeId?: string) {
     const where: any = {
       staff_id: staff.id,
@@ -153,9 +161,9 @@ export class AppointmentsService {
 
   async create(dto: CreateAppointmentDto, userId?: string) {
     const jobType = await this.resolveJobType(dto.job_type_id);
-    const duration = dto.duration_min ?? jobType?.duration_min ?? 60;
     const timezone = await this.getWorkshopTimezone();
     const start = this.parseAppointmentStart(dto.start_time, timezone);
+    const duration = dto.duration_min ?? jobType?.duration_min ?? await this.getDefaultDurationForStart(start, timezone);
     const end = new Date(start.getTime() + duration * 60000);
     await this.validateOpenSlot(start, duration, timezone);
     const staff = await this.validateStaff(dto.staff_id, start, timezone);
@@ -195,7 +203,7 @@ export class AppointmentsService {
     const jobType = await this.resolveJobType(dto.job_type_id ?? current.job_type_id);
     const staffId = dto.staff_id ?? current.staff_id;
     const start = dto.start_time ? this.parseAppointmentStart(dto.start_time, timezone) : current.start_time;
-    const duration = dto.duration_min ?? current.duration_min ?? jobType?.duration_min ?? 60;
+    const duration = dto.duration_min ?? current.duration_min ?? jobType?.duration_min ?? DEFAULT_APPOINTMENT_DURATION_MIN;
     const end = new Date(start.getTime() + duration * 60000);
     if (dto.staff_id || dto.start_time || dto.duration_min) {
       await this.validateOpenSlot(start, duration, timezone);

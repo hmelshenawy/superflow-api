@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import api, { getApiError } from "@/lib/api";
 import type { Appointment, JobType, SlotInfo, StaffMember } from "@/types/appointments";
-import { addDays, formatDuration, toDateString } from "@/utils/appointments";
+import { addDays, formatDuration, timeToMinutes, toDateString } from "@/utils/appointments";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,10 +18,16 @@ export interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (appointment: Appointment) => void;
-  prefill?: { staff_id?: string; date?: string; start_time?: string };
+  prefill?: { staff_id?: string; date?: string; start_time?: string; duration_min?: number };
 }
 
 const durationOptions = [15, 30, 45, 60, 90, 120, 150, 180, 240];
+const defaultDurationMin = 30;
+
+function inferSlotDuration(slots: SlotInfo[]): number {
+  if (slots.length > 1) return Math.max(1, timeToMinutes(slots[1].time) - timeToMinutes(slots[0].time));
+  return defaultDurationMin;
+}
 
 function fieldClass(hasError?: boolean) {
   return hasError ? "border-red-400 focus-visible:ring-red-200" : "";
@@ -39,6 +45,7 @@ export function BookingModal({ isOpen, onClose, onSuccess, prefill }: BookingMod
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [durationEdited, setDurationEdited] = useState(false);
   const today = toDateString(new Date());
   const maxDate = toDateString(addDays(new Date(), 14));
   const [form, setForm] = useState({
@@ -46,7 +53,7 @@ export function BookingModal({ isOpen, onClose, onSuccess, prefill }: BookingMod
     date: prefill?.date || today,
     start_time: prefill?.start_time || "",
     job_type_id: "",
-    duration_min: 60,
+    duration_min: prefill?.duration_min || defaultDurationMin,
     title: "",
     customer_id: "",
     work_order_id: "",
@@ -55,7 +62,16 @@ export function BookingModal({ isOpen, onClose, onSuccess, prefill }: BookingMod
 
   useEffect(() => {
     if (!isOpen) return;
-    setForm((prev) => ({ ...prev, staff_id: prefill?.staff_id || "", date: prefill?.date || today, start_time: prefill?.start_time || "" }));
+    setForm((prev) => ({
+      ...prev,
+      staff_id: prefill?.staff_id || "",
+      date: prefill?.date || today,
+      start_time: prefill?.start_time || "",
+      job_type_id: "",
+      duration_min: prefill?.duration_min || defaultDurationMin,
+      title: "",
+    }));
+    setDurationEdited(false);
     setErrors({});
     setServerError(null);
     setLoadingMeta(true);
@@ -69,13 +85,19 @@ export function BookingModal({ isOpen, onClose, onSuccess, prefill }: BookingMod
       })
       .catch((err) => setServerError(getApiError(err).message))
       .finally(() => setLoadingMeta(false));
-  }, [isOpen, prefill?.date, prefill?.staff_id, prefill?.start_time, today]);
+  }, [isOpen, prefill?.date, prefill?.duration_min, prefill?.staff_id, prefill?.start_time, today]);
 
   useEffect(() => {
     if (!isOpen || !form.date || !form.staff_id) return;
     setLoadingSlots(true);
     api.get<SlotInfo[]>("/schedule/slots", { params: { date: form.date, staff_id: form.staff_id } })
-      .then(({ data }) => setSlots(data || []))
+      .then(({ data }) => {
+        const nextSlots = data || [];
+        setSlots(nextSlots);
+        if (!durationEdited && !form.job_type_id) {
+          setForm((prev) => ({ ...prev, duration_min: inferSlotDuration(nextSlots) }));
+        }
+      })
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
   }, [isOpen, form.date, form.staff_id]);
@@ -109,11 +131,15 @@ export function BookingModal({ isOpen, onClose, onSuccess, prefill }: BookingMod
 
   const selectedSlotUnavailable = Boolean(prefill?.start_time && form.start_time === prefill.start_time && slots.length && !slots.some((slot) => slot.time.slice(0, 5) === prefill.start_time && slot.is_available));
 
-  const update = (key: keyof typeof form, value: string | number) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof typeof form, value: string | number) => {
+    if (key === "duration_min") setDurationEdited(true);
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const selectJobType = (id: string) => {
     const jt = jobTypes.find((item) => item.id === id);
-    setForm((prev) => ({ ...prev, job_type_id: id, duration_min: jt?.duration_min || prev.duration_min, title: jt?.name || prev.title }));
+    setDurationEdited(Boolean(jt));
+    setForm((prev) => ({ ...prev, job_type_id: id, duration_min: jt?.duration_min || inferSlotDuration(slots), title: jt?.name || prev.title }));
   };
 
   const validate = () => {
