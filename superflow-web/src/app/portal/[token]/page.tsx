@@ -66,7 +66,7 @@ export default function PortalPage() {
   );
 
   const portalCanSubmit = data?.can_submit ?? false;
-  const allActionableGroupsDecided = Boolean(data?.grouped_estimate?.length) && data.grouped_estimate.every((group) => {
+  const allActionableGroupsDecided = Boolean(data?.grouped_estimate?.length) && data!.grouped_estimate!.every((group) => {
     const actionable = getUnlockedActionableLines(group, existingDecisionByLine);
     if (actionable.length === 0) return true;
     return Boolean(decisions[group.key]?.decision);
