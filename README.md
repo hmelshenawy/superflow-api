@@ -1,6 +1,8 @@
-# SuperFlow
+# SuperFlow — Automotive Workshop Management Platform
 
-SuperFlow is a workshop management system for service advisors.
+SuperFlow is a workshop management platform for automotive service teams, supporting customer and vehicle intake, job tracking, inspections, estimates, customer authorisation, and deferred work.
+
+Built with NestJS, Prisma, and MySQL/MariaDB, the backend integrates Redis/BullMQ notifications and a customer approval portal. The repository also includes a Next.js web application and Flutter client.
 
 ## Developer documentation
 
